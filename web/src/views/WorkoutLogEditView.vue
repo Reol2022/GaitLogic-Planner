@@ -1,5 +1,8 @@
 <template>
   <div class="page-stack">
+    <div class="excel-section-title">训练日志</div>
+    <div class="excel-subtitle">实际完成记录、RPE、疼痛、主课数据和第二天调整统一在这里填写。</div>
+
     <div class="toolbar">
       <el-button :icon="ArrowLeft" @click="router.back()">返回</el-button>
       <el-button type="primary" :icon="Check" @click="submit">提交日志</el-button>
@@ -137,4 +140,3 @@ async function submit() {
 
 onMounted(load);
 </script>
-

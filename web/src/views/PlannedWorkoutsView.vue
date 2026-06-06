@@ -1,5 +1,8 @@
 <template>
   <div class="page-stack">
+    <div class="excel-section-title">计划索引</div>
+    <div class="excel-subtitle">每日训练计划主来源：日期、星期、阶段、训练内容、重点说明、计划 km 和主类型。</div>
+
     <div class="toolbar">
       <div class="filter-row">
         <el-select
@@ -39,12 +42,14 @@
         <el-table-column prop="planned_distance_km" label="计划 km" width="110" />
         <el-table-column label="主类型" width="130">
           <template #default="{ row }">
-            <el-tag>{{ labelFor(mainTypeOptions, row.main_type_normalized) }}</el-tag>
+            <el-tag effect="plain">{{ labelFor(mainTypeOptions, row.main_type_normalized) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="完成状态" width="130">
           <template #default="{ row }">
-            {{ labelFor(statusOptions, row.workout_log?.status_normalized) }}
+            <el-tag :class="statusClass(row.workout_log?.status_normalized)" effect="plain">
+              {{ labelFor(statusOptions, row.workout_log?.status_normalized) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="280" fixed="right">
@@ -134,6 +139,7 @@ import type {
   TrainingBlock,
   TrainingCycle,
   WorkoutMainTypeNormalized,
+  WorkoutStatusNormalized,
 } from "@/types/models";
 import { labelFor, mainTypeOptions, statusOptions } from "@/types/options";
 
@@ -220,6 +226,13 @@ async function submit() {
 
 function goLog(id: number) {
   router.push(`/workouts/${id}/log`);
+}
+
+function statusClass(status?: WorkoutStatusNormalized | null) {
+  if (status?.startsWith("completed")) return "status-tag status-done";
+  if (status === "missed" || status === "skipped") return "status-tag status-alert";
+  if (status === "rest" || status === "rest_or_cancelled") return "status-tag status-rest";
+  return "status-tag status-pending";
 }
 
 async function remove(row: PlannedWorkout) {

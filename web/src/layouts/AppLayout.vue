@@ -5,7 +5,7 @@
         <div class="brand-mark">GL</div>
         <div>
           <div class="brand-name">Gaitlogic</div>
-          <div class="brand-subtitle">Planner v0.1</div>
+          <div class="brand-subtitle">夏训执行工作簿</div>
         </div>
       </div>
 
@@ -41,7 +41,7 @@
       <el-header class="app-header">
         <div>
           <h1>{{ pageTitle }}</h1>
-          <p>训练计划、日志和配速规则管理</p>
+          <p>严飞夏训计划与训练日志 · 后台录入与复盘</p>
         </div>
       </el-header>
       <el-main class="app-main">
@@ -66,4 +66,3 @@ import {
 const route = useRoute();
 const pageTitle = computed(() => String(route.meta.title || "Dashboard"));
 </script>
-

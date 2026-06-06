@@ -1,5 +1,8 @@
 <template>
   <div class="page-stack">
+    <div class="excel-section-title">每周复盘 · 训练块索引</div>
+    <div class="excel-subtitle">Week 1、Week 2 和「6月最后两天」这类非标准块统一在这里维护。</div>
+
     <div class="toolbar">
       <div class="filter-row">
         <el-select v-model="cycleId" clearable placeholder="全部周期" style="width: 240px" @change="load">
@@ -163,4 +166,3 @@ onMounted(async () => {
   await load();
 });
 </script>
-

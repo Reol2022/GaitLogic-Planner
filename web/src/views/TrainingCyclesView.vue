@@ -1,5 +1,8 @@
 <template>
   <div class="page-stack">
+    <div class="excel-section-title">训练周期</div>
+    <div class="excel-subtitle">用于管理夏训周期、目标比赛和总体目标。</div>
+
     <div class="toolbar">
       <div></div>
       <el-button type="primary" :icon="Plus" @click="openDialog()">新增周期</el-button>
@@ -128,4 +131,3 @@ async function remove(row: TrainingCycle) {
 
 onMounted(load);
 </script>
-

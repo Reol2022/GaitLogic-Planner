@@ -1,5 +1,8 @@
 <template>
   <div class="page-stack">
+    <div class="excel-section-title">🏆 配速参照表</div>
+    <div class="excel-note">铁律：该慢必须慢，该快不要怂。除了质量课，禁止随心所欲加速。</div>
+
     <div class="toolbar">
       <div></div>
       <el-button type="primary" :icon="Plus" @click="openDialog()">新增规则</el-button>
@@ -111,4 +114,3 @@ async function remove(row: PaceRule) {
 
 onMounted(load);
 </script>
-

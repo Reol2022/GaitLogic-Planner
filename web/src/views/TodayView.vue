@@ -1,5 +1,8 @@
 <template>
   <div class="page-stack">
+    <div class="excel-section-title">今日训练</div>
+    <div class="excel-subtitle">从计划索引读取当天训练，并显示对应训练日志状态。</div>
+
     <div class="toolbar">
       <el-date-picker v-model="today" value-format="YYYY-MM-DD" type="date" @change="load" />
       <el-button :icon="Refresh" @click="load">刷新</el-button>
@@ -13,7 +16,9 @@
         <el-table-column prop="planned_distance_km" label="计划 km" width="110" />
         <el-table-column label="状态" width="140">
           <template #default="{ row }">
-            {{ labelFor(statusOptions, row.workout_log?.status_normalized) }}
+            <el-tag :class="statusClass(row.workout_log?.status_normalized)" effect="plain">
+              {{ labelFor(statusOptions, row.workout_log?.status_normalized) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="140" fixed="right">
@@ -34,7 +39,7 @@ import { useRouter } from "vue-router";
 import { EditPen, Refresh } from "@element-plus/icons-vue";
 
 import { listTodayWorkouts } from "@/api/plannedWorkouts";
-import type { PlannedWorkout } from "@/types/models";
+import type { PlannedWorkout, WorkoutStatusNormalized } from "@/types/models";
 import { labelFor, statusOptions } from "@/types/options";
 
 const router = useRouter();
@@ -55,6 +60,12 @@ function goLog(id: number) {
   router.push(`/workouts/${id}/log`);
 }
 
+function statusClass(status?: WorkoutStatusNormalized | null) {
+  if (status?.startsWith("completed")) return "status-tag status-done";
+  if (status === "missed" || status === "skipped") return "status-tag status-alert";
+  if (status === "rest" || status === "rest_or_cancelled") return "status-tag status-rest";
+  return "status-tag status-pending";
+}
+
 onMounted(load);
 </script>
-

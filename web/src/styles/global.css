@@ -1,8 +1,18 @@
 :root {
-  color: #172026;
-  background: #f4f7f6;
+  color: #1f2933;
+  background: #eef3f8;
+  --excel-blue: #1f4e79;
+  --excel-blue-2: #305496;
+  --excel-blue-soft: #ddebf7;
+  --excel-blue-soft-2: #eaf3f8;
+  --excel-yellow: #fff2cc;
+  --excel-yellow-soft: #fffdf0;
+  --excel-green: #c3ead5;
+  --excel-row: #f8fbfd;
+  --excel-grid: #b8c9d6;
+  --excel-text: #1f2933;
   font-family:
-    Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont,
+    Carlito, "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -15,7 +25,9 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: #f4f7f6;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(91, 155, 213, 0.18), transparent 28%),
+    linear-gradient(180deg, #eef5fb 0%, #f7fafc 46%, #eef3f8 100%);
 }
 
 .app-shell {
@@ -23,17 +35,19 @@ body {
 }
 
 .app-sidebar {
-  background: #14221f;
+  background: linear-gradient(180deg, #173b5b 0%, #1f4e79 52%, #173b5b 100%);
   color: #ffffff;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid #163a5b;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 74px;
-  padding: 0 20px;
+  height: 68px;
+  padding: 0 18px;
+  background: #173b5b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .brand-mark {
@@ -41,9 +55,9 @@ body {
   place-items: center;
   width: 36px;
   height: 36px;
-  border-radius: 8px;
-  color: #10211d;
-  background: #79d8b4;
+  border-radius: 4px;
+  color: var(--excel-blue);
+  background: #ffffff;
   font-weight: 800;
 }
 
@@ -54,41 +68,47 @@ body {
 
 .brand-subtitle {
   margin-top: 2px;
-  color: #9db6ae;
+  color: #cfe2f3;
   font-size: 12px;
 }
 
 .side-menu {
-  --el-menu-bg-color: #14221f;
-  --el-menu-text-color: #c9d8d3;
-  --el-menu-hover-bg-color: #1e332e;
-  --el-menu-active-color: #79d8b4;
+  --el-menu-bg-color: var(--excel-blue);
+  --el-menu-text-color: #dceaf5;
+  --el-menu-hover-bg-color: #305496;
+  --el-menu-active-color: #ffffff;
   border-right: 0;
+}
+
+.side-menu .el-menu-item.is-active {
+  background: #305496;
+  border-left: 4px solid #fff2cc;
 }
 
 .app-header {
   display: flex;
   align-items: center;
-  height: 74px;
-  padding: 0 28px;
-  background: #ffffff;
-  border-bottom: 1px solid #dfe8e4;
+  height: 68px;
+  padding: 0 24px;
+  color: #ffffff;
+  background: linear-gradient(90deg, #1f4e79, #305496);
+  border-bottom: 2px solid rgba(255, 242, 204, 0.8);
 }
 
 .app-header h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1.25;
 }
 
 .app-header p {
   margin: 4px 0 0;
-  color: #667a73;
+  color: #dbeafe;
   font-size: 13px;
 }
 
 .app-main {
-  padding: 22px 28px 34px;
+  padding: 18px 22px 30px;
 }
 
 .page-stack {
@@ -103,6 +123,11 @@ body {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid rgba(184, 201, 214, 0.78);
+  border-radius: 12px;
+  background: rgba(255, 253, 240, 0.88);
+  box-shadow: 0 8px 22px rgba(31, 78, 121, 0.06);
 }
 
 .filter-row {
@@ -115,32 +140,45 @@ body {
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(120px, 1fr));
-  gap: 12px;
+  gap: 0;
+  border: 1px solid var(--excel-grid);
+  background: #ffffff;
 }
 
 .metric-card {
-  padding: 16px;
-  border: 1px solid #dfe8e4;
-  border-radius: 8px;
+  padding: 11px 12px 12px;
+  border-right: 1px solid var(--excel-grid);
+  border-bottom: 1px solid var(--excel-grid);
+  border-radius: 0;
   background: #ffffff;
+}
+
+.metric-card:nth-child(6n) {
+  border-right: 0;
 }
 
 .metric-label {
-  color: #667a73;
+  color: #ffffff;
   font-size: 12px;
+  font-weight: 700;
+  margin: -11px -12px 8px;
+  padding: 6px 9px;
+  background: var(--excel-blue-2);
 }
 
 .metric-value {
-  margin-top: 8px;
-  font-size: 24px;
+  margin-top: 0;
+  font-size: 22px;
   font-weight: 760;
-  color: #14221f;
+  color: var(--excel-blue);
 }
 
 .panel {
-  border: 1px solid #dfe8e4;
-  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(184, 201, 214, 0.82);
+  border-radius: 12px;
   background: #ffffff;
+  box-shadow: 0 10px 26px rgba(31, 78, 121, 0.07);
 }
 
 .panel-header {
@@ -148,18 +186,20 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid #edf2f0;
+  padding: 8px 12px;
+  color: #ffffff;
+  border-bottom: 1px solid #163a5b;
+  background: var(--excel-blue);
 }
 
 .panel-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .panel-body {
-  padding: 16px;
+  padding: 12px;
 }
 
 .table-actions {
@@ -171,6 +211,115 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 18px;
+}
+
+.el-table {
+  --el-table-header-bg-color: var(--excel-blue);
+  --el-table-header-text-color: #ffffff;
+  --el-table-row-hover-bg-color: #eaf3f8;
+  --el-table-border-color: var(--excel-grid);
+  font-size: 13px;
+}
+
+.el-table th.el-table__cell {
+  font-weight: 700;
+}
+
+.el-table .el-table__cell {
+  padding: 6px 0;
+}
+
+.el-table__row:nth-child(even) {
+  background: var(--excel-row);
+}
+
+.el-button {
+  border-radius: 2px;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--excel-blue-2);
+  --el-button-border-color: var(--excel-blue-2);
+  --el-button-hover-bg-color: var(--excel-blue);
+  --el-button-hover-border-color: var(--excel-blue);
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  border-radius: 2px;
+}
+
+.el-dialog {
+  border-radius: 0;
+}
+
+.el-dialog__header {
+  margin-right: 0;
+  padding: 12px 16px;
+  color: #ffffff;
+  background: var(--excel-blue);
+}
+
+.el-dialog__title {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.excel-note {
+  padding: 9px 12px;
+  border: 1px solid rgba(240, 217, 138, 0.8);
+  border-radius: 10px;
+  color: #7f6000;
+  background: var(--excel-yellow);
+  font-size: 13px;
+}
+
+.excel-section-title {
+  padding: 10px 14px;
+  color: #ffffff;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #1f4e79, #305496);
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(31, 78, 121, 0.14);
+}
+
+.excel-subtitle {
+  padding: 8px 12px;
+  border: 1px solid rgba(184, 201, 214, 0.82);
+  border-radius: 10px;
+  background: var(--excel-blue-soft);
+  color: var(--excel-blue);
+  font-weight: 700;
+}
+
+.status-tag {
+  border-radius: 0;
+  font-weight: 700;
+}
+
+.status-done {
+  --el-tag-text-color: #166534;
+  --el-tag-border-color: #86d6a6;
+  --el-tag-bg-color: #dcfce7;
+}
+
+.status-alert {
+  --el-tag-text-color: #991b1b;
+  --el-tag-border-color: #f5b0b0;
+  --el-tag-bg-color: #fee2e2;
+}
+
+.status-rest {
+  --el-tag-text-color: #7f6000;
+  --el-tag-border-color: #efd37a;
+  --el-tag-bg-color: #fff2cc;
+}
+
+.status-pending {
+  --el-tag-text-color: #1f4e79;
+  --el-tag-border-color: #a9c6df;
+  --el-tag-bg-color: #ddebf7;
 }
 
 .form-grid .full {
@@ -197,4 +346,3 @@ body {
     grid-template-columns: 1fr;
   }
 }
-

@@ -11,5 +11,7 @@ dist/
 build/
 web/node_modules/
 web/dist/
+web-dist/
+web-vite-cache/
 web/npm-cache/
 web/npm-appdata/
