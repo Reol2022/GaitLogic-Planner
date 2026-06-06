@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     mysql_database: str = Field(
         default="gaitlogic_planner", validation_alias="MYSQL_DATABASE"
     )
+    jwt_secret_key: str | None = Field(default=None, validation_alias="JWT_SECRET_KEY")
+    access_token_expire_days: int = Field(
+        default=7,
+        validation_alias="ACCESS_TOKEN_EXPIRE_DAYS",
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -44,4 +49,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

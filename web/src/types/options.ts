@@ -2,8 +2,8 @@ import type { WorkoutMainTypeNormalized, WorkoutStatusNormalized } from "./model
 
 export const mainTypeOptions: { label: string; value: WorkoutMainTypeNormalized }[] = [
   { label: "轻松跑", value: "easy" },
-  { label: "轻松跑+速度", value: "easy_with_speed" },
-  { label: "间歇/速度", value: "interval_speed" },
+  { label: "轻松跑 + 速度", value: "easy_with_speed" },
+  { label: "间歇 / 速度", value: "interval_speed" },
   { label: "节奏跑", value: "tempo" },
   { label: "恢复跑", value: "recovery" },
   { label: "长距离", value: "long_run" },
@@ -19,7 +19,7 @@ export const statusOptions: { label: string; value: WorkoutStatusNormalized }[] 
   { label: "调整后完成", value: "completed_adjusted" },
   { label: "缺课", value: "missed" },
   { label: "休息", value: "rest" },
-  { label: "休息/取消", value: "rest_or_cancelled" },
+  { label: "休息 / 取消", value: "rest_or_cancelled" },
   { label: "跳过", value: "skipped" },
   { label: "未知", value: "unknown" },
 ];
@@ -36,4 +36,3 @@ export function labelFor<T extends string>(
 ) {
   return options.find((option) => option.value === value)?.label || value || "-";
 }
-

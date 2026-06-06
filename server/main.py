@@ -4,7 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import IntegrityError
 
 from server.api.routes import (
+    auth,
     dashboard,
+    excel,
     health,
     pace_rules,
     planned_workouts,
@@ -38,6 +40,8 @@ def create_app() -> FastAPI:
     app.add_exception_handler(IntegrityError, integrity_error_handler)
 
     app.include_router(health.router, prefix="/api")
+    app.include_router(auth.router, prefix="/api")
+    app.include_router(excel.router, prefix="/api")
     app.include_router(training_cycles.router, prefix="/api")
     app.include_router(training_blocks.router, prefix="/api")
     app.include_router(planned_workouts.router, prefix="/api")

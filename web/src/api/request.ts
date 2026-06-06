@@ -2,14 +2,31 @@ import axios from "axios";
 import type { AxiosRequestConfig } from "axios";
 import { ElMessage } from "element-plus";
 
+const TOKEN_STORAGE_KEY = "gaitlogic_access_token";
+
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
   timeout: 12000,
 });
 
+client.interceptors.request.use((config) => {
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 client.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    if (error?.response?.status === 401) {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+      }
+    }
+
     const message =
       error?.response?.data?.message || error?.message || "后端请求失败，请检查服务状态";
     ElMessage.error(message);

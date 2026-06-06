@@ -18,6 +18,7 @@ from planner_core.database.models import (
     PlannedWorkout,
     TrainingBlock,
     TrainingCycle,
+    UserAccount,
     WorkoutLog,
 )
 from planner_core.enums import (
@@ -115,13 +116,16 @@ def mysql_session_factory():
 
 
 def create_plan_graph() -> tuple[TrainingCycle, TrainingBlock, PlannedWorkout]:
+    user = UserAccount(username=f"user_{uuid4().hex[:8]}", password_hash="test-hash")
     cycle = TrainingCycle(
+        user=user,
         name="2026夏训",
         goal="眉山东坡半马 1:11:30",
         start_date=date(2026, 6, 1),
         end_date=date(2026, 8, 31),
     )
     block = TrainingBlock(
+        user=user,
         cycle=cycle,
         block_name="Week 1：重新启动周",
         block_type=BlockType.week,
@@ -131,6 +135,7 @@ def create_plan_graph() -> tuple[TrainingCycle, TrainingBlock, PlannedWorkout]:
         end_date=date(2026, 6, 7),
     )
     planned = PlannedWorkout(
+        user=user,
         cycle=cycle,
         block=block,
         workout_date=date(2026, 6, 2),
@@ -144,7 +149,10 @@ def create_plan_graph() -> tuple[TrainingCycle, TrainingBlock, PlannedWorkout]:
         source_sheet="计划索引",
         source_row=2,
         sort_order=1,
-        workout_log=WorkoutLog(status_normalized=WorkoutStatusNormalized.not_started),
+        workout_log=WorkoutLog(
+            user=user,
+            status_normalized=WorkoutStatusNormalized.not_started,
+        ),
     )
     return cycle, block, planned
 
@@ -159,6 +167,7 @@ def test_can_create_all_tables(mysql_session_factory) -> None:
         "block_reviews",
         "pace_rules",
         "excel_import_jobs",
+        "user_account",
     }.issubset(set(inspector.get_table_names()))
 
 
@@ -169,12 +178,14 @@ def test_can_insert_cycle_block_workout_log_review_and_pace_rule(
     try:
         cycle, block, planned = create_plan_graph()
         block.block_review = BlockReview(
+            user=cycle.user,
             planned_distance_km=50,
             actual_distance_km=48,
             completion_rate=96,
             review_text="重新启动顺利。",
         )
         pace_rule = PaceRule(
+            user=cycle.user,
             code="E",
             name="轻松跑",
             target_pace_text="可对话强度",
@@ -202,8 +213,8 @@ def test_planned_workout_and_workout_log_are_one_to_one(mysql_session_factory) -
         session.flush()
         session.add_all(
             [
-                WorkoutLog(planned_workout_id=planned.id),
-                WorkoutLog(planned_workout_id=planned.id),
+                WorkoutLog(planned_workout_id=planned.id, user=planned.user),
+                WorkoutLog(planned_workout_id=planned.id, user=planned.user),
             ]
         )
 
@@ -222,8 +233,8 @@ def test_training_block_and_block_review_are_one_to_one(mysql_session_factory) -
         session.flush()
         session.add_all(
             [
-                BlockReview(block_id=block.id),
-                BlockReview(block_id=block.id),
+                BlockReview(block_id=block.id, user=cycle.user),
+                BlockReview(block_id=block.id, user=cycle.user),
             ]
         )
 
@@ -238,7 +249,7 @@ def test_deleting_training_cycle_cascades_children(mysql_session_factory) -> Non
     session = mysql_session_factory()
     try:
         cycle, block, planned = create_plan_graph()
-        block.block_review = BlockReview(planned_distance_km=50)
+        block.block_review = BlockReview(user=cycle.user, planned_distance_km=50)
         session.add(planned)
         session.commit()
         cycle_id = cycle.id
@@ -265,10 +276,11 @@ def test_deleting_training_cycle_cascades_children(mysql_session_factory) -> Non
 def test_pace_rule_code_is_unique(mysql_session_factory) -> None:
     session = mysql_session_factory()
     try:
+        user = UserAccount(username=f"user_{uuid4().hex[:8]}", password_hash="test-hash")
         session.add_all(
             [
-                PaceRule(code="R", name="短速度", sort_order=1),
-                PaceRule(code="R", name="重复跑", sort_order=2),
+                PaceRule(user=user, code="R", name="短速度", sort_order=1),
+                PaceRule(user=user, code="R", name="重复跑", sort_order=2),
             ]
         )
 
@@ -282,8 +294,10 @@ def test_pace_rule_code_is_unique(mysql_session_factory) -> None:
 def test_planned_workout_cycle_and_workout_date_are_unique(mysql_session_factory) -> None:
     session = mysql_session_factory()
     try:
-        cycle = TrainingCycle(name="唯一约束测试")
+        user = UserAccount(username=f"user_{uuid4().hex[:8]}", password_hash="test-hash")
+        cycle = TrainingCycle(user=user, name="唯一约束测试")
         block = TrainingBlock(
+            user=user,
             cycle=cycle,
             block_name="Week 1",
             block_type=BlockType.week,
@@ -292,6 +306,7 @@ def test_planned_workout_cycle_and_workout_date_are_unique(mysql_session_factory
         session.add_all(
             [
                 PlannedWorkout(
+                    user=user,
                     cycle=cycle,
                     block=block,
                     workout_date=date(2026, 6, 2),
@@ -299,6 +314,7 @@ def test_planned_workout_cycle_and_workout_date_are_unique(mysql_session_factory
                     sort_order=1,
                 ),
                 PlannedWorkout(
+                    user=user,
                     cycle=cycle,
                     block=block,
                     workout_date=date(2026, 6, 2),
@@ -313,4 +329,3 @@ def test_planned_workout_cycle_and_workout_date_are_unique(mysql_session_factory
         session.rollback()
     finally:
         session.close()
-

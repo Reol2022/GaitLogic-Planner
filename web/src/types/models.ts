@@ -162,3 +162,47 @@ export interface BlockStats {
   max_pain_level?: number | null;
 }
 
+export interface UserAccount {
+  id: number;
+  username: string;
+  email?: string | null;
+  nickname?: string | null;
+  avatar_url?: string | null;
+  role: string;
+  status: string;
+  last_login_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserRegisterPayload {
+  username: string;
+  password: string;
+  email?: string | null;
+  nickname?: string | null;
+}
+
+export interface UserLoginPayload {
+  username: string;
+  password: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: "bearer";
+}
+
+export interface ExcelImportErrorItem {
+  sheet: string;
+  row: number;
+  message: string;
+}
+
+export interface ExcelImportResult {
+  status: "success" | "partial_success" | "failed" | string;
+  message: string;
+  total_count: number;
+  success_count: number;
+  failed_count: number;
+  errors: ExcelImportErrorItem[];
+}

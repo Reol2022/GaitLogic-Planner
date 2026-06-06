@@ -10,10 +10,14 @@ from server.services.planned_workout_service import get_planned_workout
 def get_workout_log_by_planned_workout(
     db: Session,
     planned_workout_id: int,
+    user_id: int,
 ) -> WorkoutLog:
-    get_planned_workout(db, planned_workout_id)
+    get_planned_workout(db, planned_workout_id, user_id)
     log = db.scalar(
-        select(WorkoutLog).where(WorkoutLog.planned_workout_id == planned_workout_id)
+        select(WorkoutLog).where(
+            WorkoutLog.planned_workout_id == planned_workout_id,
+            WorkoutLog.user_id == user_id,
+        )
     )
     if log is None:
         raise NotFoundError("Workout log not found.")
@@ -24,11 +28,11 @@ def update_workout_log(
     db: Session,
     planned_workout_id: int,
     payload: WorkoutLogUpdate,
+    user_id: int,
 ) -> WorkoutLog:
-    log = get_workout_log_by_planned_workout(db, planned_workout_id)
+    log = get_workout_log_by_planned_workout(db, planned_workout_id, user_id)
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(log, key, value)
     db.commit()
     db.refresh(log)
     return log
-

@@ -1,8 +1,21 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { getStoredToken } from "@/api/auth";
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    {
+      path: "/login",
+      name: "Login",
+      component: () => import("@/views/LoginView.vue"),
+      meta: { title: "登录", public: true },
+    },
+    {
+      path: "/register",
+      name: "Register",
+      component: () => import("@/views/RegisterView.vue"),
+      meta: { title: "注册", public: true },
+    },
     {
       path: "/",
       name: "Dashboard",
@@ -45,8 +58,30 @@ const router = createRouter({
       component: () => import("@/views/PaceRulesView.vue"),
       meta: { title: "配速规则" },
     },
+    {
+      path: "/excel-import",
+      name: "ExcelImport",
+      component: () => import("@/views/ExcelImport.vue"),
+      meta: { title: "Excel 导入" },
+    },
   ],
 });
 
-export default router;
+router.beforeEach((to) => {
+  const token = getStoredToken();
 
+  if (!to.meta.public && !token) {
+    return {
+      path: "/login",
+      query: { redirect: to.fullPath },
+    };
+  }
+
+  if (to.meta.public && token) {
+    return "/";
+  }
+
+  return true;
+});
+
+export default router;

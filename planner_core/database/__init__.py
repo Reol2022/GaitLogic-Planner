@@ -6,6 +6,7 @@ from planner_core.database.models import (
     PlannedWorkout,
     TrainingBlock,
     TrainingCycle,
+    UserAccount,
     WorkoutLog,
 )
 
@@ -17,6 +18,6 @@ __all__ = [
     "PlannedWorkout",
     "TrainingBlock",
     "TrainingCycle",
+    "UserAccount",
     "WorkoutLog",
 ]
-

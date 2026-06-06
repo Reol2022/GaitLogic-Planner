@@ -3,8 +3,9 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
+from planner_core.database.models import UserAccount
 from planner_core.enums import WorkoutMainTypeNormalized
-from server.api.deps import get_db
+from server.api.deps import get_current_user, get_db
 from server.common.response import MessageResponse
 from server.schemas.planned_workout import (
     PlannedWorkoutCreate,
@@ -25,9 +26,11 @@ def list_planned_workouts(
     end_date: date | None = Query(default=None),
     main_type_normalized: WorkoutMainTypeNormalized | None = Query(default=None),
     db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
 ):
     return planned_workout_service.list_planned_workouts(
         db,
+        current_user.id,
         cycle_id=cycle_id,
         block_id=block_id,
         start_date=start_date,
@@ -41,13 +44,21 @@ def list_planned_workouts(
     response_model=PlannedWorkoutWithLogRead,
     status_code=status.HTTP_201_CREATED,
 )
-def create_planned_workout(payload: PlannedWorkoutCreate, db: Session = Depends(get_db)):
-    return planned_workout_service.create_planned_workout(db, payload)
+def create_planned_workout(
+    payload: PlannedWorkoutCreate,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    return planned_workout_service.create_planned_workout(db, payload, current_user.id)
 
 
 @router.get("/planned-workouts/{workout_id}", response_model=PlannedWorkoutWithLogRead)
-def get_planned_workout(workout_id: int, db: Session = Depends(get_db)):
-    return planned_workout_service.get_planned_workout(db, workout_id)
+def get_planned_workout(
+    workout_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    return planned_workout_service.get_planned_workout(db, workout_id, current_user.id)
 
 
 @router.put("/planned-workouts/{workout_id}", response_model=PlannedWorkoutWithLogRead)
@@ -55,13 +66,18 @@ def update_planned_workout(
     workout_id: int,
     payload: PlannedWorkoutUpdate,
     db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
 ):
-    return planned_workout_service.update_planned_workout(db, workout_id, payload)
+    return planned_workout_service.update_planned_workout(db, workout_id, payload, current_user.id)
 
 
 @router.delete("/planned-workouts/{workout_id}", response_model=MessageResponse)
-def delete_planned_workout(workout_id: int, db: Session = Depends(get_db)):
-    planned_workout_service.delete_planned_workout(db, workout_id)
+def delete_planned_workout(
+    workout_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    planned_workout_service.delete_planned_workout(db, workout_id, current_user.id)
     return MessageResponse(message="Planned workout deleted.")
 
 
@@ -69,6 +85,6 @@ def delete_planned_workout(workout_id: int, db: Session = Depends(get_db)):
 def get_today(
     date: date = Query(...),
     db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
 ):
-    return planned_workout_service.get_today_workouts(db, date)
-
+    return planned_workout_service.get_today_workouts(db, date, current_user.id)

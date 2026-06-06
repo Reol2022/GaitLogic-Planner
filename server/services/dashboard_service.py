@@ -32,8 +32,16 @@ def average_decimal(values: list[object]) -> Decimal | None:
     return (sum(usable, ZERO) / Decimal(len(usable))).quantize(Decimal("0.01"))
 
 
-def get_dashboard_summary(db: Session, cycle_id: int | None = None) -> DashboardSummary:
-    stmt = select(PlannedWorkout).options(selectinload(PlannedWorkout.workout_log))
+def get_dashboard_summary(
+    db: Session,
+    user_id: int,
+    cycle_id: int | None = None,
+) -> DashboardSummary:
+    stmt = (
+        select(PlannedWorkout)
+        .options(selectinload(PlannedWorkout.workout_log))
+        .where(PlannedWorkout.user_id == user_id)
+    )
     if cycle_id is not None:
         stmt = stmt.where(PlannedWorkout.cycle_id == cycle_id)
     workouts = list(db.scalars(stmt))
@@ -67,15 +75,20 @@ def get_dashboard_summary(db: Session, cycle_id: int | None = None) -> Dashboard
     )
 
 
-def get_block_stats(db: Session, block_id: int) -> BlockStats:
-    block = db.get(TrainingBlock, block_id)
+def get_block_stats(db: Session, block_id: int, user_id: int) -> BlockStats:
+    block = db.scalar(
+        select(TrainingBlock).where(
+            TrainingBlock.id == block_id,
+            TrainingBlock.user_id == user_id,
+        )
+    )
     if block is None:
         raise NotFoundError("Training block not found.")
     workouts = list(
         db.scalars(
             select(PlannedWorkout)
             .options(selectinload(PlannedWorkout.workout_log))
-            .where(PlannedWorkout.block_id == block_id)
+            .where(PlannedWorkout.block_id == block_id, PlannedWorkout.user_id == user_id)
         )
     )
     logs = [workout.workout_log for workout in workouts if workout.workout_log is not None]
@@ -101,4 +114,3 @@ def get_block_stats(db: Session, block_id: int) -> BlockStats:
             default=None,
         ),
     )
-

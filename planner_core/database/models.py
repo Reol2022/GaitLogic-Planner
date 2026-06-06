@@ -58,10 +58,46 @@ excel_import_status_enum = Enum(
 )
 
 
+class UserAccount(IdMixin, TimestampMixin, Base):
+    __tablename__ = "user_account"
+    __table_args__ = (
+        UniqueConstraint("username", name="uq_user_account_username"),
+        UniqueConstraint("email", name="uq_user_account_email"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    username: Mapped[str] = mapped_column(String(64), nullable=False)
+    email: Mapped[str | None] = mapped_column(String(255))
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    nickname: Mapped[str | None] = mapped_column(String(64))
+    avatar_url: Mapped[str | None] = mapped_column(String(512))
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="user", server_default="user")
+    status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="active",
+        server_default="active",
+    )
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    training_cycles: Mapped[list[TrainingCycle]] = relationship(back_populates="user")
+    training_blocks: Mapped[list[TrainingBlock]] = relationship(back_populates="user")
+    planned_workouts: Mapped[list[PlannedWorkout]] = relationship(back_populates="user")
+    workout_logs: Mapped[list[WorkoutLog]] = relationship(back_populates="user")
+    block_reviews: Mapped[list[BlockReview]] = relationship(back_populates="user")
+    pace_rules: Mapped[list[PaceRule]] = relationship(back_populates="user")
+    excel_import_jobs: Mapped[list[ExcelImportJob]] = relationship(back_populates="user")
+
+
 class TrainingCycle(IdMixin, TimestampMixin, Base):
     __tablename__ = "training_cycles"
     __table_args__ = MYSQL_TABLE_ARGS
 
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     goal: Mapped[str | None] = mapped_column(String(255))
     start_date: Mapped[date | None] = mapped_column(Date)
@@ -71,6 +107,7 @@ class TrainingCycle(IdMixin, TimestampMixin, Base):
     target_result: Mapped[str | None] = mapped_column(String(64))
     description: Mapped[str | None] = mapped_column(Text)
 
+    user: Mapped[UserAccount] = relationship(back_populates="training_cycles")
     blocks: Mapped[list[TrainingBlock]] = relationship(
         back_populates="cycle",
         cascade="all, delete-orphan",
@@ -96,6 +133,11 @@ class TrainingBlock(IdMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     block_name: Mapped[str] = mapped_column(String(128), nullable=False)
     block_type: Mapped[BlockType] = mapped_column(
         block_type_enum,
@@ -115,6 +157,7 @@ class TrainingBlock(IdMixin, TimestampMixin, Base):
     phase_name: Mapped[str | None] = mapped_column(String(128))
     focus: Mapped[str | None] = mapped_column(Text)
 
+    user: Mapped[UserAccount] = relationship(back_populates="training_blocks")
     cycle: Mapped[TrainingCycle] = relationship(back_populates="blocks")
     planned_workouts: Mapped[list[PlannedWorkout]] = relationship(
         back_populates="block",
@@ -143,6 +186,11 @@ class PlannedWorkout(IdMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     block_id: Mapped[int] = mapped_column(
         ForeignKey("training_blocks.id", ondelete="CASCADE"),
         nullable=False,
@@ -167,6 +215,7 @@ class PlannedWorkout(IdMixin, TimestampMixin, Base):
     source_row: Mapped[int | None] = mapped_column(Integer)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
 
+    user: Mapped[UserAccount] = relationship(back_populates="planned_workouts")
     cycle: Mapped[TrainingCycle] = relationship(back_populates="planned_workouts")
     block: Mapped[TrainingBlock] = relationship(back_populates="planned_workouts")
     workout_log: Mapped[WorkoutLog | None] = relationship(
@@ -191,6 +240,11 @@ class WorkoutLog(IdMixin, TimestampMixin, Base):
 
     planned_workout_id: Mapped[int] = mapped_column(
         ForeignKey("planned_workouts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -224,6 +278,7 @@ class WorkoutLog(IdMixin, TimestampMixin, Base):
     alert_message: Mapped[str | None] = mapped_column(Text)
     completion_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
 
+    user: Mapped[UserAccount] = relationship(back_populates="workout_logs")
     planned_workout: Mapped[PlannedWorkout] = relationship(back_populates="workout_log")
 
 
@@ -243,6 +298,11 @@ class BlockReview(IdMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     planned_distance_km: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
     actual_distance_km: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
     completion_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
@@ -257,22 +317,30 @@ class BlockReview(IdMixin, TimestampMixin, Base):
     review_text: Mapped[str | None] = mapped_column(Text)
     next_block_adjustment: Mapped[str | None] = mapped_column(Text)
 
+    user: Mapped[UserAccount] = relationship(back_populates="block_reviews")
     block: Mapped[TrainingBlock] = relationship(back_populates="block_review")
 
 
 class PaceRule(IdMixin, TimestampMixin, Base):
     __tablename__ = "pace_rules"
     __table_args__ = (
-        UniqueConstraint("code", name="uq_pace_rules_code"),
+        UniqueConstraint("user_id", "code", name="uq_pace_rules_user_code"),
         MYSQL_TABLE_ARGS,
     )
 
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     code: Mapped[str] = mapped_column(String(16), nullable=False)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     target_pace_text: Mapped[str | None] = mapped_column(String(255))
     physiological_purpose: Mapped[str | None] = mapped_column(Text)
     note: Mapped[str | None] = mapped_column(Text)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    user: Mapped[UserAccount] = relationship(back_populates="pace_rules")
 
 
 class ExcelImportJob(IdMixin, TimestampMixin, Base):
@@ -282,6 +350,11 @@ class ExcelImportJob(IdMixin, TimestampMixin, Base):
         MYSQL_TABLE_ARGS,
     )
 
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     file_path: Mapped[str | None] = mapped_column(String(512))
     file_hash: Mapped[str | None] = mapped_column(String(128))
@@ -299,3 +372,4 @@ class ExcelImportJob(IdMixin, TimestampMixin, Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
 
+    user: Mapped[UserAccount] = relationship(back_populates="excel_import_jobs")

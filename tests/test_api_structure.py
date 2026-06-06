@@ -22,6 +22,10 @@ def test_required_routes_are_registered() -> None:
         if getattr(route, "path", "").startswith("/api")
     }
     assert "GET /api/health" in routes
+    assert "POST /api/auth/register" in routes
+    assert "POST /api/auth/login" in routes
+    assert "GET /api/auth/me" in routes
+    assert "POST /api/auth/logout" in routes
     assert "GET /api/training-cycles" in routes
     assert "POST /api/training-cycles" in routes
     assert "GET /api/training-cycles/{cycle_id}" in routes
@@ -46,4 +50,11 @@ def test_required_routes_are_registered() -> None:
     assert "POST /api/pace-rules" in routes
     assert "PUT /api/pace-rules/{rule_id}" in routes
     assert "DELETE /api/pace-rules/{rule_id}" in routes
+    assert "GET /api/excel/template" in routes
+    assert "POST /api/excel/import" in routes
 
+
+def test_business_routes_require_login() -> None:
+    client = TestClient(app)
+    response = client.get("/api/training-cycles")
+    assert response.status_code == 401

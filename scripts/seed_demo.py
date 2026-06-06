@@ -14,6 +14,7 @@ from planner_core.database.models import (
     PlannedWorkout,
     TrainingBlock,
     TrainingCycle,
+    UserAccount,
     WorkoutLog,
 )
 from planner_core.database.session import SessionLocal
@@ -22,9 +23,11 @@ from planner_core.enums import (
     WorkoutMainTypeNormalized,
     WorkoutStatusNormalized,
 )
+from server.services.auth_service import hash_password
 
 
 def add_workout(
+    user: UserAccount,
     cycle: TrainingCycle,
     block: TrainingBlock,
     workout_date: date,
@@ -36,6 +39,7 @@ def add_workout(
     sort_order: int,
 ) -> PlannedWorkout:
     return PlannedWorkout(
+        user=user,
         cycle=cycle,
         block=block,
         workout_date=workout_date,
@@ -52,6 +56,7 @@ def add_workout(
         source_row=sort_order + 1,
         sort_order=sort_order,
         workout_log=WorkoutLog(
+            user=user,
             status_raw=None,
             status_normalized=WorkoutStatusNormalized.not_started,
         ),
@@ -61,7 +66,14 @@ def add_workout(
 def main() -> None:
     session = SessionLocal()
     try:
+        user = UserAccount(
+            username="demo",
+            email="demo@example.com",
+            nickname="Demo Runner",
+            password_hash=hash_password("demo123456"),
+        )
         cycle = TrainingCycle(
+            user=user,
             name="2026夏训",
             goal="眉山东坡半马 1:11:30",
             start_date=date(2026, 6, 1),
@@ -73,6 +85,7 @@ def main() -> None:
         )
 
         block1 = TrainingBlock(
+            user=user,
             cycle=cycle,
             block_name="Week 1：重新启动周",
             block_type=BlockType.week,
@@ -89,6 +102,7 @@ def main() -> None:
             focus="轻松跑为主，避免过早堆强度。",
         )
         block2 = TrainingBlock(
+            user=user,
             cycle=cycle,
             block_name="Week 2：恢复正常结构",
             block_type=BlockType.week,
@@ -105,6 +119,7 @@ def main() -> None:
             focus="一次节奏跑，一次长距离。",
         )
         block3 = TrainingBlock(
+            user=user,
             cycle=cycle,
             block_name="6月最后两天",
             block_type=BlockType.transition,
@@ -123,6 +138,7 @@ def main() -> None:
 
         workouts = [
             add_workout(
+                user,
                 cycle,
                 block1,
                 date(2026, 6, 2),
@@ -134,6 +150,7 @@ def main() -> None:
                 1,
             ),
             add_workout(
+                user,
                 cycle,
                 block1,
                 date(2026, 6, 4),
@@ -145,6 +162,7 @@ def main() -> None:
                 2,
             ),
             add_workout(
+                user,
                 cycle,
                 block1,
                 date(2026, 6, 7),
@@ -156,6 +174,7 @@ def main() -> None:
                 3,
             ),
             add_workout(
+                user,
                 cycle,
                 block2,
                 date(2026, 6, 9),
@@ -167,6 +186,7 @@ def main() -> None:
                 4,
             ),
             add_workout(
+                user,
                 cycle,
                 block2,
                 date(2026, 6, 11),
@@ -178,6 +198,7 @@ def main() -> None:
                 5,
             ),
             add_workout(
+                user,
                 cycle,
                 block2,
                 date(2026, 6, 14),
@@ -189,6 +210,7 @@ def main() -> None:
                 6,
             ),
             add_workout(
+                user,
                 cycle,
                 block3,
                 date(2026, 6, 29),
@@ -200,6 +222,7 @@ def main() -> None:
                 7,
             ),
             add_workout(
+                user,
                 cycle,
                 block3,
                 date(2026, 6, 30),
@@ -212,12 +235,13 @@ def main() -> None:
             ),
         ]
 
-        block1.block_review = BlockReview(planned_distance_km=50, review_text="待复盘")
-        block2.block_review = BlockReview(planned_distance_km=60, review_text="待复盘")
-        block3.block_review = BlockReview(planned_distance_km=18, review_text="待复盘")
+        block1.block_review = BlockReview(user=user, planned_distance_km=50, review_text="待复盘")
+        block2.block_review = BlockReview(user=user, planned_distance_km=60, review_text="待复盘")
+        block3.block_review = BlockReview(user=user, planned_distance_km=18, review_text="待复盘")
 
         pace_rules = [
             PaceRule(
+                user=user,
                 code="R",
                 name="短速度",
                 target_pace_text="短距离快速重复跑",
@@ -225,6 +249,7 @@ def main() -> None:
                 sort_order=1,
             ),
             PaceRule(
+                user=user,
                 code="I",
                 name="间歇跑",
                 target_pace_text="接近最大摄氧强度",
@@ -232,6 +257,7 @@ def main() -> None:
                 sort_order=2,
             ),
             PaceRule(
+                user=user,
                 code="T2",
                 name="高阈值",
                 target_pace_text="偏快阈值区间",
@@ -239,6 +265,7 @@ def main() -> None:
                 sort_order=3,
             ),
             PaceRule(
+                user=user,
                 code="T1",
                 name="稳阈值",
                 target_pace_text="稳定阈值区间",
@@ -246,6 +273,7 @@ def main() -> None:
                 sort_order=4,
             ),
             PaceRule(
+                user=user,
                 code="M",
                 name="稳态跑",
                 target_pace_text="马拉松或稳态配速",
@@ -253,6 +281,7 @@ def main() -> None:
                 sort_order=5,
             ),
             PaceRule(
+                user=user,
                 code="E",
                 name="轻松跑",
                 target_pace_text="可对话强度",
@@ -260,6 +289,7 @@ def main() -> None:
                 sort_order=6,
             ),
             PaceRule(
+                user=user,
                 code="REC",
                 name="恢复跑",
                 target_pace_text="明显慢于轻松跑",
@@ -267,6 +297,7 @@ def main() -> None:
                 sort_order=7,
             ),
             PaceRule(
+                user=user,
                 code="LSD",
                 name="长距离",
                 target_pace_text="长时间有氧耐力配速",
@@ -275,7 +306,7 @@ def main() -> None:
             ),
         ]
 
-        session.add_all([cycle, *workouts, *pace_rules])
+        session.add_all([user, cycle, *workouts, *pace_rules])
         session.commit()
         print("Demo data seeded successfully.")
     except Exception:
@@ -287,4 +318,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

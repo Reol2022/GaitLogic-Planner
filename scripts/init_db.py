@@ -18,6 +18,7 @@ from planner_core.database.models import (  # noqa: F401
     PlannedWorkout,
     TrainingBlock,
     TrainingCycle,
+    UserAccount,
     WorkoutLog,
 )
 from planner_core.database.session import engine
