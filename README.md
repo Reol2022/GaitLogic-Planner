@@ -1,25 +1,71 @@
-# Gaitlogic Planner
+# GaitLogic Planner
 
-Gaitlogic Planner 是一个面向严肃跑者的训练计划与训练日志 Web 系统。当前 v0.1 覆盖 MySQL 数据库层和 FastAPI 后端接口，围绕训练计划制定、训练日志、周/月统计基础数据和配速规则管理。
+GaitLogic Planner 是一个面向严肃跑者的训练计划与训练日志 Web 系统，用于管理训练周期、训练块、每日训练安排、训练日志、Dashboard 统计和配速规则。
 
-数据库设计以最新版 Excel《严飞_夏训计划与训练日志_下拉样式版.xlsx》的四个核心 Sheet 为来源：
+当前版本聚焦基础训练计划系统，不包含 Excel 解析、Garmin 同步、AI 教练、App、小程序或社交功能。
 
-- 计划索引
-- 训练日志
-- 每周复盘
-- 配速与规则
+## 当前功能
+
+- 训练周期管理
+- 训练块管理
+- 每日训练计划
+- 今日训练
+- 训练日志填写
+- Dashboard
+- 配速规则
+
+## 界面截图
+
+> 以下为截图预留位置，后续可将对应页面截图保存到 `docs/images/`。
+
+### Dashboard
+
+![Dashboard](docs/images/dashboard.png)
+
+### 今日训练
+
+![今日训练](docs/images/today-workout.png)
+
+### 训练计划列表
+
+![训练计划列表](docs/images/workout-list.png)
+
+### 训练日志填写
+
+![训练日志填写](docs/images/workout-log-edit.png)
+
+### 配速规则
+
+![配速规则](docs/images/pace-rules.png)
+
+### 系统架构
+
+![系统架构](docs/images/architecture.png)
+
+### 数据库 ER 图
+
+![数据库 ER 图](docs/images/database-er.png)
 
 ## 技术栈
 
-- Python 3.11+
-- MySQL 8.0+
+### 后端
+
+- FastAPI
 - SQLAlchemy 2.x
+- MySQL 8.0+
 - PyMySQL
 - Pydantic 2.x
 - pydantic-settings
 - pytest
-- FastAPI
-- Uvicorn
+
+### 前端
+
+- Vue 3
+- TypeScript
+- Vite
+- Element Plus
+- Axios
+- ECharts
 
 ## MySQL 环境要求
 
@@ -27,11 +73,26 @@ Gaitlogic Planner 是一个面向严肃跑者的训练计划与训练日志 Web 
 - 字符集：`utf8mb4`
 - 默认排序规则：`utf8mb4_unicode_ci`
 - 表引擎：`InnoDB`
-- 主键：`BIGINT AUTO_INCREMENT`
 - 不使用 SQLite
 - 不使用 Alembic
 
-## 配置方式
+## 本地运行
+
+### 1. 安装后端依赖
+
+在项目根目录执行：
+
+```bash
+pip install -e .
+```
+
+如果电脑上有多个 Python 版本，也可以指定 Python 3.11：
+
+```bash
+python -m pip install -e .
+```
+
+### 2. 配置 `.env`
 
 复制 `.env.example` 为 `.env`，并按本地 MySQL 环境填写：
 
@@ -43,7 +104,7 @@ MYSQL_PASSWORD=your_password
 MYSQL_DATABASE=gaitlogic_planner
 ```
 
-## 初始化数据库
+### 3. 初始化数据库
 
 ```bash
 python scripts/init_db.py
@@ -51,31 +112,53 @@ python scripts/init_db.py
 
 脚本会连接 MySQL。如果数据库不存在，会创建 `gaitlogic_planner`，然后初始化所有表。
 
-## 写入示例数据
+### 4. 导入测试数据
 
 ```bash
 python scripts/seed_demo.py
 ```
 
-示例数据包括：
+示例数据包括训练周期、训练块、计划训练课、默认训练日志和配速规则。
 
-- 训练周期：`2026夏训`
-- 训练周期目标：`眉山东坡半马 1:11:30`
-- 三个训练块：`Week 1：重新启动周`、`Week 2：恢复正常结构`、`6月最后两天`
-- 多条计划训练课及默认 `not_started` 训练日志
-- `R`、`I`、`T2`、`T1`、`M`、`E`、`REC`、`LSD` 配速规则
+### 5. 启动后端
 
-## 当前 MVP 范围
+```bash
+uvicorn server.main:app --reload
+```
 
-- 训练周期
-- 训练块
-- 计划训练课
-- 训练日志
-- 训练块复盘
-- 配速规则
-- Excel 导入任务记录
+后端默认地址：
 
-当前不实现 Excel 解析、FastAPI 业务接口、前端业务、Garmin 同步、AI 教练、App、小程序、多用户 SaaS 或社交功能。
+```text
+http://127.0.0.1:8000
+```
+
+接口文档：
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+### 6. 启动前端
+
+进入前端目录：
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+前端默认请求后端：
+
+```text
+http://localhost:8000
+```
+
+如需调整后端地址，可设置：
+
+```env
+VITE_API_BASE_URL=http://localhost:8000
+```
 
 ## 测试
 
@@ -85,20 +168,21 @@ pytest
 
 测试只使用 MySQL。若当前环境无法连接 MySQL，数据库集成测试会跳过，不会切换到 SQLite。
 
-## 启动后端 API
-
-```bash
-uvicorn server.main:app --reload
-```
-
-启动后可打开 `/docs` 查看 FastAPI Swagger 文档。所有业务接口都以 `/api` 开头。
-
-## 启动前端
+前端构建：
 
 ```bash
 cd web
-npm install
-npm run dev
+npm run build
 ```
 
-前端默认请求 `http://localhost:8000`。如需调整后端地址，可设置 `VITE_API_BASE_URL`。
+## 开发路线
+
+- v0.1 基础训练计划系统
+- v0.2 登录注册与多用户
+- v0.3 Excel 导入
+- v0.4 丹尼尔斯配速计算器
+- v0.5 设备数据同步预留
+
+## 项目边界
+
+当前阶段优先保证训练计划、训练日志和统计复盘的基础能力。暂不实现 Garmin 同步、AI 教练、App、小程序、社交功能和 Excel 上传解析。
