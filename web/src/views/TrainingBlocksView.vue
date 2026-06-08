@@ -1,7 +1,7 @@
 <template>
   <div class="page-stack">
-    <div class="excel-section-title">每周复盘 · 训练块索引</div>
-    <div class="excel-subtitle">Week 1、Week 2 和「6月最后两天」这类非标准块统一在这里维护。</div>
+    <div class="excel-section-title">训练块</div>
+    <div class="excel-subtitle">用于维护 Week 1、Week 2 和非标准训练块。</div>
 
     <div class="toolbar">
       <div class="filter-row">
@@ -13,7 +13,7 @@
     </div>
 
     <div class="panel">
-      <el-table :data="blocks" v-loading="loading">
+      <el-table :data="pagedBlocks" v-loading="loading">
         <el-table-column prop="sort_order" label="序号" width="80" />
         <el-table-column prop="block_name" label="训练块" min-width="170" />
         <el-table-column prop="block_type" label="类型" width="110" />
@@ -30,6 +30,16 @@
           </template>
         </el-table-column>
       </el-table>
+      <div class="table-footer">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          background
+          layout="total, sizes, prev, pager, next"
+          :page-sizes="[10, 20, 50]"
+          :total="blocks.length"
+        />
+      </div>
     </div>
 
     <el-dialog v-model="dialogVisible" :title="editingId ? '编辑训练块' : '新增训练块'" width="760px">
@@ -54,7 +64,7 @@
           <el-form-item label="周序号">
             <el-input-number v-model="form.week_index" :min="1" style="width: 100%" />
           </el-form-item>
-          <el-form-item label="日期范围文本">
+          <el-form-item label="日期范围">
             <el-input v-model="form.date_range_text" />
           </el-form-item>
           <el-form-item label="开始日期">
@@ -86,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { Delete, Edit, Plus } from "@element-plus/icons-vue";
 import { ElMessageBox } from "element-plus";
 
@@ -106,6 +116,8 @@ const cycleId = ref<number | null>(null);
 const loading = ref(false);
 const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
+const currentPage = ref(1);
+const pageSize = ref(10);
 
 const emptyForm: TrainingBlockPayload = {
   cycle_id: 0,
@@ -125,6 +137,11 @@ const emptyForm: TrainingBlockPayload = {
 };
 const form = reactive<TrainingBlockPayload>({ ...emptyForm });
 
+const pagedBlocks = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  return blocks.value.slice(start, start + pageSize.value);
+});
+
 async function loadCycles() {
   cycles.value = await listTrainingCycles();
 }
@@ -133,6 +150,7 @@ async function load() {
   loading.value = true;
   try {
     blocks.value = await listTrainingBlocks(cycleId.value);
+    currentPage.value = 1;
   } finally {
     loading.value = false;
   }
@@ -156,6 +174,8 @@ async function submit() {
 async function remove(row: TrainingBlock) {
   await ElMessageBox.confirm(`确认删除训练块「${row.block_name}」？`, "删除确认", {
     type: "warning",
+    confirmButtonText: "删除",
+    cancelButtonText: "取消",
   });
   await deleteTrainingBlock(row.id);
   await load();

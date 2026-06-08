@@ -2,7 +2,7 @@
   <div class="dashboard-page">
     <section class="dashboard-hero">
       <div>
-        <div class="hero-kicker">严飞夏训执行总览</div>
+        <div class="hero-kicker">训练执行总览</div>
         <h2>{{ currentCycleName }}</h2>
         <p>训练计划、完成情况、强度结构和身体反馈的实时概览。</p>
       </div>
@@ -64,19 +64,28 @@
         <div class="chart-card-head">
           <div>
             <h3>计划 vs 实际公里</h3>
-            <p>训练总量完成情况</p>
+            <p>{{ distanceModeHint }}</p>
           </div>
-          <span class="chart-badge">公里</span>
+          <el-radio-group v-model="distanceMode" size="small" @change="renderDistanceChart">
+            <el-radio-button label="cycle">全部周期</el-radio-button>
+            <el-radio-button label="month">月跑量</el-radio-button>
+            <el-radio-button label="week">周跑量</el-radio-button>
+          </el-radio-group>
         </div>
         <div ref="distanceChartRef" class="chart"></div>
       </article>
 
-      <article class="chart-card">
+      <article class="chart-card wide">
         <div class="chart-card-head">
           <div>
             <h3>训练类型分布</h3>
-            <p>主类型占比</p>
+            <p>{{ typeModeHint }}</p>
           </div>
+          <el-radio-group v-model="typeMode" size="small" @change="renderTypeChart">
+            <el-radio-button label="cycle">全部周期</el-radio-button>
+            <el-radio-button label="month">月跑量</el-radio-button>
+            <el-radio-button label="week">周跑量</el-radio-button>
+          </el-radio-group>
         </div>
         <div ref="typeChartRef" class="chart"></div>
       </article>
@@ -91,7 +100,7 @@
         <div ref="statusChartRef" class="chart"></div>
       </article>
 
-      <article class="chart-card wide">
+      <article class="chart-card">
         <div class="chart-card-head">
           <div>
             <h3>训练反馈雷达</h3>
@@ -148,13 +157,34 @@ import { Refresh } from "@element-plus/icons-vue";
 import * as echarts from "echarts";
 
 import { getDashboard } from "@/api/dashboard";
+import { listPlannedWorkouts } from "@/api/plannedWorkouts";
+import { listTrainingBlocks } from "@/api/trainingBlocks";
 import { listTrainingCycles } from "@/api/trainingCycles";
-import type { DashboardSummary, TrainingCycle } from "@/types/models";
+import type { DashboardSummary, PlannedWorkout, TrainingBlock, TrainingCycle } from "@/types/models";
 import { labelFor, mainTypeOptions } from "@/types/options";
+
+type ChartMode = "cycle" | "month" | "week";
+
+interface DistanceBucket {
+  name: string;
+  order: string | number;
+  planned: number;
+  actual: number;
+}
+
+interface TypeBucket {
+  name: string;
+  order: string | number;
+  values: Map<string, number>;
+}
 
 const cycleId = ref<number | null>(null);
 const cycles = ref<TrainingCycle[]>([]);
+const blocks = ref<TrainingBlock[]>([]);
+const workouts = ref<PlannedWorkout[]>([]);
 const summary = ref<DashboardSummary | null>(null);
+const distanceMode = ref<ChartMode>("cycle");
+const typeMode = ref<ChartMode>("cycle");
 
 const distanceChartRef = ref<HTMLDivElement | null>(null);
 const typeChartRef = ref<HTMLDivElement | null>(null);
@@ -166,19 +196,27 @@ let typeChart: echarts.ECharts | null = null;
 let statusChart: echarts.ECharts | null = null;
 let healthChart: echarts.ECharts | null = null;
 
-const palette = ["#1F4E79", "#5B9BD5", "#70AD47", "#F0B45B", "#C95F5F", "#8A74D6"];
+const palette = ["#1976d2", "#1f7a68", "#ff8a00", "#7b68aa", "#bc4b4b", "#5f8d4e", "#8293a4"];
 
 const currentCycleName = computed(() => {
   if (!cycleId.value) return "全部周期";
   return cycles.value.find((cycle) => cycle.id === cycleId.value)?.name || "当前周期";
 });
 
-const translatedTypeRows = computed(() =>
-  Object.entries(summary.value?.main_type_distribution || {}).map(([name, count]) => ({
-    name: labelFor(mainTypeOptions, name as never),
-    count,
-  })),
-);
+const distanceModeHint = computed(() => {
+  if (distanceMode.value === "month") return "按月份统计计划公里和实际公里";
+  if (distanceMode.value === "week") return "按训练块 / 周统计计划公里和实际公里";
+  return cycleId.value ? "当前周期总量对比" : "按训练周期统计计划公里和实际公里";
+});
+
+const typeModeHint = computed(() => {
+  if (typeMode.value === "month") return "按月份查看各训练类型公里堆叠";
+  if (typeMode.value === "week") return "按训练块 / 周查看各训练类型公里堆叠";
+  return "悬停查看各训练类型公里数和次数";
+});
+
+const cycleNameMap = computed(() => new Map(cycles.value.map((cycle) => [cycle.id, cycle.name])));
+const blockMap = computed(() => new Map(blocks.value.map((block) => [block.id, block])));
 
 const statusRows = computed(() => {
   const total = summary.value?.workout_count ?? 0;
@@ -202,30 +240,142 @@ function fmt(value?: number | string | null) {
   return parsed.toFixed(1);
 }
 
+function workoutKm(workout: PlannedWorkout) {
+  const actual = numeric(workout.workout_log?.actual_distance_km);
+  return actual > 0 ? actual : numeric(workout.planned_distance_km);
+}
+
+function monthKey(dateText?: string | null) {
+  if (!dateText) return "未填日期";
+  return dateText.slice(0, 7);
+}
+
+function blockLabel(workout: PlannedWorkout) {
+  const block = blockMap.value.get(workout.block_id);
+  return block?.block_name || workout.phase_name || `训练块 ${workout.block_id}`;
+}
+
+function blockOrder(workout: PlannedWorkout) {
+  return blockMap.value.get(workout.block_id)?.sort_order ?? workout.block_id;
+}
+
+function addToBucket(map: Map<string, DistanceBucket>, key: string, name: string, order: string | number, workout: PlannedWorkout) {
+  const bucket = map.get(key) || { name, order, planned: 0, actual: 0 };
+  bucket.planned += numeric(workout.planned_distance_km);
+  bucket.actual += numeric(workout.workout_log?.actual_distance_km);
+  map.set(key, bucket);
+}
+
+function buildDistanceBuckets() {
+  const map = new Map<string, DistanceBucket>();
+  for (const workout of workouts.value) {
+    if (distanceMode.value === "month") {
+      const key = monthKey(workout.workout_date);
+      addToBucket(map, key, key, key, workout);
+      continue;
+    }
+    if (distanceMode.value === "week") {
+      const key = String(workout.block_id);
+      addToBucket(map, key, blockLabel(workout), blockOrder(workout), workout);
+      continue;
+    }
+    const key = String(workout.cycle_id);
+    const name = cycleNameMap.value.get(workout.cycle_id) || currentCycleName.value;
+    addToBucket(map, key, name, workout.cycle_id, workout);
+  }
+
+  if (map.size === 0 && summary.value) {
+    map.set("summary", {
+      name: currentCycleName.value,
+      order: 0,
+      planned: numeric(summary.value.planned_distance_km),
+      actual: numeric(summary.value.actual_distance_km),
+    });
+  }
+
+  return Array.from(map.values()).sort((a, b) =>
+    String(a.order).localeCompare(String(b.order), "zh-Hans-CN", { numeric: true }),
+  );
+}
+
+function buildTypeRows() {
+  const map = new Map<string, { name: string; count: number; km: number }>();
+  for (const workout of workouts.value) {
+    const key = workout.main_type_normalized;
+    const current = map.get(key) || {
+      name: labelFor(mainTypeOptions, key as never),
+      count: 0,
+      km: 0,
+    };
+    current.count += 1;
+    current.km += workoutKm(workout);
+    map.set(key, current);
+  }
+  return Array.from(map.values()).sort((a, b) => b.km - a.km);
+}
+
+function addTypeBucket(map: Map<string, TypeBucket>, key: string, name: string, order: string | number, workout: PlannedWorkout) {
+  const typeName = labelFor(mainTypeOptions, workout.main_type_normalized as never);
+  const bucket = map.get(key) || { name, order, values: new Map<string, number>() };
+  bucket.values.set(typeName, (bucket.values.get(typeName) || 0) + workoutKm(workout));
+  map.set(key, bucket);
+}
+
+function buildTypeBuckets() {
+  const map = new Map<string, TypeBucket>();
+  for (const workout of workouts.value) {
+    if (typeMode.value === "month") {
+      const key = monthKey(workout.workout_date);
+      addTypeBucket(map, key, key, key, workout);
+      continue;
+    }
+    if (typeMode.value === "week") {
+      const key = String(workout.block_id);
+      addTypeBucket(map, key, blockLabel(workout), blockOrder(workout), workout);
+      continue;
+    }
+    const key = String(workout.cycle_id);
+    const name = cycleNameMap.value.get(workout.cycle_id) || currentCycleName.value;
+    addTypeBucket(map, key, name, workout.cycle_id, workout);
+  }
+  return Array.from(map.values()).sort((a, b) =>
+    String(a.order).localeCompare(String(b.order), "zh-Hans-CN", { numeric: true }),
+  );
+}
+
 function renderDistanceChart() {
   if (!distanceChartRef.value || !summary.value) return;
   distanceChart ||= echarts.init(distanceChartRef.value);
+  const buckets = buildDistanceBuckets();
   distanceChart.setOption({
-    color: ["#1F4E79", "#70AD47"],
-    tooltip: { trigger: "axis" },
+    color: ["#1976d2", "#1f7a68"],
+    tooltip: {
+      trigger: "axis",
+      valueFormatter: (value: number) => `${fmt(value)} km`,
+    },
     legend: { top: 0, data: ["计划公里", "实际公里"] },
-    grid: { left: 44, right: 24, top: 48, bottom: 34 },
-    xAxis: { type: "category", data: [currentCycleName.value], axisTick: { show: false } },
-    yAxis: { type: "value", name: "km", splitLine: { lineStyle: { color: "#E4EDF5" } } },
+    grid: { left: 48, right: 24, top: 48, bottom: 42 },
+    xAxis: {
+      type: "category",
+      data: buckets.map((item) => item.name),
+      axisTick: { show: false },
+      axisLabel: { interval: 0, rotate: buckets.length > 6 ? 28 : 0 },
+    },
+    yAxis: { type: "value", name: "km", splitLine: { lineStyle: { color: "#e5e5e5" } } },
     series: [
       {
         name: "计划公里",
         type: "bar",
-        barWidth: 38,
-        data: [numeric(summary.value.planned_distance_km)],
-        itemStyle: { borderRadius: [5, 5, 0, 0] },
+        barMaxWidth: 34,
+        data: buckets.map((item) => Number(item.planned.toFixed(1))),
+        itemStyle: { borderRadius: [4, 4, 0, 0] },
       },
       {
         name: "实际公里",
         type: "bar",
-        barWidth: 38,
-        data: [numeric(summary.value.actual_distance_km)],
-        itemStyle: { borderRadius: [5, 5, 0, 0] },
+        barMaxWidth: 34,
+        data: buckets.map((item) => Number(item.actual.toFixed(1))),
+        itemStyle: { borderRadius: [4, 4, 0, 0] },
       },
     ],
   });
@@ -234,29 +384,78 @@ function renderDistanceChart() {
 function renderTypeChart() {
   if (!typeChartRef.value || !summary.value) return;
   typeChart ||= echarts.init(typeChartRef.value);
-  const data = translatedTypeRows.value.map((row) => ({ name: row.name, value: row.count }));
-  typeChart.setOption({
-    color: palette,
-    tooltip: { trigger: "item" },
-    legend: { bottom: 0, type: "scroll" },
-    series: [
+
+  if (typeMode.value === "cycle") {
+    const data = buildTypeRows().map((row) => ({
+      name: row.name,
+      value: Number(row.km.toFixed(1)),
+      count: row.count,
+    }));
+    typeChart.setOption(
       {
-        name: "训练类型",
-        type: "pie",
-        radius: ["46%", "70%"],
-        center: ["50%", "44%"],
-        data,
-        label: { formatter: "{b}" },
+        color: palette,
+        tooltip: {
+          trigger: "item",
+          formatter: (params: any) =>
+            `${params.name}<br/>公里：${fmt(params.value)} km<br/>次数：${params.data.count}`,
+        },
+        legend: { bottom: 0, type: "scroll" },
+        grid: undefined,
+        xAxis: undefined,
+        yAxis: undefined,
+        series: [
+          {
+            name: "训练类型",
+            type: "pie",
+            radius: ["46%", "70%"],
+            center: ["50%", "44%"],
+            data,
+            label: { formatter: "{b}" },
+          },
+        ],
       },
-    ],
-  });
+      true,
+    );
+    return;
+  }
+
+  const buckets = buildTypeBuckets();
+  const typeNames = Array.from(new Set(buckets.flatMap((bucket) => Array.from(bucket.values.keys()))));
+  typeChart.setOption(
+    {
+      color: palette,
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        valueFormatter: (value: number) => `${fmt(value)} km`,
+      },
+      legend: { top: 0, type: "scroll", data: typeNames },
+      grid: { left: 48, right: 24, top: 54, bottom: 42 },
+      xAxis: {
+        type: "category",
+        data: buckets.map((bucket) => bucket.name),
+        axisTick: { show: false },
+        axisLabel: { interval: 0, rotate: buckets.length > 6 ? 28 : 0 },
+      },
+      yAxis: { type: "value", name: "km", splitLine: { lineStyle: { color: "#e5e5e5" } } },
+      series: typeNames.map((name) => ({
+        name,
+        type: "bar",
+        stack: "type-km",
+        barMaxWidth: 38,
+        emphasis: { focus: "series" },
+        data: buckets.map((bucket) => Number((bucket.values.get(name) || 0).toFixed(1))),
+      })),
+    },
+    true,
+  );
 }
 
 function renderStatusChart() {
   if (!statusChartRef.value || !summary.value) return;
   statusChart ||= echarts.init(statusChartRef.value);
   statusChart.setOption({
-    color: ["#70AD47", "#C95F5F", "#5B9BD5"],
+    color: ["#1f7a68", "#bc4b4b", "#1976d2"],
     tooltip: { trigger: "item" },
     legend: { bottom: 0, data: ["已完成", "缺课", "待完成"] },
     series: [
@@ -284,7 +483,7 @@ function renderHealthChart() {
       : 0;
 
   healthChart.setOption({
-    color: ["#1F4E79"],
+    color: ["#1976d2"],
     tooltip: {},
     radar: {
       radius: "68%",
@@ -295,16 +494,16 @@ function renderHealthChart() {
         { name: "疼痛风险", max: 100 },
       ],
       splitArea: {
-        areaStyle: { color: ["#F8FBFD", "#EAF3F8"] },
+        areaStyle: { color: ["#ffffff", "#f3f8fc"] },
       },
-      axisName: { color: "#305496" },
+      axisName: { color: "#384353" },
     },
     series: [
       {
         name: "训练反馈",
         type: "radar",
         data: [{ name: "训练反馈", value: [completion, doneRate, rpe, pain] }],
-        areaStyle: { color: "rgba(31, 78, 121, 0.18)" },
+        areaStyle: { color: "rgba(25, 118, 210, 0.16)" },
       },
     ],
   });
@@ -319,6 +518,8 @@ function renderCharts() {
 
 async function loadDashboard() {
   summary.value = await getDashboard(cycleId.value);
+  workouts.value = await listPlannedWorkouts({ cycle_id: cycleId.value });
+  blocks.value = await listTrainingBlocks(cycleId.value);
   await nextTick();
   renderCharts();
 }
@@ -354,6 +555,11 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  max-width: 1300px;
+  min-height: calc(100vh - 98px);
+  margin: 0 auto;
+  padding: 56px 56px 42px;
+  background: #ffffff;
 }
 
 .dashboard-hero {
@@ -361,19 +567,18 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  min-height: 132px;
-  padding: 24px;
-  color: #ffffff;
-  border-radius: 14px;
-  background:
-    linear-gradient(135deg, rgba(31, 78, 121, 0.98), rgba(48, 84, 150, 0.88)),
-    radial-gradient(circle at top right, rgba(255, 242, 204, 0.28), transparent 42%);
-  box-shadow: 0 16px 40px rgba(31, 78, 121, 0.18);
+  min-height: 118px;
+  padding: 22px;
+  color: #182230;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
 }
 
 .hero-kicker {
   margin-bottom: 8px;
-  color: #fff2cc;
+  color: #1976d2;
   font-size: 13px;
   font-weight: 700;
 }
@@ -386,7 +591,7 @@ onBeforeUnmount(() => {
 
 .dashboard-hero p {
   margin: 10px 0 0;
-  color: #dbeafe;
+  color: #667085;
 }
 
 .hero-actions {
@@ -394,8 +599,9 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 10px;
   padding: 10px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: #f8fafc;
 }
 
 .metric-strip {
@@ -407,10 +613,10 @@ onBeforeUnmount(() => {
 .metric-tile {
   min-height: 112px;
   padding: 16px;
-  border: 1px solid rgba(184, 201, 214, 0.8);
-  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 10px 26px rgba(31, 78, 121, 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .metric-tile span {
@@ -422,7 +628,7 @@ onBeforeUnmount(() => {
 .metric-tile strong {
   display: block;
   margin-top: 10px;
-  color: #1f4e79;
+  color: #1976d2;
   font-size: 28px;
   line-height: 1;
 }
@@ -436,12 +642,12 @@ onBeforeUnmount(() => {
 }
 
 .metric-tile.highlight {
-  background: #fffdf0;
-  border-color: #f0d98a;
+  border-color: #cfe2f3;
+  background: #f7fbff;
 }
 
 .metric-tile.pain strong {
-  color: #c95f5f;
+  color: #bc4b4b;
 }
 
 .chart-grid {
@@ -454,10 +660,10 @@ onBeforeUnmount(() => {
 .summary-table-card {
   min-width: 0;
   padding: 16px;
-  border: 1px solid rgba(184, 201, 214, 0.82);
-  border-radius: 14px;
+  border: 1px solid #d7d7d7;
+  border-radius: 6px;
   background: #ffffff;
-  box-shadow: 0 10px 26px rgba(31, 78, 121, 0.08);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
 }
 
 .chart-card.wide {
@@ -474,8 +680,9 @@ onBeforeUnmount(() => {
 
 .chart-card-head h3 {
   margin: 0;
-  color: #1f2933;
+  color: #384353;
   font-size: 16px;
+  font-weight: 500;
 }
 
 .chart-card-head p {
@@ -487,8 +694,8 @@ onBeforeUnmount(() => {
 .chart-badge {
   padding: 4px 9px;
   border-radius: 999px;
-  color: #1f4e79;
-  background: #ddebf7;
+  color: #1976d2;
+  background: #e7f1f8;
   font-size: 12px;
   font-weight: 700;
 }
@@ -503,28 +710,28 @@ onBeforeUnmount(() => {
   border-collapse: separate;
   border-spacing: 0;
   overflow: hidden;
-  border: 1px solid #d5e2ec;
-  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
   font-size: 13px;
 }
 
 .summary-table th {
   padding: 10px 9px;
-  color: #ffffff;
-  background: #1f4e79;
+  color: #344054;
+  background: #f8fafc;
   text-align: center;
 }
 
 .summary-table td {
   padding: 10px 9px;
-  border-top: 1px solid #d5e2ec;
-  background: #f8fbfd;
+  border-top: 1px solid var(--line-soft);
+  background: #ffffff;
   text-align: center;
 }
 
 .summary-table td:first-child {
-  color: #1f4e79;
-  background: #eaf3f8;
+  color: #1976d2;
+  background: #f7fbff;
   font-weight: 700;
 }
 

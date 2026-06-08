@@ -1,6 +1,6 @@
 <template>
   <div class="page-stack">
-    <div class="excel-section-title">计划索引</div>
+    <div class="excel-section-title">训练计划</div>
     <div class="excel-subtitle">每日训练计划主来源：日期、星期、阶段、训练内容、重点说明、计划 km 和主类型。</div>
 
     <div class="toolbar">
@@ -34,7 +34,7 @@
     </div>
 
     <div class="panel">
-      <el-table :data="workouts" v-loading="loading">
+      <el-table :data="pagedWorkouts" v-loading="loading">
         <el-table-column prop="workout_date" label="日期" width="120" />
         <el-table-column prop="weekday" label="星期" width="90" />
         <el-table-column prop="phase_name" label="阶段" min-width="120" />
@@ -62,6 +62,16 @@
           </template>
         </el-table-column>
       </el-table>
+      <div class="table-footer">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          background
+          layout="total, sizes, prev, pager, next"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="workouts.length"
+        />
+      </div>
     </div>
 
     <el-dialog v-model="dialogVisible" :title="editingId ? '编辑训练计划' : '新增训练计划'" width="780px">
@@ -120,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { Delete, Document, Edit, Plus, Search } from "@element-plus/icons-vue";
 import { ElMessageBox } from "element-plus";
@@ -155,6 +165,8 @@ const mainType = ref<WorkoutMainTypeNormalized | null>(null);
 const loading = ref(false);
 const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
+const currentPage = ref(1);
+const pageSize = ref(20);
 
 const emptyForm: PlannedWorkoutPayload = {
   cycle_id: 0,
@@ -175,6 +187,11 @@ const emptyForm: PlannedWorkoutPayload = {
 };
 const form = reactive<PlannedWorkoutPayload>({ ...emptyForm });
 
+const pagedWorkouts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  return workouts.value.slice(start, start + pageSize.value);
+});
+
 async function load() {
   loading.value = true;
   try {
@@ -185,6 +202,7 @@ async function load() {
       end_date: dateRange.value?.[1] || null,
       main_type_normalized: mainType.value,
     });
+    currentPage.value = 1;
   } finally {
     loading.value = false;
   }
@@ -236,7 +254,11 @@ function statusClass(status?: WorkoutStatusNormalized | null) {
 }
 
 async function remove(row: PlannedWorkout) {
-  await ElMessageBox.confirm(`确认删除这条训练计划？`, "删除确认", { type: "warning" });
+  await ElMessageBox.confirm("确认删除这条训练计划？", "删除确认", {
+    type: "warning",
+    confirmButtonText: "删除",
+    cancelButtonText: "取消",
+  });
   await deletePlannedWorkout(row.id);
   await load();
 }

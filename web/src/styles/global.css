@@ -1,18 +1,28 @@
 :root {
-  color: #1f2933;
-  background: #eef3f8;
-  --excel-blue: #1f4e79;
-  --excel-blue-2: #305496;
-  --excel-blue-soft: #ddebf7;
-  --excel-blue-soft-2: #eaf3f8;
-  --excel-yellow: #fff2cc;
-  --excel-yellow-soft: #fffdf0;
-  --excel-green: #c3ead5;
-  --excel-row: #f8fbfd;
-  --excel-grid: #b8c9d6;
-  --excel-text: #1f2933;
+  color: #172033;
+  background: #eeeeee;
+  --surface: #ffffff;
+  --surface-muted: #f8fbfa;
+  --line: #d8e2df;
+  --line-soft: #e7eeeb;
+  --text: #172033;
+  --muted: #66756f;
+  --sidebar: #191919;
+  --sidebar-2: #151515;
+  --primary: #1976d2;
+  --primary-strong: #0d5fb3;
+  --primary-2: #1976d2;
+  --accent: #ff8a00;
+  --accent-soft: #fff1de;
+  --danger: #bc4b4b;
+  --success: #2f8b57;
+  --blue-soft: #e7f1f8;
+  --green-soft: #e6f5ef;
+  --yellow-soft: #fff5df;
+  --shadow-sm: 0 1px 5px rgba(0, 0, 0, 0.22);
+  --shadow-md: 0 1px 7px rgba(0, 0, 0, 0.22);
   font-family:
-    Carlito, "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, BlinkMacSystemFont,
+    "Microsoft YaHei", "PingFang SC", Inter, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -25,9 +35,8 @@
 body {
   margin: 0;
   min-width: 320px;
-  background:
-    radial-gradient(circle at 18% 0%, rgba(91, 155, 213, 0.18), transparent 28%),
-    linear-gradient(180deg, #eef5fb 0%, #f7fafc 46%, #eef3f8 100%);
+  color: var(--text);
+  background: #eeeeee;
 }
 
 .app-shell {
@@ -35,54 +44,111 @@ body {
 }
 
 .app-sidebar {
-  background: linear-gradient(180deg, #173b5b 0%, #1f4e79 52%, #173b5b 100%);
   color: #ffffff;
-  border-right: 1px solid #163a5b;
+  background: var(--sidebar);
+  border-right: 1px solid #101010;
+  transition: width 0.18s ease;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 68px;
-  padding: 0 18px;
-  background: #173b5b;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 4px;
-  color: var(--excel-blue);
-  background: #ffffff;
-  font-weight: 800;
+  justify-content: flex-start;
+  height: 60px;
+  padding: 0 20px;
+  border-bottom: 1px solid #2b2b2b;
 }
 
 .brand-name {
-  font-size: 16px;
-  font-weight: 700;
+  color: #f7f7f7;
+  font-size: 25px;
+  font-weight: 650;
+  letter-spacing: -0.5px;
+  line-height: 1;
 }
 
-.brand-subtitle {
-  margin-top: 2px;
-  color: #cfe2f3;
-  font-size: 12px;
+.brand-mini {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #1976d2;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.menu-section {
+  margin: 14px 20px 5px;
+  color: #808080;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .side-menu {
-  --el-menu-bg-color: var(--excel-blue);
-  --el-menu-text-color: #dceaf5;
-  --el-menu-hover-bg-color: #305496;
+  --el-menu-bg-color: transparent;
+  --el-menu-text-color: #eeeeee;
+  --el-menu-hover-bg-color: #242424;
   --el-menu-active-color: #ffffff;
+  padding: 8px 0 18px;
   border-right: 0;
 }
 
+.side-menu.el-menu--collapse {
+  width: 72px;
+}
+
+.side-menu .el-menu-item {
+  height: 46px;
+  margin: 0;
+  padding: 0 22px !important;
+  border-radius: 0;
+  border: 0;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.is-collapsed .brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.is-collapsed .side-menu .el-menu-item {
+  justify-content: center;
+  padding: 0 !important;
+}
+
+.is-collapsed .side-menu .el-menu-item .el-icon {
+  margin-right: 0;
+}
+
+.side-menu .el-menu-item .el-icon {
+  width: 20px;
+  margin-right: 13px;
+  color: #24a8ff;
+  font-size: 19px;
+}
+
+.side-menu .el-menu-item:hover {
+  color: #ffffff;
+  background: #242424;
+}
+
+.side-menu .el-menu-item:hover .el-icon,
+.side-menu .el-menu-item.is-active .el-icon {
+  color: #ffffff;
+}
+
 .side-menu .el-menu-item.is-active {
-  background: #305496;
-  border-left: 4px solid #fff2cc;
+  color: #ffffff;
+  background: #242424;
+  box-shadow: inset 4px 0 0 #ffffff;
+}
+
+.side-menu .el-menu-item.is-active::before {
+  width: 0;
 }
 
 .app-header {
@@ -90,43 +156,183 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  height: 68px;
-  padding: 0 24px;
-  color: #ffffff;
-  background: linear-gradient(90deg, #1f4e79, #305496);
-  border-bottom: 2px solid rgba(255, 242, 204, 0.8);
+  height: 60px;
+  padding: 0 18px;
+  color: var(--text);
+  background: #ffffff;
+  border-bottom: 1px solid #d5d5d5;
+  backdrop-filter: none;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.collapse-button {
+  width: 34px;
+  height: 34px;
+  color: #555555;
+  border-color: #9b9b9b;
+  background: #ffffff;
+}
+
+.collapse-button:hover {
+  color: #1976d2;
+  border-color: #1976d2;
+  background: #f5faff;
 }
 
 .app-header h1 {
   margin: 0;
-  font-size: 20px;
-  line-height: 1.25;
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 780;
 }
 
 .app-header p {
-  margin: 4px 0 0;
-  color: #dbeafe;
-  font-size: 13px;
+  margin: 5px 0 0;
+  color: #777777;
+  font-size: 12px;
 }
 
-.header-user {
+.header-tools {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
-  color: #eef6ff;
+  color: #333333;
   font-size: 14px;
   white-space: nowrap;
 }
 
+.sync-text {
+  color: #5f6f7d;
+  font-size: 12px;
+}
+
+.tool-icon {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: #111111;
+}
+
+.user-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #ffffff;
+  background: linear-gradient(135deg, #1976d2, #0f8f76);
+  font-weight: 700;
+}
+
+.app-tabs {
+  height: 40px;
+  padding: 0 20px;
+  border-bottom: 1px solid #d8d8d8;
+  background: #ffffff;
+  backdrop-filter: none;
+}
+
+.app-tabs .el-tabs__header {
+  margin: 0;
+  border-bottom: 0;
+}
+
+.app-tabs .el-tabs__nav {
+  border: 0;
+  gap: 6px;
+}
+
+.app-tabs .el-tabs__item {
+  height: 32px;
+  margin-top: 4px;
+  padding: 0 14px !important;
+  border: 1px solid transparent !important;
+  border-radius: 3px 3px 0 0;
+  color: #606b75;
+  background: transparent;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.app-tabs .el-tabs__item:hover {
+  color: #1976d2;
+  background: #f6f8fa;
+}
+
+.app-tabs .el-tabs__item.is-active {
+  color: #1976d2;
+  border-color: #d8d8d8 !important;
+  border-bottom-color: #ffffff !important;
+  background: #ffffff;
+  font-weight: 700;
+  box-shadow: inset 0 2px 0 #1976d2;
+}
+
+.app-tabs .el-tabs__item .is-icon-close {
+  border-radius: 999px;
+}
+
+.app-tabs .el-tabs__item .is-icon-close:hover {
+  color: #ffffff;
+  background: var(--primary);
+}
+
 .app-main {
-  padding: 18px 22px 30px;
+  padding: 0;
+  background: #eeeeee;
 }
 
 .page-stack {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-width: 1300px;
+  min-height: calc(100vh - 98px);
+  margin: 0 auto;
+  padding: 56px 56px 42px;
+  background: #ffffff;
+}
+
+.excel-section-title {
+  padding: 0;
+  color: var(--text);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  color: #384353;
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.excel-section-title::before {
+  display: none;
+}
+
+.excel-subtitle,
+.excel-note {
+  padding: 11px 14px;
+  border: 0;
+  border-left: 3px solid #1976d2;
+  border-radius: 2px;
+  color: #475467;
+  background: #ffffff;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.excel-note {
+  border-color: #f1d595;
+  color: #7a4d12;
+  background: var(--yellow-soft);
 }
 
 .toolbar {
@@ -135,11 +341,11 @@ body {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 10px 12px;
-  border: 1px solid rgba(184, 201, 214, 0.78);
-  border-radius: 12px;
-  background: rgba(255, 253, 240, 0.88);
-  box-shadow: 0 8px 22px rgba(31, 78, 121, 0.06);
+  padding: 12px;
+  border: 1px solid #d7d7d7;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.16);
 }
 
 .filter-row {
@@ -149,48 +355,14 @@ body {
   flex-wrap: wrap;
 }
 
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(120px, 1fr));
-  gap: 0;
-  border: 1px solid var(--excel-grid);
-  background: #ffffff;
-}
-
-.metric-card {
-  padding: 11px 12px 12px;
-  border-right: 1px solid var(--excel-grid);
-  border-bottom: 1px solid var(--excel-grid);
-  border-radius: 0;
-  background: #ffffff;
-}
-
-.metric-card:nth-child(6n) {
-  border-right: 0;
-}
-
-.metric-label {
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 700;
-  margin: -11px -12px 8px;
-  padding: 6px 9px;
-  background: var(--excel-blue-2);
-}
-
-.metric-value {
-  margin-top: 0;
-  font-size: 22px;
-  font-weight: 760;
-  color: var(--excel-blue);
-}
-
-.panel {
+.panel,
+.chart-card,
+.summary-table-card {
   overflow: hidden;
-  border: 1px solid rgba(184, 201, 214, 0.82);
-  border-radius: 12px;
+  border: 1px solid #d7d7d7;
+  border-radius: 6px;
   background: #ffffff;
-  box-shadow: 0 10px 26px rgba(31, 78, 121, 0.07);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
 }
 
 .panel-header {
@@ -198,25 +370,68 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 12px;
-  color: #ffffff;
-  border-bottom: 1px solid #163a5b;
-  background: var(--excel-blue);
+  padding: 13px 16px;
+  color: var(--text);
+  border-bottom: 1px solid var(--line-soft);
+  background: #ffffff;
 }
 
 .panel-title {
   margin: 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 760;
 }
 
 .panel-body {
-  padding: 12px;
+  padding: 16px;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 10px;
+  border: 0;
+  background: transparent;
+}
+
+.metric-card {
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
+}
+
+.metric-card:nth-child(6n) {
+  border-right: 1px solid var(--line-soft);
+}
+
+.metric-label {
+  margin: 0 0 8px;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.metric-value {
+  margin-top: 0;
+  color: #1e5f7e;
+  font-size: 24px;
+  font-weight: 780;
 }
 
 .table-actions {
   display: flex;
   gap: 8px;
+}
+
+.table-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 13px 16px;
+  border-top: 1px solid var(--line-soft);
+  background: #fbfdfc;
 }
 
 .form-grid {
@@ -225,126 +440,159 @@ body {
   gap: 0 18px;
 }
 
+.form-grid .full {
+  grid-column: 1 / -1;
+}
+
 .el-table {
-  --el-table-header-bg-color: var(--excel-blue);
-  --el-table-header-text-color: #ffffff;
-  --el-table-row-hover-bg-color: #eaf3f8;
-  --el-table-border-color: var(--excel-grid);
+  --el-table-header-bg-color: #f7faf9;
+  --el-table-header-text-color: #344054;
+  --el-table-row-hover-bg-color: #edf8f4;
+  --el-table-border-color: var(--line-soft);
   font-size: 13px;
 }
 
 .el-table th.el-table__cell {
-  font-weight: 700;
+  font-weight: 760;
 }
 
 .el-table .el-table__cell {
-  padding: 6px 0;
+  padding: 9px 0;
 }
 
 .el-table__row:nth-child(even) {
-  background: var(--excel-row);
+  background: #fcfefd;
 }
 
 .el-button {
-  border-radius: 2px;
+  border-radius: 9px;
+  font-weight: 650;
 }
 
 .el-button--primary {
-  --el-button-bg-color: var(--excel-blue-2);
-  --el-button-border-color: var(--excel-blue-2);
-  --el-button-hover-bg-color: var(--excel-blue);
-  --el-button-hover-border-color: var(--excel-blue);
+  --el-button-bg-color: var(--primary);
+  --el-button-border-color: var(--primary);
+  --el-button-hover-bg-color: var(--primary-strong);
+  --el-button-hover-border-color: var(--primary-strong);
+  --el-button-active-bg-color: #124e43;
+  --el-button-active-border-color: #124e43;
+}
+
+.el-button--danger {
+  --el-button-bg-color: var(--danger);
+  --el-button-border-color: var(--danger);
 }
 
 .el-input__wrapper,
 .el-select__wrapper,
 .el-textarea__inner {
-  border-radius: 2px;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px var(--line) inset;
+}
+
+.el-input__wrapper:hover,
+.el-select__wrapper:hover,
+.el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px #abc4bd inset;
+}
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--primary) inset, 0 0 0 3px rgba(31, 122, 104, 0.12);
 }
 
 .el-dialog {
-  border-radius: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow: 0 28px 80px rgba(16, 24, 40, 0.24);
 }
 
 .el-dialog__header {
   margin-right: 0;
-  padding: 12px 16px;
-  color: #ffffff;
-  background: var(--excel-blue);
+  padding: 18px 22px;
+  color: var(--text);
+  border-bottom: 1px solid var(--line-soft);
+  background: #ffffff;
 }
 
 .el-dialog__title {
-  color: #ffffff;
-  font-weight: 700;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 780;
 }
 
-.excel-note {
-  padding: 9px 12px;
-  border: 1px solid rgba(240, 217, 138, 0.8);
-  border-radius: 10px;
-  color: #7f6000;
-  background: var(--excel-yellow);
-  font-size: 13px;
+.el-dialog__body {
+  padding: 22px 24px 8px;
+  background: #fbfdfc;
 }
 
-.excel-section-title {
-  padding: 10px 14px;
-  color: #ffffff;
-  border-radius: 10px;
-  background: linear-gradient(90deg, #1f4e79, #305496);
-  font-weight: 700;
-  box-shadow: 0 8px 20px rgba(31, 78, 121, 0.14);
+.el-dialog__footer {
+  padding: 14px 22px 20px;
+  border-top: 1px solid var(--line-soft);
+  background: #ffffff;
 }
 
-.excel-subtitle {
-  padding: 8px 12px;
-  border: 1px solid rgba(184, 201, 214, 0.82);
-  border-radius: 10px;
-  background: var(--excel-blue-soft);
-  color: var(--excel-blue);
-  font-weight: 700;
+.el-message-box {
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(16, 24, 40, 0.24);
+}
+
+.el-message-box__header {
+  padding: 18px 20px;
+  color: var(--text);
+  border-bottom: 1px solid var(--line-soft);
+  background: #ffffff;
+}
+
+.el-message-box__title {
+  color: var(--text);
+  font-weight: 780;
+}
+
+.el-message-box__content {
+  padding: 24px 20px;
+}
+
+.el-message-box__btns {
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--line-soft);
 }
 
 .status-tag {
-  border-radius: 0;
+  border-radius: 999px;
   font-weight: 700;
 }
 
 .status-done {
-  --el-tag-text-color: #166534;
-  --el-tag-border-color: #86d6a6;
-  --el-tag-bg-color: #dcfce7;
+  --el-tag-text-color: #167247;
+  --el-tag-border-color: #a9dec4;
+  --el-tag-bg-color: var(--green-soft);
 }
 
 .status-alert {
-  --el-tag-text-color: #991b1b;
-  --el-tag-border-color: #f5b0b0;
-  --el-tag-bg-color: #fee2e2;
+  --el-tag-text-color: #a23434;
+  --el-tag-border-color: #efbbbb;
+  --el-tag-bg-color: #fff0f0;
 }
 
 .status-rest {
-  --el-tag-text-color: #7f6000;
-  --el-tag-border-color: #efd37a;
-  --el-tag-bg-color: #fff2cc;
+  --el-tag-text-color: #9a6516;
+  --el-tag-border-color: #efd59e;
+  --el-tag-bg-color: var(--yellow-soft);
 }
 
 .status-pending {
   --el-tag-text-color: #1f4e79;
-  --el-tag-border-color: #a9c6df;
-  --el-tag-bg-color: #ddebf7;
-}
-
-.form-grid .full {
-  grid-column: 1 / -1;
+  --el-tag-border-color: #b5d2e8;
+  --el-tag-bg-color: var(--blue-soft);
 }
 
 .auth-page {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 420px;
   min-height: 100vh;
-  background:
-    linear-gradient(120deg, rgba(31, 78, 121, 0.92), rgba(48, 84, 150, 0.88)),
-    linear-gradient(180deg, #eef5fb, #f7fafc);
+  background: linear-gradient(120deg, #101828 0%, #12312d 100%);
 }
 
 .auth-intro {
@@ -361,9 +609,8 @@ body {
   width: 52px;
   height: 52px;
   margin-bottom: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  background: var(--primary);
   font-weight: 800;
   letter-spacing: 0;
 }
@@ -378,7 +625,7 @@ body {
 .auth-intro p {
   max-width: 520px;
   margin: 18px 0 0;
-  color: #dbeafe;
+  color: #cbd5e1;
   font-size: 16px;
   line-height: 1.8;
 }
@@ -386,22 +633,22 @@ body {
 .auth-panel {
   align-self: center;
   margin: 28px 42px 28px 0;
-  padding: 28px;
-  border: 1px solid rgba(184, 201, 214, 0.82);
-  border-radius: 8px;
+  padding: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 20px 42px rgba(17, 52, 82, 0.2);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
 }
 
 .auth-panel h2 {
   margin: 0;
-  color: var(--excel-blue);
+  color: var(--text);
   font-size: 24px;
 }
 
 .auth-hint {
   margin: 8px 0 22px;
-  color: #64748b;
+  color: var(--muted);
   font-size: 14px;
 }
 
@@ -412,13 +659,13 @@ body {
 
 .auth-switch {
   margin-top: 18px;
-  color: #64748b;
+  color: var(--muted);
   font-size: 14px;
   text-align: center;
 }
 
 .auth-switch a {
-  color: var(--excel-blue);
+  color: var(--primary);
   font-weight: 700;
   text-decoration: none;
 }
@@ -431,15 +678,15 @@ body {
 }
 
 .excel-import-title {
-  color: var(--excel-blue);
+  color: var(--text);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 760;
 }
 
 .excel-import-copy {
   max-width: 720px;
   margin: 6px 0 0;
-  color: #64748b;
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.7;
 }

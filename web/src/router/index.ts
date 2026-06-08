@@ -23,6 +23,12 @@ const router = createRouter({
       meta: { title: "Dashboard" },
     },
     {
+      path: "/today",
+      name: "Today",
+      component: () => import("@/views/TodayView.vue"),
+      meta: { title: "今日训练" },
+    },
+    {
       path: "/cycles",
       name: "TrainingCycles",
       component: () => import("@/views/TrainingCyclesView.vue"),
@@ -39,12 +45,6 @@ const router = createRouter({
       name: "PlannedWorkouts",
       component: () => import("@/views/PlannedWorkoutsView.vue"),
       meta: { title: "训练计划" },
-    },
-    {
-      path: "/today",
-      name: "Today",
-      component: () => import("@/views/TodayView.vue"),
-      meta: { title: "今日训练" },
     },
     {
       path: "/workouts/:id/log",
