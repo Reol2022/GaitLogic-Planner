@@ -26,6 +26,12 @@ def test_required_routes_are_registered() -> None:
     assert "POST /api/auth/login" in routes
     assert "GET /api/auth/me" in routes
     assert "POST /api/auth/logout" in routes
+    assert "POST /api/ai-plan/generate" in routes
+    assert "GET /api/ai-plan/drafts" in routes
+    assert "GET /api/ai-plan/drafts/{draft_id}" in routes
+    assert "POST /api/ai-plan/drafts/{draft_id}/apply" in routes
+    assert "POST /api/ai-plan/drafts/{draft_id}/reject" in routes
+    assert "GET /api/ai-plan/quota" in routes
     assert "GET /api/training-cycles" in routes
     assert "POST /api/training-cycles" in routes
     assert "GET /api/training-cycles/{cycle_id}" in routes

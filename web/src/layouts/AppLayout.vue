@@ -3,7 +3,11 @@
     <el-aside :width="sidebarCollapsed ? '72px' : '272px'" class="app-sidebar">
       <div class="brand">
         <div v-if="sidebarCollapsed" class="brand-mini">GL</div>
-        <div v-else class="brand-name">GaitLogic</div>
+        <div v-else class="brand-lockup"> 
+          <div>
+            <strong style="font-size:26px;">GaitLogic</strong>
+          </div>
+        </div>
       </div>
 
       <el-menu
@@ -22,6 +26,10 @@
           <el-icon><Timer /></el-icon>
           <template #title>今日训练</template>
         </el-menu-item>
+        <el-menu-item index="/ai-plan">
+          <el-icon><Odometer /></el-icon>
+          <template #title>AI 课表</template>
+        </el-menu-item>
 
         <div v-if="!sidebarCollapsed" class="menu-section">训练管理</div>
         <el-menu-item index="/cycles">
@@ -39,11 +47,11 @@
 
         <div v-if="!sidebarCollapsed" class="menu-section">工具</div>
         <el-menu-item index="/pace-calculator">
-          <el-icon><Odometer /></el-icon>
+          <el-icon><Stopwatch /></el-icon>
           <template #title>配速计算器</template>
         </el-menu-item>
         <el-menu-item index="/pace-rules">
-          <el-icon><Odometer /></el-icon>
+          <el-icon><TrendCharts /></el-icon>
           <template #title>配速规则</template>
         </el-menu-item>
         <el-menu-item index="/excel-import">
@@ -66,13 +74,13 @@
             :icon="sidebarCollapsed ? Expand : Fold"
             @click="sidebarCollapsed = !sidebarCollapsed"
           />
-          <div>
+          <div class="page-heading">
             <h1>{{ pageTitle }}</h1>
             <p>训练计划、执行日志与跑量趋势</p>
           </div>
         </div>
         <div class="header-tools">
-          <span class="sync-text">已同步</span>
+          <span class="sync-text">本地训练台</span>
           <el-button class="tool-icon" text :icon="Upload" />
           <el-button class="tool-icon" text :icon="Bell" />
           <el-button class="tool-icon" text :icon="Setting" />
@@ -121,8 +129,10 @@ import {
   Message,
   Odometer,
   Setting,
+  Stopwatch,
   SwitchButton,
   Timer,
+  TrendCharts,
   Upload,
 } from "@element-plus/icons-vue";
 import { clearStoredToken, getCurrentUser, logoutUser } from "@/api/auth";
@@ -190,3 +200,184 @@ onMounted(() => {
   loadCurrentUser();
 });
 </script>
+
+<style scoped>
+.app-shell {
+  min-height: 100vh;
+  background: #f4f6f8;
+}
+
+.app-sidebar {
+  overflow: hidden;
+  border-right: 1px solid #22272d;
+  background: #171a1d;
+  transition: width 0.2s ease;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  height: 72px;
+  padding: 0 18px;
+  border-bottom: 1px solid #282d33;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffffff;
+}
+
+.brand-lockup strong {
+  display: block;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.brand-lockup small {
+  color: #9aa4af;
+  font-size: 12px;
+}
+
+.brand-mark,
+.brand-mini {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: #1f8fff;
+  color: #ffffff;
+  font-weight: 750;
+}
+
+.brand-mini {
+  margin: 0 auto;
+}
+
+.side-menu {
+  border-right: 0;
+  background: transparent;
+}
+
+.menu-section {
+  padding: 18px 20px 8px;
+  color: #737d89;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+:deep(.el-menu) {
+  --el-menu-bg-color: transparent;
+  --el-menu-text-color: #d8dde3;
+  --el-menu-hover-bg-color: #23282f;
+  --el-menu-active-color: #ffffff;
+}
+
+:deep(.el-menu-item) {
+  height: 44px;
+  margin: 2px 10px;
+  border-radius: 6px;
+}
+
+:deep(.el-menu-item.is-active) {
+  background: #0b74de;
+}
+
+:deep(.el-menu-item .el-icon) {
+  color: #20a4ff;
+}
+
+:deep(.el-menu-item.is-active .el-icon) {
+  color: #ffffff;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 22px;
+  border-bottom: 1px solid #d8dde3;
+  background: #ffffff;
+}
+
+.header-left,
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.collapse-button {
+  border-color: #c9d1da;
+  color: #4b5563;
+}
+
+.page-heading h1 {
+  margin: 0;
+  color: #172033;
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.page-heading p {
+  margin: 3px 0 0;
+  color: #667085;
+  font-size: 12px;
+}
+
+.sync-text {
+  color: #667085;
+  font-size: 12px;
+}
+
+.tool-icon {
+  color: #111827;
+}
+
+.user-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0b74de, #12b981);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.app-tabs {
+  height: 42px;
+  padding: 6px 16px 0;
+  border-bottom: 1px solid #dfe4ea;
+  background: #ffffff;
+}
+
+:deep(.app-tabs .el-tabs__header) {
+  margin: 0;
+}
+
+:deep(.app-tabs .el-tabs__item) {
+  border-radius: 6px 6px 0 0;
+}
+
+.app-main {
+  padding: 22px;
+  background: #f4f6f8;
+}
+
+@media (max-width: 860px) {
+  .page-heading p,
+  .sync-text,
+  .tool-icon {
+    display: none;
+  }
+
+  .app-header {
+    padding: 0 14px;
+  }
+}
+</style>

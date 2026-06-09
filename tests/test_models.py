@@ -14,6 +14,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from planner_core.database.base import Base
 from planner_core.database.models import (
     BlockReview,
+    AIPlanDraft,
+    AIPlanDraftWorkout,
+    AIPlanJob,
+    AIPlanQuota,
     PaceProfile,
     PaceRule,
     PaceZone,
@@ -27,6 +31,8 @@ from planner_core.enums import (
     BlockType,
     ExcelImportStatus,
     FeedbackType,
+    AIPlanDraftStatus,
+    AIPlanJobStatus,
     PaceZoneCode,
     RaceDistance,
     WorkoutMainTypeNormalized,
@@ -81,6 +87,8 @@ def test_enum_values_are_correct() -> None:
         "training_logic",
         "other",
     ]
+    assert [item.value for item in AIPlanJobStatus] == ["pending", "running", "success", "failed"]
+    assert [item.value for item in AIPlanDraftStatus] == ["draft", "accepted", "rejected"]
 
 
 @pytest.fixture(scope="module")
@@ -192,6 +200,10 @@ def test_can_create_all_tables(mysql_session_factory) -> None:
         "excel_import_jobs",
         "user_account",
         "feedback",
+        "ai_plan_job",
+        "ai_plan_quota",
+        "ai_plan_draft",
+        "ai_plan_draft_workout",
     }.issubset(set(inspector.get_table_names()))
 
 

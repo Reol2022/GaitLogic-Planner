@@ -64,3 +64,22 @@ class FeedbackType(str, Enum):
     confusing = "confusing"
     training_logic = "training_logic"
     other = "other"
+
+
+class AIPlanJobStatus(str, Enum):
+    pending = "pending"
+    running = "running"
+    success = "success"
+    failed = "failed"
+
+
+class AIPlanDraftStatus(str, Enum):
+    draft = "draft"
+    accepted = "accepted"
+    rejected = "rejected"
+
+
+class AIPlanIntensityStyle(str, Enum):
+    conservative = "conservative"
+    standard = "standard"
+    aggressive = "aggressive"

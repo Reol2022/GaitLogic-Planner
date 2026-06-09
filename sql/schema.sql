@@ -250,6 +250,93 @@ CREATE TABLE IF NOT EXISTS `feedback` (
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `ai_plan_job` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'pending',
+  `model_name` VARCHAR(64) NOT NULL,
+  `prompt_hash` VARCHAR(64) NOT NULL,
+  `input_json` JSON NOT NULL,
+  `output_json` JSON NULL,
+  `error_message` TEXT NULL,
+  `input_tokens` INT NULL,
+  `output_tokens` INT NULL,
+  `total_tokens` INT NULL,
+  `finished_at` DATETIME NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_ai_plan_job_user_id` (`user_id`),
+  KEY `ix_ai_plan_job_user_prompt` (`user_id`, `prompt_hash`),
+  CONSTRAINT `fk_ai_plan_job_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ai_plan_quota` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `quota_date` DATE NOT NULL,
+  `daily_limit` INT NOT NULL,
+  `used_count` INT NOT NULL DEFAULT 0,
+  `last_generated_at` DATETIME NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ai_plan_quota_user_date` (`user_id`, `quota_date`),
+  KEY `ix_ai_plan_quota_user_id` (`user_id`),
+  CONSTRAINT `fk_ai_plan_quota_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ai_plan_draft` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `job_id` BIGINT NOT NULL,
+  `title` VARCHAR(128) NOT NULL,
+  `goal` VARCHAR(255) NULL,
+  `start_date` DATE NULL,
+  `end_date` DATE NULL,
+  `target_race_name` VARCHAR(128) NULL,
+  `target_race_date` DATE NULL,
+  `target_result` VARCHAR(64) NULL,
+  `summary` TEXT NULL,
+  `risk_notes` JSON NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'draft',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ai_plan_draft_job_id` (`job_id`),
+  KEY `ix_ai_plan_draft_user_id` (`user_id`),
+  KEY `ix_ai_plan_draft_user_status` (`user_id`, `status`),
+  CONSTRAINT `fk_ai_plan_draft_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ai_plan_draft_job_id`
+    FOREIGN KEY (`job_id`) REFERENCES `ai_plan_job` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ai_plan_draft_workout` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `draft_id` BIGINT NOT NULL,
+  `workout_date` DATE NOT NULL,
+  `weekday` VARCHAR(32) NULL,
+  `block_name` VARCHAR(128) NULL,
+  `phase_name` VARCHAR(128) NULL,
+  `planned_content` TEXT NOT NULL,
+  `focus_note` TEXT NULL,
+  `planned_distance_km` DECIMAL(7, 2) NULL,
+  `main_type_raw` VARCHAR(64) NULL,
+  `main_type_normalized` VARCHAR(32) NOT NULL DEFAULT 'unknown',
+  `target_pace_text` VARCHAR(255) NULL,
+  `sort_order` INT NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_ai_plan_draft_workout_draft_id` (`draft_id`),
+  KEY `ix_ai_plan_draft_workout_date` (`workout_date`),
+  CONSTRAINT `fk_ai_plan_draft_workout_draft_id`
+    FOREIGN KEY (`draft_id`) REFERENCES `ai_plan_draft` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `excel_import_jobs` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `user_id` BIGINT NOT NULL,

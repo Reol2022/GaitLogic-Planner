@@ -12,6 +12,10 @@ if str(ROOT) not in sys.path:
 from planner_core.config import get_settings
 from planner_core.database.base import Base
 from planner_core.database.models import (  # noqa: F401
+    AIPlanDraft,
+    AIPlanDraftWorkout,
+    AIPlanJob,
+    AIPlanQuota,
     BlockReview,
     ExcelImportJob,
     Feedback,

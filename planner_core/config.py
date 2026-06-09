@@ -18,6 +18,18 @@ class Settings(BaseSettings):
         default=7,
         validation_alias="ACCESS_TOKEN_EXPIRE_DAYS",
     )
+    deepseek_api_key: str | None = Field(default=None, validation_alias="DEEPSEEK_API_KEY")
+    deepseek_base_url: str = Field(
+        default="https://api.deepseek.com",
+        validation_alias="DEEPSEEK_BASE_URL",
+    )
+    deepseek_model: str = Field(default="deepseek-v4-flash", validation_alias="DEEPSEEK_MODEL")
+    deepseek_timeout_seconds: int = Field(
+        default=120,
+        validation_alias="DEEPSEEK_TIMEOUT_SECONDS",
+    )
+    ai_plan_daily_limit: int = Field(default=3, validation_alias="AI_PLAN_DAILY_LIMIT")
+    ai_plan_cooldown_seconds: int = Field(default=60, validation_alias="AI_PLAN_COOLDOWN_SECONDS")
 
     model_config = SettingsConfigDict(
         env_file=".env",

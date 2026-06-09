@@ -271,3 +271,80 @@ export interface FeedbackItem extends FeedbackPayload {
   created_at: string;
   updated_at: string;
 }
+
+export type AIPlanIntensityStyle = "conservative" | "standard" | "aggressive";
+export type AIPlanDraftStatus = "draft" | "accepted" | "rejected";
+
+export interface AIPlanGeneratePayload {
+  runner_level: string;
+  recent_pb_distance?: RaceDistance | null;
+  recent_pb_result?: string | null;
+  current_weekly_mileage_km: number;
+  recent_4w_avg_mileage_km: number;
+  available_training_days_per_week: number;
+  can_double_run: boolean;
+  fixed_rest_days: string[];
+  injury_notes?: string | null;
+  training_preferences?: string | null;
+  target_race_name?: string | null;
+  target_race_date?: string | null;
+  target_distance: RaceDistance;
+  target_result?: string | null;
+  plan_start_date: string;
+  plan_weeks: number;
+  intensity_style: AIPlanIntensityStyle;
+  include_pace_guidance: boolean;
+}
+
+export interface AIPlanDraftWorkout {
+  id?: number | null;
+  workout_date: string;
+  weekday?: string | null;
+  block_name?: string | null;
+  phase_name?: string | null;
+  planned_content: string;
+  focus_note?: string | null;
+  planned_distance_km?: number | string | null;
+  main_type_raw?: string | null;
+  main_type_normalized: WorkoutMainTypeNormalized;
+  target_pace_text?: string | null;
+  sort_order: number;
+}
+
+export interface AIPlanDraft {
+  id: number;
+  job_id: number;
+  title: string;
+  goal?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  target_race_name?: string | null;
+  target_race_date?: string | null;
+  target_result?: string | null;
+  summary?: string | null;
+  risk_notes?: string[] | null;
+  status: AIPlanDraftStatus;
+  created_at: string;
+  updated_at: string;
+  workouts?: AIPlanDraftWorkout[];
+}
+
+export interface AIPlanGenerateResult {
+  job_id: number;
+  draft_id: number;
+  title: string;
+  goal?: string | null;
+  summary?: string | null;
+  risk_notes?: string[] | null;
+  workouts: AIPlanDraftWorkout[];
+}
+
+export interface AIPlanQuota {
+  model_name: string;
+  daily_limit: number;
+  used_count: number;
+  remaining_count: number;
+  last_generated_at?: string | null;
+  cooldown_seconds: number;
+  can_generate: boolean;
+}

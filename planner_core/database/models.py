@@ -21,6 +21,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from planner_core.database.base import Base, IdMixin, MYSQL_TABLE_ARGS, TimestampMixin
 from planner_core.enums import (
+    AIPlanDraftStatus,
+    AIPlanJobStatus,
     BlockType,
     ExcelImportStatus,
     FeedbackType,
@@ -77,6 +79,18 @@ feedback_type_enum = Enum(
     native_enum=False,
     length=32,
 )
+ai_plan_job_status_enum = Enum(
+    AIPlanJobStatus,
+    values_callable=enum_values,
+    native_enum=False,
+    length=16,
+)
+ai_plan_draft_status_enum = Enum(
+    AIPlanDraftStatus,
+    values_callable=enum_values,
+    native_enum=False,
+    length=16,
+)
 
 
 class UserAccount(IdMixin, TimestampMixin, Base):
@@ -109,6 +123,9 @@ class UserAccount(IdMixin, TimestampMixin, Base):
     pace_rules: Mapped[list[PaceRule]] = relationship(back_populates="user")
     pace_profiles: Mapped[list[PaceProfile]] = relationship(back_populates="user")
     feedback_items: Mapped[list[Feedback]] = relationship(back_populates="user")
+    ai_plan_jobs: Mapped[list[AIPlanJob]] = relationship(back_populates="user")
+    ai_plan_quotas: Mapped[list[AIPlanQuota]] = relationship(back_populates="user")
+    ai_plan_drafts: Mapped[list[AIPlanDraft]] = relationship(back_populates="user")
     excel_import_jobs: Mapped[list[ExcelImportJob]] = relationship(back_populates="user")
 
 
@@ -444,6 +461,138 @@ class Feedback(IdMixin, TimestampMixin, Base):
     )
 
     user: Mapped[UserAccount] = relationship(back_populates="feedback_items")
+
+
+class AIPlanJob(IdMixin, TimestampMixin, Base):
+    __tablename__ = "ai_plan_job"
+    __table_args__ = (
+        Index("ix_ai_plan_job_user_prompt", "user_id", "prompt_hash"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[AIPlanJobStatus] = mapped_column(
+        ai_plan_job_status_enum,
+        nullable=False,
+        default=AIPlanJobStatus.pending,
+        server_default=AIPlanJobStatus.pending.value,
+    )
+    model_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    input_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    output_json: Mapped[dict | None] = mapped_column(JSON)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    total_tokens: Mapped[int | None] = mapped_column(Integer)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    user: Mapped[UserAccount] = relationship(back_populates="ai_plan_jobs")
+    draft: Mapped[AIPlanDraft | None] = relationship(
+        back_populates="job",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
+
+
+class AIPlanQuota(IdMixin, TimestampMixin, Base):
+    __tablename__ = "ai_plan_quota"
+    __table_args__ = (
+        UniqueConstraint("user_id", "quota_date", name="uq_ai_plan_quota_user_date"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    quota_date: Mapped[date] = mapped_column(Date, nullable=False)
+    daily_limit: Mapped[int] = mapped_column(Integer, nullable=False)
+    used_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    last_generated_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    user: Mapped[UserAccount] = relationship(back_populates="ai_plan_quotas")
+
+
+class AIPlanDraft(IdMixin, TimestampMixin, Base):
+    __tablename__ = "ai_plan_draft"
+    __table_args__ = (
+        Index("ix_ai_plan_draft_user_status", "user_id", "status"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    job_id: Mapped[int] = mapped_column(
+        ForeignKey("ai_plan_job.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(128), nullable=False)
+    goal: Mapped[str | None] = mapped_column(String(255))
+    start_date: Mapped[date | None] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date)
+    target_race_name: Mapped[str | None] = mapped_column(String(128))
+    target_race_date: Mapped[date | None] = mapped_column(Date)
+    target_result: Mapped[str | None] = mapped_column(String(64))
+    summary: Mapped[str | None] = mapped_column(Text)
+    risk_notes: Mapped[list | None] = mapped_column(JSON)
+    status: Mapped[AIPlanDraftStatus] = mapped_column(
+        ai_plan_draft_status_enum,
+        nullable=False,
+        default=AIPlanDraftStatus.draft,
+        server_default=AIPlanDraftStatus.draft.value,
+    )
+
+    user: Mapped[UserAccount] = relationship(back_populates="ai_plan_drafts")
+    job: Mapped[AIPlanJob] = relationship(back_populates="draft")
+    workouts: Mapped[list[AIPlanDraftWorkout]] = relationship(
+        back_populates="draft",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class AIPlanDraftWorkout(IdMixin, TimestampMixin, Base):
+    __tablename__ = "ai_plan_draft_workout"
+    __table_args__ = (
+        Index("ix_ai_plan_draft_workout_date", "workout_date"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    draft_id: Mapped[int] = mapped_column(
+        ForeignKey("ai_plan_draft.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    workout_date: Mapped[date] = mapped_column(Date, nullable=False)
+    weekday: Mapped[str | None] = mapped_column(String(32))
+    block_name: Mapped[str | None] = mapped_column(String(128))
+    phase_name: Mapped[str | None] = mapped_column(String(128))
+    planned_content: Mapped[str] = mapped_column(Text, nullable=False)
+    focus_note: Mapped[str | None] = mapped_column(Text)
+    planned_distance_km: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
+    main_type_raw: Mapped[str | None] = mapped_column(String(64))
+    main_type_normalized: Mapped[WorkoutMainTypeNormalized] = mapped_column(
+        workout_main_type_normalized_enum,
+        nullable=False,
+        default=WorkoutMainTypeNormalized.unknown,
+        server_default=WorkoutMainTypeNormalized.unknown.value,
+    )
+    target_pace_text: Mapped[str | None] = mapped_column(String(255))
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    draft: Mapped[AIPlanDraft] = relationship(back_populates="workouts")
 
 
 class ExcelImportJob(IdMixin, TimestampMixin, Base):

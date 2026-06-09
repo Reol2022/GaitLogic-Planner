@@ -1,5 +1,9 @@
 from planner_core.database.base import Base
 from planner_core.database.models import (
+    AIPlanDraft,
+    AIPlanDraftWorkout,
+    AIPlanJob,
+    AIPlanQuota,
     BlockReview,
     ExcelImportJob,
     Feedback,
@@ -15,6 +19,10 @@ from planner_core.database.models import (
 
 __all__ = [
     "Base",
+    "AIPlanDraft",
+    "AIPlanDraftWorkout",
+    "AIPlanJob",
+    "AIPlanQuota",
     "BlockReview",
     "ExcelImportJob",
     "Feedback",

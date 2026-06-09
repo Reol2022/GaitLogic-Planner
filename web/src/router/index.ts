@@ -29,6 +29,12 @@ const router = createRouter({
       meta: { title: "今日训练" },
     },
     {
+      path: "/ai-plan",
+      name: "AIPlan",
+      component: () => import("@/views/AIPlanGenerator.vue"),
+      meta: { title: "AI 课表" },
+    },
+    {
       path: "/cycles",
       name: "TrainingCycles",
       component: () => import("@/views/TrainingCyclesView.vue"),
