@@ -38,6 +38,10 @@
         </el-menu-item>
 
         <div v-if="!sidebarCollapsed" class="menu-section">工具</div>
+        <el-menu-item index="/pace-calculator">
+          <el-icon><Odometer /></el-icon>
+          <template #title>配速计算器</template>
+        </el-menu-item>
         <el-menu-item index="/pace-rules">
           <el-icon><Odometer /></el-icon>
           <template #title>配速规则</template>
@@ -45,6 +49,10 @@
         <el-menu-item index="/excel-import">
           <el-icon><DocumentAdd /></el-icon>
           <template #title>Excel 导入</template>
+        </el-menu-item>
+        <el-menu-item index="/feedback">
+          <el-icon><Message /></el-icon>
+          <template #title>反馈</template>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -110,6 +118,7 @@ import {
   Fold,
   Grid,
   List,
+  Message,
   Odometer,
   Setting,
   SwitchButton,

@@ -52,9 +52,22 @@ def test_required_routes_are_registered() -> None:
     assert "DELETE /api/pace-rules/{rule_id}" in routes
     assert "GET /api/excel/template" in routes
     assert "POST /api/excel/import" in routes
+    assert "POST /api/feedback" in routes
+    assert "GET /api/feedback/my" in routes
+    assert "POST /api/pace-calculator/calculate" in routes
+    assert "POST /api/pace-profiles" in routes
+    assert "GET /api/pace-profiles" in routes
+    assert "GET /api/pace-profiles/{profile_id}" in routes
+    assert "DELETE /api/pace-profiles/{profile_id}" in routes
+    assert "POST /api/pace-profiles/{profile_id}/apply-to-pace-rules" in routes
 
 
 def test_business_routes_require_login() -> None:
     client = TestClient(app)
     response = client.get("/api/training-cycles")
     assert response.status_code == 401
+    feedback_response = client.post(
+        "/api/feedback",
+        json={"feedback_type": "bug", "content": "需要登录"},
+    )
+    assert feedback_response.status_code == 401

@@ -38,3 +38,29 @@ class ExcelImportStatus(str, Enum):
     partial_success = "partial_success"
     failed = "failed"
 
+
+class RaceDistance(str, Enum):
+    m1500 = "1500m"
+    m3000 = "3000m"
+    m5000 = "5000m"
+    m10000 = "10000m"
+    half_marathon = "half_marathon"
+    marathon = "marathon"
+
+
+class PaceZoneCode(str, Enum):
+    REC = "REC"
+    E = "E"
+    M = "M"
+    T1 = "T1"
+    T2 = "T2"
+    I = "I"
+    R = "R"
+
+
+class FeedbackType(str, Enum):
+    bug = "bug"
+    suggestion = "suggestion"
+    confusing = "confusing"
+    training_logic = "training_logic"
+    other = "other"

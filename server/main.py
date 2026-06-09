@@ -7,7 +7,9 @@ from server.api.routes import (
     auth,
     dashboard,
     excel,
+    feedback,
     health,
+    pace_calculator,
     pace_rules,
     planned_workouts,
     training_blocks,
@@ -42,11 +44,13 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
     app.include_router(excel.router, prefix="/api")
+    app.include_router(feedback.router, prefix="/api")
     app.include_router(training_cycles.router, prefix="/api")
     app.include_router(training_blocks.router, prefix="/api")
     app.include_router(planned_workouts.router, prefix="/api")
     app.include_router(workout_logs.router, prefix="/api")
     app.include_router(dashboard.router, prefix="/api")
+    app.include_router(pace_calculator.router, prefix="/api")
     app.include_router(pace_rules.router, prefix="/api")
     return app
 

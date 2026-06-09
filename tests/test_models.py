@@ -14,7 +14,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from planner_core.database.base import Base
 from planner_core.database.models import (
     BlockReview,
+    PaceProfile,
     PaceRule,
+    PaceZone,
     PlannedWorkout,
     TrainingBlock,
     TrainingCycle,
@@ -24,6 +26,9 @@ from planner_core.database.models import (
 from planner_core.enums import (
     BlockType,
     ExcelImportStatus,
+    FeedbackType,
+    PaceZoneCode,
+    RaceDistance,
     WorkoutMainTypeNormalized,
     WorkoutStatusNormalized,
 )
@@ -59,6 +64,22 @@ def test_enum_values_are_correct() -> None:
         "success",
         "partial_success",
         "failed",
+    ]
+    assert [item.value for item in RaceDistance] == [
+        "1500m",
+        "3000m",
+        "5000m",
+        "10000m",
+        "half_marathon",
+        "marathon",
+    ]
+    assert [item.value for item in PaceZoneCode] == ["REC", "E", "M", "T1", "T2", "I", "R"]
+    assert [item.value for item in FeedbackType] == [
+        "bug",
+        "suggestion",
+        "confusing",
+        "training_logic",
+        "other",
     ]
 
 
@@ -166,8 +187,11 @@ def test_can_create_all_tables(mysql_session_factory) -> None:
         "workout_logs",
         "block_reviews",
         "pace_rules",
+        "pace_profile",
+        "pace_zone",
         "excel_import_jobs",
         "user_account",
+        "feedback",
     }.issubset(set(inspector.get_table_names()))
 
 
@@ -287,6 +311,41 @@ def test_pace_rule_code_is_unique(mysql_session_factory) -> None:
         with pytest.raises(IntegrityError):
             session.commit()
         session.rollback()
+    finally:
+        session.close()
+
+
+def test_deleting_pace_profile_cascades_zones(mysql_session_factory) -> None:
+    session = mysql_session_factory()
+    try:
+        user = UserAccount(username=f"user_{uuid4().hex[:8]}", password_hash="test-hash")
+        profile = PaceProfile(
+            user=user,
+            name="半马 PB 1:12:32",
+            race_distance=RaceDistance.half_marathon,
+            race_result_seconds=4352,
+            vdot=65.3,
+            zones=[
+                PaceZone(
+                    zone_code=PaceZoneCode.E,
+                    zone_name="轻松跑",
+                    pace_min_seconds_per_km=278,
+                    pace_max_seconds_per_km=318,
+                    target_pace_text="4:38-5:18/km",
+                    sort_order=2,
+                )
+            ],
+        )
+        session.add(profile)
+        session.commit()
+        profile_id = profile.id
+        zone_id = profile.zones[0].id
+
+        session.delete(profile)
+        session.commit()
+
+        assert session.scalar(select(PaceProfile).where(PaceProfile.id == profile_id)) is None
+        assert session.scalar(select(PaceZone).where(PaceZone.id == zone_id)) is None
     finally:
         session.close()
 

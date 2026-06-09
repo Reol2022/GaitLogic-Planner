@@ -23,6 +23,9 @@ from planner_core.database.base import Base, IdMixin, MYSQL_TABLE_ARGS, Timestam
 from planner_core.enums import (
     BlockType,
     ExcelImportStatus,
+    FeedbackType,
+    PaceZoneCode,
+    RaceDistance,
     WorkoutMainTypeNormalized,
     WorkoutStatusNormalized,
 )
@@ -52,6 +55,24 @@ workout_status_normalized_enum = Enum(
 )
 excel_import_status_enum = Enum(
     ExcelImportStatus,
+    values_callable=enum_values,
+    native_enum=False,
+    length=32,
+)
+race_distance_enum = Enum(
+    RaceDistance,
+    values_callable=enum_values,
+    native_enum=False,
+    length=32,
+)
+pace_zone_code_enum = Enum(
+    PaceZoneCode,
+    values_callable=enum_values,
+    native_enum=False,
+    length=16,
+)
+feedback_type_enum = Enum(
+    FeedbackType,
     values_callable=enum_values,
     native_enum=False,
     length=32,
@@ -86,6 +107,8 @@ class UserAccount(IdMixin, TimestampMixin, Base):
     workout_logs: Mapped[list[WorkoutLog]] = relationship(back_populates="user")
     block_reviews: Mapped[list[BlockReview]] = relationship(back_populates="user")
     pace_rules: Mapped[list[PaceRule]] = relationship(back_populates="user")
+    pace_profiles: Mapped[list[PaceProfile]] = relationship(back_populates="user")
+    feedback_items: Mapped[list[Feedback]] = relationship(back_populates="user")
     excel_import_jobs: Mapped[list[ExcelImportJob]] = relationship(back_populates="user")
 
 
@@ -341,6 +364,86 @@ class PaceRule(IdMixin, TimestampMixin, Base):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
 
     user: Mapped[UserAccount] = relationship(back_populates="pace_rules")
+
+
+class PaceProfile(IdMixin, TimestampMixin, Base):
+    __tablename__ = "pace_profile"
+    __table_args__ = (
+        Index("ix_pace_profile_user_created", "user_id", "created_at"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    race_distance: Mapped[RaceDistance] = mapped_column(race_distance_enum, nullable=False)
+    race_result_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    vdot: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    algorithm_version: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="approx_vdot_v1",
+        server_default="approx_vdot_v1",
+    )
+
+    user: Mapped[UserAccount] = relationship(back_populates="pace_profiles")
+    zones: Mapped[list[PaceZone]] = relationship(
+        back_populates="pace_profile",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class PaceZone(IdMixin, TimestampMixin, Base):
+    __tablename__ = "pace_zone"
+    __table_args__ = (
+        UniqueConstraint("pace_profile_id", "zone_code", name="uq_pace_zone_profile_code"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    pace_profile_id: Mapped[int] = mapped_column(
+        ForeignKey("pace_profile.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    zone_code: Mapped[PaceZoneCode] = mapped_column(pace_zone_code_enum, nullable=False)
+    zone_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    pace_min_seconds_per_km: Mapped[int] = mapped_column(Integer, nullable=False)
+    pace_max_seconds_per_km: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_pace_text: Mapped[str] = mapped_column(String(64), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    pace_profile: Mapped[PaceProfile] = relationship(back_populates="zones")
+
+
+class Feedback(IdMixin, TimestampMixin, Base):
+    __tablename__ = "feedback"
+    __table_args__ = (
+        Index("ix_feedback_user_created", "user_id", "created_at"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    feedback_type: Mapped[FeedbackType] = mapped_column(feedback_type_enum, nullable=False)
+    page_url: Mapped[str | None] = mapped_column(String(512))
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    contact: Mapped[str | None] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="open",
+        server_default="open",
+    )
+
+    user: Mapped[UserAccount] = relationship(back_populates="feedback_items")
 
 
 class ExcelImportJob(IdMixin, TimestampMixin, Base):

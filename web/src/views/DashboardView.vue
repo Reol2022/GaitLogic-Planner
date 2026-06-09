@@ -6,7 +6,7 @@
         <h2>{{ currentCycleName }}</h2>
         <p>训练计划、完成情况、强度结构和身体反馈的实时概览。</p>
       </div>
-      <div class="hero-actions">
+      <div v-if="!hasNoCycles" class="hero-actions">
         <el-select
           v-model="cycleId"
           clearable
@@ -22,137 +22,169 @@
             :value="cycle.id"
           />
         </el-select>
-        <el-button :icon="Refresh" type="primary" @click="loadDashboard">刷新</el-button>
+        <el-button :icon="Refresh" type="primary" @click="reloadAll">刷新</el-button>
       </div>
     </section>
 
-    <section class="metric-strip">
-      <div class="metric-tile">
-        <span>计划公里</span>
-        <strong>{{ fmt(summary?.planned_distance_km) }}</strong>
-        <em>planned km</em>
+    <section v-if="hasNoCycles" class="onboarding-card">
+      <div class="onboarding-copy">
+        <div class="onboarding-kicker">首次使用</div>
+        <h3>欢迎使用 GaitLogic Planner</h3>
+        <p>你可以通过以下方式开始：</p>
+        <ol>
+          <li>下载标准 Excel 模板</li>
+          <li>填写训练周期、训练计划和配速规则</li>
+          <li>上传 Excel 导入</li>
+          <li>查看今日训练</li>
+          <li>训练后填写日志</li>
+          <li>查看 Dashboard 统计</li>
+        </ol>
       </div>
-      <div class="metric-tile">
-        <span>实际公里</span>
-        <strong>{{ fmt(summary?.actual_distance_km) }}</strong>
-        <em>actual km</em>
-      </div>
-      <div class="metric-tile highlight">
-        <span>完成率</span>
-        <strong>{{ fmt(summary?.completion_rate) }}%</strong>
-        <em>completion</em>
-      </div>
-      <div class="metric-tile">
-        <span>训练次数</span>
-        <strong>{{ summary?.workout_count ?? 0 }}</strong>
-        <em>sessions</em>
-      </div>
-      <div class="metric-tile">
-        <span>平均 RPE</span>
-        <strong>{{ fmt(summary?.avg_rpe) }}</strong>
-        <em>fatigue</em>
-      </div>
-      <div class="metric-tile pain">
-        <span>最高疼痛</span>
-        <strong>{{ summary?.max_pain_level ?? "-" }}</strong>
-        <em>pain level</em>
+      <div class="onboarding-actions">
+        <el-button type="primary" @click="router.push('/excel-import')">去 Excel 导入</el-button>
+        <el-button @click="router.push('/cycles')">新建训练周期</el-button>
       </div>
     </section>
 
-    <section class="chart-grid">
-      <article class="chart-card wide">
-        <div class="chart-card-head">
-          <div>
-            <h3>计划 vs 实际公里</h3>
-            <p>{{ distanceModeHint }}</p>
-          </div>
-          <el-radio-group v-model="distanceMode" size="small" @change="renderDistanceChart">
-            <el-radio-button label="cycle">全部周期</el-radio-button>
-            <el-radio-button label="month">月跑量</el-radio-button>
-            <el-radio-button label="week">周跑量</el-radio-button>
-          </el-radio-group>
-        </div>
-        <div ref="distanceChartRef" class="chart"></div>
-      </article>
-
-      <article class="chart-card wide">
-        <div class="chart-card-head">
-          <div>
-            <h3>训练类型分布</h3>
-            <p>{{ typeModeHint }}</p>
-          </div>
-          <el-radio-group v-model="typeMode" size="small" @change="renderTypeChart">
-            <el-radio-button label="cycle">全部周期</el-radio-button>
-            <el-radio-button label="month">月跑量</el-radio-button>
-            <el-radio-button label="week">周跑量</el-radio-button>
-          </el-radio-group>
-        </div>
-        <div ref="typeChartRef" class="chart"></div>
-      </article>
-
-      <article class="chart-card">
-        <div class="chart-card-head">
-          <div>
-            <h3>完成状态</h3>
-            <p>完成、缺课与待完成</p>
-          </div>
-        </div>
-        <div ref="statusChartRef" class="chart"></div>
-      </article>
-
-      <article class="chart-card">
-        <div class="chart-card-head">
-          <div>
-            <h3>训练反馈雷达</h3>
-            <p>完成率、RPE、疼痛等级综合查看</p>
-          </div>
-          <span class="chart-badge">反馈</span>
-        </div>
-        <div ref="healthChartRef" class="chart"></div>
-      </article>
-    </section>
-
-    <section class="summary-table-card">
-      <div class="chart-card-head">
-        <div>
-          <h3>执行摘要</h3>
-          <p>与 Excel 总览页保持同一套指标口径</p>
-        </div>
+    <section v-else-if="hasNoWorkoutData" class="empty-data-card">
+      <h3>当前范围还没有训练计划</h3>
+      <p>可以先导入标准 Excel 模板，或到训练计划页面手动创建训练内容。</p>
+      <div>
+        <el-button type="primary" @click="router.push('/excel-import')">去 Excel 导入</el-button>
+        <el-button @click="router.push('/workouts')">查看训练计划</el-button>
       </div>
-      <table class="summary-table">
-        <thead>
-          <tr>
-            <th>范围</th>
-            <th>计划km</th>
-            <th>实际km</th>
-            <th>完成率</th>
-            <th>训练次数</th>
-            <th>完成</th>
-            <th>缺课</th>
-            <th>平均RPE</th>
-            <th>最高疼痛</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{{ currentCycleName }}</td>
-            <td>{{ fmt(summary?.planned_distance_km) }}</td>
-            <td>{{ fmt(summary?.actual_distance_km) }}</td>
-            <td>{{ fmt(summary?.completion_rate) }}%</td>
-            <td>{{ summary?.workout_count ?? 0 }}</td>
-            <td>{{ summary?.completed_count ?? 0 }}</td>
-            <td>{{ summary?.missed_count ?? 0 }}</td>
-            <td>{{ fmt(summary?.avg_rpe) }}</td>
-            <td>{{ summary?.max_pain_level ?? "" }}</td>
-          </tr>
-        </tbody>
-      </table>
     </section>
+
+    <template v-else>
+      <section class="metric-strip">
+        <div class="metric-tile">
+          <span>计划公里</span>
+          <strong>{{ fmt(summary?.planned_distance_km) }}</strong>
+          <em>planned km</em>
+        </div>
+        <div class="metric-tile">
+          <span>实际公里</span>
+          <strong>{{ fmt(summary?.actual_distance_km) }}</strong>
+          <em>actual km</em>
+        </div>
+        <div class="metric-tile highlight">
+          <span>完成率</span>
+          <strong>{{ fmt(summary?.completion_rate) }}%</strong>
+          <em>completion</em>
+        </div>
+        <div class="metric-tile">
+          <span>训练次数</span>
+          <strong>{{ summary?.workout_count ?? 0 }}</strong>
+          <em>sessions</em>
+        </div>
+        <div class="metric-tile">
+          <span>平均 RPE</span>
+          <strong>{{ fmt(summary?.avg_rpe) }}</strong>
+          <em>fatigue</em>
+        </div>
+        <div class="metric-tile pain">
+          <span>最高疼痛</span>
+          <strong>{{ summary?.max_pain_level ?? "-" }}</strong>
+          <em>pain level</em>
+        </div>
+      </section>
+
+ <section class="summary-table-card">
+        <div class="chart-card-head">
+          <div>
+            <h3>执行摘要</h3>
+          </div>
+        </div>
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>范围</th>
+              <th>计划km</th>
+              <th>实际km</th>
+              <th>完成率</th>
+              <th>训练次数</th>
+              <th>完成</th>
+              <th>缺课</th>
+              <th>平均RPE</th>
+              <th>最高疼痛</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ currentCycleName }}</td>
+              <td>{{ fmt(summary?.planned_distance_km) }}</td>
+              <td>{{ fmt(summary?.actual_distance_km) }}</td>
+              <td>{{ fmt(summary?.completion_rate) }}%</td>
+              <td>{{ summary?.workout_count ?? 0 }}</td>
+              <td>{{ summary?.completed_count ?? 0 }}</td>
+              <td>{{ summary?.missed_count ?? 0 }}</td>
+              <td>{{ fmt(summary?.avg_rpe) }}</td>
+              <td>{{ summary?.max_pain_level ?? "" }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+
+      <section class="chart-grid">
+        <article class="chart-card wide">
+          <div class="chart-card-head">
+            <div>
+              <h3>计划 vs 实际公里</h3>
+              <p>{{ distanceModeHint }}</p>
+            </div>
+            <el-radio-group v-model="distanceMode" size="small" @change="renderDistanceChart">
+              <el-radio-button label="cycle">全部周期</el-radio-button>
+              <el-radio-button label="month">月跑量</el-radio-button>
+              <el-radio-button label="week">周跑量</el-radio-button>
+            </el-radio-group>
+          </div>
+          <div ref="distanceChartRef" class="chart"></div>
+        </article>
+
+        <article class="chart-card wide">
+          <div class="chart-card-head">
+            <div>
+              <h3>训练类型分布</h3>
+              <p>{{ typeModeHint }}</p>
+            </div>
+            <el-radio-group v-model="typeMode" size="small" @change="renderTypeChart">
+              <el-radio-button label="cycle">全部周期</el-radio-button>
+              <el-radio-button label="month">月跑量</el-radio-button>
+              <el-radio-button label="week">周跑量</el-radio-button>
+            </el-radio-group>
+          </div>
+          <div ref="typeChartRef" class="chart"></div>
+        </article>
+
+        <article class="chart-card">
+          <div class="chart-card-head">
+            <div>
+              <h3>完成状态</h3>
+              <p>完成、缺课与待完成</p>
+            </div>
+          </div>
+          <div ref="statusChartRef" class="chart"></div>
+        </article>
+
+        <article class="chart-card">
+          <div class="chart-card-head">
+            <div>
+              <h3>训练反馈雷达</h3>
+              <p>完成率、RPE、疼痛等级综合查看</p>
+            </div>
+            <span class="chart-badge">反馈</span>
+          </div>
+          <div ref="healthChartRef" class="chart"></div>
+        </article>
+      </section>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 import { Refresh } from "@element-plus/icons-vue";
 import * as echarts from "echarts";
 
@@ -178,6 +210,7 @@ interface TypeBucket {
   values: Map<string, number>;
 }
 
+const router = useRouter();
 const cycleId = ref<number | null>(null);
 const cycles = ref<TrainingCycle[]>([]);
 const blocks = ref<TrainingBlock[]>([]);
@@ -197,6 +230,9 @@ let statusChart: echarts.ECharts | null = null;
 let healthChart: echarts.ECharts | null = null;
 
 const palette = ["#1976d2", "#1f7a68", "#ff8a00", "#7b68aa", "#bc4b4b", "#5f8d4e", "#8293a4"];
+
+const hasNoCycles = computed(() => cycles.value.length === 0);
+const hasNoWorkoutData = computed(() => !hasNoCycles.value && !!summary.value && summary.value.workout_count === 0);
 
 const currentCycleName = computed(() => {
   if (!cycleId.value) return "全部周期";
@@ -236,8 +272,38 @@ function numeric(value?: number | string | null) {
 }
 
 function fmt(value?: number | string | null) {
-  const parsed = numeric(value);
-  return parsed.toFixed(1);
+  return numeric(value).toFixed(1);
+}
+
+function parseDate(value?: string | null) {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function chooseDefaultCycle() {
+  if (cycles.value.length === 0) {
+    cycleId.value = null;
+    return;
+  }
+
+  const today = new Date();
+  const current = cycles.value.find((cycle) => {
+    const start = parseDate(cycle.start_date);
+    const end = parseDate(cycle.end_date);
+    return start && end && start <= today && today <= end;
+  });
+  if (current) {
+    cycleId.value = current.id;
+    return;
+  }
+
+  const recent = [...cycles.value].sort((a, b) => {
+    const left = Date.parse(b.created_at || "") || b.id;
+    const right = Date.parse(a.created_at || "") || a.id;
+    return left - right;
+  })[0];
+  cycleId.value = recent.id;
 }
 
 function workoutKm(workout: PlannedWorkout) {
@@ -282,15 +348,6 @@ function buildDistanceBuckets() {
     const key = String(workout.cycle_id);
     const name = cycleNameMap.value.get(workout.cycle_id) || currentCycleName.value;
     addToBucket(map, key, name, workout.cycle_id, workout);
-  }
-
-  if (map.size === 0 && summary.value) {
-    map.set("summary", {
-      name: currentCycleName.value,
-      order: 0,
-      planned: numeric(summary.value.planned_distance_km),
-      actual: numeric(summary.value.actual_distance_km),
-    });
   }
 
   return Array.from(map.values()).sort((a, b) =>
@@ -344,15 +401,12 @@ function buildTypeBuckets() {
 }
 
 function renderDistanceChart() {
-  if (!distanceChartRef.value || !summary.value) return;
+  if (!distanceChartRef.value || !summary.value || hasNoWorkoutData.value) return;
   distanceChart ||= echarts.init(distanceChartRef.value);
   const buckets = buildDistanceBuckets();
   distanceChart.setOption({
     color: ["#1976d2", "#1f7a68"],
-    tooltip: {
-      trigger: "axis",
-      valueFormatter: (value: number) => `${fmt(value)} km`,
-    },
+    tooltip: { trigger: "axis", valueFormatter: (value: number) => `${fmt(value)} km` },
     legend: { top: 0, data: ["计划公里", "实际公里"] },
     grid: { left: 48, right: 24, top: 48, bottom: 42 },
     xAxis: {
@@ -382,7 +436,7 @@ function renderDistanceChart() {
 }
 
 function renderTypeChart() {
-  if (!typeChartRef.value || !summary.value) return;
+  if (!typeChartRef.value || !summary.value || hasNoWorkoutData.value) return;
   typeChart ||= echarts.init(typeChartRef.value);
 
   if (typeMode.value === "cycle") {
@@ -400,9 +454,6 @@ function renderTypeChart() {
             `${params.name}<br/>公里：${fmt(params.value)} km<br/>次数：${params.data.count}`,
         },
         legend: { bottom: 0, type: "scroll" },
-        grid: undefined,
-        xAxis: undefined,
-        yAxis: undefined,
         series: [
           {
             name: "训练类型",
@@ -424,11 +475,7 @@ function renderTypeChart() {
   typeChart.setOption(
     {
       color: palette,
-      tooltip: {
-        trigger: "axis",
-        axisPointer: { type: "shadow" },
-        valueFormatter: (value: number) => `${fmt(value)} km`,
-      },
+      tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (value: number) => `${fmt(value)} km` },
       legend: { top: 0, type: "scroll", data: typeNames },
       grid: { left: 48, right: 24, top: 54, bottom: 42 },
       xAxis: {
@@ -452,7 +499,7 @@ function renderTypeChart() {
 }
 
 function renderStatusChart() {
-  if (!statusChartRef.value || !summary.value) return;
+  if (!statusChartRef.value || !summary.value || hasNoWorkoutData.value) return;
   statusChart ||= echarts.init(statusChartRef.value);
   statusChart.setOption({
     color: ["#1f7a68", "#bc4b4b", "#1976d2"],
@@ -472,7 +519,7 @@ function renderStatusChart() {
 }
 
 function renderHealthChart() {
-  if (!healthChartRef.value || !summary.value) return;
+  if (!healthChartRef.value || !summary.value || hasNoWorkoutData.value) return;
   healthChart ||= echarts.init(healthChartRef.value);
   const completion = Math.min(numeric(summary.value.completion_rate), 100);
   const rpe = Math.min(numeric(summary.value.avg_rpe) * 10, 100);
@@ -493,9 +540,7 @@ function renderHealthChart() {
         { name: "RPE强度", max: 100 },
         { name: "疼痛风险", max: 100 },
       ],
-      splitArea: {
-        areaStyle: { color: ["#ffffff", "#f3f8fc"] },
-      },
+      splitArea: { areaStyle: { color: ["#ffffff", "#f3f8fc"] } },
       axisName: { color: "#384353" },
     },
     series: [
@@ -516,16 +561,46 @@ function renderCharts() {
   renderHealthChart();
 }
 
+function disposeCharts() {
+  distanceChart?.dispose();
+  typeChart?.dispose();
+  statusChart?.dispose();
+  healthChart?.dispose();
+  distanceChart = null;
+  typeChart = null;
+  statusChart = null;
+  healthChart = null;
+}
+
 async function loadDashboard() {
+  if (hasNoCycles.value) {
+    summary.value = null;
+    workouts.value = [];
+    blocks.value = [];
+    disposeCharts();
+    return;
+  }
+
   summary.value = await getDashboard(cycleId.value);
   workouts.value = await listPlannedWorkouts({ cycle_id: cycleId.value });
   blocks.value = await listTrainingBlocks(cycleId.value);
+
+  if (hasNoWorkoutData.value) {
+    disposeCharts();
+    return;
+  }
   await nextTick();
   renderCharts();
 }
 
 async function loadCycles() {
   cycles.value = await listTrainingCycles();
+  chooseDefaultCycle();
+}
+
+async function reloadAll() {
+  await loadCycles();
+  await loadDashboard();
 }
 
 function resizeCharts() {
@@ -536,17 +611,13 @@ function resizeCharts() {
 }
 
 onMounted(async () => {
-  await loadCycles();
-  await loadDashboard();
+  await reloadAll();
   window.addEventListener("resize", resizeCharts);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", resizeCharts);
-  distanceChart?.dispose();
-  typeChart?.dispose();
-  statusChart?.dispose();
-  healthChart?.dispose();
+  disposeCharts();
 });
 </script>
 
@@ -558,8 +629,17 @@ onBeforeUnmount(() => {
   max-width: 1300px;
   min-height: calc(100vh - 98px);
   margin: 0 auto;
-  padding: 56px 56px 42px;
+  padding: 40px 50px 42px;
   background: #ffffff;
+}
+
+.dashboard-hero,
+.onboarding-card,
+.empty-data-card {
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
 }
 
 .dashboard-hero {
@@ -570,26 +650,28 @@ onBeforeUnmount(() => {
   min-height: 118px;
   padding: 22px;
   color: #182230;
-  border: 1px solid var(--line-soft);
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
 }
 
-.hero-kicker {
+.hero-kicker,
+.onboarding-kicker {
   margin-bottom: 8px;
   color: #1976d2;
   font-size: 13px;
   font-weight: 700;
 }
 
-.dashboard-hero h2 {
+.dashboard-hero h2,
+.onboarding-card h3,
+.empty-data-card h3 {
   margin: 0;
+  color: #172033;
   font-size: 28px;
   line-height: 1.2;
 }
 
-.dashboard-hero p {
+.dashboard-hero p,
+.onboarding-card p,
+.empty-data-card p {
   margin: 10px 0 0;
   color: #667085;
 }
@@ -602,6 +684,39 @@ onBeforeUnmount(() => {
   border: 1px solid var(--line-soft);
   border-radius: 6px;
   background: #f8fafc;
+}
+
+.onboarding-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 22px;
+  padding: 30px;
+}
+
+.onboarding-card ol {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 10px 24px;
+  margin: 18px 0 0;
+  padding-left: 22px;
+  color: #344054;
+}
+
+.onboarding-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.empty-data-card {
+  padding: 30px;
+  text-align: center;
+}
+
+.empty-data-card div {
+  margin-top: 18px;
 }
 
 .metric-strip {
@@ -743,9 +858,15 @@ onBeforeUnmount(() => {
 
 @media (max-width: 980px) {
   .dashboard-hero,
-  .hero-actions {
+  .hero-actions,
+  .onboarding-card {
     align-items: stretch;
+    grid-template-columns: 1fr;
     flex-direction: column;
+  }
+
+  .onboarding-actions {
+    align-items: stretch;
   }
 
   .chart-grid {
@@ -754,7 +875,12 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 680px) {
-  .metric-strip {
+  .dashboard-page {
+    padding: 24px 16px;
+  }
+
+  .metric-strip,
+  .onboarding-card ol {
     grid-template-columns: 1fr;
   }
 }

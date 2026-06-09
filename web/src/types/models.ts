@@ -136,6 +136,55 @@ export interface PaceRule {
 
 export type PaceRulePayload = Omit<PaceRule, "id" | "created_at" | "updated_at">;
 
+export type RaceDistance =
+  | "1500m"
+  | "3000m"
+  | "5000m"
+  | "10000m"
+  | "half_marathon"
+  | "marathon";
+
+export type PaceZoneCode = "REC" | "E" | "M" | "T1" | "T2" | "I" | "R";
+
+export interface PaceZone {
+  id?: number | null;
+  zone_code: PaceZoneCode;
+  zone_name: string;
+  pace_min_seconds_per_km: number;
+  pace_max_seconds_per_km: number;
+  target_pace_text: string;
+  description?: string | null;
+  sort_order?: number | null;
+}
+
+export interface PaceCalculationPayload {
+  race_distance: RaceDistance;
+  race_result: string;
+}
+
+export interface PaceCalculationResult {
+  race_distance: RaceDistance;
+  race_result_seconds: number;
+  vdot: number;
+  zones: PaceZone[];
+}
+
+export interface PaceProfile {
+  id: number;
+  name: string;
+  race_distance: RaceDistance;
+  race_result_seconds: number;
+  vdot: number | string;
+  algorithm_version: string;
+  created_at: string;
+  updated_at: string;
+  zones?: PaceZone[];
+}
+
+export interface PaceProfileCreatePayload extends PaceCalculationPayload {
+  name: string;
+}
+
 export interface DashboardSummary {
   planned_distance_km: number | string;
   actual_distance_km: number | string;
@@ -205,4 +254,20 @@ export interface ExcelImportResult {
   success_count: number;
   failed_count: number;
   errors: ExcelImportErrorItem[];
+}
+
+export type FeedbackType = "bug" | "suggestion" | "confusing" | "training_logic" | "other";
+
+export interface FeedbackPayload {
+  feedback_type: FeedbackType;
+  page_url?: string | null;
+  content: string;
+  contact?: string | null;
+}
+
+export interface FeedbackItem extends FeedbackPayload {
+  id: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }

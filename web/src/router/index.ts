@@ -53,6 +53,12 @@ const router = createRouter({
       meta: { title: "训练日志填写" },
     },
     {
+      path: "/pace-calculator",
+      name: "PaceCalculator",
+      component: () => import("@/views/PaceCalculator.vue"),
+      meta: { title: "配速计算器" },
+    },
+    {
       path: "/pace-rules",
       name: "PaceRules",
       component: () => import("@/views/PaceRulesView.vue"),
@@ -63,6 +69,12 @@ const router = createRouter({
       name: "ExcelImport",
       component: () => import("@/views/ExcelImport.vue"),
       meta: { title: "Excel 导入" },
+    },
+    {
+      path: "/feedback",
+      name: "Feedback",
+      component: () => import("@/views/FeedbackView.vue"),
+      meta: { title: "反馈" },
     },
   ],
 });

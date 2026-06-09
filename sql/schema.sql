@@ -197,6 +197,59 @@ CREATE TABLE IF NOT EXISTS `pace_rules` (
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `pace_profile` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `name` VARCHAR(128) NOT NULL,
+  `race_distance` VARCHAR(32) NOT NULL,
+  `race_result_seconds` INT NOT NULL,
+  `vdot` DECIMAL(5, 1) NOT NULL,
+  `algorithm_version` VARCHAR(32) NOT NULL DEFAULT 'approx_vdot_v1',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_pace_profile_user_id` (`user_id`),
+  KEY `ix_pace_profile_user_created` (`user_id`, `created_at`),
+  CONSTRAINT `fk_pace_profile_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pace_zone` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `pace_profile_id` BIGINT NOT NULL,
+  `zone_code` VARCHAR(16) NOT NULL,
+  `zone_name` VARCHAR(64) NOT NULL,
+  `pace_min_seconds_per_km` INT NOT NULL,
+  `pace_max_seconds_per_km` INT NOT NULL,
+  `target_pace_text` VARCHAR(64) NOT NULL,
+  `description` TEXT NULL,
+  `sort_order` INT NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_pace_zone_profile_code` (`pace_profile_id`, `zone_code`),
+  KEY `ix_pace_zone_pace_profile_id` (`pace_profile_id`),
+  CONSTRAINT `fk_pace_zone_pace_profile_id`
+    FOREIGN KEY (`pace_profile_id`) REFERENCES `pace_profile` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `feedback` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `feedback_type` VARCHAR(32) NOT NULL,
+  `page_url` VARCHAR(512) NULL,
+  `content` TEXT NOT NULL,
+  `contact` VARCHAR(255) NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'open',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_feedback_user_id` (`user_id`),
+  KEY `ix_feedback_user_created` (`user_id`, `created_at`),
+  CONSTRAINT `fk_feedback_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `excel_import_jobs` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `user_id` BIGINT NOT NULL,
