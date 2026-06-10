@@ -1,10 +1,36 @@
 <template>
   <div class="page-stack ai-plan-page">
+    <Transition name="generation-mask">
+      <div v-if="generating" class="generation-overlay" role="status" aria-live="polite">
+        <div class="generation-panel">
+          <div class="generation-spinner" />
+          <div class="generation-copy">
+            <h3>正在生成课表草稿</h3>
+            <p>{{ generationStatusText }}</p>
+          </div>
+          <el-progress
+            :percentage="generationProgress"
+            :stroke-width="10"
+            :show-text="false"
+            striped
+            striped-flow
+          />
+          <div class="generation-meta">
+            <span>{{ generationProgress }}%</span>
+            <span>通常需要几十秒，请保持当前页面打开</span>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <section class="ai-hero">
       <div>
         <div class="hero-kicker">AI Plan Draft</div>
         <h2>AI 课表草稿生成器</h2>
-        <p>AI 生成的训练计划仅作为草稿建议，请结合自身状态、伤病情况和教练意见调整后再执行。</p>
+        <p>
+          AI 生成的训练计划仅作为草稿建议，不代表医疗或专业诊断。请结合自身恢复、伤病情况和实际训练反馈进行调整。
+          若出现持续疼痛、异常疲劳或身体不适，请降低训练强度或寻求专业人士建议。
+        </p>
       </div>
       <div class="quota-box">
         <span>{{ quota?.model_name || "deepseek-v4-flash" }}</span>
@@ -18,7 +44,7 @@
         <div class="panel-head">
           <div>
             <h3>跑者与目标信息</h3>
-            <p>信息越具体，草稿越接近你的真实训练节奏。</p>
+            <p>训练偏好会作为个人训练哲学传给模型，后续可升级为可保存的个人配置。</p>
           </div>
         </div>
 
@@ -47,7 +73,13 @@
               </el-select>
             </el-form-item>
             <el-form-item label="近期 PB 成绩">
-              <el-input v-model="form.recent_pb_result" placeholder="例如 16:24、1:12:32" />
+              <el-time-picker
+                v-model="form.recent_pb_result"
+                value-format="HH:mm:ss"
+                format="HH:mm:ss"
+                placeholder="例如 00:16:24"
+                style="width: 100%"
+              />
             </el-form-item>
           </div>
 
@@ -80,7 +112,13 @@
               <el-input v-model="form.target_race_name" placeholder="眉山东坡半马" />
             </el-form-item>
             <el-form-item label="目标赛事日期">
-              <el-date-picker v-model="form.target_race_date" value-format="YYYY-MM-DD" style="width: 100%" />
+              <el-date-picker
+                v-model="form.target_race_date"
+                value-format="YYYY-MM-DD"
+                :disabled-date="disableTargetRaceDate"
+                style="width: 100%"
+                @change="syncWeeksFromRace"
+              />
             </el-form-item>
           </div>
 
@@ -91,17 +129,41 @@
               </el-select>
             </el-form-item>
             <el-form-item label="目标成绩">
-              <el-input v-model="form.target_result" placeholder="例如 1:11:30" />
+              <el-time-picker
+                v-model="form.target_result"
+                value-format="HH:mm:ss"
+                format="HH:mm:ss"
+                placeholder="例如 01:11:30"
+                style="width: 100%"
+              />
             </el-form-item>
           </div>
 
           <div class="form-row">
             <el-form-item label="计划开始日期">
-              <el-date-picker v-model="form.plan_start_date" value-format="YYYY-MM-DD" style="width: 100%" />
+              <el-date-picker
+                v-model="form.plan_start_date"
+                value-format="YYYY-MM-DD"
+                :disabled-date="disablePlanStartDate"
+                style="width: 100%"
+                @change="syncWeeksFromRace"
+              />
             </el-form-item>
             <el-form-item label="计划周数">
               <el-input-number v-model="form.plan_weeks" :min="1" :max="16" style="width: 100%" />
             </el-form-item>
+          </div>
+
+          <div class="date-summary" :class="{ invalid: Boolean(dateConstraintError) }">
+            <div class="date-summary-main">
+              <span class="label">计划结束日</span>
+              <strong>{{ planEndDate || "未计算" }}</strong>
+            </div>
+            <div class="date-summary-meta">
+              <span v-if="raceGapText">{{ raceGapText }}</span>
+              <span v-if="dateConstraintError">{{ dateConstraintError }}</span>
+              <span v-else-if="planEndDate">当前周期设置可用于生成草稿</span>
+            </div>
           </div>
 
           <el-form-item label="伤病说明">
@@ -112,12 +174,12 @@
               placeholder="例如：左小腿偶有紧张，无明显疼痛"
             />
           </el-form-item>
-          <el-form-item label="训练偏好">
+          <el-form-item label="训练偏好 / 训练哲学">
             <el-input
               v-model="form.training_preferences"
               type="textarea"
-              :rows="2"
-              placeholder="例如：二四日结构，周日长距离"
+              :rows="3"
+              placeholder="例如：偏丹尼尔斯体系；二四日关键课；不做激进双阈值；长距离希望保守推进"
             />
           </el-form-item>
           <el-form-item label="包含配速建议">
@@ -125,10 +187,15 @@
           </el-form-item>
 
           <div class="form-actions">
-            <el-button type="primary" :loading="generating" :disabled="!quota?.can_generate" @click="generate">
+            <el-button
+              type="primary"
+              :loading="generating"
+              :disabled="generating || !quota?.can_generate || Boolean(dateConstraintError)"
+              @click="generate"
+            >
               生成草稿
             </el-button>
-            <el-button @click="loadAll">刷新额度/草稿</el-button>
+            <el-button :disabled="generating" @click="loadAll">刷新额度/草稿</el-button>
           </div>
         </el-form>
       </article>
@@ -181,13 +248,13 @@
           <p>只显示当前账号生成的 AI 课表草稿。</p>
         </div>
       </div>
-      <el-table :data="drafts" v-loading="loadingDrafts">
+      <el-table :data="drafts" v-loading="loadingDrafts" class="history-table">
         <el-table-column prop="title" label="标题" min-width="220" />
         <el-table-column prop="status" label="状态" width="100" />
         <el-table-column label="创建时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="240" fixed="right">
+        <el-table-column label="操作" width="240">
           <template #default="{ row }">
             <div class="table-actions">
               <el-button size="small" @click="viewDraft(row.id)">查看</el-button>
@@ -202,7 +269,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 
 import {
@@ -229,18 +296,18 @@ const weekDays = ["周一", "周二", "周三", "周四", "周五", "周六", "�
 const form = reactive<AIPlanGeneratePayload>({
   runner_level: "advanced",
   recent_pb_distance: "5000m",
-  recent_pb_result: "16:24",
+  recent_pb_result: "00:17:30",
   current_weekly_mileage_km: 80,
   recent_4w_avg_mileage_km: 76,
   available_training_days_per_week: 6,
   can_double_run: false,
-  fixed_rest_days: ["周一"],
+  fixed_rest_days: ["周六"],
   injury_notes: "",
-  training_preferences: "二四日结构，周日长距离",
-  target_race_name: "目标半马",
+  training_preferences: "二四日结构，周日长距离；偏丹尼尔斯和阈值训练，但不做激进双阈值。",
+  target_race_name: "眉山东坡马拉松",
   target_race_date: "",
   target_distance: "half_marathon",
-  target_result: "1:11:30",
+  target_result: "01:11:30",
   plan_start_date: today,
   plan_weeks: 8,
   intensity_style: "standard",
@@ -251,7 +318,9 @@ const quota = ref<AIPlanQuota | null>(null);
 const drafts = ref<AIPlanDraft[]>([]);
 const currentDraft = ref<AIPlanDraft | null>(null);
 const generating = ref(false);
+const generationProgress = ref(0);
 const loadingDrafts = ref(false);
+let generationTimer: ReturnType<typeof window.setInterval> | null = null;
 
 const groupedWorkouts = computed(() => {
   const map = new Map<string, NonNullable<AIPlanDraft["workouts"]>>();
@@ -264,8 +333,94 @@ const groupedWorkouts = computed(() => {
   return Array.from(map.entries()).map(([name, items]) => ({ name, items }));
 });
 
+const planEndDate = computed(() => {
+  if (!form.plan_start_date || !form.plan_weeks) return "";
+  const start = parseLocalDate(form.plan_start_date);
+  start.setDate(start.getDate() + form.plan_weeks * 7 - 1);
+  return formatLocalDate(start);
+});
+
+const raceGapText = computed(() => {
+  if (!form.plan_start_date || !form.target_race_date) return "";
+  const start = parseLocalDate(form.plan_start_date);
+  const race = parseLocalDate(form.target_race_date);
+  const days = Math.ceil((race.getTime() - start.getTime()) / 86400000) + 1;
+  if (days <= 0) return "";
+  return `距目标赛事约 ${days} 天，建议计划周数 ${clamp(Math.ceil(days / 7), 1, 16)} 周`;
+});
+
+const dateConstraintError = computed(() => {
+  if (!form.plan_start_date || !form.target_race_date) return "";
+  const start = parseLocalDate(form.plan_start_date);
+  const race = parseLocalDate(form.target_race_date);
+  if (race < start) return "目标赛事日期不能早于计划开始日期";
+  if (planEndDate.value && parseLocalDate(planEndDate.value) > race) {
+    return "当前计划结束日已经晚于目标赛事日期，请减少计划周数或推前开始日期";
+  }
+  return "";
+});
+
+const generationStatusText = computed(() => {
+  if (generationProgress.value < 28) return "正在整理跑者信息、目标赛事和训练偏好";
+  if (generationProgress.value < 58) return "正在规划周期结构与每周训练重点";
+  if (generationProgress.value < 86) return "正在生成每日训练内容和配速建议";
+  if (generationProgress.value < 100) return "正在校验草稿并准备预览";
+  return "草稿生成完成，正在刷新预览";
+});
+
+function parseLocalDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatLocalDate(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function disableTargetRaceDate(value: Date) {
+  if (!form.plan_start_date) return false;
+  return value < parseLocalDate(form.plan_start_date);
+}
+
+function disablePlanStartDate(value: Date) {
+  if (!form.target_race_date) return false;
+  return value > parseLocalDate(form.target_race_date);
+}
+
+function syncWeeksFromRace() {
+  if (!form.plan_start_date || !form.target_race_date) return;
+  const start = parseLocalDate(form.plan_start_date);
+  const race = parseLocalDate(form.target_race_date);
+  const days = Math.ceil((race.getTime() - start.getTime()) / 86400000) + 1;
+  if (days <= 0) return;
+  form.plan_weeks = clamp(Math.ceil(days / 7), 1, 16);
+}
+
 function formatDateTime(value: string) {
   return value ? value.replace("T", " ").slice(0, 16) : "";
+}
+
+function startGenerationProgress() {
+  generationProgress.value = 8;
+  stopGenerationProgress();
+  generationTimer = window.setInterval(() => {
+    if (generationProgress.value >= 92) return;
+    const step = generationProgress.value < 50 ? 7 : generationProgress.value < 78 ? 4 : 2;
+    generationProgress.value = Math.min(generationProgress.value + step, 92);
+  }, 1100);
+}
+
+function stopGenerationProgress() {
+  if (!generationTimer) return;
+  window.clearInterval(generationTimer);
+  generationTimer = null;
 }
 
 async function loadQuota() {
@@ -286,7 +441,12 @@ async function loadAll() {
 }
 
 async function generate() {
+  if (dateConstraintError.value) {
+    ElMessage.warning(dateConstraintError.value);
+    return;
+  }
   generating.value = true;
+  startGenerationProgress();
   try {
     const result = await generateAIPlan({
       ...form,
@@ -299,10 +459,15 @@ async function generate() {
       target_result: form.target_result || null,
     });
     currentDraft.value = await getAIPlanDraftDetail(result.draft_id);
+    generationProgress.value = 100;
     ElMessage.success("AI 课表草稿已生成");
     await loadAll();
   } finally {
-    generating.value = false;
+    stopGenerationProgress();
+    window.setTimeout(() => {
+      generating.value = false;
+      generationProgress.value = 0;
+    }, 350);
   }
 }
 
@@ -325,11 +490,90 @@ async function reject(id: number) {
 }
 
 onMounted(loadAll);
+onBeforeUnmount(stopGenerationProgress);
 </script>
 
 <style scoped>
 .ai-plan-page .panel {
   padding: 22px;
+}
+
+.ai-plan-page {
+  position: relative;
+}
+
+.generation-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+.generation-panel {
+  display: grid;
+  gap: 16px;
+  width: min(460px, 100%);
+  padding: 24px;
+  border: 1px solid #d7e7f4;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+}
+
+.generation-spinner {
+  width: 42px;
+  height: 42px;
+  border: 4px solid #d7e7f4;
+  border-top-color: #1976d2;
+  border-radius: 50%;
+  animation: generation-spin 0.85s linear infinite;
+}
+
+.generation-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.generation-copy h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 20px;
+}
+
+.generation-copy p,
+.generation-meta {
+  margin: 0;
+  color: #667085;
+  font-size: 13px;
+}
+
+.generation-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.generation-mask-enter-active,
+.generation-mask-leave-active {
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.generation-mask-enter-from,
+.generation-mask-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+@keyframes generation-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .ai-hero {
@@ -358,8 +602,10 @@ onMounted(loadAll);
 }
 
 .ai-hero p {
+  max-width: 880px;
   margin: 8px 0 0;
   color: #667085;
+  line-height: 1.7;
 }
 
 .quota-box {
@@ -416,6 +662,50 @@ onMounted(loadAll);
   gap: 12px;
 }
 
+.date-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: -2px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid #d7e7f4;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f7fbff, #ffffff);
+}
+
+.date-summary.invalid {
+  border-color: #ffd1ca;
+  background: #fff7f5;
+}
+
+.date-summary-main {
+  display: grid;
+  gap: 4px;
+}
+
+.date-summary-main .label {
+  color: #667085;
+  font-size: 12px;
+}
+
+.date-summary-main strong {
+  color: #172033;
+  font-size: 20px;
+}
+
+.date-summary-meta {
+  display: grid;
+  gap: 4px;
+  color: #667085;
+  font-size: 13px;
+  text-align: right;
+}
+
+.date-summary.invalid .date-summary-meta {
+  color: #b42318;
+}
+
 .form-actions,
 .draft-actions {
   display: flex;
@@ -449,6 +739,10 @@ onMounted(loadAll);
   gap: 8px;
 }
 
+.history-table {
+  width: 100%;
+}
+
 @media (max-width: 1180px) {
   .ai-grid,
   .form-row {
@@ -457,9 +751,73 @@ onMounted(loadAll);
 }
 
 @media (max-width: 720px) {
+  .ai-plan-page {
+    gap: 12px;
+  }
+
+  .ai-plan-page .panel,
+  .ai-hero {
+    padding: 16px;
+  }
+
   .ai-hero {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .ai-hero h2 {
+    font-size: 22px;
+  }
+
+  .ai-hero p {
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .quota-box {
+    min-width: 0;
+  }
+
+  .date-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .date-summary-meta {
+    text-align: left;
+  }
+
+  .form-actions,
+  .draft-actions,
+  .table-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .form-actions .el-button,
+  .draft-actions .el-button,
+  .table-actions .el-button {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .week-block {
+    overflow-x: auto;
+  }
+
+  .week-block :deep(.el-table),
+  .history-table {
+    min-width: 620px;
+  }
+
+  .generation-panel {
+    padding: 20px;
+  }
+
+  .generation-meta {
+    flex-direction: column;
+    gap: 4px;
   }
 }
 </style>

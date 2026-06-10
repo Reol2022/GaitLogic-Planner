@@ -3,10 +3,9 @@
     <el-aside :width="sidebarCollapsed ? '72px' : '272px'" class="app-sidebar">
       <div class="brand">
         <div v-if="sidebarCollapsed" class="brand-mini">GL</div>
-        <div v-else class="brand-lockup"> 
-          <div>
-            <strong style="font-size:26px;">GaitLogic</strong>
-          </div>
+        <div v-else class="brand-lockup">
+          <strong>GaitLogic</strong>
+          <small>Planner</small>
         </div>
       </div>
 
@@ -26,9 +25,15 @@
           <el-icon><Timer /></el-icon>
           <template #title>今日训练</template>
         </el-menu-item>
+
+        <div v-if="!sidebarCollapsed" class="menu-section">AI 教练</div>
         <el-menu-item index="/ai-plan">
           <el-icon><Odometer /></el-icon>
           <template #title>AI 课表</template>
+        </el-menu-item>
+        <el-menu-item index="/ai-coach-preference">
+          <el-icon><Setting /></el-icon>
+          <template #title>AI 教练偏好</template>
         </el-menu-item>
 
         <div v-if="!sidebarCollapsed" class="menu-section">训练管理</div>
@@ -62,6 +67,14 @@
           <el-icon><Message /></el-icon>
           <template #title>反馈</template>
         </el-menu-item>
+
+        <template v-if="isAdmin">
+          <div v-if="!sidebarCollapsed" class="menu-section">管理后台</div>
+          <el-menu-item index="/admin/ai-settings">
+            <el-icon><Setting /></el-icon>
+            <template #title>AI 设置</template>
+          </el-menu-item>
+        </template>
       </el-menu>
     </el-aside>
 
@@ -150,11 +163,10 @@ const sidebarCollapsed = ref(false);
 const visitedTabs = ref<NavTab[]>([{ path: "/", title: "Dashboard" }]);
 
 const pageTitle = computed(() => String(route.meta.title || "Dashboard"));
-const displayName = computed(
-  () => currentUser.value?.nickname || currentUser.value?.username || "已登录",
-);
+const displayName = computed(() => currentUser.value?.nickname || currentUser.value?.username || "已登录");
 const userInitial = computed(() => displayName.value.slice(0, 1).toUpperCase());
 const activeTab = computed(() => route.path);
+const isAdmin = computed(() => currentUser.value?.role === "admin");
 
 function addVisitedTab() {
   if (route.meta.public) return;
@@ -223,15 +235,12 @@ onMounted(() => {
 }
 
 .brand-lockup {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  display: grid;
   color: #ffffff;
 }
 
 .brand-lockup strong {
-  display: block;
-  font-size: 19px;
+  font-size: 26px;
   font-weight: 650;
   letter-spacing: 0;
 }
@@ -241,20 +250,16 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.brand-mark,
 .brand-mini {
   display: grid;
   place-items: center;
   width: 38px;
   height: 38px;
+  margin: 0 auto;
   border-radius: 8px;
   background: #1f8fff;
   color: #ffffff;
   font-weight: 750;
-}
-
-.brand-mini {
-  margin: 0 auto;
 }
 
 .side-menu {
@@ -263,7 +268,7 @@ onMounted(() => {
 }
 
 .menu-section {
-  padding: 18px 20px 8px;
+  padding: 16px 20px 7px;
   color: #737d89;
   font-size: 12px;
   font-weight: 700;
@@ -377,7 +382,53 @@ onMounted(() => {
   }
 
   .app-header {
-    padding: 0 14px;
+    height: auto;
+    min-height: 58px;
+    padding: 10px 14px;
+  }
+
+  .header-left,
+  .header-tools {
+    gap: 10px;
+  }
+
+  .page-heading h1 {
+    font-size: 18px;
+  }
+
+  .app-tabs {
+    overflow-x: auto;
+    height: 40px;
+    padding: 6px 10px 0;
+  }
+
+  :deep(.app-tabs .el-tabs__nav-wrap) {
+    overflow: visible;
+  }
+
+  :deep(.app-tabs .el-tabs__nav-scroll) {
+    overflow-x: auto;
+  }
+
+  .app-main {
+    padding: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-left,
+  .header-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .header-tools {
+    justify-content: flex-end;
   }
 }
 </style>

@@ -719,12 +719,36 @@ body {
   }
 
   .app-main {
-    padding: 16px;
+    padding: 0;
+  }
+
+  .page-stack {
+    min-height: calc(100vh - 98px);
+    padding: 18px 14px 24px;
   }
 
   .metric-grid,
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .toolbar,
+  .filter-row,
+  .table-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toolbar .el-button,
+  .filter-row .el-button,
+  .table-footer .el-button {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .el-dialog {
+    width: calc(100vw - 28px) !important;
+    margin: 14px auto !important;
   }
 
   .auth-page {
@@ -746,5 +770,26 @@ body {
   .excel-import-card {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 520px) {
+  .page-stack {
+    padding: 14px 10px 20px;
+  }
+
+  .panel,
+  .chart-card,
+  .summary-table-card {
+    border-radius: 5px;
+  }
+
+  .panel-body,
+  .el-dialog__body {
+    padding: 14px;
+  }
+
+  .el-button + .el-button {
+    margin-left: 0;
   }
 }

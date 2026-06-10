@@ -30,19 +30,19 @@
       <div class="onboarding-copy">
         <div class="onboarding-kicker">首次使用</div>
         <h3>欢迎使用 GaitLogic Planner</h3>
-        <p>你可以通过以下方式开始：</p>
-        <ol>
-          <li>下载标准 Excel 模板</li>
-          <li>填写训练周期、训练计划和配速规则</li>
-          <li>上传 Excel 导入</li>
-          <li>查看今日训练</li>
-          <li>训练后填写日志</li>
-          <li>查看 Dashboard 统计</li>
-        </ol>
+        <p>先选择一种方式建立你的第一份训练计划。导入现有 Excel 更快，AI 教练适合从目标赛事开始生成草稿。</p>
       </div>
       <div class="onboarding-actions">
-        <el-button type="primary" @click="router.push('/excel-import')">去 Excel 导入</el-button>
-        <el-button @click="router.push('/cycles')">新建训练周期</el-button>
+        <button class="start-option excel-option" type="button" @click="router.push('/excel-import')">
+          <span class="start-option-icon">XLS</span>
+          <strong>用 Excel 导入</strong>
+          <em>下载标准模板，填写训练周期、训练计划和配速规则后上传。</em>
+        </button>
+        <button class="start-option ai-option" type="button" @click="router.push('/ai-plan')">
+          <span class="start-option-icon">AI</span>
+          <strong>用 AI 教练生成</strong>
+          <em>输入当前能力、目标赛事和训练偏好，先生成可编辑草稿。</em>
+        </button>
       </div>
     </section>
 
@@ -688,26 +688,87 @@ onBeforeUnmount(() => {
 
 .onboarding-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 22px;
+  grid-template-columns: minmax(260px, 0.78fr) minmax(360px, 1fr);
+  gap: 26px;
+  align-items: stretch;
   padding: 30px;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(25, 118, 210, 0.08), transparent 28%),
+    #ffffff;
 }
 
-.onboarding-card ol {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
-  gap: 10px 24px;
-  margin: 18px 0 0;
-  padding-left: 22px;
-  color: #344054;
+.onboarding-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .onboarding-actions {
-  display: flex;
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.start-option {
+  min-height: 168px;
+  padding: 18px;
+  border: 1px solid #dbe6f3;
+  border-radius: 10px;
+  background: #fbfdff;
+  color: #172033;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.start-option:hover {
+  transform: translateY(-2px);
+  border-color: #1976d2;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(25, 118, 210, 0.14);
+}
+
+.start-option-icon {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  flex-direction: column;
-  gap: 10px;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 18px;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.excel-option .start-option-icon {
+  background: #13a366;
+}
+
+.ai-option .start-option-icon {
+  background: #1976d2;
+}
+
+.start-option strong {
+  display: block;
+  color: #172033;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.start-option em {
+  display: block;
+  margin-top: 10px;
+  color: #667085;
+  font-size: 13px;
+  font-style: normal;
+  line-height: 1.7;
 }
 
 .empty-data-card {
@@ -866,7 +927,7 @@ onBeforeUnmount(() => {
   }
 
   .onboarding-actions {
-    align-items: stretch;
+    grid-template-columns: 1fr;
   }
 
   .chart-grid {
@@ -879,8 +940,7 @@ onBeforeUnmount(() => {
     padding: 24px 16px;
   }
 
-  .metric-strip,
-  .onboarding-card ol {
+  .metric-strip {
     grid-template-columns: 1fr;
   }
 }

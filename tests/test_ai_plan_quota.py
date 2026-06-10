@@ -43,8 +43,7 @@ def mysql_session_factory():
 
     with connection.cursor() as cursor:
         cursor.execute(
-            f"CREATE DATABASE `{database}` "
-            "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+            f"CREATE DATABASE `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
         )
     connection.close()
 
@@ -160,7 +159,24 @@ def ai_output() -> str:
                             "target_pace_text": "4:40-5:20/km",
                         }
                     ],
-                }
+                },
+                {
+                    "block_name": "Week 2",
+                    "phase_name": "基础期",
+                    "focus": "稳定跑量",
+                    "planned_distance_km": 82,
+                    "workouts": [
+                        {
+                            "date": "2026-06-08",
+                            "weekday": "周一",
+                            "planned_content": "恢复跑 8km",
+                            "focus_note": "吸收训练",
+                            "planned_distance_km": 8,
+                            "main_type": "REC",
+                            "target_pace_text": "",
+                        }
+                    ],
+                },
             ],
         },
         ensure_ascii=False,
@@ -168,7 +184,7 @@ def ai_output() -> str:
 
 
 def mock_deepseek(monkeypatch) -> None:
-    def fake_call(prompt: str) -> DeepSeekResult:
+    def fake_call(system_prompt: str, user_prompt: str, plan_weeks: int, runtime) -> DeepSeekResult:
         return DeepSeekResult(content=ai_output(), input_tokens=100, output_tokens=200, total_tokens=300)
 
     monkeypatch.setattr("server.services.ai_plan_service.call_deepseek", fake_call)

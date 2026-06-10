@@ -288,6 +288,48 @@ CREATE TABLE IF NOT EXISTS `ai_plan_quota` (
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `admin_ai_settings` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `deepseek_base_url` VARCHAR(255) NOT NULL DEFAULT 'https://api.deepseek.com',
+  `deepseek_model` VARCHAR(64) NOT NULL DEFAULT 'deepseek-v4-flash',
+  `deepseek_api_key` VARCHAR(512) NULL,
+  `deepseek_timeout_seconds` INT NOT NULL DEFAULT 120,
+  `ai_plan_daily_limit` INT NOT NULL DEFAULT 3,
+  `ai_plan_cooldown_seconds` INT NOT NULL DEFAULT 60,
+  `temperature` DECIMAL(3, 2) NOT NULL DEFAULT 0.40,
+  `top_p` DECIMAL(3, 2) NOT NULL DEFAULT 0.90,
+  `max_tokens_per_week` INT NOT NULL DEFAULT 1600,
+  `max_tokens_cap` INT NOT NULL DEFAULT 24000,
+  `updated_by_id` BIGINT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_admin_ai_settings_updated_by_id` (`updated_by_id`),
+  CONSTRAINT `fk_admin_ai_settings_updated_by_id`
+    FOREIGN KEY (`updated_by_id`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ai_coach_preference` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `preferred_training_systems` JSON NULL,
+  `intensity_conservatism` VARCHAR(32) NOT NULL DEFAULT 'standard',
+  `key_workout_habit` TEXT NULL,
+  `rest_day_strategy` TEXT NULL,
+  `disabled_workout_types` JSON NULL,
+  `double_run_policy` VARCHAR(32) NOT NULL DEFAULT 'cautious',
+  `long_run_strategy` TEXT NULL,
+  `injury_risk_policy` TEXT NULL,
+  `additional_notes` TEXT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ai_coach_preference_user` (`user_id`),
+  KEY `ix_ai_coach_preference_user_id` (`user_id`),
+  CONSTRAINT `fk_ai_coach_preference_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `ai_plan_draft` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `user_id` BIGINT NOT NULL,

@@ -125,7 +125,17 @@ class UserAccount(IdMixin, TimestampMixin, Base):
     feedback_items: Mapped[list[Feedback]] = relationship(back_populates="user")
     ai_plan_jobs: Mapped[list[AIPlanJob]] = relationship(back_populates="user")
     ai_plan_quotas: Mapped[list[AIPlanQuota]] = relationship(back_populates="user")
+    admin_ai_settings_updates: Mapped[list[AdminAISettings]] = relationship(
+        back_populates="updated_by",
+        foreign_keys="AdminAISettings.updated_by_id",
+    )
     ai_plan_drafts: Mapped[list[AIPlanDraft]] = relationship(back_populates="user")
+    ai_coach_preference: Mapped[AIPlanCoachPreference | None] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
     excel_import_jobs: Mapped[list[ExcelImportJob]] = relationship(back_populates="user")
 
 
@@ -518,6 +528,76 @@ class AIPlanQuota(IdMixin, TimestampMixin, Base):
     last_generated_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     user: Mapped[UserAccount] = relationship(back_populates="ai_plan_quotas")
+
+
+class AdminAISettings(IdMixin, TimestampMixin, Base):
+    __tablename__ = "admin_ai_settings"
+    __table_args__ = MYSQL_TABLE_ARGS
+
+    deepseek_base_url: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default="https://api.deepseek.com",
+        server_default="https://api.deepseek.com",
+    )
+    deepseek_model: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        default="deepseek-v4-flash",
+        server_default="deepseek-v4-flash",
+    )
+    deepseek_api_key: Mapped[str | None] = mapped_column(String(512))
+    deepseek_timeout_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=120, server_default="120")
+    ai_plan_daily_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=3, server_default="3")
+    ai_plan_cooldown_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=60, server_default="60")
+    temperature: Mapped[Decimal] = mapped_column(Numeric(3, 2), nullable=False, default=Decimal("0.40"), server_default="0.40")
+    top_p: Mapped[Decimal] = mapped_column(Numeric(3, 2), nullable=False, default=Decimal("0.90"), server_default="0.90")
+    max_tokens_per_week: Mapped[int] = mapped_column(Integer, nullable=False, default=1600, server_default="1600")
+    max_tokens_cap: Mapped[int] = mapped_column(Integer, nullable=False, default=24000, server_default="24000")
+    updated_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="SET NULL"),
+        index=True,
+    )
+
+    updated_by: Mapped[UserAccount | None] = relationship(
+        back_populates="admin_ai_settings_updates",
+        foreign_keys=[updated_by_id],
+    )
+
+
+class AIPlanCoachPreference(IdMixin, TimestampMixin, Base):
+    __tablename__ = "ai_coach_preference"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_ai_coach_preference_user"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    preferred_training_systems: Mapped[list | None] = mapped_column(JSON)
+    intensity_conservatism: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="standard",
+        server_default="standard",
+    )
+    key_workout_habit: Mapped[str | None] = mapped_column(Text)
+    rest_day_strategy: Mapped[str | None] = mapped_column(Text)
+    disabled_workout_types: Mapped[list | None] = mapped_column(JSON)
+    double_run_policy: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="cautious",
+        server_default="cautious",
+    )
+    long_run_strategy: Mapped[str | None] = mapped_column(Text)
+    injury_risk_policy: Mapped[str | None] = mapped_column(Text)
+    additional_notes: Mapped[str | None] = mapped_column(Text)
+
+    user: Mapped[UserAccount] = relationship(back_populates="ai_coach_preference")
 
 
 class AIPlanDraft(IdMixin, TimestampMixin, Base):

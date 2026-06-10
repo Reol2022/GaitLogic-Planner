@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from planner_core.database.models import UserAccount
-from server.common.exceptions import UnauthorizedError
+from server.common.exceptions import ForbiddenError, UnauthorizedError
 from server.services.auth_service import decode_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -34,3 +34,11 @@ def get_current_user(
     if user is None or user.status != "active":
         raise UnauthorizedError("User account is not available.")
     return user
+
+
+def require_admin_user(
+    current_user: UserAccount = Depends(get_current_user),
+) -> UserAccount:
+    if current_user.role != "admin":
+        raise ForbiddenError("Admin permission required.")
+    return current_user

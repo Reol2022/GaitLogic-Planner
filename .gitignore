@@ -1,17 +1,70 @@
+# Python
 __pycache__/
+**/__pycache__/
 *.py[cod]
+*$py.class
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.venv/
-venv/
-.env
+.coverage
+coverage.xml
+htmlcov/
 *.egg-info/
 dist/
 build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+web/.env
+web/.env.*
+!web/.env.example
+
+# Frontend dependencies and build output
+node_modules/
 web/node_modules/
 web/dist/
+web/.vite/
+web/coverage/
 web-dist/
 web-vite-cache/
 web/npm-cache/
 web/npm-appdata/
+npm-cache/
+npm-appdata/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local browser/debug artifacts
+.chrome-debug/
+.chrome-cdp/
+.chrome-cdp2/
+.edge-cdp/
+
+# Local database dumps and backups
+*.bak
+*.tmp
+*.local.sql
+sql/*.local.sql
+sql/*backup*.sql
+sql/*dump*.sql
+
+# Local agent instructions
+AGENTS.md

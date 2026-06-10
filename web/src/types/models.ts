@@ -348,3 +348,52 @@ export interface AIPlanQuota {
   cooldown_seconds: number;
   can_generate: boolean;
 }
+
+export type AICoachIntensityConservatism = "conservative" | "standard" | "aggressive" | "custom";
+export type AICoachDoubleRunPolicy = "never" | "cautious" | "allowed";
+
+export interface AICoachPreference {
+  id?: number | null;
+  preferred_training_systems: string[];
+  intensity_conservatism: AICoachIntensityConservatism | string;
+  key_workout_habit?: string | null;
+  rest_day_strategy?: string | null;
+  disabled_workout_types: string[];
+  double_run_policy: AICoachDoubleRunPolicy | string;
+  long_run_strategy?: string | null;
+  injury_risk_policy?: string | null;
+  additional_notes?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export type AICoachPreferencePayload = Omit<AICoachPreference, "id" | "created_at" | "updated_at">;
+
+export interface AdminAISettings {
+  id?: number | null;
+  deepseek_base_url: string;
+  deepseek_model: string;
+  deepseek_timeout_seconds: number;
+  ai_plan_daily_limit: number;
+  ai_plan_cooldown_seconds: number;
+  temperature: number;
+  top_p: number;
+  max_tokens_per_week: number;
+  max_tokens_cap: number;
+  has_api_key: boolean;
+  api_key_preview?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AdminAISettingsPayload {
+  deepseek_base_url: string;
+  deepseek_model: string;
+  deepseek_api_key?: string | null;
+  deepseek_timeout_seconds: number;
+  ai_plan_daily_limit: number;
+  ai_plan_cooldown_seconds: number;
+  temperature: number;
+  top_p: number;
+  max_tokens_per_week: number;
+  max_tokens_cap: number;
+}

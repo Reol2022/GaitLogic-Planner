@@ -14,10 +14,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from planner_core.database.base import Base
 from planner_core.database.models import (
     BlockReview,
+    AIPlanCoachPreference,
     AIPlanDraft,
     AIPlanDraftWorkout,
     AIPlanJob,
     AIPlanQuota,
+    AdminAISettings,
     PaceProfile,
     PaceRule,
     PaceZone,
@@ -202,6 +204,8 @@ def test_can_create_all_tables(mysql_session_factory) -> None:
         "feedback",
         "ai_plan_job",
         "ai_plan_quota",
+        "admin_ai_settings",
+        "ai_coach_preference",
         "ai_plan_draft",
         "ai_plan_draft_workout",
     }.issubset(set(inspector.get_table_names()))

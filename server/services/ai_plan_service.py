@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -10,7 +11,6 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from planner_core.config import get_settings
 from planner_core.database.models import (
     AIPlanDraft,
     AIPlanDraftWorkout,
@@ -25,9 +25,16 @@ from planner_core.enums import AIPlanDraftStatus, AIPlanJobStatus, BlockType, Wo
 from planner_core.utils.excel_parse import normalize_workout_main_type
 from server.common.exceptions import BadRequestError, NotFoundError, TooManyRequestsError
 from server.schemas.ai_plan import AIPlanGenerateRequest, AIPlanQuotaRead
-from server.services.ai_plan_prompt import build_prompt
+from server.services.admin_ai_settings_service import EffectiveAISettings, get_effective_ai_settings
+from server.services.ai_coach_preference_service import (
+    get_or_create_preference,
+    preference_to_prompt_dict,
+)
+from server.services.ai_plan_prompt import build_ai_plan_system_prompt, build_ai_plan_user_prompt
 
 MAX_INPUT_JSON_CHARS = 20000
+ALLOWED_MAIN_TYPES = {"REC", "E", "LSD", "M", "T1", "T2", "I", "R", "Rest", "Mixed"}
+HIGH_INTENSITY_TYPES = {"T1", "T2", "I", "R", "Mixed"}
 
 
 @dataclass(frozen=True)
@@ -50,7 +57,7 @@ def prompt_hash_for_input(input_json: dict[str, Any]) -> str:
 
 
 def get_or_create_today_quota(db: Session, user_id: int) -> AIPlanQuota:
-    settings = get_settings()
+    runtime = get_effective_ai_settings(db)
     today = date.today()
     quota = db.scalar(
         select(AIPlanQuota).where(AIPlanQuota.user_id == user_id, AIPlanQuota.quota_date == today)
@@ -59,7 +66,7 @@ def get_or_create_today_quota(db: Session, user_id: int) -> AIPlanQuota:
         quota = AIPlanQuota(
             user_id=user_id,
             quota_date=today,
-            daily_limit=settings.ai_plan_daily_limit,
+            daily_limit=runtime.ai_plan_daily_limit,
             used_count=0,
         )
         db.add(quota)
@@ -68,45 +75,41 @@ def get_or_create_today_quota(db: Session, user_id: int) -> AIPlanQuota:
 
 
 def check_ai_plan_quota(db: Session, user_id: int) -> AIPlanQuota:
-    settings = get_settings()
+    runtime = get_effective_ai_settings(db)
     quota = get_or_create_today_quota(db, user_id)
-    quota.daily_limit = settings.ai_plan_daily_limit
+    quota.daily_limit = runtime.ai_plan_daily_limit
     if quota.used_count >= quota.daily_limit:
         raise TooManyRequestsError("今日 AI 课表生成次数已用完。")
     if quota.last_generated_at is not None:
         elapsed = (datetime.utcnow() - quota.last_generated_at).total_seconds()
-        if elapsed < settings.ai_plan_cooldown_seconds:
+        if elapsed < runtime.ai_plan_cooldown_seconds:
             raise TooManyRequestsError("AI 课表生成过于频繁，请稍后再试。")
     return quota
 
 
 def get_quota_status(db: Session, user_id: int) -> AIPlanQuotaRead:
-    settings = get_settings()
+    runtime = get_effective_ai_settings(db)
     quota = get_or_create_today_quota(db, user_id)
-    quota.daily_limit = settings.ai_plan_daily_limit
+    quota.daily_limit = runtime.ai_plan_daily_limit
     remaining = max(quota.daily_limit - quota.used_count, 0)
     can_generate = remaining > 0
     if quota.last_generated_at is not None:
         elapsed = (datetime.utcnow() - quota.last_generated_at).total_seconds()
-        if elapsed < settings.ai_plan_cooldown_seconds:
+        if elapsed < runtime.ai_plan_cooldown_seconds:
             can_generate = False
     db.commit()
     return AIPlanQuotaRead(
-        model_name=settings.deepseek_model,
+        model_name=runtime.deepseek_model,
         daily_limit=quota.daily_limit,
         used_count=quota.used_count,
         remaining_count=remaining,
         last_generated_at=quota.last_generated_at,
-        cooldown_seconds=settings.ai_plan_cooldown_seconds,
+        cooldown_seconds=runtime.ai_plan_cooldown_seconds,
         can_generate=can_generate,
     )
 
 
-def return_cached_draft_if_same_prompt(
-    db: Session,
-    user_id: int,
-    prompt_hash: str,
-) -> AIPlanDraft | None:
+def return_cached_draft_if_same_prompt(db: Session, user_id: int, prompt_hash: str) -> AIPlanDraft | None:
     since = datetime.utcnow() - timedelta(hours=24)
     job = db.scalar(
         select(AIPlanJob)
@@ -125,13 +128,7 @@ def return_cached_draft_if_same_prompt(
     return None
 
 
-def save_job(
-    db: Session,
-    user_id: int,
-    model_name: str,
-    prompt_hash: str,
-    input_json: dict[str, Any],
-) -> AIPlanJob:
+def save_job(db: Session, user_id: int, model_name: str, prompt_hash: str, input_json: dict[str, Any]) -> AIPlanJob:
     job = AIPlanJob(
         user_id=user_id,
         status=AIPlanJobStatus.running,
@@ -145,9 +142,17 @@ def save_job(
     return job
 
 
-def call_deepseek(prompt: str) -> DeepSeekResult:
-    settings = get_settings()
-    if not settings.deepseek_api_key:
+def calculate_max_tokens(plan_weeks: int, runtime: EffectiveAISettings) -> int:
+    return min(max(4096, plan_weeks * runtime.max_tokens_per_week), runtime.max_tokens_cap)
+
+
+def call_deepseek(
+    system_prompt: str,
+    user_prompt: str,
+    plan_weeks: int,
+    runtime: EffectiveAISettings,
+) -> DeepSeekResult:
+    if not runtime.deepseek_api_key:
         raise BadRequestError("DEEPSEEK_API_KEY is not configured.")
 
     try:
@@ -156,17 +161,19 @@ def call_deepseek(prompt: str) -> DeepSeekResult:
         raise BadRequestError("OpenAI-compatible SDK is not installed.") from exc
 
     client = OpenAI(
-        api_key=settings.deepseek_api_key,
-        base_url=settings.deepseek_base_url,
-        timeout=settings.deepseek_timeout_seconds,
+        api_key=runtime.deepseek_api_key,
+        base_url=runtime.deepseek_base_url,
+        timeout=runtime.deepseek_timeout_seconds,
     )
     response = client.chat.completions.create(
-        model=settings.deepseek_model,
+        model=runtime.deepseek_model,
         messages=[
-            {"role": "system", "content": "You output strict JSON only."},
-            {"role": "user", "content": prompt},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
         ],
-        temperature=0.3,
+        temperature=runtime.temperature,
+        top_p=runtime.top_p,
+        max_tokens=calculate_max_tokens(plan_weeks, runtime),
     )
     content = response.choices[0].message.content if response.choices else ""
     usage = getattr(response, "usage", None)
@@ -189,21 +196,37 @@ def parse_json_date(value: Any, field_name: str) -> date | None:
         raise BadRequestError(f"{field_name} format must be YYYY-MM-DD.") from exc
 
 
-def validate_ai_output(output: str | dict[str, Any]) -> dict[str, Any]:
-    if isinstance(output, str):
-        try:
-            data = json.loads(output)
-        except json.JSONDecodeError as exc:
-            raise BadRequestError("AI output is not valid JSON.") from exc
-    else:
-        data = output
-
+def load_ai_json(output: str | dict[str, Any]) -> dict[str, Any]:
+    if isinstance(output, dict):
+        return output
+    stripped = output.strip()
+    if stripped.startswith("```"):
+        match = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", stripped, re.DOTALL | re.IGNORECASE)
+        if not match:
+            raise BadRequestError("AI output must be raw JSON, not Markdown.")
+        stripped = match.group(1).strip()
+    try:
+        data = json.loads(stripped)
+    except json.JSONDecodeError as exc:
+        raise BadRequestError("AI output is not valid JSON.") from exc
     if not isinstance(data, dict):
         raise BadRequestError("AI output must be a JSON object.")
+    return data
+
+
+def validate_ai_output(
+    output: str | dict[str, Any],
+    expected_plan_weeks: int | None = None,
+) -> dict[str, Any]:
+    data = load_ai_json(output)
     if "weeks" not in data:
         raise BadRequestError("AI output missing required field: weeks.")
     if not isinstance(data["weeks"], list) or not data["weeks"]:
         raise BadRequestError("AI output weeks must be a non-empty list.")
+    if expected_plan_weeks is not None and len(data["weeks"]) != expected_plan_weeks:
+        raise BadRequestError(
+            f"AI output weeks count mismatch: expected {expected_plan_weeks}, got {len(data['weeks'])}."
+        )
 
     parse_json_date(data.get("start_date"), "start_date")
     parse_json_date(data.get("end_date"), "end_date")
@@ -217,15 +240,36 @@ def validate_ai_output(output: str | dict[str, Any]) -> dict[str, Any]:
         planned_week_km = week.get("planned_distance_km", 0)
         if not isinstance(planned_week_km, (int, float)):
             raise BadRequestError("planned_distance_km must be numeric.")
+
+        previous_high_intensity = False
+        previous_date: date | None = None
         for workout_index, workout in enumerate(week["workouts"], start=1):
             if not isinstance(workout, dict):
                 raise BadRequestError(f"Workout {workout_index} must be an object.")
-            parse_json_date(workout.get("date"), "workout.date")
+            workout_date = parse_json_date(workout.get("date"), "workout.date")
             planned_km = workout.get("planned_distance_km", 0)
             if planned_km is not None and not isinstance(planned_km, (int, float)):
                 raise BadRequestError("planned_distance_km must be numeric.")
             if not workout.get("planned_content"):
                 raise BadRequestError("workout planned_content is required.")
+            if "target_pace_text" not in workout:
+                raise BadRequestError("workout target_pace_text is required.")
+
+            main_type = workout.get("main_type")
+            if main_type not in ALLOWED_MAIN_TYPES:
+                raise BadRequestError(f"Invalid main_type: {main_type}.")
+
+            is_high_intensity = main_type in HIGH_INTENSITY_TYPES
+            if (
+                is_high_intensity
+                and previous_high_intensity
+                and previous_date is not None
+                and workout_date is not None
+                and (workout_date - previous_date).days == 1
+            ):
+                raise BadRequestError("AI output has consecutive high-intensity workouts.")
+            previous_high_intensity = is_high_intensity
+            previous_date = workout_date
 
     return data
 
@@ -272,19 +316,33 @@ def save_draft(db: Session, job: AIPlanJob, output: dict[str, Any]) -> AIPlanDra
 
 
 def generate_ai_plan(db: Session, user_id: int, payload: AIPlanGenerateRequest) -> AIPlanDraft:
-    settings = get_settings()
-    input_json = canonical_input(payload)
+    runtime = get_effective_ai_settings(db)
+    preference = get_or_create_preference(db, user_id)
+    preference_json = preference_to_prompt_dict(preference)
+    input_json = {
+        **canonical_input(payload),
+        "ai_coach_preference": preference_json,
+        "ai_runtime_settings": {
+            "model": runtime.deepseek_model,
+            "base_url": runtime.deepseek_base_url,
+            "daily_limit": runtime.ai_plan_daily_limit,
+            "cooldown_seconds": runtime.ai_plan_cooldown_seconds,
+            "temperature": runtime.temperature,
+            "top_p": runtime.top_p,
+        },
+    }
     prompt_hash = prompt_hash_for_input(input_json)
     cached = return_cached_draft_if_same_prompt(db, user_id, prompt_hash)
     if cached is not None:
         return cached
 
     quota = check_ai_plan_quota(db, user_id)
-    job = save_job(db, user_id, settings.deepseek_model, prompt_hash, input_json)
-    prompt = build_prompt(payload)
+    job = save_job(db, user_id, runtime.deepseek_model, prompt_hash, input_json)
+    system_prompt = build_ai_plan_system_prompt()
+    user_prompt = build_ai_plan_user_prompt(payload, preference_json)
     try:
-        result = call_deepseek(prompt)
-        output = validate_ai_output(result.content)
+        result = call_deepseek(system_prompt, user_prompt, payload.plan_weeks, runtime)
+        output = validate_ai_output(result.content, expected_plan_weeks=payload.plan_weeks)
         job.output_json = output
         job.input_tokens = result.input_tokens
         job.output_tokens = result.output_tokens

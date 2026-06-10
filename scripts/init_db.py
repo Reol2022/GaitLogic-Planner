@@ -14,8 +14,10 @@ from planner_core.database.base import Base
 from planner_core.database.models import (  # noqa: F401
     AIPlanDraft,
     AIPlanDraftWorkout,
+    AIPlanCoachPreference,
     AIPlanJob,
     AIPlanQuota,
+    AdminAISettings,
     BlockReview,
     ExcelImportJob,
     Feedback,

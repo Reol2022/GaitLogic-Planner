@@ -5,6 +5,8 @@ from sqlalchemy.exc import IntegrityError
 
 from server.api.routes import (
     ai_plan,
+    ai_coach_preference,
+    admin,
     auth,
     dashboard,
     excel,
@@ -44,7 +46,9 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
+    app.include_router(admin.router, prefix="/api")
     app.include_router(ai_plan.router, prefix="/api")
+    app.include_router(ai_coach_preference.router, prefix="/api")
     app.include_router(excel.router, prefix="/api")
     app.include_router(feedback.router, prefix="/api")
     app.include_router(training_cycles.router, prefix="/api")

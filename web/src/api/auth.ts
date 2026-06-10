@@ -21,17 +21,17 @@ export function clearStoredToken() {
 }
 
 export function registerUser(payload: UserRegisterPayload) {
-  return request.post<UserAccount>("/api/auth/register", payload);
+  return request.post<UserAccount>("/auth/register", payload);
 }
 
 export function loginUser(payload: UserLoginPayload) {
-  return request.post<TokenResponse>("/api/auth/login", payload);
+  return request.post<TokenResponse>("/auth/login", payload);
 }
 
 export function getCurrentUser() {
-  return request.get<UserAccount>("/api/auth/me");
+  return request.get<UserAccount>("/auth/me");
 }
 
 export function logoutUser() {
-  return request.post<{ message: string }>("/api/auth/logout");
+  return request.post<{ message: string }>("/auth/logout");
 }

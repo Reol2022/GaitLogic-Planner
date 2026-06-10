@@ -35,6 +35,12 @@ const router = createRouter({
       meta: { title: "AI 课表" },
     },
     {
+      path: "/ai-coach-preference",
+      name: "AICoachPreference",
+      component: () => import("@/views/AICoachPreference.vue"),
+      meta: { title: "AI 教练偏好" },
+    },
+    {
       path: "/cycles",
       name: "TrainingCycles",
       component: () => import("@/views/TrainingCyclesView.vue"),
@@ -81,6 +87,12 @@ const router = createRouter({
       name: "Feedback",
       component: () => import("@/views/FeedbackView.vue"),
       meta: { title: "反馈" },
+    },
+    {
+      path: "/admin/ai-settings",
+      name: "AdminAISettings",
+      component: () => import("@/views/AdminAISettings.vue"),
+      meta: { title: "AI 设置" },
     },
   ],
 });
