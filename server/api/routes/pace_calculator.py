@@ -24,11 +24,24 @@ def calculate_paces(
     current_user: UserAccount = Depends(get_current_user),
 ) -> PaceCalculationResponse:
     result = pace_calculator_service.calculate_from_race(payload.race_distance, payload.race_result)
+    age_grading = pace_calculator_service.calculate_age_reference(
+        payload.age,
+        payload.sex,
+        result["race_distance"],
+        result["race_result_seconds"],
+    )
     return PaceCalculationResponse(
         race_distance=result["race_distance"],
         race_result_seconds=result["race_result_seconds"],
         vdot=result["vdot"],
         zones=[PaceZoneRead.model_validate(zone) for zone in result["zones"]],
+        age_reference=pace_calculator_service.build_age_reference(
+            payload.age,
+            payload.sex,
+            result["race_distance"],
+            result["race_result_seconds"],
+        ),
+        age_grading=age_grading.__dict__ if age_grading else None,
     )
 
 

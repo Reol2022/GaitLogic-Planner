@@ -23,7 +23,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `admin_ai_settings`;
 CREATE TABLE `admin_ai_settings`  (
   `deepseek_base_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'https://api.deepseek.com',
-  `deepseek_model` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'deepseek-v4-flash',
+  `deepseek_model` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'deepseek-v4-flash',
   `deepseek_api_key` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
   `deepseek_timeout_seconds` int(0) NOT NULL DEFAULT 120,
   `ai_plan_daily_limit` int(0) NOT NULL DEFAULT 3,

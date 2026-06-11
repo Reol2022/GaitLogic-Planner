@@ -28,15 +28,19 @@ def test_required_routes_are_registered() -> None:
     assert "POST /api/auth/logout" in routes
     assert "GET /api/admin/ai-settings" in routes
     assert "PUT /api/admin/ai-settings" in routes
+    assert "GET /api/admin/users" in routes
+    assert "PUT /api/admin/users/{user_id}" in routes
     assert "POST /api/ai-plan/generate" in routes
     assert "GET /api/ai-plan/drafts" in routes
     assert "GET /api/ai-plan/drafts/{draft_id}" in routes
+    assert "GET /api/ai-plan/drafts/{draft_id}/export" in routes
     assert "POST /api/ai-plan/drafts/{draft_id}/apply" in routes
     assert "POST /api/ai-plan/drafts/{draft_id}/reject" in routes
     assert "GET /api/ai-plan/quota" in routes
     assert "GET /api/ai-coach-preference" in routes
     assert "PUT /api/ai-coach-preference" in routes
     assert "GET /api/training-cycles" in routes
+    assert "GET /api/training-calendar" in routes
     assert "POST /api/training-cycles" in routes
     assert "GET /api/training-cycles/{cycle_id}" in routes
     assert "PUT /api/training-cycles/{cycle_id}" in routes

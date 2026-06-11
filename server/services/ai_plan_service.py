@@ -99,7 +99,7 @@ def get_quota_status(db: Session, user_id: int) -> AIPlanQuotaRead:
             can_generate = False
     db.commit()
     return AIPlanQuotaRead(
-        model_name=runtime.deepseek_model,
+        model_name=runtime.ai_model,
         daily_limit=quota.daily_limit,
         used_count=quota.used_count,
         remaining_count=remaining,
@@ -146,14 +146,14 @@ def calculate_max_tokens(plan_weeks: int, runtime: EffectiveAISettings) -> int:
     return min(max(4096, plan_weeks * runtime.max_tokens_per_week), runtime.max_tokens_cap)
 
 
-def call_deepseek(
+def call_ai_model(
     system_prompt: str,
     user_prompt: str,
     plan_weeks: int,
     runtime: EffectiveAISettings,
 ) -> DeepSeekResult:
-    if not runtime.deepseek_api_key:
-        raise BadRequestError("DEEPSEEK_API_KEY is not configured.")
+    if not runtime.ai_api_key:
+        raise BadRequestError("AI_API_KEY is not configured.")
 
     try:
         from openai import OpenAI
@@ -161,12 +161,12 @@ def call_deepseek(
         raise BadRequestError("OpenAI-compatible SDK is not installed.") from exc
 
     client = OpenAI(
-        api_key=runtime.deepseek_api_key,
-        base_url=runtime.deepseek_base_url,
-        timeout=runtime.deepseek_timeout_seconds,
+        api_key=runtime.ai_api_key,
+        base_url=runtime.ai_base_url,
+        timeout=runtime.ai_timeout_seconds,
     )
     response = client.chat.completions.create(
-        model=runtime.deepseek_model,
+        model=runtime.ai_model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -183,6 +183,9 @@ def call_deepseek(
         output_tokens=getattr(usage, "completion_tokens", None),
         total_tokens=getattr(usage, "total_tokens", None),
     )
+
+
+call_deepseek = call_ai_model
 
 
 def parse_json_date(value: Any, field_name: str) -> date | None:
@@ -323,8 +326,8 @@ def generate_ai_plan(db: Session, user_id: int, payload: AIPlanGenerateRequest) 
         **canonical_input(payload),
         "ai_coach_preference": preference_json,
         "ai_runtime_settings": {
-            "model": runtime.deepseek_model,
-            "base_url": runtime.deepseek_base_url,
+            "model": runtime.ai_model,
+            "base_url": runtime.ai_base_url,
             "daily_limit": runtime.ai_plan_daily_limit,
             "cooldown_seconds": runtime.ai_plan_cooldown_seconds,
             "temperature": runtime.temperature,
@@ -337,7 +340,7 @@ def generate_ai_plan(db: Session, user_id: int, payload: AIPlanGenerateRequest) 
         return cached
 
     quota = check_ai_plan_quota(db, user_id)
-    job = save_job(db, user_id, runtime.deepseek_model, prompt_hash, input_json)
+    job = save_job(db, user_id, runtime.ai_model, prompt_hash, input_json)
     system_prompt = build_ai_plan_system_prompt()
     user_prompt = build_ai_plan_user_prompt(payload, preference_json)
     try:

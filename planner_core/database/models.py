@@ -541,7 +541,7 @@ class AdminAISettings(IdMixin, TimestampMixin, Base):
         server_default="https://api.deepseek.com",
     )
     deepseek_model: Mapped[str] = mapped_column(
-        String(64),
+        String(128),
         nullable=False,
         default="deepseek-v4-flash",
         server_default="deepseek-v4-flash",

@@ -20,9 +20,6 @@
                 <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
-            <el-form-item label="原始状态">
-              <el-input v-model="form.status_raw" />
-            </el-form-item>
             <el-form-item label="实际 km">
               <el-input-number v-model="form.actual_distance_km" :precision="2" :min="0" style="width: 100%" />
             </el-form-item>
@@ -38,58 +35,67 @@
             <el-form-item label="RPE">
               <el-input-number v-model="form.rpe" :min="0" :max="10" style="width: 100%" />
             </el-form-item>
-            <el-form-item label="完成率">
-              <el-input-number v-model="form.completion_rate" :precision="1" :min="0" style="width: 100%" />
-            </el-form-item>
-            <el-form-item label="I 有效 km">
-              <el-input-number v-model="form.i_effective_km" :precision="2" :min="0" style="width: 100%" />
-            </el-form-item>
-            <el-form-item label="T1 有效 km">
-              <el-input-number v-model="form.t1_effective_km" :precision="2" :min="0" style="width: 100%" />
-            </el-form-item>
-            <el-form-item label="T2 有效 km">
-              <el-input-number v-model="form.t2_effective_km" :precision="2" :min="0" style="width: 100%" />
-            </el-form-item>
-            <el-form-item label="M 有效 km">
-              <el-input-number v-model="form.m_effective_km" :precision="2" :min="0" style="width: 100%" />
-            </el-form-item>
-            <el-form-item label="R 有效 km">
-              <el-input-number v-model="form.r_effective_km" :precision="2" :min="0" style="width: 100%" />
-            </el-form-item>
-            <el-form-item label="睡眠小时">
-              <el-input-number v-model="form.sleep_hours" :precision="1" :min="0" style="width: 100%" />
-            </el-form-item>
-            <el-form-item label="HRV">
-              <el-input-number v-model="form.hrv" :min="0" style="width: 100%" />
-            </el-form-item>
-            <el-form-item label="晨脉">
-              <el-input-number v-model="form.morning_heart_rate" :min="0" style="width: 100%" />
-            </el-form-item>
-            <el-form-item label="体重 kg">
-              <el-input-number v-model="form.weight_kg" :precision="1" :min="0" style="width: 100%" />
-            </el-form-item>
-            <el-form-item label="腿感">
-              <el-input v-model="form.leg_feeling" />
-            </el-form-item>
-            <el-form-item label="疼痛部位">
-              <el-input v-model="form.pain_location" />
-            </el-form-item>
-            <el-form-item label="疼痛等级">
-              <el-slider v-model="painLevel" :min="0" :max="5" show-stops />
-            </el-form-item>
             <el-form-item label="主课数据" class="full">
               <el-input v-model="form.main_session_data" type="textarea" :rows="3" />
             </el-form-item>
             <el-form-item label="一句复盘" class="full">
               <el-input v-model="form.review_note" type="textarea" :rows="2" />
             </el-form-item>
-            <el-form-item label="明日调整" class="full">
-              <el-input v-model="form.tomorrow_adjustment" type="textarea" :rows="2" />
-            </el-form-item>
-            <el-form-item label="训练警报" class="full">
-              <el-input v-model="form.alert_message" type="textarea" :rows="2" />
-            </el-form-item>
           </div>
+          <el-collapse class="advanced-collapse">
+            <el-collapse-item title="高级字段" name="advanced">
+              <div class="form-grid">
+                <el-form-item label="原始状态">
+                  <el-input v-model="form.status_raw" />
+                </el-form-item>
+                <el-form-item label="完成率">
+                  <el-input-number v-model="form.completion_rate" :precision="1" :min="0" style="width: 100%" />
+                </el-form-item>
+                <el-form-item label="I 有效 km">
+                  <el-input-number v-model="form.i_effective_km" :precision="2" :min="0" style="width: 100%" />
+                </el-form-item>
+                <el-form-item label="T1 有效 km">
+                  <el-input-number v-model="form.t1_effective_km" :precision="2" :min="0" style="width: 100%" />
+                </el-form-item>
+                <el-form-item label="T2 有效 km">
+                  <el-input-number v-model="form.t2_effective_km" :precision="2" :min="0" style="width: 100%" />
+                </el-form-item>
+                <el-form-item label="M 有效 km">
+                  <el-input-number v-model="form.m_effective_km" :precision="2" :min="0" style="width: 100%" />
+                </el-form-item>
+                <el-form-item label="R 有效 km">
+                  <el-input-number v-model="form.r_effective_km" :precision="2" :min="0" style="width: 100%" />
+                </el-form-item>
+                <el-form-item label="睡眠小时">
+                  <el-input-number v-model="form.sleep_hours" :precision="1" :min="0" style="width: 100%" />
+                </el-form-item>
+                <el-form-item label="HRV">
+                  <el-input-number v-model="form.hrv" :min="0" style="width: 100%" />
+                </el-form-item>
+                <el-form-item label="晨脉">
+                  <el-input-number v-model="form.morning_heart_rate" :min="0" style="width: 100%" />
+                </el-form-item>
+                <el-form-item label="体重 kg">
+                  <el-input-number v-model="form.weight_kg" :precision="1" :min="0" style="width: 100%" />
+                </el-form-item>
+                <el-form-item label="腿感">
+                  <el-input v-model="form.leg_feeling" />
+                </el-form-item>
+                <el-form-item label="疼痛部位">
+                  <el-input v-model="form.pain_location" />
+                </el-form-item>
+                <el-form-item label="疼痛等级">
+                  <el-slider v-model="painLevel" :min="0" :max="5" show-stops />
+                </el-form-item>
+                <el-form-item label="明日调整" class="full">
+                  <el-input v-model="form.tomorrow_adjustment" type="textarea" :rows="2" />
+                </el-form-item>
+                <el-form-item label="训练警报" class="full">
+                  <el-input v-model="form.alert_message" type="textarea" :rows="2" />
+                </el-form-item>
+              </div>
+            </el-collapse-item>
+          </el-collapse>
         </el-form>
       </div>
     </div>
@@ -140,3 +146,20 @@ async function submit() {
 
 onMounted(load);
 </script>
+
+<style scoped>
+.advanced-collapse {
+  margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    align-items: stretch;
+  }
+
+  .toolbar .el-button {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+</style>

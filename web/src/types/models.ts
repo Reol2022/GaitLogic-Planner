@@ -160,6 +160,20 @@ export interface PaceZone {
 export interface PaceCalculationPayload {
   race_distance: RaceDistance;
   race_result: string;
+  age?: number | null;
+  sex?: RunnerSex;
+}
+
+export interface AgeGradingReference {
+  age: number;
+  sex: RunnerSex;
+  source: string;
+  age_factor: number;
+  age_standard_seconds: number;
+  age_graded_seconds: number;
+  age_grade_percent: number;
+  level_label: string;
+  note: string;
 }
 
 export interface PaceCalculationResult {
@@ -167,6 +181,8 @@ export interface PaceCalculationResult {
   race_result_seconds: number;
   vdot: number;
   zones: PaceZone[];
+  age_reference?: string | null;
+  age_grading?: AgeGradingReference | null;
 }
 
 export interface PaceProfile {
@@ -183,6 +199,38 @@ export interface PaceProfile {
 
 export interface PaceProfileCreatePayload extends PaceCalculationPayload {
   name: string;
+}
+
+export type RunnerSex = "male" | "female" | "unknown";
+
+export interface TrainingCalendarDay {
+  date: string;
+  weekday: string;
+  planned_workout_id?: number | null;
+  planned_content?: string | null;
+  planned_distance_km?: number | string | null;
+  main_type?: WorkoutMainTypeNormalized | null;
+  status_normalized: WorkoutStatusNormalized;
+  actual_distance_km?: number | string | null;
+  avg_pace_seconds_per_km?: number | null;
+  avg_heart_rate?: number | null;
+  rpe?: number | null;
+  review_note?: string | null;
+  completion_rate?: number | string | null;
+}
+
+export interface TrainingCalendarSummary {
+  planned_distance_km: number | string;
+  actual_distance_km: number | string;
+  completion_rate: number | string;
+  completed_days: number;
+  missed_days: number;
+}
+
+export interface TrainingCalendarResult {
+  month: string;
+  days: TrainingCalendarDay[];
+  summary: TrainingCalendarSummary;
 }
 
 export interface DashboardSummary {
@@ -274,6 +322,15 @@ export interface FeedbackItem extends FeedbackPayload {
 
 export type AIPlanIntensityStyle = "conservative" | "standard" | "aggressive";
 export type AIPlanDraftStatus = "draft" | "accepted" | "rejected";
+export type AIPlanExportFormat =
+  | "xlsx"
+  | "csv"
+  | "markdown"
+  | "json"
+  | "ics"
+  | "garmin_csv"
+  | "coros_csv"
+  | "device_csv";
 
 export interface AIPlanGeneratePayload {
   runner_level: string;
@@ -371,9 +428,10 @@ export type AICoachPreferencePayload = Omit<AICoachPreference, "id" | "created_a
 
 export interface AdminAISettings {
   id?: number | null;
-  deepseek_base_url: string;
-  deepseek_model: string;
-  deepseek_timeout_seconds: number;
+  provider: "deepseek" | "openai" | "custom" | string;
+  base_url: string;
+  model_name: string;
+  timeout_seconds: number;
   ai_plan_daily_limit: number;
   ai_plan_cooldown_seconds: number;
   temperature: number;
@@ -386,14 +444,34 @@ export interface AdminAISettings {
 }
 
 export interface AdminAISettingsPayload {
-  deepseek_base_url: string;
-  deepseek_model: string;
-  deepseek_api_key?: string | null;
-  deepseek_timeout_seconds: number;
+  provider: "deepseek" | "openai" | "custom" | string;
+  base_url: string;
+  model_name: string;
+  api_key?: string | null;
+  timeout_seconds: number;
   ai_plan_daily_limit: number;
   ai_plan_cooldown_seconds: number;
   temperature: number;
   top_p: number;
   max_tokens_per_week: number;
   max_tokens_cap: number;
+}
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  email?: string | null;
+  nickname?: string | null;
+  role: "user" | "admin" | string;
+  status: "active" | "disabled" | string;
+  last_login_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminUserUpdatePayload {
+  email?: string | null;
+  nickname?: string | null;
+  role: "user" | "admin";
+  status: "active" | "disabled";
 }

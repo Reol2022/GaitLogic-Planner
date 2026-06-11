@@ -14,7 +14,7 @@
         <div class="panel-head">
           <div>
             <h3>比赛成绩输入</h3>
-            <p>建议使用最近 6-8 周内发挥稳定的比赛或测试成绩。</p>
+            <p>训练配速默认基于你的实际比赛成绩推算。年龄和性别仅用于表现水平参考，不直接替代当前训练能力。</p>
           </div>
         </div>
 
@@ -45,6 +45,26 @@
               />
             </el-form-item>
           </div>
+
+          <el-collapse class="advanced-collapse">
+            <el-collapse-item title="年龄 / 性别参考分析" name="age-reference">
+              <div class="form-row">
+                <el-form-item label="年龄">
+                  <el-input-number v-model="form.age" :min="5" :max="120" style="width: 100%" />
+                </el-form-item>
+                <el-form-item label="性别">
+                  <el-select v-model="form.sex" style="width: 100%">
+                    <el-option label="未知 / 暂不提供" value="unknown" />
+                    <el-option label="男性" value="male" />
+                    <el-option label="女性" value="female" />
+                  </el-select>
+                </el-form-item>
+              </div>
+              <p class="reference-note">
+                年龄参考分析会单独展示年龄等级、公开组等效成绩和参考标签；训练配速区间仍按你的实际比赛成绩生成。
+              </p>
+            </el-collapse-item>
+          </el-collapse>
 <!-- 
           <div class="quick-times">
             <button type="button" @click="setRaceResult('00:16:24')">5K 16:24</button>
@@ -63,7 +83,7 @@
         <div class="panel-head">
           <div>
             <h3>计算结果</h3>
-            <p>第一版为近似 VDOT，用于训练配速参考。</p>
+          <p>第一版为近似 VDOT，用于训练配速参考。</p>
           </div>
           <span class="algorithm-badge">approx_vdot_v1</span>
         </div>
@@ -81,6 +101,31 @@
             <span>比赛成绩</span>
             <b>{{ formatDuration(calculation.race_result_seconds) }}</b>
           </div>
+          <div class="age-reference-box">
+            <span>年龄参考分析</span>
+            <template v-if="calculation.age_grading">
+              <div class="age-reference-grid">
+                <div>
+                  <small>年龄等级</small>
+                  <strong>{{ Number(calculation.age_grading.age_grade_percent).toFixed(1) }}%</strong>
+                </div>
+                <div>
+                  <small>公开组等效成绩</small>
+                  <strong>{{ formatDuration(calculation.age_grading.age_graded_seconds) }}</strong>
+                </div>
+                <div>
+                  <small>年龄系数</small>
+                  <strong>{{ Number(calculation.age_grading.age_factor).toFixed(3) }}</strong>
+                </div>
+                <div>
+                  <small>参考标签</small>
+                  <strong>{{ calculation.age_grading.level_label }}</strong>
+                </div>
+              </div>
+              <p>{{ calculation.age_grading.note }}</p>
+            </template>
+            <p v-else>{{ calculation.age_reference || "未填写年龄/性别；训练配速按实际比赛成绩推算。" }}</p>
+          </div>
         </div>
 
         <div v-else class="empty-result">
@@ -94,7 +139,7 @@
       <div class="panel-head">
         <div>
           <h3>训练配速区间</h3>
-          <p>配速范围左侧为较快端，右侧为较慢端。</p>
+          <p>配速建议用于训练参考，不代表必须严格执行。疲劳、天气、地形和身体状态都会影响实际配速。</p>
         </div>
       </div>
       <el-table :data="calculation?.zones || []" empty-text="暂无计算结果">
@@ -180,6 +225,8 @@ import type { PaceCalculationResult, PaceProfile, RaceDistance } from "@/types/m
 interface PaceCalculatorForm {
   name: string;
   race_distance: RaceDistance;
+  age: number | null;
+  sex: "male" | "female" | "unknown";
 }
 
 const router = useRouter();
@@ -196,6 +243,8 @@ const raceDistanceOptions: Array<{ label: string; value: RaceDistance }> = [
 const form = reactive<PaceCalculatorForm>({
   name: "半马 PB 1:12:32",
   race_distance: "half_marathon",
+  age: null,
+  sex: "unknown",
 });
 
 const raceResultTime = ref("01:12:32");
@@ -237,6 +286,8 @@ async function handleCalculate() {
     calculation.value = await calculatePaces({
       race_distance: form.race_distance,
       race_result: normalizeRaceResult(),
+      age: form.age,
+      sex: form.sex,
     });
   } finally {
     calculating.value = false;
@@ -246,17 +297,19 @@ async function handleCalculate() {
 async function handleSave() {
   saving.value = true;
   try {
-    const profile = await createPaceProfile({
+    await createPaceProfile({
       name: form.name,
       race_distance: form.race_distance,
       race_result: normalizeRaceResult(),
+      age: form.age,
+      sex: form.sex,
     });
-    calculation.value = {
-      race_distance: profile.race_distance,
-      race_result_seconds: profile.race_result_seconds,
-      vdot: Number(profile.vdot),
-      zones: profile.zones || [],
-    };
+    calculation.value = await calculatePaces({
+      race_distance: form.race_distance,
+      race_result: normalizeRaceResult(),
+      age: form.age,
+      sex: form.sex,
+    });
     ElMessage.success("配速档案已保存");
     await loadProfiles();
   } finally {
@@ -380,6 +433,17 @@ onMounted(() => {
   gap: 12px;
 }
 
+.advanced-collapse {
+  margin-bottom: 12px;
+}
+
+.reference-note {
+  margin: 0 0 4px;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
 .quick-times {
   display: flex;
   flex-wrap: wrap;
@@ -464,6 +528,55 @@ onMounted(() => {
   color: #172033;
 }
 
+.age-reference-box {
+  padding: 12px 14px;
+  border: 1px solid #d7e7f4;
+  border-radius: 6px;
+  background: #f6fbff;
+}
+
+.age-reference-box span {
+  color: #1976d2;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.age-reference-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.age-reference-grid div {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.age-reference-grid small {
+  display: block;
+  color: #667085;
+  font-size: 12px;
+}
+
+.age-reference-grid strong {
+  display: block;
+  margin-top: 4px;
+  color: #172033;
+  font-size: 15px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.age-reference-box p {
+  margin: 6px 0 0;
+  color: #475467;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
 .empty-result {
   display: grid;
   flex: 1;
@@ -527,6 +640,10 @@ onMounted(() => {
 
   .form-actions .el-button {
     flex: 1;
+  }
+
+  .age-reference-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

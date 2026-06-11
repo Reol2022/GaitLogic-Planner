@@ -16,48 +16,34 @@
         router
         class="side-menu"
       >
-        <div v-if="!sidebarCollapsed" class="menu-section">总览</div>
-        <el-menu-item index="/">
-          <el-icon><DataAnalysis /></el-icon>
-          <template #title>Dashboard</template>
-        </el-menu-item>
+        <div v-if="!sidebarCollapsed" class="menu-section">常用</div>
         <el-menu-item index="/today">
           <el-icon><Timer /></el-icon>
           <template #title>今日训练</template>
         </el-menu-item>
+        <el-menu-item index="/training-calendar">
+          <el-icon><Calendar /></el-icon>
+          <template #title>训练日历</template>
+        </el-menu-item>
 
-        <div v-if="!sidebarCollapsed" class="menu-section">AI 教练</div>
+        <div v-if="!sidebarCollapsed" class="menu-section">计划</div>
         <el-menu-item index="/ai-plan">
           <el-icon><Odometer /></el-icon>
-          <template #title>AI 课表</template>
-        </el-menu-item>
-        <el-menu-item index="/ai-coach-preference">
-          <el-icon><Setting /></el-icon>
-          <template #title>AI 教练偏好</template>
-        </el-menu-item>
-
-        <div v-if="!sidebarCollapsed" class="menu-section">训练管理</div>
-        <el-menu-item index="/cycles">
-          <el-icon><Calendar /></el-icon>
-          <template #title>训练周期</template>
-        </el-menu-item>
-        <el-menu-item index="/blocks">
-          <el-icon><Grid /></el-icon>
-          <template #title>训练块</template>
+          <template #title>AI 制定计划</template>
         </el-menu-item>
         <el-menu-item index="/workouts">
           <el-icon><List /></el-icon>
-          <template #title>训练计划</template>
+          <template #title>我的训练计划</template>
         </el-menu-item>
-
-        <div v-if="!sidebarCollapsed" class="menu-section">工具</div>
         <el-menu-item index="/pace-calculator">
           <el-icon><Stopwatch /></el-icon>
           <template #title>配速计算器</template>
         </el-menu-item>
-        <el-menu-item index="/pace-rules">
-          <el-icon><TrendCharts /></el-icon>
-          <template #title>配速规则</template>
+
+        <div v-if="!sidebarCollapsed" class="menu-section">更多</div>
+        <el-menu-item index="/dashboard">
+          <el-icon><DataAnalysis /></el-icon>
+          <template #title>训练统计</template>
         </el-menu-item>
         <el-menu-item index="/excel-import">
           <el-icon><DocumentAdd /></el-icon>
@@ -67,6 +53,29 @@
           <el-icon><Message /></el-icon>
           <template #title>反馈</template>
         </el-menu-item>
+
+        <el-sub-menu index="advanced-settings">
+          <template #title>
+            <el-icon><Setting /></el-icon>
+            <span>高级设置</span>
+          </template>
+          <el-menu-item index="/ai-coach-preference">
+            <el-icon><Setting /></el-icon>
+            <template #title>AI 教练偏好</template>
+          </el-menu-item>
+          <el-menu-item index="/cycles">
+            <el-icon><Calendar /></el-icon>
+            <template #title>训练周期</template>
+          </el-menu-item>
+          <el-menu-item index="/blocks">
+            <el-icon><Grid /></el-icon>
+            <template #title>训练块</template>
+          </el-menu-item>
+          <el-menu-item index="/pace-rules">
+            <el-icon><TrendCharts /></el-icon>
+            <template #title>配速规则</template>
+          </el-menu-item>
+        </el-sub-menu>
 
         <template v-if="isAdmin">
           <div v-if="!sidebarCollapsed" class="menu-section">管理后台</div>
@@ -96,13 +105,22 @@
           <span class="sync-text">本地训练台</span>
           <el-button class="tool-icon" text :icon="Upload" />
           <el-button class="tool-icon" text :icon="Bell" />
-          <el-button class="tool-icon" text :icon="Setting" />
+          <el-dropdown trigger="click" @command="handleHeaderSettingCommand">
+            <el-button class="tool-icon settings-trigger" text :icon="Setting" />
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="toggle-tabs">
+                  {{ tabsVisible ? "关闭导航栏" : "开启导航栏" }}
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <div class="user-avatar">{{ userInitial }}</div>
           <el-button size="small" plain :icon="SwitchButton" @click="handleLogout">退出</el-button>
         </div>
       </el-header>
 
-      <div class="app-tabs">
+      <div v-if="tabsVisible" class="app-tabs">
         <el-tabs
           :model-value="activeTab"
           type="card"
@@ -112,22 +130,53 @@
           <el-tab-pane
             v-for="tab in visitedTabs"
             :key="tab.path"
-            :label="tab.title"
             :name="tab.path"
-            :closable="tab.path !== '/'"
-          />
+            :closable="tab.path !== '/today'"
+          >
+            <template #label>
+              <span class="tab-label" @contextmenu.prevent.stop="openTabContextMenu($event, tab)">
+                {{ tab.title }}
+              </span>
+            </template>
+          </el-tab-pane>
         </el-tabs>
       </div>
 
       <el-main class="app-main">
+        <div v-if="showMobileBackToMy" class="mobile-content-back">
+          <button type="button" aria-label="返回我的" @click="goBackToMy">
+            <el-icon><ArrowLeft /></el-icon>
+          </button>
+          <span>返回我的</span>
+        </div>
         <router-view />
       </el-main>
     </el-container>
+
+    <nav class="mobile-bottom-nav" aria-label="移动端导航">
+      <router-link v-for="item in mobileNavItems" :key="item.path" :to="item.path" class="mobile-nav-item">
+        <el-icon><component :is="item.icon" /></el-icon>
+        <span>{{ item.label }}</span>
+      </router-link>
+    </nav>
+
+    <div
+      v-if="tabContextMenu.visible"
+      class="tab-context-menu"
+      :style="{ left: `${tabContextMenu.x}px`, top: `${tabContextMenu.y}px` }"
+      @click.stop
+    >
+      <button type="button" :disabled="tabContextMenu.tab?.path === '/today'" @click="closeCurrentTab">
+        关闭当前
+      </button>
+      <button type="button" @click="closeOtherTabs">关闭其他</button>
+      <button type="button" @click="closeAllTabs">全部关闭</button>
+    </div>
   </el-container>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { TabsPaneContext } from "element-plus";
 import {
@@ -135,6 +184,7 @@ import {
   Calendar,
   DataAnalysis,
   DocumentAdd,
+  ArrowLeft,
   Expand,
   Fold,
   Grid,
@@ -147,6 +197,7 @@ import {
   Timer,
   TrendCharts,
   Upload,
+  User,
 } from "@element-plus/icons-vue";
 import { clearStoredToken, getCurrentUser, logoutUser } from "@/api/auth";
 import type { UserAccount } from "@/types/models";
@@ -160,13 +211,33 @@ const route = useRoute();
 const router = useRouter();
 const currentUser = ref<UserAccount | null>(null);
 const sidebarCollapsed = ref(false);
-const visitedTabs = ref<NavTab[]>([{ path: "/", title: "Dashboard" }]);
+const tabsVisible = ref(true);
+const visitedTabs = ref<NavTab[]>([{ path: "/today", title: "今日训练" }]);
+const tabContextMenu = ref<{
+  visible: boolean;
+  x: number;
+  y: number;
+  tab: NavTab | null;
+}>({
+  visible: false,
+  x: 0,
+  y: 0,
+  tab: null,
+});
+const mobileNavItems = [
+  { path: "/today", label: "今日", icon: Timer },
+  { path: "/training-calendar", label: "日历", icon: Calendar },
+  { path: "/ai-plan", label: "AI计划", icon: Odometer },
+  { path: "/pace-calculator", label: "配速", icon: Stopwatch },
+  { path: "/my", label: "我的", icon: User },
+];
 
-const pageTitle = computed(() => String(route.meta.title || "Dashboard"));
+const pageTitle = computed(() => String(route.meta.title || "GaitLogic"));
 const displayName = computed(() => currentUser.value?.nickname || currentUser.value?.username || "已登录");
 const userInitial = computed(() => displayName.value.slice(0, 1).toUpperCase());
 const activeTab = computed(() => route.path);
 const isAdmin = computed(() => currentUser.value?.role === "admin");
+const showMobileBackToMy = computed(() => route.query.from === "/my" && route.path !== "/my");
 
 function addVisitedTab() {
   if (route.meta.public) return;
@@ -182,7 +253,7 @@ function handleTabClick(tab: TabsPaneContext) {
 
 function handleTabRemove(name: string | number) {
   const path = String(name);
-  if (path === "/") return;
+  if (path === "/today") return;
   const index = visitedTabs.value.findIndex((tab) => tab.path === path);
   if (index < 0) return;
   visitedTabs.value.splice(index, 1);
@@ -190,6 +261,57 @@ function handleTabRemove(name: string | number) {
     const nextTab = visitedTabs.value[index - 1] || visitedTabs.value[0];
     router.push(nextTab.path);
   }
+}
+
+function homeTab() {
+  return visitedTabs.value.find((tab) => tab.path === "/today") || { path: "/today", title: "今日训练" };
+}
+
+function openTabContextMenu(event: MouseEvent, tab: NavTab) {
+  tabContextMenu.value = {
+    visible: true,
+    x: event.clientX,
+    y: event.clientY,
+    tab,
+  };
+}
+
+function closeTabContextMenu() {
+  tabContextMenu.value.visible = false;
+}
+
+function closeCurrentTab() {
+  const tab = tabContextMenu.value.tab;
+  if (!tab || tab.path === "/today") return;
+  handleTabRemove(tab.path);
+  closeTabContextMenu();
+}
+
+function closeOtherTabs() {
+  const tab = tabContextMenu.value.tab;
+  if (!tab) return;
+  const home = homeTab();
+  visitedTabs.value = tab.path === "/today" ? [home] : [home, tab];
+  if (route.path !== tab.path) router.push(tab.path);
+  closeTabContextMenu();
+}
+
+function closeAllTabs() {
+  const home = homeTab();
+  visitedTabs.value = [home];
+  if (route.path !== "/today") router.push("/today");
+  closeTabContextMenu();
+}
+
+function handleHeaderSettingCommand(command: string | number) {
+  if (command === "toggle-tabs") {
+    tabsVisible.value = !tabsVisible.value;
+    closeTabContextMenu();
+  }
+}
+
+function goBackToMy() {
+  router.push("/my");
 }
 
 async function loadCurrentUser() {
@@ -210,6 +332,13 @@ watch(() => route.fullPath, addVisitedTab, { immediate: true });
 
 onMounted(() => {
   loadCurrentUser();
+  window.addEventListener("click", closeTabContextMenu);
+  window.addEventListener("scroll", closeTabContextMenu, true);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("click", closeTabContextMenu);
+  window.removeEventListener("scroll", closeTabContextMenu, true);
 });
 </script>
 
@@ -287,11 +416,31 @@ onMounted(() => {
   border-radius: 6px;
 }
 
+:deep(.el-sub-menu .el-sub-menu__title) {
+  height: 44px;
+  margin: 2px 10px;
+  border-radius: 6px;
+  color: #d8dde3;
+}
+
+:deep(.el-sub-menu .el-sub-menu__title:hover) {
+  background: #23282f;
+}
+
+:deep(.el-sub-menu .el-menu-item) {
+  height: 40px;
+  margin-left: 22px;
+}
+
 :deep(.el-menu-item.is-active) {
   background: #0b74de;
 }
 
 :deep(.el-menu-item .el-icon) {
+  color: #20a4ff;
+}
+
+:deep(.el-sub-menu .el-icon) {
   color: #20a4ff;
 }
 
@@ -369,15 +518,67 @@ onMounted(() => {
   border-radius: 6px 6px 0 0;
 }
 
+.tab-label {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+}
+
 .app-main {
   padding: 22px;
   background: #f4f6f8;
 }
 
-@media (max-width: 860px) {
+.mobile-bottom-nav {
+  display: none;
+}
+
+.mobile-content-back {
+  display: none;
+}
+
+.tab-context-menu {
+  position: fixed;
+  z-index: 3000;
+  display: grid;
+  min-width: 128px;
+  padding: 6px;
+  border: 1px solid #d8dde3;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+}
+
+.tab-context-menu button {
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  color: #172033;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tab-context-menu button:hover {
+  background: #f2f6fb;
+  color: #1976d2;
+}
+
+.tab-context-menu button:disabled {
+  color: #a0a8b1;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .app-sidebar {
+    display: none;
+  }
+
   .page-heading p,
   .sync-text,
-  .tool-icon {
+  .tool-icon:not(.settings-trigger) {
     display: none;
   }
 
@@ -411,7 +612,71 @@ onMounted(() => {
   }
 
   .app-main {
-    padding: 0;
+    padding: 0 0 70px;
+  }
+
+  .app-tabs {
+    display: none;
+  }
+
+  .collapse-button {
+    display: none;
+  }
+
+  .mobile-bottom-nav {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2200;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: 62px;
+    border-top: 1px solid #d8dde3;
+    background: #ffffff;
+    box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.1);
+  }
+
+  .mobile-nav-item {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 3px;
+    min-width: 0;
+    color: #667085;
+    font-size: 12px;
+    text-decoration: none;
+  }
+
+  .mobile-nav-item .el-icon {
+    font-size: 20px;
+  }
+
+  .mobile-nav-item.router-link-active {
+    color: #1976d2;
+    font-weight: 700;
+  }
+
+  .mobile-content-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px 0;
+    color: #172033;
+    font-size: 14px;
+    font-weight: 650;
+  }
+
+  .mobile-content-back button {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #d8dde3;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #172033;
+    cursor: pointer;
   }
 }
 

@@ -1,5 +1,11 @@
 import request from "./request";
-import type { AIPlanDraft, AIPlanGeneratePayload, AIPlanGenerateResult, AIPlanQuota } from "@/types/models";
+import type {
+  AIPlanDraft,
+  AIPlanExportFormat,
+  AIPlanGeneratePayload,
+  AIPlanGenerateResult,
+  AIPlanQuota,
+} from "@/types/models";
 
 export function generateAIPlan(payload: AIPlanGeneratePayload) {
   return request.post<AIPlanGenerateResult>("/ai-plan/generate", payload);
@@ -19,6 +25,13 @@ export function applyAIPlanDraft(id: number) {
 
 export function rejectAIPlanDraft(id: number) {
   return request.post<{ message: string }>(`/ai-plan/drafts/${id}/reject`);
+}
+
+export function exportAIPlanDraft(id: number, format: AIPlanExportFormat) {
+  return request.get<Blob>(`/ai-plan/drafts/${id}/export`, {
+    params: { format },
+    responseType: "blob",
+  });
 }
 
 export function getAIPlanQuota() {

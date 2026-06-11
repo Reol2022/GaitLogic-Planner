@@ -1,6 +1,6 @@
 <template>
   <div class="page-stack">
-    <div class="excel-section-title">训练计划</div>
+    <div class="excel-section-title">我的训练计划</div>
     <div class="excel-subtitle">每日训练计划主来源：日期、星期、阶段、训练内容、重点说明、计划 km 和主类型。</div>
 
     <div class="toolbar">
@@ -34,7 +34,7 @@
     </div>
 
     <div class="panel">
-      <el-table :data="pagedWorkouts" v-loading="loading">
+      <el-table class="desktop-workout-table" :data="pagedWorkouts" v-loading="loading">
         <el-table-column prop="workout_date" label="日期" width="120" />
         <el-table-column prop="weekday" label="星期" width="90" />
         <el-table-column prop="phase_name" label="阶段" min-width="120" />
@@ -62,6 +62,29 @@
           </template>
         </el-table-column>
       </el-table>
+      <div class="mobile-workout-list" v-loading="loading">
+        <article v-for="row in pagedWorkouts" :key="row.id" class="workout-card">
+          <div class="workout-card-head">
+            <div>
+              <strong>{{ row.workout_date || row.date_text || "未设置日期" }}</strong>
+              <span>{{ row.weekday || labelFor(mainTypeOptions, row.main_type_normalized) }}</span>
+            </div>
+            <el-tag :class="statusClass(row.workout_log?.status_normalized)" effect="plain">
+              {{ labelFor(statusOptions, row.workout_log?.status_normalized) }}
+            </el-tag>
+          </div>
+          <p>{{ row.planned_content }}</p>
+          <div class="workout-card-meta">
+            <span>{{ row.planned_distance_km || 0 }} km · {{ labelFor(mainTypeOptions, row.main_type_normalized) }}</span>
+          </div>
+          <div class="workout-card-actions">
+            <el-button size="small" :icon="Edit" @click="openDialog(row)">编辑</el-button>
+            <el-button size="small" type="primary" :icon="Document" @click="goLog(row.id)">日志</el-button>
+            <el-button size="small" type="danger" :icon="Delete" @click="remove(row)">删除</el-button>
+          </div>
+        </article>
+        <el-empty v-if="!loading && pagedWorkouts.length === 0" description="暂无训练计划" />
+      </div>
       <div class="table-footer">
         <el-pagination
           v-model:current-page="currentPage"
@@ -90,23 +113,8 @@
           <el-form-item label="日期">
             <el-date-picker v-model="form.workout_date" value-format="YYYY-MM-DD" type="date" />
           </el-form-item>
-          <el-form-item label="星期">
-            <el-input v-model="form.weekday" />
-          </el-form-item>
-          <el-form-item label="月份">
-            <el-input v-model="form.month_text" />
-          </el-form-item>
-          <el-form-item label="阶段">
-            <el-input v-model="form.phase_name" />
-          </el-form-item>
           <el-form-item label="计划 km">
             <el-input-number v-model="form.planned_distance_km" :precision="1" :min="0" style="width: 100%" />
-          </el-form-item>
-          <el-form-item label="排序">
-            <el-input-number v-model="form.sort_order" :min="1" style="width: 100%" />
-          </el-form-item>
-          <el-form-item label="主类型原文">
-            <el-input v-model="form.main_type_raw" />
           </el-form-item>
           <el-form-item label="主类型">
             <el-select v-model="form.main_type_normalized" style="width: 100%">
@@ -116,10 +124,34 @@
           <el-form-item label="计划内容" class="full">
             <el-input v-model="form.planned_content" type="textarea" :rows="3" />
           </el-form-item>
-          <el-form-item label="重点说明" class="full">
-            <el-input v-model="form.focus_note" type="textarea" :rows="2" />
-          </el-form-item>
         </div>
+        <el-collapse class="advanced-collapse">
+          <el-collapse-item title="高级字段" name="advanced">
+            <div class="form-grid">
+              <el-form-item label="星期">
+                <el-input v-model="form.weekday" />
+              </el-form-item>
+              <el-form-item label="月份">
+                <el-input v-model="form.month_text" />
+              </el-form-item>
+              <el-form-item label="阶段">
+                <el-input v-model="form.phase_name" />
+              </el-form-item>
+              <el-form-item label="排序">
+                <el-input-number v-model="form.sort_order" :min="1" style="width: 100%" />
+              </el-form-item>
+              <el-form-item label="主类型原文">
+                <el-input v-model="form.main_type_raw" />
+              </el-form-item>
+              <el-form-item label="来源 Sheet">
+                <el-input v-model="form.source_sheet" />
+              </el-form-item>
+              <el-form-item label="重点说明" class="full">
+                <el-input v-model="form.focus_note" type="textarea" :rows="2" />
+              </el-form-item>
+            </div>
+          </el-collapse-item>
+        </el-collapse>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -269,3 +301,64 @@ onMounted(async () => {
   await load();
 });
 </script>
+
+<style scoped>
+.mobile-workout-list {
+  display: none;
+}
+
+.advanced-collapse {
+  margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+  .desktop-workout-table {
+    display: none;
+  }
+
+  .mobile-workout-list {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .workout-card {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid #d8dde3;
+    border-radius: 6px;
+    background: #ffffff;
+  }
+
+  .workout-card-head,
+  .workout-card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .workout-card-head div {
+    display: grid;
+    gap: 3px;
+  }
+
+  .workout-card-head span,
+  .workout-card-meta {
+    color: #667085;
+    font-size: 12px;
+  }
+
+  .workout-card p {
+    margin: 0;
+    color: #172033;
+    line-height: 1.6;
+  }
+
+  .workout-card-actions .el-button {
+    flex: 1;
+    margin-left: 0;
+  }
+}
+</style>

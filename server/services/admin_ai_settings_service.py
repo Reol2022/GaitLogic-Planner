@@ -15,10 +15,10 @@ SETTINGS_ROW_ID = 1
 
 @dataclass(frozen=True)
 class EffectiveAISettings:
-    deepseek_api_key: str | None
-    deepseek_base_url: str
-    deepseek_model: str
-    deepseek_timeout_seconds: int
+    ai_api_key: str | None
+    ai_base_url: str
+    ai_model: str
+    ai_timeout_seconds: int
     ai_plan_daily_limit: int
     ai_plan_cooldown_seconds: int
     temperature: float
@@ -37,7 +37,7 @@ def get_or_create_admin_ai_settings(db: Session) -> AdminAISettings:
         id=SETTINGS_ROW_ID,
         deepseek_base_url=settings.deepseek_base_url,
         deepseek_model=settings.deepseek_model,
-        deepseek_api_key=settings.deepseek_api_key,
+        deepseek_api_key=settings.ai_api_key,
         deepseek_timeout_seconds=settings.deepseek_timeout_seconds,
         ai_plan_daily_limit=settings.ai_plan_daily_limit,
         ai_plan_cooldown_seconds=settings.ai_plan_cooldown_seconds,
@@ -63,9 +63,10 @@ def mask_api_key(value: str | None) -> str | None:
 def to_read_schema(row: AdminAISettings) -> AdminAISettingsRead:
     return AdminAISettingsRead(
         id=row.id,
-        deepseek_base_url=row.deepseek_base_url,
-        deepseek_model=row.deepseek_model,
-        deepseek_timeout_seconds=row.deepseek_timeout_seconds,
+        provider=provider_for_base_url(row.deepseek_base_url),
+        base_url=row.deepseek_base_url,
+        model_name=row.deepseek_model,
+        timeout_seconds=row.deepseek_timeout_seconds,
         ai_plan_daily_limit=row.ai_plan_daily_limit,
         ai_plan_cooldown_seconds=row.ai_plan_cooldown_seconds,
         temperature=float(row.temperature),
@@ -78,6 +79,14 @@ def to_read_schema(row: AdminAISettings) -> AdminAISettingsRead:
     )
 
 
+def provider_for_base_url(base_url: str) -> str:
+    if "deepseek.com" in base_url:
+        return "deepseek"
+    if "openai.com" in base_url:
+        return "openai"
+    return "custom"
+
+
 def get_admin_ai_settings(db: Session) -> AdminAISettingsRead:
     return to_read_schema(get_or_create_admin_ai_settings(db))
 
@@ -88,11 +97,11 @@ def update_admin_ai_settings(
     admin_user_id: int,
 ) -> AdminAISettingsRead:
     row = get_or_create_admin_ai_settings(db)
-    row.deepseek_base_url = payload.deepseek_base_url
-    row.deepseek_model = payload.deepseek_model
-    if payload.deepseek_api_key is not None:
-        row.deepseek_api_key = payload.deepseek_api_key.strip() or None
-    row.deepseek_timeout_seconds = payload.deepseek_timeout_seconds
+    row.deepseek_base_url = payload.base_url
+    row.deepseek_model = payload.model_name
+    if payload.api_key is not None:
+        row.deepseek_api_key = payload.api_key.strip() or None
+    row.deepseek_timeout_seconds = payload.timeout_seconds
     row.ai_plan_daily_limit = payload.ai_plan_daily_limit
     row.ai_plan_cooldown_seconds = payload.ai_plan_cooldown_seconds
     row.temperature = Decimal(str(payload.temperature))
@@ -109,10 +118,10 @@ def get_effective_ai_settings(db: Session | None = None) -> EffectiveAISettings:
     env_settings = get_settings()
     if db is None:
         return EffectiveAISettings(
-            deepseek_api_key=env_settings.deepseek_api_key,
-            deepseek_base_url=env_settings.deepseek_base_url,
-            deepseek_model=env_settings.deepseek_model,
-            deepseek_timeout_seconds=env_settings.deepseek_timeout_seconds,
+            ai_api_key=env_settings.ai_api_key,
+            ai_base_url=env_settings.deepseek_base_url,
+            ai_model=env_settings.deepseek_model,
+            ai_timeout_seconds=env_settings.deepseek_timeout_seconds,
             ai_plan_daily_limit=env_settings.ai_plan_daily_limit,
             ai_plan_cooldown_seconds=env_settings.ai_plan_cooldown_seconds,
             temperature=0.4,
@@ -123,10 +132,10 @@ def get_effective_ai_settings(db: Session | None = None) -> EffectiveAISettings:
 
     row = get_or_create_admin_ai_settings(db)
     return EffectiveAISettings(
-        deepseek_api_key=row.deepseek_api_key or env_settings.deepseek_api_key,
-        deepseek_base_url=row.deepseek_base_url or env_settings.deepseek_base_url,
-        deepseek_model=row.deepseek_model or env_settings.deepseek_model,
-        deepseek_timeout_seconds=row.deepseek_timeout_seconds or env_settings.deepseek_timeout_seconds,
+        ai_api_key=row.deepseek_api_key or env_settings.ai_api_key,
+        ai_base_url=row.deepseek_base_url or env_settings.deepseek_base_url,
+        ai_model=row.deepseek_model or env_settings.deepseek_model,
+        ai_timeout_seconds=row.deepseek_timeout_seconds or env_settings.deepseek_timeout_seconds,
         ai_plan_daily_limit=row.ai_plan_daily_limit,
         ai_plan_cooldown_seconds=row.ai_plan_cooldown_seconds,
         temperature=float(row.temperature),

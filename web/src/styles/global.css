@@ -35,6 +35,7 @@
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: hidden;
   color: var(--text);
   background: #eeeeee;
 }
@@ -713,7 +714,7 @@ body {
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .app-sidebar {
     display: none;
   }
@@ -737,6 +738,13 @@ body {
   .table-footer {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .filter-row > *,
+  .toolbar .el-date-editor,
+  .toolbar .el-select {
+    width: 100% !important;
+    max-width: 100%;
   }
 
   .toolbar .el-button,

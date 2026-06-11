@@ -5,9 +5,10 @@ from pydantic import BaseModel, Field
 
 class AdminAISettingsRead(BaseModel):
     id: int | None = None
-    deepseek_base_url: str
-    deepseek_model: str
-    deepseek_timeout_seconds: int
+    provider: str
+    base_url: str
+    model_name: str
+    timeout_seconds: int
     ai_plan_daily_limit: int
     ai_plan_cooldown_seconds: int
     temperature: float
@@ -20,10 +21,11 @@ class AdminAISettingsRead(BaseModel):
 
 
 class AdminAISettingsUpdate(BaseModel):
-    deepseek_base_url: str = Field(min_length=1, max_length=255)
-    deepseek_model: str = Field(min_length=1, max_length=64)
-    deepseek_api_key: str | None = Field(default=None, max_length=512)
-    deepseek_timeout_seconds: int = Field(ge=10, le=600)
+    provider: str = Field(default="custom", min_length=1, max_length=32)
+    base_url: str = Field(min_length=1, max_length=255)
+    model_name: str = Field(min_length=1, max_length=128)
+    api_key: str | None = Field(default=None, max_length=512)
+    timeout_seconds: int = Field(ge=10, le=600)
     ai_plan_daily_limit: int = Field(ge=0, le=1000)
     ai_plan_cooldown_seconds: int = Field(ge=0, le=86400)
     temperature: float = Field(ge=0, le=2)

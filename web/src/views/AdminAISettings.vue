@@ -3,8 +3,8 @@
     <section class="admin-hero">
       <div>
         <span>Admin Console</span>
-        <h2>AI 设置</h2>
-        <p>这里配置全站 AI 课表生成的模型、额度、冷却时间和调用参数。配置保存后立即生效。</p>
+        <h2>AI 模型设置</h2>
+        <p>这里配置全站 AI 课表生成使用的 OpenAI-compatible 模型。DeepSeek 可直接选择，也可以填写任意兼容服务。</p>
       </div>
       <el-tag :type="form.has_api_key ? 'success' : 'warning'" effect="light">
         {{ form.has_api_key ? `API Key 已配置：${form.api_key_preview}` : "API Key 未配置" }}
@@ -15,16 +15,27 @@
       <article class="panel">
         <div class="panel-head">
           <h3>模型接入</h3>
-          <p>支持 DeepSeek OpenAI-compatible API，后续也可以切换兼容服务。</p>
+          <p>选择预设会自动填入常用 Base URL 和模型名，仍然可以手动修改。</p>
         </div>
         <el-form label-position="top">
+          <el-form-item label="模型提供商">
+            <el-select v-model="form.provider" style="width: 100%" @change="applyProviderPreset">
+              <el-option label="DeepSeek" value="deepseek" />
+              <el-option label="OpenAI-compatible" value="openai" />
+              <el-option label="自定义" value="custom" />
+            </el-select>
+          </el-form-item>
           <el-form-item label="Base URL">
-            <el-input v-model="form.deepseek_base_url" placeholder="https://api.deepseek.com" />
+            <el-input v-model="form.base_url" placeholder="https://api.deepseek.com" />
           </el-form-item>
           <el-form-item label="模型名称">
-            <el-select v-model="form.deepseek_model" allow-create filterable style="width: 100%">
+            <el-select v-model="form.model_name" allow-create filterable style="width: 100%">
               <el-option label="deepseek-v4-flash" value="deepseek-v4-flash" />
               <el-option label="deepseek-v4-pro" value="deepseek-v4-pro" />
+              <el-option label="deepseek-chat" value="deepseek-chat" />
+              <el-option label="deepseek-reasoner" value="deepseek-reasoner" />
+              <el-option label="gpt-4.1-mini" value="gpt-4.1-mini" />
+              <el-option label="gpt-4.1" value="gpt-4.1" />
             </el-select>
           </el-form-item>
           <el-form-item label="API Key">
@@ -36,7 +47,7 @@
             />
           </el-form-item>
           <el-form-item label="超时时间（秒）">
-            <el-input-number v-model="form.deepseek_timeout_seconds" :min="10" :max="600" style="width: 100%" />
+            <el-input-number v-model="form.timeout_seconds" :min="10" :max="600" style="width: 100%" />
           </el-form-item>
         </el-form>
       </article>
@@ -117,9 +128,10 @@ const apiKeyInput = ref("");
 const saving = ref(false);
 
 const form = reactive<AdminAISettings>({
-  deepseek_base_url: "https://api.deepseek.com",
-  deepseek_model: "deepseek-v4-flash",
-  deepseek_timeout_seconds: 120,
+  provider: "deepseek",
+  base_url: "https://api.deepseek.com",
+  model_name: "deepseek-v4-flash",
+  timeout_seconds: 120,
   ai_plan_daily_limit: 3,
   ai_plan_cooldown_seconds: 60,
   temperature: 0.4,
@@ -131,6 +143,12 @@ const form = reactive<AdminAISettings>({
   updated_at: null,
 });
 
+const providerPresets: Record<string, { base_url: string; model_name: string }> = {
+  deepseek: { base_url: "https://api.deepseek.com", model_name: "deepseek-v4-flash" },
+  openai: { base_url: "https://api.openai.com/v1", model_name: "gpt-4.1-mini" },
+  custom: { base_url: form.base_url, model_name: form.model_name },
+};
+
 function assignForm(payload: AdminAISettings) {
   Object.assign(form, payload);
   apiKeyInput.value = "";
@@ -141,14 +159,22 @@ async function loadSettings() {
   assignForm(result);
 }
 
+function applyProviderPreset() {
+  const preset = providerPresets[form.provider];
+  if (!preset || form.provider === "custom") return;
+  form.base_url = preset.base_url;
+  form.model_name = preset.model_name;
+}
+
 async function saveSettings() {
   saving.value = true;
   try {
     const payload: AdminAISettingsPayload = {
-      deepseek_base_url: form.deepseek_base_url,
-      deepseek_model: form.deepseek_model,
-      deepseek_api_key: apiKeyInput.value || null,
-      deepseek_timeout_seconds: form.deepseek_timeout_seconds,
+      provider: form.provider,
+      base_url: form.base_url,
+      model_name: form.model_name,
+      api_key: apiKeyInput.value || null,
+      timeout_seconds: form.timeout_seconds,
       ai_plan_daily_limit: form.ai_plan_daily_limit,
       ai_plan_cooldown_seconds: form.ai_plan_cooldown_seconds,
       temperature: form.temperature,

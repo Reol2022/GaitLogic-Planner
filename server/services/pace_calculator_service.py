@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session, selectinload
 from planner_core.database.models import PaceProfile, PaceRule, PaceZone
 from planner_core.enums import PaceZoneCode, RaceDistance
 from server.common.exceptions import BadRequestError, NotFoundError
+from server.schemas.pace_calculator import RunnerSex
+from server.services.age_grading_service import build_age_reference_text, calculate_age_grading_reference
 
 ALGORITHM_VERSION = "approx_vdot_v1"
 
@@ -150,6 +152,34 @@ def calculate_from_race(distance: RaceDistance | str, result: str | int | float)
         "vdot": vdot,
         "zones": zones,
     }
+
+
+def calculate_age_reference(
+    age: int | None,
+    sex: RunnerSex,
+    race_distance: RaceDistance,
+    race_result_seconds: int,
+):
+    return calculate_age_grading_reference(
+        age=age,
+        sex=sex,
+        race_distance=race_distance,
+        race_result_seconds=race_result_seconds,
+    )
+
+
+def build_age_reference(
+    age: int | None,
+    sex: RunnerSex = "unknown",
+    race_distance: RaceDistance | None = None,
+    race_result_seconds: int | None = None,
+) -> str | None:
+    return build_age_reference_text(
+        age=age,
+        sex=sex,
+        race_distance=race_distance,
+        race_result_seconds=race_result_seconds,
+    )
 
 
 def create_pace_profile(

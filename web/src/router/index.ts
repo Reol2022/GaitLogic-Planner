@@ -18,9 +18,13 @@ const router = createRouter({
     },
     {
       path: "/",
+      redirect: "/today",
+    },
+    {
+      path: "/dashboard",
       name: "Dashboard",
       component: () => import("@/views/DashboardView.vue"),
-      meta: { title: "Dashboard" },
+      meta: { title: "训练统计" },
     },
     {
       path: "/today",
@@ -29,10 +33,16 @@ const router = createRouter({
       meta: { title: "今日训练" },
     },
     {
+      path: "/training-calendar",
+      name: "TrainingCalendar",
+      component: () => import("@/views/TrainingCalendar.vue"),
+      meta: { title: "训练日历" },
+    },
+    {
       path: "/ai-plan",
       name: "AIPlan",
       component: () => import("@/views/AIPlanGenerator.vue"),
-      meta: { title: "AI 课表" },
+      meta: { title: "AI 制定计划" },
     },
     {
       path: "/ai-coach-preference",
@@ -56,7 +66,7 @@ const router = createRouter({
       path: "/workouts",
       name: "PlannedWorkouts",
       component: () => import("@/views/PlannedWorkoutsView.vue"),
-      meta: { title: "训练计划" },
+      meta: { title: "我的训练计划" },
     },
     {
       path: "/workouts/:id/log",
@@ -89,10 +99,32 @@ const router = createRouter({
       meta: { title: "反馈" },
     },
     {
+      path: "/my",
+      name: "My",
+      component: () => import("@/views/MyView.vue"),
+      meta: { title: "我的" },
+    },
+    {
+      path: "/admin",
+      redirect: "/admin/users",
+    },
+    {
       path: "/admin/ai-settings",
       name: "AdminAISettings",
       component: () => import("@/views/AdminAISettings.vue"),
       meta: { title: "AI 设置" },
+    },
+    {
+      path: "/admin/users",
+      name: "AdminUsers",
+      component: () => import("@/views/AdminUsers.vue"),
+      meta: { title: "用户管理" },
+    },
+    {
+      path: "/admin/system-settings",
+      name: "AdminSystemSettings",
+      component: () => import("@/views/AdminSystemSettings.vue"),
+      meta: { title: "系统设置" },
     },
   ],
 });
@@ -108,7 +140,7 @@ router.beforeEach((to) => {
   }
 
   if (to.meta.public && token) {
-    return "/";
+    return "/today";
   }
 
   return true;

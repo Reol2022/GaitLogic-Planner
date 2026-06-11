@@ -28,8 +28,7 @@
         <div class="hero-kicker">AI Plan Draft</div>
         <h2>AI 课表草稿生成器</h2>
         <p>
-          AI 生成的训练计划仅作为草稿建议，不代表医疗或专业诊断。请结合自身恢复、伤病情况和实际训练反馈进行调整。
-          若出现持续疼痛、异常疲劳或身体不适，请降低训练强度或寻求专业人士建议。
+          AI 生成内容仅作为训练计划草稿，请结合自身恢复、伤病和实际训练反馈调整。
         </p>
       </div>
       <div class="quota-box">
@@ -67,23 +66,6 @@
           </div>
 
           <div class="form-row">
-            <el-form-item label="近期 PB 距离">
-              <el-select v-model="form.recent_pb_distance" clearable style="width: 100%">
-                <el-option v-for="item in distanceOptions" :key="item.value" :label="item.label" :value="item.value" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="近期 PB 成绩">
-              <el-time-picker
-                v-model="form.recent_pb_result"
-                value-format="HH:mm:ss"
-                format="HH:mm:ss"
-                placeholder="例如 00:16:24"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </div>
-
-          <div class="form-row">
             <el-form-item label="当前周跑量 km">
               <el-input-number v-model="form.current_weekly_mileage_km" :min="0" :max="300" style="width: 100%" />
             </el-form-item>
@@ -96,16 +78,12 @@
             <el-form-item label="每周可训练天数">
               <el-input-number v-model="form.available_training_days_per_week" :min="1" :max="7" style="width: 100%" />
             </el-form-item>
-            <el-form-item label="是否可以双跑">
-              <el-switch v-model="form.can_double_run" active-text="可以" inactive-text="不可以" />
+            <el-form-item label="目标距离">
+              <el-select v-model="form.target_distance" style="width: 100%">
+                <el-option v-for="item in distanceOptions" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
             </el-form-item>
           </div>
-
-          <el-form-item label="固定休息日">
-            <el-select v-model="form.fixed_rest_days" multiple clearable style="width: 100%">
-              <el-option v-for="day in weekDays" :key="day" :label="day" :value="day" />
-            </el-select>
-          </el-form-item>
 
           <div class="form-row">
             <el-form-item label="目标赛事名称">
@@ -118,23 +96,6 @@
                 :disabled-date="disableTargetRaceDate"
                 style="width: 100%"
                 @change="syncWeeksFromRace"
-              />
-            </el-form-item>
-          </div>
-
-          <div class="form-row">
-            <el-form-item label="目标距离">
-              <el-select v-model="form.target_distance" style="width: 100%">
-                <el-option v-for="item in distanceOptions" :key="item.value" :label="item.label" :value="item.value" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="目标成绩">
-              <el-time-picker
-                v-model="form.target_result"
-                value-format="HH:mm:ss"
-                format="HH:mm:ss"
-                placeholder="例如 01:11:30"
-                style="width: 100%"
               />
             </el-form-item>
           </div>
@@ -166,25 +127,69 @@
             </div>
           </div>
 
-          <el-form-item label="伤病说明">
-            <el-input
-              v-model="form.injury_notes"
-              type="textarea"
-              :rows="2"
-              placeholder="例如：左小腿偶有紧张，无明显疼痛"
-            />
-          </el-form-item>
-          <el-form-item label="训练偏好 / 训练哲学">
-            <el-input
-              v-model="form.training_preferences"
-              type="textarea"
-              :rows="3"
-              placeholder="例如：偏丹尼尔斯体系；二四日关键课；不做激进双阈值；长距离希望保守推进"
-            />
-          </el-form-item>
-          <el-form-item label="包含配速建议">
-            <el-switch v-model="form.include_pace_guidance" />
-          </el-form-item>
+          <el-collapse class="advanced-collapse">
+            <el-collapse-item title="高级偏好" name="advanced">
+              <div class="form-row">
+                <el-form-item label="近期 PB 距离">
+                  <el-select v-model="form.recent_pb_distance" clearable style="width: 100%">
+                    <el-option
+                      v-for="item in distanceOptions"
+                      :key="item.value"
+                      :label="item.label"
+                      :value="item.value"
+                    />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="近期 PB 成绩">
+                  <el-time-picker
+                    v-model="form.recent_pb_result"
+                    value-format="HH:mm:ss"
+                    format="HH:mm:ss"
+                    placeholder="例如 00:16:24"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+              </div>
+              <div class="form-row">
+                <el-form-item label="目标成绩">
+                  <el-time-picker
+                    v-model="form.target_result"
+                    value-format="HH:mm:ss"
+                    format="HH:mm:ss"
+                    placeholder="例如 01:11:30"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+                <el-form-item label="是否可以双跑">
+                  <el-switch v-model="form.can_double_run" active-text="可以" inactive-text="不可以" />
+                </el-form-item>
+              </div>
+              <el-form-item label="固定休息日">
+                <el-select v-model="form.fixed_rest_days" multiple clearable style="width: 100%">
+                  <el-option v-for="day in weekDays" :key="day" :label="day" :value="day" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="伤病说明">
+                <el-input
+                  v-model="form.injury_notes"
+                  type="textarea"
+                  :rows="2"
+                  placeholder="例如：左小腿偶有紧张，无明显疼痛"
+                />
+              </el-form-item>
+              <el-form-item label="训练偏好 / 训练哲学">
+                <el-input
+                  v-model="form.training_preferences"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="例如：偏丹尼尔斯体系；二四日关键课；不做激进双阈值；长距离希望保守推进"
+                />
+              </el-form-item>
+              <el-form-item label="包含配速建议">
+                <el-switch v-model="form.include_pace_guidance" />
+              </el-form-item>
+            </el-collapse-item>
+          </el-collapse>
 
           <div class="form-actions">
             <el-button
@@ -224,7 +229,20 @@
               应用为正式计划
             </el-button>
             <el-button :disabled="currentDraft.status !== 'draft'" @click="reject(currentDraft.id)">拒绝草稿</el-button>
+            <el-dropdown trigger="click" @command="(format) => downloadCurrentDraft(String(format))">
+              <el-button :icon="Download">导出</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="item in exportOptions" :key="item.value" :command="item.value">
+                    {{ item.label }}
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
+          <p class="export-note">
+            Garmin / 高驰参考 CSV 仅用于手动录入或二次转换，不会直连设备账号。
+          </p>
           <div v-for="group in groupedWorkouts" :key="group.name" class="week-block">
             <h4>{{ group.name }}</h4>
             <el-table :data="group.items" size="small">
@@ -254,12 +272,22 @@
         <el-table-column label="创建时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="240">
+        <el-table-column label="操作" width="320">
           <template #default="{ row }">
             <div class="table-actions">
               <el-button size="small" @click="viewDraft(row.id)">查看</el-button>
               <el-button size="small" type="primary" :disabled="row.status !== 'draft'" @click="apply(row.id)">应用</el-button>
               <el-button size="small" :disabled="row.status !== 'draft'" @click="reject(row.id)">拒绝</el-button>
+              <el-dropdown trigger="click" @command="(format) => downloadDraft(row, String(format))">
+                <el-button size="small" :icon="Download">导出</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-for="item in exportOptions" :key="item.value" :command="item.value">
+                      {{ item.label }}
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
           </template>
         </el-table-column>
@@ -271,16 +299,18 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
+import { Download } from "@element-plus/icons-vue";
 
 import {
   applyAIPlanDraft,
+  exportAIPlanDraft,
   generateAIPlan,
   getAIPlanDraftDetail,
   getAIPlanDrafts,
   getAIPlanQuota,
   rejectAIPlanDraft,
 } from "@/api/aiPlan";
-import type { AIPlanDraft, AIPlanGeneratePayload, AIPlanQuota, RaceDistance } from "@/types/models";
+import type { AIPlanDraft, AIPlanExportFormat, AIPlanGeneratePayload, AIPlanQuota, RaceDistance } from "@/types/models";
 
 const today = new Date().toISOString().slice(0, 10);
 const distanceOptions: Array<{ label: string; value: RaceDistance }> = [
@@ -292,6 +322,15 @@ const distanceOptions: Array<{ label: string; value: RaceDistance }> = [
   { label: "全马", value: "marathon" },
 ];
 const weekDays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+const exportOptions: Array<{ label: string; value: AIPlanExportFormat; extension: string }> = [
+  { label: "Excel 工作簿", value: "xlsx", extension: "xlsx" },
+  { label: "CSV 表格", value: "csv", extension: "csv" },
+  { label: "Markdown 文档", value: "markdown", extension: "md" },
+  { label: "JSON 数据", value: "json", extension: "json" },
+  { label: "日历 ICS", value: "ics", extension: "ics" },
+  { label: "Garmin 参考 CSV", value: "garmin_csv", extension: "csv" },
+  { label: "高驰参考 CSV", value: "coros_csv", extension: "csv" },
+];
 
 const form = reactive<AIPlanGeneratePayload>({
   runner_level: "advanced",
@@ -489,6 +528,29 @@ async function reject(id: number) {
   currentDraft.value = await getAIPlanDraftDetail(id);
 }
 
+async function downloadDraft(draft: AIPlanDraft, format: string) {
+  const exportFormat = format as AIPlanExportFormat;
+  const option = exportOptions.find((item) => item.value === exportFormat);
+  const blob = await exportAIPlanDraft(draft.id, exportFormat);
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${safeFilename(draft.title || `ai-plan-${draft.id}`)}.${option?.extension || "txt"}`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+async function downloadCurrentDraft(format: string) {
+  if (!currentDraft.value) return;
+  await downloadDraft(currentDraft.value, format);
+}
+
+function safeFilename(value: string) {
+  return value.replace(/[\\/:*?"<>|]/g, "-").replace(/\s+/g, "-").slice(0, 80) || "ai-plan-draft";
+}
+
 onMounted(loadAll);
 onBeforeUnmount(stopGenerationProgress);
 </script>
@@ -662,6 +724,10 @@ onBeforeUnmount(stopGenerationProgress);
   gap: 12px;
 }
 
+.advanced-collapse {
+  margin-bottom: 16px;
+}
+
 .date-summary {
   display: flex;
   align-items: center;
@@ -728,6 +794,14 @@ onBeforeUnmount(stopGenerationProgress);
 .draft-summary p {
   margin: 0;
   color: #667085;
+}
+
+.export-note {
+  margin: 8px 0 0;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: right;
 }
 
 .week-block {
@@ -800,6 +874,15 @@ onBeforeUnmount(stopGenerationProgress);
   .table-actions .el-button {
     width: 100%;
     margin-left: 0;
+  }
+
+  .draft-actions :deep(.el-dropdown),
+  .table-actions :deep(.el-dropdown) {
+    width: 100%;
+  }
+
+  .export-note {
+    text-align: left;
   }
 
   .week-block {

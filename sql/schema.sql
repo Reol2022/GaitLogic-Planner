@@ -291,7 +291,7 @@ CREATE TABLE IF NOT EXISTS `ai_plan_quota` (
 CREATE TABLE IF NOT EXISTS `admin_ai_settings` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `deepseek_base_url` VARCHAR(255) NOT NULL DEFAULT 'https://api.deepseek.com',
-  `deepseek_model` VARCHAR(64) NOT NULL DEFAULT 'deepseek-v4-flash',
+  `deepseek_model` VARCHAR(128) NOT NULL DEFAULT 'deepseek-v4-flash',
   `deepseek_api_key` VARCHAR(512) NULL,
   `deepseek_timeout_seconds` INT NOT NULL DEFAULT 120,
   `ai_plan_daily_limit` INT NOT NULL DEFAULT 3,

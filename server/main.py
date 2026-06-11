@@ -15,6 +15,7 @@ from server.api.routes import (
     pace_calculator,
     pace_rules,
     planned_workouts,
+    training_calendar,
     training_blocks,
     training_cycles,
     workout_logs,
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(ai_coach_preference.router, prefix="/api")
     app.include_router(excel.router, prefix="/api")
     app.include_router(feedback.router, prefix="/api")
+    app.include_router(training_calendar.router, prefix="/api")
     app.include_router(training_cycles.router, prefix="/api")
     app.include_router(training_blocks.router, prefix="/api")
     app.include_router(planned_workouts.router, prefix="/api")
