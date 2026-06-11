@@ -287,7 +287,7 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 ## 📘 功能详解
 
-<details>
+<details open>
 <summary><strong>登录与注册</strong></summary>
 
 用户首次使用需要注册账号。系统会为每个用户创建独立数据空间，不同用户之间的训练周期、训练计划、训练日志、配速规则和 AI 草稿互相隔离。
@@ -298,7 +298,7 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 </details>
 
-<details>
+<details open>
 <summary><strong>今日训练</strong></summary>
 
 今日训练是普通用户的默认首页。
@@ -317,7 +317,7 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 </details>
 
-<details>
+<details open>
 <summary><strong>训练日历</strong></summary>
 
 训练日历以月历形式展示每日计划和完成状态。
@@ -355,7 +355,7 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 </details>
 
-<details>
+<details open>
 <summary><strong>我的训练计划与训练日志</strong></summary>
 
 我的训练计划用于维护每天应该完成的训练内容。
@@ -399,7 +399,7 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 </details>
 
-<details>
+<details open>
 <summary><strong>训练统计</strong></summary>
 
 训练统计用于查看训练数据概览，帮助用户快速了解近期训练状态。
@@ -416,7 +416,7 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 </details>
 
-<details>
+<details open>
 <summary><strong>训练周期与训练块</strong></summary>
 
 训练周期是最高层级的训练结构，适合管理一个完整备赛阶段，例如夏训、校运会周期、半马周期或马拉松周期。
@@ -435,7 +435,7 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 </details>
 
-<details>
+<details open>
 <summary><strong>Excel 标准模板导入</strong></summary>
 
 系统支持通过标准 Excel 模板批量导入训练数据。
@@ -452,7 +452,7 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 </details>
 
-<details>
+<details open>
 <summary><strong>配速计算器、年龄参考与配速规则</strong></summary>
 
 系统内置 VDOT / 丹尼尔斯配速计算器，用于根据比赛成绩估算训练配速区间。
@@ -500,7 +500,7 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 </details>
 
-<details>
+<details open>
 <summary><strong>AI 制定计划、草稿导出与 AI 教练偏好</strong></summary>
 
 AI 制定计划用于根据用户输入的跑者信息生成结构化训练计划草稿。
@@ -554,7 +554,7 @@ AI 草稿生成后可以导出为多种文件：
 
 </details>
 
-<details>
+<details open>
 <summary><strong>后台管理</strong></summary>
 
 后台管理仅 `role = admin` 用户可见。
@@ -574,7 +574,7 @@ AI 设置支持 OpenAI-compatible 模型接口：
 
 </details>
 
-<details>
+<details open>
 <summary><strong>内测反馈</strong></summary>
 
 系统提供内测反馈功能，方便用户提交问题和建议。
