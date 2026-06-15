@@ -38,6 +38,7 @@ web/npm-cache/
 web/npm-appdata/
 npm-cache/
 npm-appdata/
+.deploy/
 
 # Logs
 *.log

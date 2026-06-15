@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const webRoot = fileURLToPath(new URL("./web/", import.meta.url));
 const srcRoot = fileURLToPath(new URL("./web/src/", import.meta.url));
+const apiProxyTarget = process.env.VITE_DEV_API_PROXY_TARGET || "http://127.0.0.1:8000";
 
 export default defineConfig({
   root: webRoot,
@@ -16,6 +17,21 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    proxy: {
+      "/api": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
+    },
+  },
+  preview: {
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     outDir: "../web-dist",

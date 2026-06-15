@@ -657,6 +657,7 @@ npm run build
 | --- | --- |
 | [更新历史](docs/更新历史.md) | 版本变更记录 |
 | [部署文档](docs/DEPLOYMENT.md) | 部署与运行说明 |
+| [一键重新部署](docs/REDEPLOY.md) | 本地打包、上传服务器和重启服务脚本说明 |
 | [数据库设计](docs/数据库设计.md) | 数据库结构说明 |
 | [Excel 字段映射](docs/Excel字段映射.md) | Excel 导入字段说明 |
 | [SQL Schema](sql/schema.sql) | MySQL 建表脚本 |

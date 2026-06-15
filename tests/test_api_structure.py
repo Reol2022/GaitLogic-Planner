@@ -15,6 +15,18 @@ def test_health_route_works_without_database() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_api_docs_are_available_behind_api_prefix() -> None:
+    client = TestClient(app)
+
+    docs_response = client.get("/api/docs")
+    assert docs_response.status_code == 200
+    assert "/api/openapi.json" in docs_response.text
+
+    openapi_response = client.get("/api/openapi.json")
+    assert openapi_response.status_code == 200
+    assert openapi_response.json()["info"]["title"] == "Gaitlogic Planner API"
+
+
 def test_required_routes_are_registered() -> None:
     routes = {
         f"{','.join(sorted(route.methods or []))} {route.path}"

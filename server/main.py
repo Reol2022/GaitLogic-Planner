@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
 from server.api.routes import (
@@ -60,6 +62,18 @@ def create_app() -> FastAPI:
     app.include_router(dashboard.router, prefix="/api")
     app.include_router(pace_calculator.router, prefix="/api")
     app.include_router(pace_rules.router, prefix="/api")
+
+    @app.get("/api/openapi.json", include_in_schema=False)
+    def api_openapi() -> JSONResponse:
+        return JSONResponse(app.openapi())
+
+    @app.get("/api/docs", include_in_schema=False)
+    def api_docs():
+        return get_swagger_ui_html(
+            openapi_url="/api/openapi.json",
+            title="Gaitlogic Planner API - Docs",
+        )
+
     return app
 
 
