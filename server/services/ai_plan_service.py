@@ -23,7 +23,7 @@ from planner_core.database.models import (
 )
 from planner_core.enums import AIPlanDraftStatus, AIPlanJobStatus, BlockType, WorkoutStatusNormalized
 from planner_core.utils.excel_parse import normalize_workout_main_type
-from server.common.exceptions import BadRequestError, NotFoundError, TooManyRequestsError
+from server.common.exceptions import BadRequestError, NotFoundError, ServiceUnavailableError, TooManyRequestsError
 from server.schemas.ai_plan import AIPlanGenerateRequest, AIPlanQuotaRead
 from server.services.admin_ai_settings_service import EffectiveAISettings, get_effective_ai_settings
 from server.services.ai_coach_preference_service import (
@@ -188,6 +188,19 @@ def call_ai_model(
 call_deepseek = call_ai_model
 
 
+def normalize_ai_generation_exception(exc: Exception) -> Exception:
+    status_code = getattr(exc, "status_code", None)
+    message = str(exc)
+    lowered = message.lower()
+    if status_code == 402 or "insufficient balance" in lowered:
+        return BadRequestError("AI 服务账户余额不足，请充值或更换可用 API Key。")
+    if status_code in {500, 501, 502, 503, 504}:
+        return ServiceUnavailableError("AI 模型服务暂时不可用，请稍后在历史草稿中查看结果或重新生成。")
+    if "timeout" in lowered or "timed out" in lowered or "read timed out" in lowered:
+        return ServiceUnavailableError("AI 模型响应超时，请稍后在历史草稿中查看结果或重新生成。")
+    return BadRequestError(f"AI 课表生成失败：{message}")
+
+
 def parse_json_date(value: Any, field_name: str) -> date | None:
     if value in (None, ""):
         return None
@@ -261,6 +274,8 @@ def validate_ai_output(
             main_type = workout.get("main_type")
             if main_type not in ALLOWED_MAIN_TYPES:
                 raise BadRequestError(f"Invalid main_type: {main_type}.")
+            if main_type != "Rest" and not workout.get("focus_note"):
+                raise BadRequestError("workout focus_note is required for non-rest workouts.")
 
             is_high_intensity = main_type in HIGH_INTENSITY_TYPES
             if (
@@ -361,9 +376,9 @@ def generate_ai_plan(db: Session, user_id: int, payload: AIPlanGenerateRequest) 
         job.error_message = str(exc)
         job.finished_at = datetime.utcnow()
         db.commit()
-        if isinstance(exc, (BadRequestError, TooManyRequestsError)):
+        if isinstance(exc, (BadRequestError, TooManyRequestsError, ServiceUnavailableError)):
             raise
-        raise BadRequestError(f"AI 课表生成失败：{exc}") from exc
+        raise normalize_ai_generation_exception(exc) from exc
 
 
 def list_drafts(db: Session, user_id: int) -> list[AIPlanDraft]:

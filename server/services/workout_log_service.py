@@ -31,7 +31,20 @@ def update_workout_log(
     user_id: int,
 ) -> WorkoutLog:
     log = get_workout_log_by_planned_workout(db, planned_workout_id, user_id)
-    for key, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    actual_distance = data.get("actual_distance_km", log.actual_distance_km)
+    actual_duration = data.get("actual_duration_seconds", log.actual_duration_seconds)
+    should_auto_calculate_pace = (
+        "avg_pace_seconds_per_km" not in data or data.get("avg_pace_seconds_per_km") in (None, 0)
+    )
+    if (
+        should_auto_calculate_pace
+        and actual_distance is not None
+        and actual_duration is not None
+        and actual_distance > 0
+    ):
+        data["avg_pace_seconds_per_km"] = int(round(actual_duration / float(actual_distance)))
+    for key, value in data.items():
         setattr(log, key, value)
     db.commit()
     db.refresh(log)

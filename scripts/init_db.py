@@ -27,6 +27,7 @@ from planner_core.database.models import (  # noqa: F401
     PlannedWorkout,
     TrainingBlock,
     TrainingCycle,
+    UsageEvent,
     UserAccount,
     WorkoutLog,
 )

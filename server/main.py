@@ -17,9 +17,11 @@ from server.api.routes import (
     pace_calculator,
     pace_rules,
     planned_workouts,
+    onboarding,
     training_calendar,
     training_blocks,
     training_cycles,
+    usage_events,
     workout_logs,
 )
 from server.common.exceptions import (
@@ -54,6 +56,7 @@ def create_app() -> FastAPI:
     app.include_router(ai_coach_preference.router, prefix="/api")
     app.include_router(excel.router, prefix="/api")
     app.include_router(feedback.router, prefix="/api")
+    app.include_router(onboarding.router, prefix="/api")
     app.include_router(training_calendar.router, prefix="/api")
     app.include_router(training_cycles.router, prefix="/api")
     app.include_router(training_blocks.router, prefix="/api")
@@ -62,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard.router, prefix="/api")
     app.include_router(pace_calculator.router, prefix="/api")
     app.include_router(pace_rules.router, prefix="/api")
+    app.include_router(usage_events.router, prefix="/api")
 
     @app.get("/api/openapi.json", include_in_schema=False)
     def api_openapi() -> JSONResponse:

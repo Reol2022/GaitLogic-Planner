@@ -266,6 +266,7 @@ export interface UserAccount {
   nickname?: string | null;
   avatar_url?: string | null;
   role: string;
+  ui_mode: "simple" | "advanced" | string;
   status: string;
   last_login_at?: string | null;
   created_at: string;

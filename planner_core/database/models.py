@@ -16,6 +16,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +29,8 @@ from planner_core.enums import (
     FeedbackType,
     PaceZoneCode,
     RaceDistance,
+    UIMode,
+    UsageEventName,
     WorkoutMainTypeNormalized,
     WorkoutStatusNormalized,
 )
@@ -91,6 +94,18 @@ ai_plan_draft_status_enum = Enum(
     native_enum=False,
     length=16,
 )
+ui_mode_enum = Enum(
+    UIMode,
+    values_callable=enum_values,
+    native_enum=False,
+    length=16,
+)
+usage_event_name_enum = Enum(
+    UsageEventName,
+    values_callable=enum_values,
+    native_enum=False,
+    length=64,
+)
 
 
 class UserAccount(IdMixin, TimestampMixin, Base):
@@ -107,6 +122,12 @@ class UserAccount(IdMixin, TimestampMixin, Base):
     nickname: Mapped[str | None] = mapped_column(String(64))
     avatar_url: Mapped[str | None] = mapped_column(String(512))
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="user", server_default="user")
+    ui_mode: Mapped[UIMode] = mapped_column(
+        ui_mode_enum,
+        nullable=False,
+        default=UIMode.simple,
+        server_default=UIMode.simple.value,
+    )
     status: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
@@ -137,6 +158,7 @@ class UserAccount(IdMixin, TimestampMixin, Base):
         uselist=False,
     )
     excel_import_jobs: Mapped[list[ExcelImportJob]] = relationship(back_populates="user")
+    usage_events: Mapped[list[UsageEvent]] = relationship(back_populates="user")
 
 
 class TrainingCycle(IdMixin, TimestampMixin, Base):
@@ -471,6 +493,32 @@ class Feedback(IdMixin, TimestampMixin, Base):
     )
 
     user: Mapped[UserAccount] = relationship(back_populates="feedback_items")
+
+
+class UsageEvent(IdMixin, Base):
+    __tablename__ = "usage_event"
+    __table_args__ = (
+        Index("ix_usage_event_user_occurred", "user_id", "occurred_at"),
+        Index("ix_usage_event_event_occurred", "event_name", "occurred_at"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    event_name: Mapped[UsageEventName] = mapped_column(usage_event_name_enum, nullable=False)
+    page_path: Mapped[str | None] = mapped_column(String(255))
+    metadata_json: Mapped[dict | None] = mapped_column(JSON)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+
+    user: Mapped[UserAccount | None] = relationship(back_populates="usage_events")
 
 
 class AIPlanJob(IdMixin, TimestampMixin, Base):

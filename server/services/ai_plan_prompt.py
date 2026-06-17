@@ -39,6 +39,8 @@ def build_ai_plan_system_prompt() -> str:
 13. 如果用户目标明显激进，应在 risk_notes 中指出风险，而不是盲目迎合。
 14. 如果用户输入信息不足，应生成相对保守的计划。
 15. 计划必须具体到每天，而不是泛泛而谈。
+16. 每一堂非休息训练都必须在 focus_note 中说明：本次训练的主要目的、执行时最重要的注意事项、状态不佳时的安全降级方式。
+17. 休息日可以简洁说明恢复目的，不需要生成冗长解释。
 
 训练类型只能使用：
 REC, E, LSD, M, T1, T2, I, R, Rest, Mixed
@@ -71,7 +73,7 @@ JSON 必须符合以下结构：
           "date": "YYYY-MM-DD",
           "weekday": "周一",
           "planned_content": "具体训练内容",
-          "focus_note": "本次训练目的和注意事项",
+          "focus_note": "目的：本次训练目的；注意：执行要点；降级：状态不佳时如何安全调整",
           "planned_distance_km": 10,
           "main_type": "E",
           "target_pace_text": "4:45-5:30/km"
@@ -97,6 +99,7 @@ JSON 必须符合以下结构：
 13. 不要生成与用户固定休息日冲突的训练。
 14. 如果用户可以双跑，也只能谨慎安排，且不应默认天天双跑。
 15. 如果用户不能双跑，不得安排双跑。
+16. 非 Rest 训练的 focus_note 必须包含明确目的、注意事项和降级建议。
 
 安全边界：
 你不是医生，不提供医疗诊断。
@@ -178,6 +181,7 @@ def build_ai_plan_user_prompt(
             "- 不要输出 Markdown。",
             "- 不要输出 JSON 之外的任何文字。",
             "- weeks 数组必须完整，不能省略后续周。",
+            "- 每一堂非休息训练的 focus_note 必须写清楚目的、执行注意事项和状态不佳时的降级方式。",
             "",
             "原始用户输入 JSON：",
             json.dumps(data, ensure_ascii=False, sort_keys=True),

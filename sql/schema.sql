@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS `user_account` (
   `nickname` VARCHAR(64) NULL,
   `avatar_url` VARCHAR(512) NULL,
   `role` VARCHAR(32) NOT NULL DEFAULT 'user',
+  `ui_mode` VARCHAR(16) NOT NULL DEFAULT 'simple',
   `status` VARCHAR(32) NOT NULL DEFAULT 'active',
   `last_login_at` DATETIME NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -400,4 +401,19 @@ CREATE TABLE IF NOT EXISTS `excel_import_jobs` (
   KEY `ix_excel_import_jobs_file_hash` (`file_hash`),
   CONSTRAINT `fk_excel_import_jobs_user_id`
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `usage_event` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NULL,
+  `event_name` VARCHAR(64) NOT NULL,
+  `page_path` VARCHAR(255) NULL,
+  `metadata_json` JSON NULL,
+  `occurred_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_usage_event_user_id` (`user_id`),
+  KEY `ix_usage_event_user_occurred` (`user_id`, `occurred_at`),
+  KEY `ix_usage_event_event_occurred` (`event_name`, `occurred_at`),
+  CONSTRAINT `fk_usage_event_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

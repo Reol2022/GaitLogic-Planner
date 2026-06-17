@@ -31,6 +31,10 @@ class TooManyRequestsError(AppError):
     status_code = 429
 
 
+class ServiceUnavailableError(AppError):
+    status_code = 503
+
+
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,

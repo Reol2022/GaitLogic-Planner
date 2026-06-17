@@ -47,6 +47,7 @@ def test_system_prompt_contains_professional_training_rules() -> None:
     assert "Jack Daniels" in prompt
     assert "挪威双阈值" in prompt
     assert "Renato Canova" in prompt
+    assert "安全降级" in prompt
 
 
 def test_system_prompt_does_not_contain_api_key(monkeypatch) -> None:

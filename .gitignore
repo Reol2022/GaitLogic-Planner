@@ -25,15 +25,23 @@ env/
 web/.env
 web/.env.*
 !web/.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
 
 # Frontend dependencies and build output
 node_modules/
 web/node_modules/
 web/dist/
+web/build/
 web/.vite/
 web/coverage/
 web-dist/
 web-vite-cache/
+dist/
+build/
 web/npm-cache/
 web/npm-appdata/
 npm-cache/
@@ -46,6 +54,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+logs/
+server/logs/
+web/logs/
 
 # IDE and OS files
 .idea/
@@ -61,11 +72,46 @@ Thumbs.db
 
 # Local database dumps and backups
 *.bak
+*.backup
 *.tmp
+*.db
+*.sqlite
+*.sqlite3
+*.sql.gz
+*.dump
+*.dump.sql
+*.zip
+*.7z
+*.rar
 *.local.sql
 sql/*.local.sql
 sql/*backup*.sql
 sql/*dump*.sql
+backups/
+backup/
+
+# Runtime uploads and private files
+uploads/
+upload/
+server/uploads/
+server/upload/
+data/uploads/
+storage/
+private/
+
+# Personal/local markdown notes not intended for open source
+local-md/
+personal-md/
+notes/
+*.local.md
+*.private.md
+*个人*.md
+*私有*.md
+*草稿*.md
+*笔记*.md
 
 # Local agent instructions
 AGENTS.md
+数据库设计.md
+BACKEND_LEARNING_GUIDE.md
+Excel字段映射.md

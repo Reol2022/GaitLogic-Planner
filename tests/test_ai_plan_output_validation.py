@@ -115,6 +115,13 @@ def test_invalid_main_type_fails() -> None:
         validate_ai_output(data)
 
 
+def test_non_rest_workout_requires_focus_note() -> None:
+    data = valid_output()
+    data["weeks"][0]["workouts"][0]["focus_note"] = ""
+    with pytest.raises(BadRequestError):
+        validate_ai_output(data)
+
+
 def test_consecutive_high_intensity_fails() -> None:
     data = valid_output()
     data["weeks"][0]["workouts"] = [

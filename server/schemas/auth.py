@@ -36,6 +36,7 @@ class UserRead(BaseModel):
     nickname: str | None = None
     avatar_url: str | None = None
     role: str
+    ui_mode: str = "simple"
     status: str
     last_login_at: datetime | None = None
     created_at: datetime

@@ -28,6 +28,7 @@ from planner_core.database.models import (
     TrainingCycle,
     UserAccount,
     WorkoutLog,
+    UsageEvent,
 )
 from planner_core.enums import (
     BlockType,
@@ -39,6 +40,8 @@ from planner_core.enums import (
     RaceDistance,
     WorkoutMainTypeNormalized,
     WorkoutStatusNormalized,
+    UIMode,
+    UsageEventName,
 )
 
 
@@ -91,6 +94,8 @@ def test_enum_values_are_correct() -> None:
     ]
     assert [item.value for item in AIPlanJobStatus] == ["pending", "running", "success", "failed"]
     assert [item.value for item in AIPlanDraftStatus] == ["draft", "accepted", "rejected"]
+    assert [item.value for item in UIMode] == ["simple", "advanced"]
+    assert UsageEventName.ai_plan_applied.value == "ai_plan_applied"
 
 
 @pytest.fixture(scope="module")
@@ -208,6 +213,7 @@ def test_can_create_all_tables(mysql_session_factory) -> None:
         "ai_coach_preference",
         "ai_plan_draft",
         "ai_plan_draft_workout",
+        "usage_event",
     }.issubset(set(inspector.get_table_names()))
 
 

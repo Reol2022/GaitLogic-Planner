@@ -9,7 +9,8 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.6.1-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.7.0-1976d2?style=for-the-badge" /></a>
+  <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?style=for-the-badge&logo=vue.js&logoColor=white" />
@@ -23,7 +24,8 @@
   <a href="#-界面预览">界面预览</a> ·
   <a href="#-快速开始">快速开始</a> ·
   <a href="#-功能详解">功能详解</a> ·
-  <a href="#-项目边界">项目边界</a>
+  <a href="#-项目边界">项目边界</a> ·
+  <a href="#-开源治理">开源治理</a>
 </p>
 
 </div>
@@ -653,6 +655,23 @@ npm run build
 
 ## 📚 文档索引
 
+### 项目入口与开源治理
+
+这些文件放在仓库根目录，方便代码托管平台和贡献者第一时间找到。
+
+| 文档 | 说明 |
+| --- | --- |
+| [中文 README](README.md) | 项目介绍、快速开始、功能说明和文档入口 |
+| [English README](README-EN.md) | English project overview |
+| [开源治理规则](OPEN_SOURCE_POLICY.md) | 开源范围、治理、AI 辅助代码和训练安全规则 |
+| [贡献指南](CONTRIBUTING.md) | 开发环境、PR 流程、测试和数据库迁移要求 |
+| [安全政策](SECURITY.md) | 私密安全报告方式和支持版本范围 |
+| [商标规则](TRADEMARK.md) | GaitLogic 名称、Logo 和 Fork 品牌边界 |
+
+### 正式项目文档
+
+这些文档放在 `docs/`，用于部署、产品说明、数据库和导入规范。
+
 | 文档 | 说明 |
 | --- | --- |
 | [更新历史](docs/更新历史.md) | 版本变更记录 |
@@ -661,6 +680,14 @@ npm run build
 | [数据库设计](docs/数据库设计.md) | 数据库结构说明 |
 | [Excel 字段映射](docs/Excel字段映射.md) | Excel 导入字段说明 |
 | [SQL Schema](sql/schema.sql) | MySQL 建表脚本 |
+
+### 开发学习材料
+
+这些文档放在 `md/`，用于开发理解、学习笔记和内部辅助说明。
+
+| 文档 | 说明 |
+| --- | --- |
+| [后端学习指南](md/BACKEND_LEARNING_GUIDE.md) | 开发学习与架构理解材料 |
 
 ---
 
@@ -696,6 +723,53 @@ npm run build
 - 不把高级功能堆到普通用户默认路径；
 - 优先保证训练计划、训练日志、复盘统计的稳定性；
 - 数据库结构优先兼容后续 Excel 导入、网页制定计划、训练日志填写、统计复盘和设备同步扩展。
+
+---
+
+## 👐 开源治理
+
+### 开源许可证
+
+当前仓库根目录尚未提供 `LICENSE` 文件，因此项目最终开源许可证尚未完成确认。
+
+维护者正在评估使用 `AGPL-3.0-only`。在正式 `LICENSE` 文件加入仓库前，请不要将 README 或其他文档中的说明理解为已经完成许可证授权。
+
+如果未来采用 AGPL-3.0-only，网络服务形式分发修改版时，需要按许可证要求向相应用户提供源代码。最终规则以根目录 `LICENSE` 文件为准。
+
+### 开源范围
+
+社区版聚焦当前已经在仓库中实现的训练管理能力：
+
+- 登录注册与用户数据隔离；
+- 训练周期、训练块、每日训练计划、今日训练、训练日历和训练日志；
+- Excel 标准模板下载与导入；
+- Dashboard / 训练统计；
+- 配速计算器和配速规则；
+- AI 课表草稿生成、预览、确认应用和 AI 教练偏好；
+- 反馈收集和基础管理后台；
+- 本地部署、测试和公开 API 数据结构。
+
+不属于社区仓库必须公开的内容包括生产密钥、真实用户数据、官方云服务风控策略、私有训练模板库、生产环境完整 Prompt、支付系统和受第三方协议限制的设备商业接口。
+
+详细规则见 [OPEN_SOURCE_POLICY.md](OPEN_SOURCE_POLICY.md)。
+
+### 贡献入口
+
+欢迎提交 Bug 修复、测试、文档、移动端体验、数据导入导出和合理的训练统计改进。
+
+开始贡献前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。提交 Issue 或 Pull Request 时，不要包含真实用户数据、密钥、Token、数据库备份或未脱敏日志。
+
+### 安全报告入口
+
+安全问题请不要直接公开完整利用细节。请优先使用仓库平台提供的私密安全报告功能，例如 GitHub Security Advisories / Private vulnerability reporting。
+
+当前项目尚未提供公开安全邮箱。详细说明见 [SECURITY.md](SECURITY.md)。
+
+### 社区版与未来官方服务的边界
+
+GaitLogic Planner Community 是可独立运行的开源社区版。未来可能存在的 GaitLogic Cloud、GaitLogic Coach Engine 或其他官方托管服务，可能包含运维、成本控制、私有训练模板、增强 Prompt、商业支持和品牌服务。
+
+代码许可证不自动授予 GaitLogic 名称和 Logo 使用权。Fork 或二次发行版本应使用可区分名称，不得冒充官方版本。详细规则见 [TRADEMARK.md](TRADEMARK.md)。
 
 ---
 

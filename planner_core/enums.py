@@ -83,3 +83,24 @@ class AIPlanIntensityStyle(str, Enum):
     conservative = "conservative"
     standard = "standard"
     aggressive = "aggressive"
+
+
+class UIMode(str, Enum):
+    simple = "simple"
+    advanced = "advanced"
+
+
+class UsageEventName(str, Enum):
+    onboarding_viewed = "onboarding_viewed"
+    onboarding_ai_selected = "onboarding_ai_selected"
+    onboarding_excel_selected = "onboarding_excel_selected"
+    onboarding_manual_selected = "onboarding_manual_selected"
+    ai_plan_generate_started = "ai_plan_generate_started"
+    ai_plan_generate_succeeded = "ai_plan_generate_succeeded"
+    ai_plan_generate_failed = "ai_plan_generate_failed"
+    ai_plan_applied = "ai_plan_applied"
+    today_viewed = "today_viewed"
+    workout_quick_checkin_opened = "workout_quick_checkin_opened"
+    workout_log_saved = "workout_log_saved"
+    calendar_viewed = "calendar_viewed"
+    weekly_review_viewed = "weekly_review_viewed"

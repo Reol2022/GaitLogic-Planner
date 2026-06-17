@@ -8,7 +8,10 @@ import type {
 } from "@/types/models";
 
 export function generateAIPlan(payload: AIPlanGeneratePayload) {
-  return request.post<AIPlanGenerateResult>("/ai-plan/generate", payload);
+  return request.post<AIPlanGenerateResult>("/ai-plan/generate", payload, {
+    timeout: 600000,
+    skipErrorMessage: true,
+  });
 }
 
 export function getAIPlanDrafts() {

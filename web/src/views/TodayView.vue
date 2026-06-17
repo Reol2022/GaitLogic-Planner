@@ -43,11 +43,26 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="操作" width="190" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" :icon="EditPen" @click="goLog(row.id)">
-              填写日志
-            </el-button>
+            <div class="workout-actions">
+              <el-button
+                type="primary"
+                size="small"
+                title="按计划完成"
+                @click="openQuickCheckin(row, 'completed_normal')"
+              >
+                完成
+              </el-button>
+              <el-button
+                size="small"
+                title="调整后完成"
+                @click="openQuickCheckin(row, 'completed_adjusted')"
+              >
+                调整
+              </el-button>
+              <el-button size="small" :icon="EditPen" title="填写更多日志" @click="goLog(row.id)">更多</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -65,23 +80,111 @@
           <p>{{ row.planned_content }}</p>
           <div class="workout-card-meta">
             <span>{{ row.planned_distance_km || 0 }} km</span>
-            <el-button type="primary" size="small" :icon="EditPen" @click="goLog(row.id)">填写日志</el-button>
+            <div class="workout-actions mobile-actions">
+              <el-button
+                type="primary"
+                size="small"
+                title="按计划完成"
+                @click="openQuickCheckin(row, 'completed_normal')"
+              >
+                完成
+              </el-button>
+              <el-button
+                size="small"
+                title="调整后完成"
+                @click="openQuickCheckin(row, 'completed_adjusted')"
+              >
+                调整
+              </el-button>
+              <el-button size="small" :icon="EditPen" title="填写更多日志" @click="goLog(row.id)">更多</el-button>
+            </div>
           </div>
         </article>
         <el-empty v-if="!loading && workouts.length === 0" description="今天还没有训练计划" />
       </div>
     </div>
+
+    <el-dialog v-model="quickDialogVisible" title="快速训练打卡" width="560px">
+      <el-form label-position="top" class="quick-form">
+        <div class="form-grid">
+          <el-form-item label="完成状态">
+            <el-select v-model="quickForm.status_normalized" style="width: 100%">
+              <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="实际距离 km">
+            <el-input-number v-model="quickForm.actual_distance_km" :precision="2" :min="0" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="实际时长秒">
+            <el-input-number v-model="quickForm.actual_duration_seconds" :min="0" style="width: 100%" />
+            <div v-if="autoPaceText" class="form-help">自动估算均配：{{ autoPaceText }}，也可以在“记录更多数据”中手动覆盖。</div>
+          </el-form-item>
+          <el-form-item label="RPE">
+            <el-input-number v-model="quickForm.rpe" :min="0" :max="10" style="width: 100%" />
+          </el-form-item>
+        </div>
+        <el-form-item label="一句感受">
+          <el-input v-model="quickForm.review_note" type="textarea" :rows="2" placeholder="例如：整体轻松，后半程略热" />
+        </el-form-item>
+        <el-collapse>
+          <el-collapse-item title="记录更多数据" name="more">
+            <div class="form-grid">
+              <el-form-item label="平均配速秒/km">
+                <el-input-number v-model="quickForm.avg_pace_seconds_per_km" :min="0" style="width: 100%" />
+              </el-form-item>
+              <el-form-item label="平均心率">
+                <el-input-number v-model="quickForm.avg_heart_rate" :min="0" style="width: 100%" />
+              </el-form-item>
+              <el-form-item label="睡眠 h">
+                <el-input-number v-model="quickForm.sleep_hours" :precision="1" :min="0" style="width: 100%" />
+              </el-form-item>
+              <el-form-item label="HRV">
+                <el-input-number v-model="quickForm.hrv" :min="0" style="width: 100%" />
+              </el-form-item>
+              <el-form-item label="晨脉">
+                <el-input-number v-model="quickForm.morning_heart_rate" :min="0" style="width: 100%" />
+              </el-form-item>
+              <el-form-item label="体重 kg">
+                <el-input-number v-model="quickForm.weight_kg" :precision="1" :min="0" style="width: 100%" />
+              </el-form-item>
+              <el-form-item label="腿感">
+                <el-input v-model="quickForm.leg_feeling" />
+              </el-form-item>
+              <el-form-item label="疼痛部位">
+                <el-input v-model="quickForm.pain_location" />
+              </el-form-item>
+              <el-form-item label="疼痛等级">
+                <el-slider v-model="painLevel" :min="0" :max="5" show-stops />
+              </el-form-item>
+            </div>
+            <el-form-item label="明日调整">
+              <el-input v-model="quickForm.tomorrow_adjustment" type="textarea" :rows="2" />
+            </el-form-item>
+            <el-form-item label="训练警报">
+              <el-input v-model="quickForm.alert_message" type="textarea" :rows="2" />
+            </el-form-item>
+          </el-collapse-item>
+        </el-collapse>
+      </el-form>
+      <template #footer>
+        <el-button @click="quickDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="savingQuick" @click="saveQuickCheckin">保存打卡</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { EditPen, Refresh } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
 
 import { listTodayWorkouts } from "@/api/plannedWorkouts";
 import { listTrainingCycles } from "@/api/trainingCycles";
-import type { PlannedWorkout, TrainingCycle, WorkoutStatusNormalized } from "@/types/models";
+import { updateWorkoutLog } from "@/api/workoutLogs";
+import { trackUsageEvent } from "@/api/usageEvents";
+import type { PlannedWorkout, TrainingCycle, WorkoutLogPayload, WorkoutStatusNormalized } from "@/types/models";
 import { labelFor, statusOptions } from "@/types/options";
 
 const router = useRouter();
@@ -90,7 +193,57 @@ const workouts = ref<PlannedWorkout[]>([]);
 const cycles = ref<TrainingCycle[]>([]);
 const loading = ref(false);
 const loadingCycles = ref(true);
+const quickDialogVisible = ref(false);
+const savingQuick = ref(false);
+const quickWorkout = ref<PlannedWorkout | null>(null);
+const quickForm = reactive<WorkoutLogPayload>(initialQuickForm());
 const showOnboarding = computed(() => !loadingCycles.value && cycles.value.length === 0);
+const painLevel = computed({
+  get: () => quickForm.pain_level ?? 0,
+  set: (value: number) => {
+    quickForm.pain_level = value;
+  },
+});
+const autoPaceText = computed(() => {
+  const distance = Number(quickForm.actual_distance_km || 0);
+  const duration = Number(quickForm.actual_duration_seconds || 0);
+  if (!distance || !duration || distance <= 0) return "";
+  const seconds = Math.round(duration / distance);
+  const minutes = Math.floor(seconds / 60);
+  const restSeconds = String(seconds % 60).padStart(2, "0");
+  return `${minutes}:${restSeconds}/km`;
+});
+
+function initialQuickForm(): WorkoutLogPayload {
+  return {
+    status_normalized: "completed_normal",
+    actual_distance_km: 0,
+    actual_duration_seconds: null,
+    avg_pace_seconds_per_km: null,
+    avg_heart_rate: null,
+    rpe: null,
+    i_effective_km: null,
+    t1_effective_km: null,
+    t2_effective_km: null,
+    m_effective_km: null,
+    r_effective_km: null,
+    sleep_hours: null,
+    hrv: null,
+    morning_heart_rate: null,
+    weight_kg: null,
+    leg_feeling: null,
+    pain_location: null,
+    pain_level: 0,
+    main_session_data: null,
+    review_note: null,
+    tomorrow_adjustment: null,
+    alert_message: null,
+  };
+}
+
+function resetQuickForm() {
+  Object.assign(quickForm, initialQuickForm());
+}
 
 async function load() {
   loading.value = true;
@@ -114,6 +267,31 @@ function goLog(id: number) {
   router.push(`/workouts/${id}/log`);
 }
 
+function openQuickCheckin(row: PlannedWorkout, status: "completed_normal" | "completed_adjusted") {
+  quickWorkout.value = row;
+  resetQuickForm();
+  Object.assign(quickForm, row.workout_log || {});
+  quickForm.status_normalized = status;
+  quickForm.actual_distance_km = status === "completed_normal" ? Number(row.planned_distance_km || 0) : null;
+  quickForm.review_note = status === "completed_adjusted" ? quickForm.review_note || "调整后完成。" : quickForm.review_note;
+  quickDialogVisible.value = true;
+  trackUsageEvent("workout_quick_checkin_opened", { planned_workout_id: row.id });
+}
+
+async function saveQuickCheckin() {
+  if (!quickWorkout.value) return;
+  savingQuick.value = true;
+  try {
+    await updateWorkoutLog(quickWorkout.value.id, quickForm);
+    ElMessage.success("训练已打卡");
+    quickDialogVisible.value = false;
+    trackUsageEvent("workout_log_saved", { planned_workout_id: quickWorkout.value.id });
+    await load();
+  } finally {
+    savingQuick.value = false;
+  }
+}
+
 function statusClass(status?: WorkoutStatusNormalized | null) {
   if (status?.startsWith("completed")) return "status-tag status-done";
   if (status === "missed" || status === "skipped") return "status-tag status-alert";
@@ -122,6 +300,7 @@ function statusClass(status?: WorkoutStatusNormalized | null) {
 }
 
 onMounted(() => {
+  trackUsageEvent("today_viewed");
   loadCycles();
   load();
 });
@@ -240,6 +419,25 @@ onMounted(() => {
   display: none;
 }
 
+.workout-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.workout-actions :deep(.el-button) {
+  margin-left: 0;
+  padding: 5px 8px;
+}
+
+.form-help {
+  margin-top: 6px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 @media (max-width: 768px) {
   .onboarding-card,
   .onboarding-actions {
@@ -307,6 +505,17 @@ onMounted(() => {
     margin: 0;
     color: #172033;
     line-height: 1.6;
+  }
+
+  .mobile-actions {
+    flex: 1;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+
+  .mobile-actions :deep(.el-button) {
+    min-width: 46px;
+    padding: 5px 7px;
   }
 }
 </style>

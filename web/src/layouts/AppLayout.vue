@@ -242,8 +242,10 @@ const showMobileBackToMy = computed(() => route.query.from === "/my" && route.pa
 function addVisitedTab() {
   if (route.meta.public) return;
   const path = route.path;
+  const title = pageTitle.value;
+  if (path === "/" || !route.name || title === "GaitLogic") return;
   if (visitedTabs.value.some((tab) => tab.path === path)) return;
-  visitedTabs.value.push({ path, title: pageTitle.value });
+  visitedTabs.value.push({ path, title });
 }
 
 function handleTabClick(tab: TabsPaneContext) {
@@ -315,7 +317,11 @@ function goBackToMy() {
 }
 
 async function loadCurrentUser() {
-  currentUser.value = await getCurrentUser();
+  try {
+    currentUser.value = await getCurrentUser();
+  } catch {
+    currentUser.value = null;
+  }
 }
 
 async function handleLogout() {
@@ -576,7 +582,7 @@ onBeforeUnmount(() => {
     display: none;
   }
 
-  .page-heading p,
+  .page-heading,
   .sync-text,
   .tool-icon:not(.settings-trigger) {
     display: none;
@@ -591,10 +597,6 @@ onBeforeUnmount(() => {
   .header-left,
   .header-tools {
     gap: 10px;
-  }
-
-  .page-heading h1 {
-    font-size: 18px;
   }
 
   .app-tabs {

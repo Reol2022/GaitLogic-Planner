@@ -7,7 +7,7 @@ from planner_core.enums import AIPlanDraftStatus, AIPlanIntensityStyle, RaceDist
 
 
 class AIPlanGenerateRequest(BaseModel):
-    runner_level: str = Field(..., max_length=64)
+    runner_level: str = Field(default="intermediate", max_length=64)
     recent_pb_distance: RaceDistance | None = None
     recent_pb_result: str | None = Field(default=None, max_length=64)
     current_weekly_mileage_km: float = Field(..., ge=0, le=300)

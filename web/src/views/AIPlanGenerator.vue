@@ -13,11 +13,10 @@
             :stroke-width="10"
             :show-text="false"
             striped
-            striped-flow
           />
           <div class="generation-meta">
             <span>{{ generationProgress }}%</span>
-            <span>通常需要几十秒，请保持当前页面打开</span>
+            <span>复杂计划可能需要 1-3 分钟，请保持当前页面打开</span>
           </div>
         </div>
       </div>
@@ -49,25 +48,31 @@
 
         <el-form label-position="top" class="ai-form">
           <div class="form-row">
-            <el-form-item label="跑者水平">
-              <el-select v-model="form.runner_level" style="width: 100%">
-                <el-option label="初级" value="beginner" />
-                <el-option label="进阶" value="intermediate" />
-                <el-option label="严肃跑者" value="advanced" />
+            <el-form-item label="近期 PB 距离">
+              <el-select v-model="form.recent_pb_distance" clearable style="width: 100%">
+                <el-option
+                  v-for="item in distanceOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
               </el-select>
             </el-form-item>
-            <el-form-item label="强度风格">
-              <el-select v-model="form.intensity_style" style="width: 100%">
-                <el-option label="保守" value="conservative" />
-                <el-option label="标准" value="standard" />
-                <el-option label="积极" value="aggressive" />
-              </el-select>
+            <el-form-item label="近期 PB 成绩">
+              <el-time-picker
+                v-model="form.recent_pb_result"
+                value-format="HH:mm:ss"
+                format="HH:mm:ss"
+                placeholder="例如 00:16:24"
+                style="width: 100%"
+              />
             </el-form-item>
           </div>
 
           <div class="form-row">
             <el-form-item label="当前周跑量 km">
               <el-input-number v-model="form.current_weekly_mileage_km" :min="0" :max="300" style="width: 100%" />
+              <div class="form-help">请填写你最近能够稳定完成的周跑量，而不是历史最高周跑量。</div>
             </el-form-item>
             <el-form-item label="最近 4 周平均跑量 km">
               <el-input-number v-model="form.recent_4w_avg_mileage_km" :min="0" :max="300" style="width: 100%" />
@@ -86,8 +91,15 @@
           </div>
 
           <div class="form-row">
-            <el-form-item label="目标赛事名称">
-              <el-input v-model="form.target_race_name" placeholder="眉山东坡半马" />
+            <el-form-item label="目标成绩">
+              <el-time-picker
+                v-model="form.target_result"
+                value-format="HH:mm:ss"
+                format="HH:mm:ss"
+                placeholder="例如 01:11:30"
+                style="width: 100%"
+              />
+              <div class="form-help">目标过于激进时，系统会保留目标，但会在计划中提示风险。</div>
             </el-form-item>
             <el-form-item label="目标赛事日期">
               <el-date-picker
@@ -99,6 +111,16 @@
               />
             </el-form-item>
           </div>
+
+          <el-form-item label="伤病说明">
+            <el-input
+              v-model="form.injury_notes"
+              type="textarea"
+              :rows="2"
+              placeholder="例如：左小腿偶有紧张，无明显疼痛"
+            />
+            <div class="form-help">如有持续疼痛或明确伤病，请优先接受专业评估，AI 计划不替代医疗建议。</div>
+          </el-form-item>
 
           <div class="form-row">
             <el-form-item label="计划开始日期">
@@ -128,37 +150,26 @@
           </div>
 
           <el-collapse class="advanced-collapse">
-            <el-collapse-item title="高级偏好" name="advanced">
+            <el-collapse-item title="高级设置" name="advanced">
               <div class="form-row">
-                <el-form-item label="近期 PB 距离">
-                  <el-select v-model="form.recent_pb_distance" clearable style="width: 100%">
-                    <el-option
-                      v-for="item in distanceOptions"
-                      :key="item.value"
-                      :label="item.label"
-                      :value="item.value"
-                    />
+                <el-form-item label="跑者水平">
+                  <el-select v-model="form.runner_level" style="width: 100%">
+                    <el-option label="初级" value="beginner" />
+                    <el-option label="进阶" value="intermediate" />
+                    <el-option label="严肃跑者" value="advanced" />
                   </el-select>
                 </el-form-item>
-                <el-form-item label="近期 PB 成绩">
-                  <el-time-picker
-                    v-model="form.recent_pb_result"
-                    value-format="HH:mm:ss"
-                    format="HH:mm:ss"
-                    placeholder="例如 00:16:24"
-                    style="width: 100%"
-                  />
+                <el-form-item label="强度风格">
+                  <el-select v-model="form.intensity_style" style="width: 100%">
+                    <el-option label="保守" value="conservative" />
+                    <el-option label="标准" value="standard" />
+                    <el-option label="积极" value="aggressive" />
+                  </el-select>
                 </el-form-item>
               </div>
               <div class="form-row">
-                <el-form-item label="目标成绩">
-                  <el-time-picker
-                    v-model="form.target_result"
-                    value-format="HH:mm:ss"
-                    format="HH:mm:ss"
-                    placeholder="例如 01:11:30"
-                    style="width: 100%"
-                  />
+                <el-form-item label="目标赛事名称">
+                  <el-input v-model="form.target_race_name" placeholder="眉山东坡半马" />
                 </el-form-item>
                 <el-form-item label="是否可以双跑">
                   <el-switch v-model="form.can_double_run" active-text="可以" inactive-text="不可以" />
@@ -168,14 +179,6 @@
                 <el-select v-model="form.fixed_rest_days" multiple clearable style="width: 100%">
                   <el-option v-for="day in weekDays" :key="day" :label="day" :value="day" />
                 </el-select>
-              </el-form-item>
-              <el-form-item label="伤病说明">
-                <el-input
-                  v-model="form.injury_notes"
-                  type="textarea"
-                  :rows="2"
-                  placeholder="例如：左小腿偶有紧张，无明显疼痛"
-                />
               </el-form-item>
               <el-form-item label="训练偏好 / 训练哲学">
                 <el-input
@@ -188,6 +191,7 @@
               <el-form-item label="包含配速建议">
                 <el-switch v-model="form.include_pace_guidance" />
               </el-form-item>
+              <router-link class="preference-link" to="/ai-coach-preference">打开 AI 教练偏好配置</router-link>
             </el-collapse-item>
           </el-collapse>
 
@@ -213,10 +217,17 @@
           </div>
         </div>
         <template v-if="currentDraft">
-          <div class="draft-summary">
+          <div class="draft-summary-card">
             <h4>{{ currentDraft.title }}</h4>
-            <p>{{ currentDraft.goal }}</p>
             <p>{{ currentDraft.summary }}</p>
+            <div class="draft-metrics">
+              <span><b>目标</b>{{ currentDraft.target_race_name || currentDraft.goal || "-" }} {{ currentDraft.target_result || "" }}</span>
+              <span><b>周期</b>{{ currentDraft.start_date || "-" }} 至 {{ currentDraft.end_date || "-" }}</span>
+              <span><b>总周期</b>{{ groupedWorkouts.length }} 周</span>
+              <span><b>第一周跑量</b>{{ firstWeekDistance }} km</span>
+              <span><b>关键课</b>{{ firstWeekKeyWorkoutCount }} 次/首周</span>
+              <span><b>风格</b>{{ intensityStyleLabel }}</span>
+            </div>
             <el-alert
               v-if="currentDraft.risk_notes?.length"
               type="warning"
@@ -225,9 +236,11 @@
             />
           </div>
           <div class="draft-actions">
-            <el-button type="primary" :disabled="currentDraft.status !== 'draft'" @click="apply(currentDraft.id)">
-              应用为正式计划
+            <el-button type="primary" :disabled="currentDraft.status !== 'draft' || applying" :loading="applying" @click="apply(currentDraft.id)">
+              采用这份计划
             </el-button>
+            <el-button :disabled="generating" @click="currentDraft = null">返回修改</el-button>
+            <el-button :disabled="generating" @click="generate">重新生成</el-button>
             <el-button :disabled="currentDraft.status !== 'draft'" @click="reject(currentDraft.id)">拒绝草稿</el-button>
             <el-dropdown trigger="click" @command="(format) => downloadCurrentDraft(String(format))">
               <el-button :icon="Download">导出</el-button>
@@ -243,17 +256,28 @@
           <p class="export-note">
             Garmin / 高驰参考 CSV 仅用于手动录入或二次转换，不会直连设备账号。
           </p>
-          <div v-for="group in groupedWorkouts" :key="group.name" class="week-block">
-            <h4>{{ group.name }}</h4>
-            <el-table :data="group.items" size="small">
+          <div v-if="firstWeekGroup" class="week-block">
+            <h4>第一周完整预览：{{ firstWeekGroup.name }}</h4>
+            <el-table :data="firstWeekGroup.items" size="small">
               <el-table-column prop="workout_date" label="日期" width="110" />
               <el-table-column prop="weekday" label="星期" width="70" />
               <el-table-column prop="planned_content" label="训练内容" min-width="220" show-overflow-tooltip />
+              <el-table-column prop="focus_note" label="训练目的 / 执行提示" min-width="220" show-overflow-tooltip />
               <el-table-column prop="planned_distance_km" label="km" width="70" />
               <el-table-column prop="main_type_raw" label="类型" width="80" />
               <el-table-column prop="target_pace_text" label="目标配速" width="130" show-overflow-tooltip />
             </el-table>
           </div>
+          <el-collapse v-if="restWeekGroups.length">
+            <el-collapse-item v-for="group in restWeekGroups" :key="group.name" :title="group.name" :name="group.name">
+              <el-table :data="group.items" size="small">
+                <el-table-column prop="workout_date" label="日期" width="110" />
+                <el-table-column prop="planned_content" label="训练内容" min-width="260" show-overflow-tooltip />
+                <el-table-column prop="planned_distance_km" label="km" width="70" />
+                <el-table-column prop="main_type_raw" label="类型" width="80" />
+              </el-table>
+            </el-collapse-item>
+          </el-collapse>
         </template>
         <el-empty v-else description="暂无草稿，先生成一份训练计划草稿" />
       </article>
@@ -298,6 +322,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { Download } from "@element-plus/icons-vue";
 
@@ -310,8 +335,10 @@ import {
   getAIPlanQuota,
   rejectAIPlanDraft,
 } from "@/api/aiPlan";
+import { trackUsageEvent } from "@/api/usageEvents";
 import type { AIPlanDraft, AIPlanExportFormat, AIPlanGeneratePayload, AIPlanQuota, RaceDistance } from "@/types/models";
 
+const router = useRouter();
 const today = new Date().toISOString().slice(0, 10);
 const distanceOptions: Array<{ label: string; value: RaceDistance }> = [
   { label: "1500m", value: "1500m" },
@@ -357,9 +384,11 @@ const quota = ref<AIPlanQuota | null>(null);
 const drafts = ref<AIPlanDraft[]>([]);
 const currentDraft = ref<AIPlanDraft | null>(null);
 const generating = ref(false);
+const applying = ref(false);
 const generationProgress = ref(0);
 const loadingDrafts = ref(false);
 let generationTimer: ReturnType<typeof window.setInterval> | null = null;
+let generationStartedAt = 0;
 
 const groupedWorkouts = computed(() => {
   const map = new Map<string, NonNullable<AIPlanDraft["workouts"]>>();
@@ -370,6 +399,20 @@ const groupedWorkouts = computed(() => {
     map.set(key, group);
   }
   return Array.from(map.entries()).map(([name, items]) => ({ name, items }));
+});
+const firstWeekGroup = computed(() => groupedWorkouts.value[0] || null);
+const restWeekGroups = computed(() => groupedWorkouts.value.slice(1));
+const firstWeekDistance = computed(() =>
+  (firstWeekGroup.value?.items || []).reduce((sum, item) => sum + Number(item.planned_distance_km || 0), 0).toFixed(1),
+);
+const firstWeekKeyWorkoutCount = computed(() =>
+  (firstWeekGroup.value?.items || []).filter((item) =>
+    ["tempo", "interval_speed", "mixed"].includes(item.main_type_normalized),
+  ).length,
+);
+const intensityStyleLabel = computed(() => {
+  const labels = { conservative: "保守", standard: "标准", aggressive: "积极" };
+  return labels[form.intensity_style] || form.intensity_style;
 });
 
 const planEndDate = computed(() => {
@@ -447,13 +490,13 @@ function formatDateTime(value: string) {
 }
 
 function startGenerationProgress() {
-  generationProgress.value = 8;
+  generationProgress.value = 4;
   stopGenerationProgress();
   generationTimer = window.setInterval(() => {
     if (generationProgress.value >= 92) return;
-    const step = generationProgress.value < 50 ? 7 : generationProgress.value < 78 ? 4 : 2;
+    const step = generationProgress.value < 35 ? 3 : generationProgress.value < 72 ? 2 : 1;
     generationProgress.value = Math.min(generationProgress.value + step, 92);
-  }, 1100);
+  }, 2300);
 }
 
 function stopGenerationProgress() {
@@ -485,6 +528,8 @@ async function generate() {
     return;
   }
   generating.value = true;
+  generationStartedAt = Date.now();
+  trackUsageEvent("ai_plan_generate_started");
   startGenerationProgress();
   try {
     const result = await generateAIPlan({
@@ -499,8 +544,19 @@ async function generate() {
     });
     currentDraft.value = await getAIPlanDraftDetail(result.draft_id);
     generationProgress.value = 100;
+    trackUsageEvent("ai_plan_generate_succeeded", { draft_id: result.draft_id });
     ElMessage.success("AI 课表草稿已生成");
     await loadAll();
+  } catch (error) {
+    const recovered = await recoverDraftAfterUncertainGeneration(error, generationStartedAt);
+    if (recovered) {
+      generationProgress.value = 100;
+      trackUsageEvent("ai_plan_generate_succeeded", { recovered: true });
+      ElMessage.success("AI 课表草稿已生成，已自动刷新预览");
+      return;
+    }
+    trackUsageEvent("ai_plan_generate_failed", { error_type: "request_failed" });
+    ElMessage.error(getGenerateErrorMessage(error));
   } finally {
     stopGenerationProgress();
     window.setTimeout(() => {
@@ -510,15 +566,69 @@ async function generate() {
   }
 }
 
+function isUncertainGenerationError(error: unknown) {
+  const err = error as {
+    code?: string;
+    message?: string;
+    response?: { status?: number };
+  };
+  const status = err?.response?.status || 0;
+  return err?.code === "ECONNABORTED" || status >= 500;
+}
+
+function getGenerateErrorMessage(error: unknown) {
+  const err = error as {
+    code?: string;
+    message?: string;
+    response?: { status?: number; data?: { message?: string } };
+  };
+  if (isUncertainGenerationError(error)) {
+    return "AI 生成请求耗时较长或模型服务暂时不可用。已刷新历史草稿，请稍后再查看或重新生成。";
+  }
+  return err?.response?.data?.message || err?.message || "AI 课表生成失败，请稍后重试。";
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function recoverDraftAfterUncertainGeneration(error: unknown, startedAt: number) {
+  if (!isUncertainGenerationError(error)) return false;
+  const earliest = startedAt - 2 * 60 * 1000;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (attempt > 0) await sleep(3500);
+    try {
+      await loadAll();
+    } catch {
+      continue;
+    }
+    const candidate = drafts.value.find((draft) => {
+      const createdAt = new Date(draft.created_at).getTime();
+      return Number.isFinite(createdAt) && createdAt >= earliest;
+    });
+    if (candidate) {
+      currentDraft.value = await getAIPlanDraftDetail(candidate.id);
+      return true;
+    }
+  }
+  return false;
+}
+
 async function viewDraft(id: number) {
   currentDraft.value = await getAIPlanDraftDetail(id);
 }
 
 async function apply(id: number) {
-  const result = await applyAIPlanDraft(id);
-  ElMessage.success(result.message);
-  await loadAll();
-  currentDraft.value = await getAIPlanDraftDetail(id);
+  if (applying.value) return;
+  applying.value = true;
+  try {
+    const result = await applyAIPlanDraft(id);
+    trackUsageEvent("ai_plan_applied", { draft_id: id, cycle_id: result.cycle_id });
+    ElMessage.success("计划已采用，接下来从今天的训练开始。");
+    await router.push("/today");
+  } finally {
+    applying.value = false;
+  }
 }
 
 async function reject(id: number) {
@@ -592,7 +702,7 @@ onBeforeUnmount(stopGenerationProgress);
   border: 4px solid #d7e7f4;
   border-top-color: #1976d2;
   border-radius: 50%;
-  animation: generation-spin 0.85s linear infinite;
+  animation: generation-spin 1.6s linear infinite;
 }
 
 .generation-copy {
@@ -724,6 +834,21 @@ onBeforeUnmount(stopGenerationProgress);
   gap: 12px;
 }
 
+.form-help {
+  margin-top: 6px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.preference-link {
+  display: inline-flex;
+  margin-top: 8px;
+  color: #1976d2;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .advanced-collapse {
   margin-bottom: 16px;
 }
@@ -779,21 +904,47 @@ onBeforeUnmount(stopGenerationProgress);
   gap: 10px;
 }
 
-.draft-summary {
+.draft-summary-card {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 14px;
+  padding: 16px;
+  border: 1px solid #d7e7f4;
+  border-radius: 8px;
+  background: #f8fbff;
 }
 
-.draft-summary h4,
+.draft-summary-card h4,
 .week-block h4 {
   margin: 0;
   color: #172033;
 }
 
-.draft-summary p {
+.draft-summary-card p {
   margin: 0;
   color: #667085;
+}
+
+.draft-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.draft-metrics span {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid #e5edf6;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #344054;
+  font-size: 13px;
+}
+
+.draft-metrics b {
+  color: #667085;
+  font-size: 12px;
 }
 
 .export-note {

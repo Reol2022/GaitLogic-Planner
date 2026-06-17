@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { getStoredToken } from "@/api/auth";
+import { getOnboardingStatus } from "@/api/onboarding";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -19,6 +20,12 @@ const router = createRouter({
     {
       path: "/",
       redirect: "/today",
+    },
+    {
+      path: "/welcome",
+      name: "Welcome",
+      component: () => import("@/views/WelcomeView.vue"),
+      meta: { title: "开始训练计划" },
     },
     {
       path: "/dashboard",
@@ -126,10 +133,21 @@ const router = createRouter({
       component: () => import("@/views/AdminSystemSettings.vue"),
       meta: { title: "系统设置" },
     },
+    {
+      path: "/404",
+      name: "NotFound",
+      component: () => import("@/views/NotFoundView.vue"),
+      meta: { title: "页面不存在", public: true },
+    },
+    {
+      path: "/:pathMatch(.*)*",
+      redirect: "/404",
+      meta: { public: true },
+    },
   ],
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const token = getStoredToken();
 
   if (!to.meta.public && !token) {
@@ -139,8 +157,17 @@ router.beforeEach((to) => {
     };
   }
 
-  if (to.meta.public && token) {
+  if ((to.name === "Login" || to.name === "Register") && token) {
     return "/today";
+  }
+
+  if (token && to.name !== "Welcome" && !to.meta.public && !localStorage.getItem("gaitlogic_welcome_skipped")) {
+    try {
+      const status = await getOnboardingStatus();
+      if (status.should_show_welcome) return "/welcome";
+    } catch {
+      return true;
+    }
   }
 
   return true;
