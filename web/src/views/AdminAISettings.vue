@@ -1,15 +1,12 @@
 <template>
   <div class="page-stack admin-ai-page">
-    <section class="admin-hero">
-      <div>
-        <span>Admin Console</span>
-        <h2>AI 模型设置</h2>
-        <p>这里配置全站 AI 课表生成使用的 OpenAI-compatible 模型。DeepSeek 可直接选择，也可以填写任意兼容服务。</p>
-      </div>
-      <el-tag :type="form.has_api_key ? 'success' : 'warning'" effect="light">
-        {{ form.has_api_key ? `API Key 已配置：${form.api_key_preview}` : "API Key 未配置" }}
-      </el-tag>
-    </section>
+    <PageHeader title="AI 模型设置" subtitle="配置全站 AI 课表生成使用的 OpenAI-compatible 模型。">
+      <template #actions>
+        <el-tag :type="form.has_api_key ? 'success' : 'warning'" effect="light">
+          {{ form.has_api_key ? `API Key 已配置：${form.api_key_preview}` : "API Key 未配置" }}
+        </el-tag>
+      </template>
+    </PageHeader>
 
     <section class="settings-grid">
       <article class="panel">

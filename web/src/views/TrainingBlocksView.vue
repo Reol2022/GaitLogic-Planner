@@ -1,7 +1,6 @@
 <template>
   <div class="page-stack">
-    <div class="excel-section-title">训练块</div>
-    <div class="excel-subtitle">用于维护 Week 1、Week 2 和非标准训练块。</div>
+    <PageHeader title="训练块" subtitle="用于维护 Week 1、Week 2 和非标准训练块。" />
 
     <div class="toolbar">
       <div class="filter-row">

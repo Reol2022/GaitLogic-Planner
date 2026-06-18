@@ -1,6 +1,8 @@
 import axios from "axios";
 import type { AxiosRequestConfig } from "axios";
 import { ElMessage } from "element-plus";
+import { requestAuth } from "@/utils/authPrompt";
+import { getCachedAuthEntryMode } from "@/utils/systemSettingsCache";
 
 const TOKEN_STORAGE_KEY = "gaitlogic_access_token";
 
@@ -28,7 +30,11 @@ client.interceptors.response.use(
     if (error?.response?.status === 401) {
       localStorage.removeItem(TOKEN_STORAGE_KEY);
       if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
-        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+        if (getCachedAuthEntryMode() === "modal") {
+          requestAuth(window.location.pathname + window.location.search);
+        } else {
+          window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+        }
       }
       return Promise.reject(error);
     }
@@ -53,6 +59,9 @@ const request = {
   },
   put<T>(url: string, data?: unknown, config?: AppRequestConfig) {
     return client.put<T, T>(url, data, config);
+  },
+  patch<T>(url: string, data?: unknown, config?: AppRequestConfig) {
+    return client.patch<T, T>(url, data, config);
   },
   delete<T = unknown>(url: string, config?: AppRequestConfig) {
     return client.delete<T, T>(url, config);

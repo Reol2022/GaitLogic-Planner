@@ -2,6 +2,8 @@ import request from "./request";
 import type {
   AdminAISettings,
   AdminAISettingsPayload,
+  SystemSettings,
+  SystemSettingsPayload,
   AdminUser,
   AdminUserUpdatePayload,
 } from "@/types/models";
@@ -12,6 +14,14 @@ export function getAdminAISettings() {
 
 export function updateAdminAISettings(payload: AdminAISettingsPayload) {
   return request.put<AdminAISettings>("/admin/ai-settings", payload);
+}
+
+export function getAdminSystemSettings() {
+  return request.get<SystemSettings>("/admin/system-settings");
+}
+
+export function updateAdminSystemSettings(payload: SystemSettingsPayload) {
+  return request.put<SystemSettings>("/admin/system-settings", payload);
 }
 
 export function listAdminUsers(keyword?: string) {

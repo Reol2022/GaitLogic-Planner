@@ -40,6 +40,9 @@ def test_required_routes_are_registered() -> None:
     assert "POST /api/auth/logout" in routes
     assert "GET /api/admin/ai-settings" in routes
     assert "PUT /api/admin/ai-settings" in routes
+    assert "GET /api/admin/system-settings" in routes
+    assert "PUT /api/admin/system-settings" in routes
+    assert "GET /api/system-settings" in routes
     assert "GET /api/admin/users" in routes
     assert "PUT /api/admin/users/{user_id}" in routes
     assert "GET /api/admin/product-metrics" in routes

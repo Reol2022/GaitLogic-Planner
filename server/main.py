@@ -18,10 +18,12 @@ from server.api.routes import (
     pace_rules,
     planned_workouts,
     onboarding,
+    system_settings,
     training_calendar,
     training_blocks,
     training_cycles,
     usage_events,
+    weekly_reviews,
     workout_logs,
 )
 from server.common.exceptions import (
@@ -35,7 +37,7 @@ from server.common.exceptions import (
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Gaitlogic Planner API",
-        version="0.1.0",
+        version="0.8.0",
         description="Backend API for training plans, logs, dashboard stats, and pace rules.",
     )
     app.add_middleware(
@@ -57,6 +59,7 @@ def create_app() -> FastAPI:
     app.include_router(excel.router, prefix="/api")
     app.include_router(feedback.router, prefix="/api")
     app.include_router(onboarding.router, prefix="/api")
+    app.include_router(system_settings.router, prefix="/api")
     app.include_router(training_calendar.router, prefix="/api")
     app.include_router(training_cycles.router, prefix="/api")
     app.include_router(training_blocks.router, prefix="/api")
@@ -66,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(pace_calculator.router, prefix="/api")
     app.include_router(pace_rules.router, prefix="/api")
     app.include_router(usage_events.router, prefix="/api")
+    app.include_router(weekly_reviews.router, prefix="/api")
 
     @app.get("/api/openapi.json", include_in_schema=False)
     def api_openapi() -> JSONResponse:

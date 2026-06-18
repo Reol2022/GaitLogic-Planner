@@ -1,5 +1,7 @@
 <template>
   <div class="page-stack">
+    <PageHeader title="Excel 导入" subtitle="下载标准模板，填写训练周期、训练计划和配速规则后上传。" />
+
     <section class="panel">
       <div class="panel-header">
         <h2 class="panel-title">下载标准模板</h2>

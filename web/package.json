@@ -1,5 +1,5 @@
 {
-    "version":  "0.1.0",
+    "version":  "0.8.0",
     "name":  "gaitlogic-planner-web",
     "scripts":  {
                     "preview":  "vite preview --config ../vite.web.config.mjs --host 0.0.0.0",

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -58,7 +59,7 @@ def prompt_hash_for_input(input_json: dict[str, Any]) -> str:
 
 def get_or_create_today_quota(db: Session, user_id: int) -> AIPlanQuota:
     runtime = get_effective_ai_settings(db)
-    today = date.today()
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
     quota = db.scalar(
         select(AIPlanQuota).where(AIPlanQuota.user_id == user_id, AIPlanQuota.quota_date == today)
     )
@@ -469,6 +470,7 @@ def apply_draft_to_training_plan(db: Session, draft_id: int, user_id: int) -> Tr
                 phase_name=workout.phase_name,
                 planned_content=workout.planned_content,
                 focus_note=focus_note,
+                target_pace_text=workout.target_pace_text,
                 planned_distance_km=workout.planned_distance_km,
                 main_type_raw=workout.main_type_raw,
                 main_type_normalized=workout.main_type_normalized,

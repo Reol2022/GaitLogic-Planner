@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -24,13 +25,18 @@ from planner_core.database.base import Base, IdMixin, MYSQL_TABLE_ARGS, Timestam
 from planner_core.enums import (
     AIPlanDraftStatus,
     AIPlanJobStatus,
+    AuthEntryMode,
     BlockType,
     ExcelImportStatus,
     FeedbackType,
+    PlanAdjustmentAction,
+    PlanAdjustmentDraftStatus,
     PaceZoneCode,
     RaceDistance,
+    TrainingStatus,
     UIMode,
     UsageEventName,
+    WeeklyReviewStatus,
     WorkoutMainTypeNormalized,
     WorkoutStatusNormalized,
 )
@@ -94,6 +100,12 @@ ai_plan_draft_status_enum = Enum(
     native_enum=False,
     length=16,
 )
+auth_entry_mode_enum = Enum(
+    AuthEntryMode,
+    values_callable=enum_values,
+    native_enum=False,
+    length=32,
+)
 ui_mode_enum = Enum(
     UIMode,
     values_callable=enum_values,
@@ -105,6 +117,14 @@ usage_event_name_enum = Enum(
     values_callable=enum_values,
     native_enum=False,
     length=64,
+)
+weekly_review_status_enum = Enum(WeeklyReviewStatus, values_callable=enum_values, native_enum=False, length=32)
+training_status_enum = Enum(TrainingStatus, values_callable=enum_values, native_enum=False, length=32)
+plan_adjustment_draft_status_enum = Enum(
+    PlanAdjustmentDraftStatus, values_callable=enum_values, native_enum=False, length=32
+)
+plan_adjustment_action_enum = Enum(
+    PlanAdjustmentAction, values_callable=enum_values, native_enum=False, length=16
 )
 
 
@@ -150,6 +170,10 @@ class UserAccount(IdMixin, TimestampMixin, Base):
         back_populates="updated_by",
         foreign_keys="AdminAISettings.updated_by_id",
     )
+    admin_system_settings_updates: Mapped[list[AdminSystemSettings]] = relationship(
+        back_populates="updated_by",
+        foreign_keys="AdminSystemSettings.updated_by_id",
+    )
     ai_plan_drafts: Mapped[list[AIPlanDraft]] = relationship(back_populates="user")
     ai_coach_preference: Mapped[AIPlanCoachPreference | None] = relationship(
         back_populates="user",
@@ -159,6 +183,8 @@ class UserAccount(IdMixin, TimestampMixin, Base):
     )
     excel_import_jobs: Mapped[list[ExcelImportJob]] = relationship(back_populates="user")
     usage_events: Mapped[list[UsageEvent]] = relationship(back_populates="user")
+    weekly_review_reports: Mapped[list[WeeklyReviewReport]] = relationship(back_populates="user")
+    plan_adjustment_drafts: Mapped[list[PlanAdjustmentDraft]] = relationship(back_populates="user")
 
 
 class TrainingCycle(IdMixin, TimestampMixin, Base):
@@ -190,6 +216,8 @@ class TrainingCycle(IdMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    weekly_review_reports: Mapped[list[WeeklyReviewReport]] = relationship(back_populates="cycle")
+    plan_adjustment_drafts: Mapped[list[PlanAdjustmentDraft]] = relationship(back_populates="cycle")
 
 
 class TrainingBlock(IdMixin, TimestampMixin, Base):
@@ -242,6 +270,12 @@ class TrainingBlock(IdMixin, TimestampMixin, Base):
         passive_deletes=True,
         uselist=False,
     )
+    source_weekly_reviews: Mapped[list[WeeklyReviewReport]] = relationship(
+        back_populates="source_block", foreign_keys="WeeklyReviewReport.source_block_id"
+    )
+    target_weekly_reviews: Mapped[list[WeeklyReviewReport]] = relationship(
+        back_populates="target_block", foreign_keys="WeeklyReviewReport.target_block_id"
+    )
 
 
 class PlannedWorkout(IdMixin, TimestampMixin, Base):
@@ -275,6 +309,7 @@ class PlannedWorkout(IdMixin, TimestampMixin, Base):
     phase_name: Mapped[str | None] = mapped_column(String(128))
     planned_content: Mapped[str] = mapped_column(Text, nullable=False)
     focus_note: Mapped[str | None] = mapped_column(Text)
+    target_pace_text: Mapped[str | None] = mapped_column(String(255))
     planned_distance_km: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
     main_type_raw: Mapped[str | None] = mapped_column(String(64))
     main_type_normalized: Mapped[WorkoutMainTypeNormalized] = mapped_column(
@@ -296,6 +331,7 @@ class PlannedWorkout(IdMixin, TimestampMixin, Base):
         passive_deletes=True,
         uselist=False,
     )
+    adjustment_items: Mapped[list[PlanAdjustmentItem]] = relationship(back_populates="planned_workout")
 
 
 class WorkoutLog(IdMixin, TimestampMixin, Base):
@@ -391,6 +427,144 @@ class BlockReview(IdMixin, TimestampMixin, Base):
 
     user: Mapped[UserAccount] = relationship(back_populates="block_reviews")
     block: Mapped[TrainingBlock] = relationship(back_populates="block_review")
+
+
+class WeeklyReviewReport(IdMixin, TimestampMixin, Base):
+    __tablename__ = "weekly_review_report"
+    __table_args__ = (
+        Index("ix_weekly_review_user_cycle_created", "user_id", "cycle_id", "created_at"),
+        Index("ix_weekly_review_user_block_version", "user_id", "source_block_id", "version"),
+        Index("ix_weekly_review_snapshot_hash", "user_id", "source_block_id", "snapshot_hash"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    cycle_id: Mapped[int] = mapped_column(
+        ForeignKey("training_cycles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    source_block_id: Mapped[int] = mapped_column(
+        ForeignKey("training_blocks.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    target_block_id: Mapped[int | None] = mapped_column(
+        ForeignKey("training_blocks.id", ondelete="SET NULL"), index=True
+    )
+    week_start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    week_end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    status: Mapped[WeeklyReviewStatus] = mapped_column(
+        weekly_review_status_enum,
+        nullable=False,
+        default=WeeklyReviewStatus.pending,
+        server_default=WeeklyReviewStatus.pending.value,
+    )
+    training_status: Mapped[TrainingStatus] = mapped_column(
+        training_status_enum,
+        nullable=False,
+        default=TrainingStatus.insufficient_data,
+        server_default=TrainingStatus.insufficient_data.value,
+    )
+    metrics_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    rule_reasons_json: Mapped[list | None] = mapped_column(JSON)
+    missing_data_json: Mapped[list | None] = mapped_column(JSON)
+    summary: Mapped[str | None] = mapped_column(Text)
+    positive_points_json: Mapped[list | None] = mapped_column(JSON)
+    attention_points_json: Mapped[list | None] = mapped_column(JSON)
+    next_week_strategy: Mapped[str | None] = mapped_column(Text)
+    risk_notes_json: Mapped[list | None] = mapped_column(JSON)
+    source_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    snapshot_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    algorithm_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    prompt_version: Mapped[str | None] = mapped_column(String(32))
+    model_name: Mapped[str | None] = mapped_column(String(128))
+    error_message: Mapped[str | None] = mapped_column(Text)
+    generated_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    user: Mapped[UserAccount] = relationship(back_populates="weekly_review_reports")
+    cycle: Mapped[TrainingCycle] = relationship(back_populates="weekly_review_reports")
+    source_block: Mapped[TrainingBlock] = relationship(
+        back_populates="source_weekly_reviews", foreign_keys=[source_block_id]
+    )
+    target_block: Mapped[TrainingBlock | None] = relationship(
+        back_populates="target_weekly_reviews", foreign_keys=[target_block_id]
+    )
+    adjustment_draft: Mapped[PlanAdjustmentDraft | None] = relationship(
+        back_populates="review_report", cascade="all, delete-orphan", passive_deletes=True, uselist=False
+    )
+
+
+class PlanAdjustmentDraft(IdMixin, TimestampMixin, Base):
+    __tablename__ = "plan_adjustment_draft"
+    __table_args__ = (
+        Index("ix_plan_adjustment_user_status", "user_id", "status"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    review_report_id: Mapped[int] = mapped_column(
+        ForeignKey("weekly_review_report.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    cycle_id: Mapped[int] = mapped_column(
+        ForeignKey("training_cycles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    source_block_id: Mapped[int] = mapped_column(
+        ForeignKey("training_blocks.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    target_block_id: Mapped[int] = mapped_column(
+        ForeignKey("training_blocks.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    status: Mapped[PlanAdjustmentDraftStatus] = mapped_column(
+        plan_adjustment_draft_status_enum,
+        nullable=False,
+        default=PlanAdjustmentDraftStatus.draft,
+        server_default=PlanAdjustmentDraftStatus.draft.value,
+    )
+    summary: Mapped[str | None] = mapped_column(Text)
+    original_week_distance_km: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
+    suggested_week_distance_km: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime)
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    user: Mapped[UserAccount] = relationship(back_populates="plan_adjustment_drafts")
+    review_report: Mapped[WeeklyReviewReport] = relationship(back_populates="adjustment_draft")
+    cycle: Mapped[TrainingCycle] = relationship(back_populates="plan_adjustment_drafts")
+    items: Mapped[list[PlanAdjustmentItem]] = relationship(
+        back_populates="draft", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class PlanAdjustmentItem(IdMixin, TimestampMixin, Base):
+    __tablename__ = "plan_adjustment_item"
+    __table_args__ = (
+        Index("ix_plan_adjustment_item_draft_workout", "draft_id", "planned_workout_id"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    draft_id: Mapped[int] = mapped_column(
+        ForeignKey("plan_adjustment_draft.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    planned_workout_id: Mapped[int] = mapped_column(
+        ForeignKey("planned_workouts.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    action: Mapped[PlanAdjustmentAction] = mapped_column(plan_adjustment_action_enum, nullable=False)
+    original_content: Mapped[str] = mapped_column(Text, nullable=False)
+    suggested_content: Mapped[str] = mapped_column(Text, nullable=False)
+    original_distance_km: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
+    suggested_distance_km: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
+    original_main_type: Mapped[str | None] = mapped_column(String(32))
+    suggested_main_type: Mapped[str | None] = mapped_column(String(32))
+    original_target_pace_text: Mapped[str | None] = mapped_column(String(255))
+    suggested_target_pace_text: Mapped[str | None] = mapped_column(String(255))
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    is_selected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    is_applied: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    draft: Mapped[PlanAdjustmentDraft] = relationship(back_populates="items")
+    planned_workout: Mapped[PlannedWorkout] = relationship(back_populates="adjustment_items")
 
 
 class PaceRule(IdMixin, TimestampMixin, Base):
@@ -609,6 +783,33 @@ class AdminAISettings(IdMixin, TimestampMixin, Base):
 
     updated_by: Mapped[UserAccount | None] = relationship(
         back_populates="admin_ai_settings_updates",
+        foreign_keys=[updated_by_id],
+    )
+
+
+class AdminSystemSettings(IdMixin, TimestampMixin, Base):
+    __tablename__ = "admin_system_settings"
+    __table_args__ = MYSQL_TABLE_ARGS
+
+    auth_entry_mode: Mapped[AuthEntryMode] = mapped_column(
+        auth_entry_mode_enum,
+        nullable=False,
+        default=AuthEntryMode.standalone,
+        server_default=AuthEntryMode.standalone.value,
+    )
+    allow_public_registration: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="1",
+    )
+    updated_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="SET NULL"),
+        index=True,
+    )
+
+    updated_by: Mapped[UserAccount | None] = relationship(
+        back_populates="admin_system_settings_updates",
         foreign_keys=[updated_by_id],
     )
 

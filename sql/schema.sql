@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS `planned_workouts` (
   `phase_name` VARCHAR(128) NULL,
   `planned_content` TEXT NOT NULL,
   `focus_note` TEXT NULL,
+  `target_pace_text` VARCHAR(255) NULL,
   `planned_distance_km` DECIMAL(7, 2) NULL,
   `main_type_raw` VARCHAR(64) NULL,
   `main_type_normalized` VARCHAR(32) NOT NULL DEFAULT 'unknown',
@@ -104,6 +105,101 @@ CREATE TABLE IF NOT EXISTS `planned_workouts` (
     FOREIGN KEY (`block_id`) REFERENCES `training_blocks` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_planned_workouts_user_id`
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `weekly_review_report` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `cycle_id` BIGINT NOT NULL,
+  `source_block_id` BIGINT NOT NULL,
+  `target_block_id` BIGINT NULL,
+  `week_start_date` DATE NOT NULL,
+  `week_end_date` DATE NOT NULL,
+  `version` INT NOT NULL DEFAULT 1,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'pending',
+  `training_status` VARCHAR(32) NOT NULL DEFAULT 'insufficient_data',
+  `metrics_json` JSON NOT NULL,
+  `rule_reasons_json` JSON NULL,
+  `missing_data_json` JSON NULL,
+  `summary` TEXT NULL,
+  `positive_points_json` JSON NULL,
+  `attention_points_json` JSON NULL,
+  `next_week_strategy` TEXT NULL,
+  `risk_notes_json` JSON NULL,
+  `source_snapshot_json` JSON NOT NULL,
+  `snapshot_hash` VARCHAR(64) NOT NULL,
+  `algorithm_version` VARCHAR(32) NOT NULL,
+  `prompt_version` VARCHAR(32) NULL,
+  `model_name` VARCHAR(128) NULL,
+  `error_message` TEXT NULL,
+  `generated_at` DATETIME NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_weekly_review_user_cycle_created` (`user_id`, `cycle_id`, `created_at`),
+  KEY `ix_weekly_review_user_block_version` (`user_id`, `source_block_id`, `version`),
+  KEY `ix_weekly_review_snapshot_hash` (`user_id`, `source_block_id`, `snapshot_hash`),
+  KEY `ix_weekly_review_cycle_id` (`cycle_id`),
+  KEY `ix_weekly_review_source_block_id` (`source_block_id`),
+  KEY `ix_weekly_review_target_block_id` (`target_block_id`),
+  CONSTRAINT `fk_weekly_review_user` FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_weekly_review_cycle` FOREIGN KEY (`cycle_id`) REFERENCES `training_cycles` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_weekly_review_source_block` FOREIGN KEY (`source_block_id`) REFERENCES `training_blocks` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_weekly_review_target_block` FOREIGN KEY (`target_block_id`) REFERENCES `training_blocks` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `plan_adjustment_draft` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `review_report_id` BIGINT NOT NULL,
+  `cycle_id` BIGINT NOT NULL,
+  `source_block_id` BIGINT NOT NULL,
+  `target_block_id` BIGINT NOT NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'draft',
+  `summary` TEXT NULL,
+  `original_week_distance_km` DECIMAL(7,2) NULL,
+  `suggested_week_distance_km` DECIMAL(7,2) NULL,
+  `applied_at` DATETIME NULL,
+  `rejected_at` DATETIME NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_plan_adjustment_review_report` (`review_report_id`),
+  KEY `ix_plan_adjustment_user_status` (`user_id`, `status`),
+  KEY `ix_plan_adjustment_cycle_id` (`cycle_id`),
+  KEY `ix_plan_adjustment_source_block_id` (`source_block_id`),
+  KEY `ix_plan_adjustment_target_block_id` (`target_block_id`),
+  CONSTRAINT `fk_plan_adjustment_user` FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_plan_adjustment_report` FOREIGN KEY (`review_report_id`) REFERENCES `weekly_review_report` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_plan_adjustment_cycle` FOREIGN KEY (`cycle_id`) REFERENCES `training_cycles` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_plan_adjustment_source_block` FOREIGN KEY (`source_block_id`) REFERENCES `training_blocks` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_plan_adjustment_target_block` FOREIGN KEY (`target_block_id`) REFERENCES `training_blocks` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `plan_adjustment_item` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `draft_id` BIGINT NOT NULL,
+  `planned_workout_id` BIGINT NOT NULL,
+  `action` VARCHAR(16) NOT NULL,
+  `original_content` TEXT NOT NULL,
+  `suggested_content` TEXT NOT NULL,
+  `original_distance_km` DECIMAL(7,2) NULL,
+  `suggested_distance_km` DECIMAL(7,2) NULL,
+  `original_main_type` VARCHAR(32) NULL,
+  `suggested_main_type` VARCHAR(32) NULL,
+  `original_target_pace_text` VARCHAR(255) NULL,
+  `suggested_target_pace_text` VARCHAR(255) NULL,
+  `reason` TEXT NOT NULL,
+  `is_selected` TINYINT(1) NOT NULL DEFAULT 0,
+  `is_applied` TINYINT(1) NOT NULL DEFAULT 0,
+  `applied_at` DATETIME NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_plan_adjustment_item_draft_workout` (`draft_id`, `planned_workout_id`),
+  KEY `ix_plan_adjustment_item_workout_id` (`planned_workout_id`),
+  CONSTRAINT `fk_plan_adjustment_item_draft` FOREIGN KEY (`draft_id`) REFERENCES `plan_adjustment_draft` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_plan_adjustment_item_workout` FOREIGN KEY (`planned_workout_id`) REFERENCES `planned_workouts` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `workout_logs` (
@@ -307,6 +403,19 @@ CREATE TABLE IF NOT EXISTS `admin_ai_settings` (
   PRIMARY KEY (`id`),
   KEY `ix_admin_ai_settings_updated_by_id` (`updated_by_id`),
   CONSTRAINT `fk_admin_ai_settings_updated_by_id`
+    FOREIGN KEY (`updated_by_id`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `admin_system_settings` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `auth_entry_mode` VARCHAR(32) NOT NULL DEFAULT 'standalone',
+  `allow_public_registration` TINYINT(1) NOT NULL DEFAULT 1,
+  `updated_by_id` BIGINT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_admin_system_settings_updated_by_id` (`updated_by_id`),
+  CONSTRAINT `fk_admin_system_settings_updated_by_id`
     FOREIGN KEY (`updated_by_id`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

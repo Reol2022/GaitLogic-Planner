@@ -1,7 +1,6 @@
 <template>
   <div class="page-stack">
-    <div class="excel-section-title">训练日志</div>
-    <div class="excel-subtitle">实际完成记录、RPE、疼痛、主课数据和第二天调整统一在这里填写。</div>
+    <PageHeader title="训练日志" subtitle="实际完成记录、RPE、疼痛、主课数据和第二天调整统一在这里填写。" />
 
     <div class="toolbar">
       <el-button :icon="ArrowLeft" @click="router.back()">返回</el-button>
@@ -23,16 +22,32 @@
             <el-form-item label="实际 km">
               <el-input-number v-model="form.actual_distance_km" :precision="2" :min="0" style="width: 100%" />
             </el-form-item>
-            <el-form-item label="实际时长秒">
-              <el-input-number v-model="form.actual_duration_seconds" :min="0" style="width: 100%" />
+            <el-form-item label="实际时长">
+              <el-time-picker
+                v-model="durationText"
+                format="HH:mm:ss"
+                value-format="HH:mm:ss"
+                :default-value="new Date(2000, 0, 1, 0, 0, 0)"
+                placeholder="时:分:秒"
+                style="width: 100%"
+              />
             </el-form-item>
-            <el-form-item label="均配秒/km">
-              <el-input-number v-model="form.avg_pace_seconds_per_km" :min="0" style="width: 100%" />
+            <el-form-item label="平均配速">
+              <el-time-picker
+                v-model="paceText"
+                format="mm:ss"
+                value-format="HH:mm:ss"
+                :default-value="new Date(2000, 0, 1, 0, 0, 0)"
+                placeholder="分:秒 /km"
+                style="width: 100%"
+              />
+              <div v-if="autoPaceText" class="form-help">根据实际距离和时长自动估算：{{ autoPaceText }}</div>
             </el-form-item>
             <el-form-item label="均心率">
               <el-input-number v-model="form.avg_heart_rate" :min="0" style="width: 100%" />
             </el-form-item>
-            <el-form-item label="RPE">
+            <el-form-item>
+              <template #label>RPE <RpeHelp /></template>
               <el-input-number v-model="form.rpe" :min="0" :max="10" style="width: 100%" />
             </el-form-item>
             <el-form-item label="主课数据" class="full">
@@ -103,11 +118,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ArrowLeft, Check } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 
+import RpeHelp from "@/components/RpeHelp.vue";
 import { getWorkoutLog, updateWorkoutLog } from "@/api/workoutLogs";
 import type { WorkoutLogPayload } from "@/types/models";
 import { statusOptions } from "@/types/options";
@@ -116,6 +132,7 @@ const route = useRoute();
 const router = useRouter();
 const plannedWorkoutId = Number(route.params.id);
 const loading = ref(false);
+const pauseAutoPace = ref(false);
 const form = reactive<WorkoutLogPayload>({
   status_raw: null,
   status_normalized: "not_started",
@@ -128,13 +145,59 @@ const painLevel = computed({
     form.pain_level = value;
   },
 });
+const durationText = computed({
+  get: () => secondsToTime(form.actual_duration_seconds),
+  set: (value: string | null) => {
+    form.actual_duration_seconds = timeToSeconds(value);
+  },
+});
+const paceText = computed({
+  get: () => secondsToTime(form.avg_pace_seconds_per_km),
+  set: (value: string | null) => {
+    form.avg_pace_seconds_per_km = timeToSeconds(value);
+  },
+});
+const autoPaceText = computed(() => formatPace(form.avg_pace_seconds_per_km));
+
+watch(
+  () => [form.actual_distance_km, form.actual_duration_seconds],
+  ([distanceValue, durationValue]) => {
+    if (pauseAutoPace.value) return;
+    const distance = Number(distanceValue || 0);
+    const duration = Number(durationValue || 0);
+    form.avg_pace_seconds_per_km = distance > 0 && duration > 0 ? Math.round(duration / distance) : null;
+  },
+);
+
+function secondsToTime(value?: number | null) {
+  if (value == null) return "00:00:00";
+  const hours = Math.floor(value / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  const seconds = value % 60;
+  return [hours, minutes, seconds].map((item) => String(item).padStart(2, "0")).join(":");
+}
+
+function timeToSeconds(value?: string | null) {
+  if (!value) return null;
+  const [hours, minutes, seconds] = value.split(":").map(Number);
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+function formatPace(value?: number | null) {
+  if (!value) return "";
+  const minutes = Math.floor(value / 60);
+  return `${minutes}:${String(value % 60).padStart(2, "0")}/km`;
+}
 
 async function load() {
   loading.value = true;
+  pauseAutoPace.value = true;
   try {
     const log = await getWorkoutLog(plannedWorkoutId);
     Object.assign(form, log);
   } finally {
+    await nextTick();
+    pauseAutoPace.value = false;
     loading.value = false;
   }
 }
@@ -150,6 +213,13 @@ onMounted(load);
 <style scoped>
 .advanced-collapse {
   margin-top: 8px;
+}
+
+.form-help {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 @media (max-width: 768px) {

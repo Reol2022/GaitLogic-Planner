@@ -20,6 +20,7 @@ from planner_core.database.models import (
     AIPlanJob,
     AIPlanQuota,
     AdminAISettings,
+    AdminSystemSettings,
     PaceProfile,
     PaceRule,
     PaceZone,
@@ -41,6 +42,7 @@ from planner_core.enums import (
     WorkoutMainTypeNormalized,
     WorkoutStatusNormalized,
     UIMode,
+    AuthEntryMode,
     UsageEventName,
 )
 
@@ -95,6 +97,7 @@ def test_enum_values_are_correct() -> None:
     assert [item.value for item in AIPlanJobStatus] == ["pending", "running", "success", "failed"]
     assert [item.value for item in AIPlanDraftStatus] == ["draft", "accepted", "rejected"]
     assert [item.value for item in UIMode] == ["simple", "advanced"]
+    assert [item.value for item in AuthEntryMode] == ["standalone", "modal"]
     assert UsageEventName.ai_plan_applied.value == "ai_plan_applied"
 
 
@@ -210,6 +213,7 @@ def test_can_create_all_tables(mysql_session_factory) -> None:
         "ai_plan_job",
         "ai_plan_quota",
         "admin_ai_settings",
+        "admin_system_settings",
         "ai_coach_preference",
         "ai_plan_draft",
         "ai_plan_draft_workout",

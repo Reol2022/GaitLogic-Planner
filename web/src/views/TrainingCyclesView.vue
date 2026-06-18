@@ -1,7 +1,6 @@
 <template>
   <div class="page-stack">
-    <div class="excel-section-title">训练周期</div>
-    <div class="excel-subtitle">用于管理训练周期、目标比赛和总体目标。</div>
+    <PageHeader title="训练周期" subtitle="用于管理训练周期、目标比赛和总体目标。" />
 
     <div class="toolbar">
       <div></div>
@@ -63,6 +62,7 @@
               v-model="form.target_result"
               value-format="HH:mm:ss"
               format="HH:mm:ss"
+              :default-value="new Date(2000, 0, 1, 0, 0, 0)"
               placeholder="选择目标成绩"
               style="width: 100%"
             />
@@ -107,7 +107,7 @@ const emptyForm: TrainingCyclePayload = {
   end_date: null,
   target_race_name: null,
   target_race_date: null,
-  target_result: null,
+  target_result: "00:00:00",
   description: null,
 };
 const form = reactive<TrainingCyclePayload>({ ...emptyForm });

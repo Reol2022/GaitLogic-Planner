@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     )
     ai_plan_daily_limit: int = Field(default=3, validation_alias="AI_PLAN_DAILY_LIMIT")
     ai_plan_cooldown_seconds: int = Field(default=60, validation_alias="AI_PLAN_COOLDOWN_SECONDS")
+    weekly_review_prompt_override: str | None = Field(
+        default=None, validation_alias="WEEKLY_REVIEW_PROMPT_OVERRIDE"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

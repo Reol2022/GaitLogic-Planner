@@ -1,12 +1,6 @@
 <template>
   <div class="page-stack feedback-page">
-    <section class="feedback-hero">
-      <div>
-        <div class="hero-kicker">内测反馈</div>
-        <h2>反馈</h2>
-        <p>遇到看不懂、用不顺、数据不对的地方，都可以直接记下来。</p>
-      </div>
-    </section>
+    <PageHeader title="反馈" subtitle="遇到看不懂、用不顺、数据不对的地方，都可以直接记下来。" />
 
     <section class="feedback-grid">
       <article class="panel feedback-form-card">

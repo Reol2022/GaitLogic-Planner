@@ -1,14 +1,31 @@
 <template>
   <div class="page-stack admin-system-page">
-    <section class="admin-hero">
-      <div>
-        <span>Admin Console</span>
-        <h2>系统设置</h2>
-        <p>集中查看当前系统能力和管理入口。需要持久化的新开关后续可继续放在这里。</p>
-      </div>
-    </section>
+    <PageHeader title="系统设置" subtitle="配置登录入口、注册开关和系统管理入口。" />
 
     <section class="settings-grid">
+      <article class="panel auth-mode-panel">
+        <div class="panel-head">
+          <h3>登录入口</h3>
+          <p>可在传统单独登录页和主系统弹窗登录之间切换。弹窗模式下，用户访问需要权限的数据时再弹出登录框。</p>
+        </div>
+        <el-form label-position="top">
+          <el-form-item label="登录方式">
+            <el-radio-group v-model="form.auth_entry_mode">
+              <el-radio-button label="standalone">单独登录页</el-radio-button>
+              <el-radio-button label="modal">弹窗登录</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="公开注册">
+            <el-switch
+              v-model="form.allow_public_registration"
+              active-text="允许"
+              inactive-text="关闭"
+            />
+          </el-form-item>
+          <el-button type="primary" :loading="saving" @click="saveSettings">保存系统设置</el-button>
+        </el-form>
+      </article>
+
       <article class="panel">
         <div class="panel-head">
           <h3>账号与权限</h3>
@@ -45,9 +62,41 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
+import { getAdminSystemSettings, updateAdminSystemSettings } from "@/api/admin";
+import type { SystemSettingsPayload } from "@/types/models";
+import { cacheSystemSettings } from "@/utils/systemSettingsCache";
 
 const router = useRouter();
+const saving = ref(false);
+const form = reactive<SystemSettingsPayload>({
+  auth_entry_mode: "standalone",
+  allow_public_registration: true,
+});
+
+async function loadSettings() {
+  const settings = await getAdminSystemSettings();
+  form.auth_entry_mode = settings.auth_entry_mode;
+  form.allow_public_registration = settings.allow_public_registration;
+  cacheSystemSettings(settings);
+}
+
+async function saveSettings() {
+  saving.value = true;
+  try {
+    const result = await updateAdminSystemSettings(form);
+    form.auth_entry_mode = result.auth_entry_mode;
+    form.allow_public_registration = result.allow_public_registration;
+    cacheSystemSettings(result);
+    ElMessage.success("系统设置已保存");
+  } finally {
+    saving.value = false;
+  }
+}
+
+onMounted(loadSettings);
 </script>
 
 <style scoped>
@@ -83,6 +132,10 @@ const router = useRouter();
   align-content: space-between;
   gap: 18px;
   padding: 22px;
+}
+
+.auth-mode-panel {
+  align-content: start;
 }
 
 .panel-head h3 {

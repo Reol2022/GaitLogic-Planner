@@ -59,11 +59,12 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { loginUser, registerUser, setStoredToken } from "@/api/auth";
+import { getSystemSettings } from "@/api/systemSettings";
 import type { UserRegisterPayload } from "@/types/models";
 
 const router = useRouter();
@@ -106,6 +107,14 @@ async function handleRegister() {
     loading.value = false;
   }
 }
+
+onMounted(async () => {
+  const settings = await getSystemSettings();
+  if (!settings.allow_public_registration) {
+    ElMessage.warning("当前系统已关闭公开注册，请联系管理员创建账号。");
+    router.replace("/login");
+  }
+});
 </script>
 
 <style scoped>

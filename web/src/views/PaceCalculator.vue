@@ -1,13 +1,8 @@
 <template>
   <div class="page-stack pace-calculator-page">
-    <section class="calculator-hero">
-      <div>
-        <div class="hero-kicker">VDOT / Daniels Pace</div>
-        <h2>配速计算器</h2>
-        <p>用近期比赛成绩估算 VDOT，生成 REC、E、M、T1、T2、I、R 训练配速区间。</p>
-      </div>
-      <el-button :icon="Refresh" @click="loadProfiles">刷新档案</el-button>
-    </section>
+    <PageHeader title="配速计算器" subtitle="用近期比赛成绩估算 VDOT，生成 REC、E、M、T1、T2、I、R 训练配速区间。">
+      <template #actions><el-button :icon="Refresh" @click="loadProfiles">刷新档案</el-button></template>
+    </PageHeader>
 
     <section class="calculator-grid">
       <article class="panel input-panel">
@@ -39,6 +34,7 @@
                 v-model="raceResultTime"
                 value-format="HH:mm:ss"
                 format="HH:mm:ss"
+                :default-value="new Date(2000, 0, 1, 0, 0, 0)"
                 :clearable="false"
                 placeholder="选择成绩"
                 style="width: 100%"
@@ -247,7 +243,7 @@ const form = reactive<PaceCalculatorForm>({
   sex: "unknown",
 });
 
-const raceResultTime = ref("01:12:32");
+const raceResultTime = ref("00:00:00");
 const calculation = ref<PaceCalculationResult | null>(null);
 const profiles = ref<PaceProfile[]>([]);
 const selectedProfile = ref<PaceProfile | null>(null);

@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.7.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.8.0-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -48,6 +48,7 @@ AI 生成内容仅作为训练计划草稿，不构成医疗建议、康复建�
 | 新用户一打开就被复杂 Dashboard 淹没 | 登录后默认进入“今日训练”，移动端使用底部导航 |
 | 想用 AI 生成课表，但不希望它直接覆盖正式计划 | AI 只生成草稿，必须由用户确认后才应用 |
 | 想看一个月到底完成了哪些训练 | 训练日历按月展示计划、状态、今天高亮和完成统计 |
+| 每周训练结束后不知道如何调整下一周 | 后端确定性统计与规则引擎先判断，AI 只生成调整草稿，用户确认后才应用 |
 | 配速区间靠经验记忆，不好维护 | 根据比赛成绩估算近似 VDOT，并保存配速档案和规则 |
 | 年龄和性别会不会影响训练配速 | 年龄/性别只做参考分析，不改变原始 VDOT 和训练配速 |
 
@@ -71,6 +72,7 @@ AI 生成内容仅作为训练计划草稿，不构成医疗建议、康复建�
 | --- | --- | --- | --- |
 | 🏠 今日训练 | 📋 我的训练计划 | 📅 训练日历 | 🧠 AI 制定计划 |
 | ✍️ 训练日志 | 🧱 训练周期 | 📊 训练统计 | 📤 AI 草稿导出 |
+| 📝 智能周复盘 | 🔁 下一周调整草稿 | ✅ 用户确认后应用 | 🛡 通用安全校验 |
 | 📱 移动端底部导航 | 🧩 训练块 | 🧮 配速计算器 | ⚙️ AI 教练偏好 |
 | ↩️ 我的页返回路径 | 📥 Excel 导入 | 🎂 年龄参考分析 | 🛠 管理后台 |
 | 🧾 内测反馈 | 🏷 配速规则 | 📈 完成率与跑量趋势 | 🔑 模型配置 |
@@ -675,6 +677,17 @@ npm run build
 | 文档 | 说明 |
 | --- | --- |
 | [更新历史](docs/更新历史.md) | 版本变更记录 |
+| [周复盘 API](docs/API_WEEKLY_REVIEW.md) | v0.8 周统计、报告和调整草稿接口 |
+
+### v0.8 数据库升级
+
+已有部署升级到 v0.8 前必须显式执行：
+
+```bash
+python scripts/upgrade_v08_weekly_review.py
+```
+
+该脚本新增周复盘与调整草稿表，并为每日计划增加可空的目标配速字段。应用启动不会自动修改生产数据库。
 | [部署文档](docs/DEPLOYMENT.md) | 部署与运行说明 |
 | [一键重新部署](docs/REDEPLOY.md) | 本地打包、上传服务器和重启服务脚本说明 |
 | [数据库设计](docs/数据库设计.md) | 数据库结构说明 |

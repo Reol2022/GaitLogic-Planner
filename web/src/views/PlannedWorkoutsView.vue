@@ -1,7 +1,9 @@
 <template>
   <div class="page-stack">
-    <div class="excel-section-title">我的训练计划</div>
-    <div class="excel-subtitle">每日训练计划主来源：日期、星期、阶段、训练内容、重点说明、计划 km 和主类型。</div>
+    <PageHeader
+      title="我的训练计划"
+      subtitle="每日训练计划主来源：日期、星期、阶段、训练内容、重点说明、计划 km 和主类型。"
+    />
 
     <div class="toolbar">
       <div class="filter-row">
@@ -329,6 +331,7 @@ onMounted(async () => {
     border: 1px solid #d8dde3;
     border-radius: 6px;
     background: #ffffff;
+    box-shadow: var(--card-shadow);
   }
 
   .workout-card-head,

@@ -1,6 +1,6 @@
 <template>
   <div class="page-stack">
-    <div class="excel-section-title">配速规则</div>
+    <PageHeader title="配速规则" subtitle="维护训练配速区间、生理目的和执行说明。" />
     <div class="excel-note">铁律：该慢必须慢，该快不要怂。除了质量课，禁止随心所欲加速。</div>
 
     <div class="toolbar">

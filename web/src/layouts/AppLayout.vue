@@ -83,6 +83,10 @@
             <el-icon><Setting /></el-icon>
             <template #title>AI 设置</template>
           </el-menu-item>
+          <el-menu-item index="/admin/system-settings">
+            <el-icon><Setting /></el-icon>
+            <template #title>系统设置</template>
+          </el-menu-item>
         </template>
       </el-menu>
     </el-aside>
@@ -116,7 +120,8 @@
             </template>
           </el-dropdown>
           <div class="user-avatar">{{ userInitial }}</div>
-          <el-button size="small" plain :icon="SwitchButton" @click="handleLogout">退出</el-button>
+          <el-button v-if="currentUser" size="small" plain :icon="SwitchButton" @click="handleLogout">退出</el-button>
+          <el-button v-else size="small" type="primary" plain @click="openLoginDialog">登录</el-button>
         </div>
       </el-header>
 
@@ -201,6 +206,7 @@ import {
 } from "@element-plus/icons-vue";
 import { clearStoredToken, getCurrentUser, logoutUser } from "@/api/auth";
 import type { UserAccount } from "@/types/models";
+import { requestAuth } from "@/utils/authPrompt";
 
 interface NavTab {
   path: string;
@@ -233,7 +239,7 @@ const mobileNavItems = [
 ];
 
 const pageTitle = computed(() => String(route.meta.title || "GaitLogic"));
-const displayName = computed(() => currentUser.value?.nickname || currentUser.value?.username || "已登录");
+const displayName = computed(() => currentUser.value?.nickname || currentUser.value?.username || "访客");
 const userInitial = computed(() => displayName.value.slice(0, 1).toUpperCase());
 const activeTab = computed(() => route.path);
 const isAdmin = computed(() => currentUser.value?.role === "admin");
@@ -314,6 +320,10 @@ function handleHeaderSettingCommand(command: string | number) {
 
 function goBackToMy() {
   router.push("/my");
+}
+
+function openLoginDialog() {
+  requestAuth(route.fullPath);
 }
 
 async function loadCurrentUser() {
@@ -510,8 +520,8 @@ onBeforeUnmount(() => {
 }
 
 .app-tabs {
-  height: 42px;
-  padding: 6px 16px 0;
+  height: 40px;
+  padding: 0 16px;
   border-bottom: 1px solid #dfe4ea;
   background: #ffffff;
 }
@@ -521,7 +531,8 @@ onBeforeUnmount(() => {
 }
 
 :deep(.app-tabs .el-tabs__item) {
-  border-radius: 6px 6px 0 0;
+  height: 39px;
+  border-radius: 0;
 }
 
 .tab-label {
@@ -602,7 +613,7 @@ onBeforeUnmount(() => {
   .app-tabs {
     overflow-x: auto;
     height: 40px;
-    padding: 6px 10px 0;
+    padding: 0 10px;
   }
 
   :deep(.app-tabs .el-tabs__nav-wrap) {

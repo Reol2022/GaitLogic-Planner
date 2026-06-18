@@ -1,13 +1,8 @@
 <template>
   <div class="page-stack coach-page">
-    <section class="coach-hero">
-      <div>
-        <span>AI Coach Settings</span>
-        <h2>AI 教练偏好配置</h2>
-        <p>这些设置会作为你的训练哲学写入 AI 课表 Prompt。安全规则始终优先于偏好配置。</p>
-      </div>
-      <el-button type="primary" :loading="saving" @click="savePreference">保存配置</el-button>
-    </section>
+    <PageHeader title="AI 教练偏好配置" subtitle="这些设置会作为你的训练哲学写入 AI 课表 Prompt。安全规则始终优先于偏好配置。">
+      <template #actions><el-button type="primary" :loading="saving" @click="savePreference">保存配置</el-button></template>
+    </PageHeader>
 
     <section class="coach-grid">
       <article class="panel">

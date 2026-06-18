@@ -6,9 +6,15 @@ from sqlalchemy.orm import Session
 from planner_core.database.models import UserAccount
 from server.api.deps import get_db, require_admin_user
 from server.schemas.admin_ai_settings import AdminAISettingsRead, AdminAISettingsUpdate
+from server.schemas.admin_system_settings import AdminSystemSettingsRead, AdminSystemSettingsUpdate
 from server.schemas.admin_user import AdminUserRead, AdminUserUpdate
 from server.schemas.usage_event import ProductMetricsRead
-from server.services import admin_ai_settings_service, admin_user_service, usage_event_service
+from server.services import (
+    admin_ai_settings_service,
+    admin_system_settings_service,
+    admin_user_service,
+    usage_event_service,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -28,6 +34,23 @@ def update_ai_settings(
     current_user: UserAccount = Depends(require_admin_user),
 ):
     return admin_ai_settings_service.update_admin_ai_settings(db, payload, current_user.id)
+
+
+@router.get("/system-settings", response_model=AdminSystemSettingsRead)
+def get_system_settings(
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(require_admin_user),
+):
+    return admin_system_settings_service.get_admin_system_settings(db)
+
+
+@router.put("/system-settings", response_model=AdminSystemSettingsRead)
+def update_system_settings(
+    payload: AdminSystemSettingsUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(require_admin_user),
+):
+    return admin_system_settings_service.update_admin_system_settings(db, payload, current_user.id)
 
 
 @router.get("/users", response_model=list[AdminUserRead])

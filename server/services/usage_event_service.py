@@ -22,6 +22,11 @@ SENSITIVE_METADATA_KEYS = {
     "content",
     "review_note",
     "main_session_data",
+    "injury",
+    "pain",
+    "summary",
+    "risk_notes",
+    "training_log",
 }
 
 
@@ -30,7 +35,10 @@ def assert_safe_metadata(metadata: dict[str, Any] | None) -> None:
         return
     for key in metadata:
         lowered = str(key).lower()
-        if lowered in SENSITIVE_METADATA_KEYS or any(part in lowered for part in ("password", "token", "secret", "api_key")):
+        if lowered in SENSITIVE_METADATA_KEYS or any(
+            part in lowered
+            for part in ("password", "token", "secret", "api_key", "prompt", "injury", "pain", "review_text")
+        ):
             raise BadRequestError("Usage event metadata contains sensitive fields.")
 
 

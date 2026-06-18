@@ -22,20 +22,15 @@
       </div>
     </Transition>
 
-    <section class="ai-hero">
-      <div>
-        <div class="hero-kicker">AI Plan Draft</div>
-        <h2>AI 课表草稿生成器</h2>
-        <p>
-          AI 生成内容仅作为训练计划草稿，请结合自身恢复、伤病和实际训练反馈调整。
-        </p>
-      </div>
-      <div class="quota-box">
-        <span>{{ quota?.model_name || "deepseek-v4-flash" }}</span>
-        <strong>今日剩余 {{ quota?.remaining_count ?? "-" }} 次</strong>
-        <em>冷却 {{ quota?.cooldown_seconds ?? 60 }} 秒</em>
-      </div>
-    </section>
+    <PageHeader title="AI 课表草稿生成器" subtitle="AI 生成内容仅作为训练计划草稿，请结合自身恢复、伤病和实际训练反馈调整。">
+      <template #actions>
+        <div class="quota-box">
+          <span>{{ quota?.model_name || "deepseek-v4-flash" }}</span>
+          <strong>今日剩余 {{ quota?.remaining_count ?? "-" }} 次</strong>
+          <em>冷却 {{ quota?.cooldown_seconds ?? 60 }} 秒</em>
+        </div>
+      </template>
+    </PageHeader>
 
     <section class="ai-grid">
       <article class="panel ai-form-card">
@@ -63,6 +58,7 @@
                 v-model="form.recent_pb_result"
                 value-format="HH:mm:ss"
                 format="HH:mm:ss"
+                :default-value="new Date(2000, 0, 1, 0, 0, 0)"
                 placeholder="例如 00:16:24"
                 style="width: 100%"
               />
@@ -96,6 +92,7 @@
                 v-model="form.target_result"
                 value-format="HH:mm:ss"
                 format="HH:mm:ss"
+                :default-value="new Date(2000, 0, 1, 0, 0, 0)"
                 placeholder="例如 01:11:30"
                 style="width: 100%"
               />
@@ -362,7 +359,7 @@ const exportOptions: Array<{ label: string; value: AIPlanExportFormat; extension
 const form = reactive<AIPlanGeneratePayload>({
   runner_level: "advanced",
   recent_pb_distance: "5000m",
-  recent_pb_result: "00:17:30",
+  recent_pb_result: "00:00:00",
   current_weekly_mileage_km: 80,
   recent_4w_avg_mileage_km: 76,
   available_training_days_per_week: 6,
@@ -373,7 +370,7 @@ const form = reactive<AIPlanGeneratePayload>({
   target_race_name: "眉山东坡马拉松",
   target_race_date: "",
   target_distance: "half_marathon",
-  target_result: "01:11:30",
+  target_result: "00:00:00",
   plan_start_date: today,
   plan_weeks: 8,
   intensity_style: "standard",

@@ -106,6 +106,7 @@ export interface PlannedWorkout {
   phase_name?: string | null;
   planned_content: string;
   focus_note?: string | null;
+  target_pace_text?: string | null;
   planned_distance_km?: number | string | null;
   main_type_raw?: string | null;
   main_type_normalized: WorkoutMainTypeNormalized;
@@ -427,6 +428,122 @@ export interface AICoachPreference {
 
 export type AICoachPreferencePayload = Omit<AICoachPreference, "id" | "created_at" | "updated_at">;
 
+export type TrainingStatus = "insufficient_data" | "normal" | "watch" | "reduce_load";
+export type AdjustmentAction = "keep" | "reduce" | "replace" | "rest";
+export type AdjustmentDraftStatus = "draft" | "partially_applied" | "applied" | "rejected" | "invalid";
+
+export interface WeeklyReviewMetrics {
+  week_start_date: string;
+  week_end_date: string;
+  is_week_complete: boolean;
+  planned_distance_km: number;
+  actual_distance_km: number;
+  completion_rate: number;
+  planned_workout_days: number;
+  completed_workout_days: number;
+  completed_high_count: number;
+  completed_normal_count: number;
+  completed_adjusted_count: number;
+  missed_count: number;
+  rest_count: number;
+  skipped_count: number;
+  avg_rpe?: number | null;
+  key_workout_avg_rpe?: number | null;
+  max_pain_level?: number | null;
+  planned_type_distance: Record<string, number>;
+  actual_type_distance: Record<string, number>;
+  key_workouts: Array<Record<string, unknown>>;
+  long_run?: Record<string, unknown> | null;
+  recent_7d_distance_km: number;
+  recent_28d_weekly_avg_km: number;
+  load_change_percentage?: number | null;
+  consecutive_high_intensity_days: string[][];
+  logged_workout_ratio: number;
+  valid_log_count: number;
+  missing_fields: string[];
+  daily_workouts: Array<{
+    planned_workout_id: number;
+    date?: string | null;
+    planned_content: string;
+    planned_distance_km: number;
+    actual_distance_km: number;
+    main_type: WorkoutMainTypeNormalized;
+    status: WorkoutStatusNormalized;
+    rpe?: number | null;
+  }>;
+}
+
+export interface TrainingStatusResult {
+  status: TrainingStatus;
+  reasons: string[];
+  signals: Array<{ code: string; level: string; message: string }>;
+  missing_data: string[];
+}
+
+export interface WeeklyReviewSummary {
+  metrics: WeeklyReviewMetrics;
+  training_status: TrainingStatusResult;
+}
+
+export interface AdjustmentItem {
+  id: number;
+  draft_id: number;
+  planned_workout_id: number;
+  workout_date?: string | null;
+  action: AdjustmentAction;
+  original_content: string;
+  suggested_content: string;
+  original_distance_km?: number | null;
+  suggested_distance_km?: number | null;
+  original_main_type?: string | null;
+  suggested_main_type?: string | null;
+  original_target_pace_text?: string | null;
+  suggested_target_pace_text?: string | null;
+  reason: string;
+  is_selected: boolean;
+  is_applied: boolean;
+}
+
+export interface AdjustmentDraft {
+  id: number;
+  review_report_id: number;
+  cycle_id: number;
+  source_block_id: number;
+  target_block_id: number;
+  status: AdjustmentDraftStatus;
+  summary?: string | null;
+  original_week_distance_km?: number | null;
+  suggested_week_distance_km?: number | null;
+  items: AdjustmentItem[];
+}
+
+export interface WeeklyReviewReport {
+  id: number;
+  cycle_id: number;
+  source_block_id: number;
+  target_block_id?: number | null;
+  week_start_date: string;
+  week_end_date: string;
+  version: number;
+  status: "pending" | "generating" | "success" | "failed";
+  training_status: TrainingStatus;
+  metrics_json: WeeklyReviewMetrics;
+  rule_reasons_json?: string[] | null;
+  missing_data_json?: string[] | null;
+  summary?: string | null;
+  positive_points_json?: string[] | null;
+  attention_points_json?: string[] | null;
+  next_week_strategy?: string | null;
+  risk_notes_json?: string[] | null;
+  model_name?: string | null;
+  created_at: string;
+}
+
+export interface WeeklyReviewDetail {
+  report: WeeklyReviewReport;
+  adjustment_draft?: AdjustmentDraft | null;
+}
+
 export interface AdminAISettings {
   id?: number | null;
   provider: "deepseek" | "openai" | "custom" | string;
@@ -457,6 +574,17 @@ export interface AdminAISettingsPayload {
   max_tokens_per_week: number;
   max_tokens_cap: number;
 }
+
+export type AuthEntryMode = "standalone" | "modal";
+
+export interface SystemSettings {
+  id?: number | null;
+  auth_entry_mode: AuthEntryMode;
+  allow_public_registration: boolean;
+  updated_at?: string | null;
+}
+
+export type SystemSettingsPayload = Pick<SystemSettings, "auth_entry_mode" | "allow_public_registration">;
 
 export interface AdminUser {
   id: number;

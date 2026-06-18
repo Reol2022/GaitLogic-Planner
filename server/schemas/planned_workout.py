@@ -17,6 +17,7 @@ class PlannedWorkoutBase(BaseModel):
     phase_name: str | None = None
     planned_content: str
     focus_note: str | None = None
+    target_pace_text: str | None = None
     planned_distance_km: Decimal | None = None
     main_type_raw: str | None = None
     main_type_normalized: WorkoutMainTypeNormalized = WorkoutMainTypeNormalized.unknown
@@ -39,6 +40,7 @@ class PlannedWorkoutUpdate(BaseModel):
     phase_name: str | None = None
     planned_content: str | None = None
     focus_note: str | None = None
+    target_pace_text: str | None = None
     planned_distance_km: Decimal | None = None
     main_type_raw: str | None = None
     main_type_normalized: WorkoutMainTypeNormalized | None = None
@@ -57,4 +59,3 @@ class PlannedWorkoutRead(PlannedWorkoutBase):
 
 class PlannedWorkoutWithLogRead(PlannedWorkoutRead):
     workout_log: WorkoutLogRead | None = None
-

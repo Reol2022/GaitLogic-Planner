@@ -1,9 +1,6 @@
 <template>
   <div class="page-stack my-page">
-    <div>
-      <div class="excel-section-title">我的</div>
-      <div class="excel-subtitle">常用入口集中在这里，手机端可以从底部导航快速进入。</div>
-    </div>
+    <PageHeader title="我的" subtitle="常用入口集中在这里，手机端可以从底部导航快速进入。" />
 
     <section class="shortcut-grid">
       <router-link v-for="item in primaryItems" :key="item.path" :to="myEntryLink(item.path)" class="shortcut-card">
@@ -38,11 +35,13 @@ import {
   Grid,
   List,
   Message,
+  Memo,
   Setting,
   TrendCharts,
 } from "@element-plus/icons-vue";
 
 const primaryItems = [
+  { path: "/weekly-review", title: "智能周复盘", desc: "复盘本周并确认下一周调整", icon: Memo },
   { path: "/workouts", title: "我的训练计划", desc: "查看和维护每日训练安排", icon: List },
   { path: "/dashboard", title: "训练统计", desc: "查看跑量、完成率和训练分布", icon: DataAnalysis },
   { path: "/excel-import", title: "Excel 导入", desc: "导入自己的训练计划表", icon: DocumentAdd },
@@ -84,9 +83,10 @@ function myEntryLink(path: string) {
 
 .shortcut-card {
   padding: 16px;
-  border: 1px solid #d8dde3;
-  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
   background: #ffffff;
+  box-shadow: var(--card-shadow);
 }
 
 .shortcut-card .el-icon,

@@ -1,13 +1,8 @@
 <template>
   <div class="page-stack admin-users-page">
-    <section class="admin-hero">
-      <div>
-        <span>Admin Console</span>
-        <h2>用户管理</h2>
-        <p>查看账号、角色和状态。修改后会影响用户下一次请求的权限判断。</p>
-      </div>
-      <el-button :icon="Refresh" @click="loadUsers">刷新</el-button>
-    </section>
+    <PageHeader title="用户管理" subtitle="查看账号、角色和状态。修改后会影响用户下一次请求的权限判断。">
+      <template #actions><el-button :icon="Refresh" @click="loadUsers">刷新</el-button></template>
+    </PageHeader>
 
     <div class="toolbar">
       <div class="filter-row">

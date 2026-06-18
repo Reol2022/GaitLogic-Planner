@@ -1,30 +1,28 @@
 <template>
-  <div class="dashboard-page">
-    <section class="dashboard-hero">
-      <div>
-        <div class="hero-kicker">训练执行总览</div>
-        <h2>{{ currentCycleName }}</h2>
-        <p>训练计划、完成情况、强度结构和身体反馈的实时概览。</p>
-      </div>
-      <div v-if="!hasNoCycles" class="hero-actions">
-        <el-select
-          v-model="cycleId"
-          clearable
-          filterable
-          placeholder="全部训练周期"
-          style="width: 260px"
-          @change="loadDashboard"
-        >
-          <el-option
-            v-for="cycle in cycles"
-            :key="cycle.id"
-            :label="cycle.name"
-            :value="cycle.id"
-          />
-        </el-select>
-        <el-button :icon="Refresh" type="primary" @click="reloadAll">刷新</el-button>
-      </div>
-    </section>
+  <div class="page-stack dashboard-page">
+    <PageHeader title="训练统计" :subtitle="`${currentCycleName} · 训练计划、完成情况、强度结构和身体反馈的实时概览。`">
+      <template v-if="!hasNoCycles" #actions>
+        <div class="hero-actions">
+          <el-select
+            v-model="cycleId"
+            clearable
+            filterable
+            placeholder="全部训练周期"
+            style="width: 260px"
+            @change="loadDashboard"
+          >
+            <el-option
+              v-for="cycle in cycles"
+              :key="cycle.id"
+              :label="cycle.name"
+              :value="cycle.id"
+            />
+          </el-select>
+          <el-button :icon="Refresh" type="primary" @click="reloadAll">刷新</el-button>
+          <el-button @click="router.push('/weekly-review')">周复盘</el-button>
+        </div>
+      </template>
+    </PageHeader>
 
     <section v-if="hasNoCycles" class="onboarding-card">
       <div class="onboarding-copy">
@@ -629,17 +627,17 @@ onBeforeUnmount(() => {
   max-width: 1300px;
   min-height: calc(100vh - 98px);
   margin: 0 auto;
-  padding: 40px 50px 42px;
+  padding: 24px 50px 42px;
   background: #ffffff;
 }
 
 .dashboard-hero,
 .onboarding-card,
 .empty-data-card {
-  border: 1px solid var(--line-soft);
-  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
   background: #ffffff;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--card-shadow);
 }
 
 .dashboard-hero {
@@ -712,13 +710,13 @@ onBeforeUnmount(() => {
 .start-option {
   min-height: 168px;
   padding: 18px;
-  border: 1px solid #dbe6f3;
-  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
   background: #fbfdff;
   color: #172033;
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--card-shadow);
   transition:
     transform 0.18s ease,
     border-color 0.18s ease,

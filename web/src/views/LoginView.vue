@@ -42,7 +42,7 @@
           </el-button>
         </el-form>
 
-        <div class="auth-switch">
+        <div v-if="allowPublicRegistration" class="auth-switch">
           还没有账号？
           <router-link to="/register">立即注册</router-link>
         </div>
@@ -57,17 +57,20 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { loginUser, setStoredToken } from "@/api/auth";
+import { getSystemSettings } from "@/api/systemSettings";
 import type { UserLoginPayload } from "@/types/models";
+import { getCachedAllowPublicRegistration } from "@/utils/systemSettingsCache";
 
 const router = useRouter();
 const route = useRoute();
 const formRef = ref<FormInstance>();
 const loading = ref(false);
+const allowPublicRegistration = ref(getCachedAllowPublicRegistration());
 const form = reactive<UserLoginPayload>({
   username: "",
   password: "",
@@ -93,6 +96,15 @@ async function handleLogin() {
     loading.value = false;
   }
 }
+
+onMounted(async () => {
+  try {
+    const settings = await getSystemSettings();
+    allowPublicRegistration.value = settings.allow_public_registration;
+  } catch {
+    allowPublicRegistration.value = getCachedAllowPublicRegistration();
+  }
+});
 </script>
 
 <style scoped>

@@ -1,6 +1,9 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { getStoredToken } from "@/api/auth";
 import { getOnboardingStatus } from "@/api/onboarding";
+import { getSystemSettings } from "@/api/systemSettings";
+import { requestAuth } from "@/utils/authPrompt";
+import { getCachedAuthEntryMode } from "@/utils/systemSettingsCache";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -44,6 +47,12 @@ const router = createRouter({
       name: "TrainingCalendar",
       component: () => import("@/views/TrainingCalendar.vue"),
       meta: { title: "训练日历" },
+    },
+    {
+      path: "/weekly-review",
+      name: "WeeklyReview",
+      component: () => import("@/views/WeeklyReviewView.vue"),
+      meta: { title: "智能周复盘" },
     },
     {
       path: "/ai-plan",
@@ -149,8 +158,19 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const token = getStoredToken();
+  let authEntryMode = getCachedAuthEntryMode();
+  try {
+    const settings = await getSystemSettings();
+    authEntryMode = settings.auth_entry_mode;
+  } catch {
+    authEntryMode = getCachedAuthEntryMode();
+  }
 
   if (!to.meta.public && !token) {
+    if (authEntryMode === "modal") {
+      setTimeout(() => requestAuth(to.fullPath), 0);
+      return true;
+    }
     return {
       path: "/login",
       query: { redirect: to.fullPath },
@@ -158,6 +178,11 @@ router.beforeEach(async (to) => {
   }
 
   if ((to.name === "Login" || to.name === "Register") && token) {
+    return "/today";
+  }
+
+  if ((to.name === "Login" || to.name === "Register") && !token && authEntryMode === "modal") {
+    setTimeout(() => requestAuth(String(to.query.redirect || "/today")), 0);
     return "/today";
   }
 

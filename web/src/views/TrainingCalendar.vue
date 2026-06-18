@@ -1,14 +1,8 @@
 <template>
   <div class="page-stack calendar-page">
-    <div class="page-title-row">
-      <div>
-        <div class="excel-section-title">训练日历</div>
-        <div class="excel-subtitle">按月查看每日计划和完成情况，点击日期可查看日志摘要。</div>
-      </div>
-      <el-button type="primary" :icon="EditPen" :disabled="!selectedDay?.planned_workout_id" @click="editSelectedLog">
-        编辑日志
-      </el-button>
-    </div>
+    <PageHeader title="训练日历" subtitle="按月查看每日计划和完成情况，点击日期可查看日志摘要。">
+      <template #actions><el-button type="primary" @click="router.push('/weekly-review')">查看周复盘</el-button></template>
+    </PageHeader>
 
     <div class="toolbar calendar-toolbar">
       <div class="filter-row">
@@ -20,7 +14,13 @@
       <el-button :icon="Refresh" @click="load">刷新</el-button>
     </div>
 
-    <section class="calendar-summary">
+    <div class="summary-heading">
+      <strong>本月概览</strong>
+      <button type="button" :aria-expanded="summaryExpanded" @click="summaryExpanded = !summaryExpanded">
+        {{ summaryExpanded ? "收起" : "展开" }}
+      </button>
+    </div>
+    <section class="calendar-summary" :class="{ 'is-collapsed': !summaryExpanded }">
       <div class="metric-card">
         <p class="metric-label">计划跑量</p>
         <div class="metric-value">{{ formatKm(calendar?.summary.planned_distance_km) }}</div>
@@ -147,6 +147,7 @@ const cycles = ref<TrainingCycle[]>([]);
 const calendar = ref<TrainingCalendarResult | null>(null);
 const selectedDay = ref<TrainingCalendarDay | null>(null);
 const loading = ref(false);
+const summaryExpanded = ref(false);
 
 function formatLocalDate(value: Date) {
   const year = value.getFullYear();
@@ -241,7 +242,6 @@ onMounted(async () => {
   gap: 14px;
 }
 
-.page-title-row,
 .calendar-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -253,6 +253,10 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(5, minmax(120px, 1fr));
   gap: 10px;
+}
+
+.summary-heading {
+  display: none;
 }
 
 .calendar-layout {
@@ -425,13 +429,47 @@ onMounted(async () => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .calendar-layout,
-  .page-title-row {
+  .calendar-layout {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) {
+  .summary-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--card-border);
+    border-radius: var(--card-radius);
+    background: #ffffff;
+    box-shadow: var(--card-shadow);
+  }
+
+  .summary-heading strong {
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  .summary-heading button {
+    padding: 6px 0;
+    border: 0;
+    color: var(--primary);
+    background: transparent;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .calendar-summary.is-collapsed {
+    display: none;
+  }
+
+  .calendar-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .calendar-panel,
   .detail-panel {
     padding: 12px;
