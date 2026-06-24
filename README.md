@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.8.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.9.0-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -23,6 +23,8 @@
   <a href="#-核心特性">核心特性</a> ·
   <a href="#-界面预览">界面预览</a> ·
   <a href="#-快速开始">快速开始</a> ·
+  <a href="#-导航">导航</a> ·
+  <a href="#-科学设计与训练安全">科学设计与训练安全</a> ·
   <a href="#-功能详解">功能详解</a> ·
   <a href="#-项目边界">项目边界</a> ·
   <a href="#-开源治理">开源治理</a>
@@ -72,7 +74,7 @@ AI 生成内容仅作为训练计划草稿，不构成医疗建议、康复建�
 | --- | --- | --- | --- |
 | 🏠 今日训练 | 📋 我的训练计划 | 📅 训练日历 | 🧠 AI 制定计划 |
 | ✍️ 训练日志 | 🧱 训练周期 | 📊 训练统计 | 📤 AI 草稿导出 |
-| 📝 智能周复盘 | 🔁 下一周调整草稿 | ✅ 用户确认后应用 | 🛡 通用安全校验 |
+| 📝 智能周复盘 | 🧭 负荷与恢复 | ✅ 用户确认后应用 | 🛡 通用安全校验 |
 | 📱 移动端底部导航 | 🧩 训练块 | 🧮 配速计算器 | ⚙️ AI 教练偏好 |
 | ↩️ 我的页返回路径 | 📥 Excel 导入 | 🎂 年龄参考分析 | 🛠 管理后台 |
 | 🧾 内测反馈 | 🏷 配速规则 | 📈 完成率与跑量趋势 | 🔑 模型配置 |
@@ -164,6 +166,9 @@ AI_TIMEOUT_SECONDS=120
 
 AI_PLAN_DAILY_LIMIT=3
 AI_PLAN_COOLDOWN_SECONDS=60
+
+TRAINING_READINESS_ROLLOUT_MODE=off
+AI_READINESS_EXPLANATION_ENABLED=false
 ```
 
 兼容旧配置：
@@ -174,6 +179,105 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-v4-flash
 DEEPSEEK_TIMEOUT_SECONDS=120
 ```
+
+---
+
+## 📚 导航
+
+- [一屏看懂](#-一屏看懂)
+- [核心特性](#-核心特性)
+- [界面预览](#-界面预览)
+- [快速开始](#-快速开始)
+- [系统架构](#-系统架构)
+- [科学设计与训练安全](#-科学设计与训练安全)
+- [功能详解](#-功能详解)
+
+- **使用与开发文档**
+  - [完整文档中心](docs/README.md)
+  - [负荷与恢复使用指南](docs/user/training-readiness-guide.md)
+  - [训练负荷与恢复实现说明](docs/development/training-load-recovery-implementation.md)
+  - [后端学习指南](md/BACKEND_LEARNING_GUIDE.md)
+  - [数据库设计](md/数据库设计.md)
+  - [Excel 字段映射](md/Excel字段映射.md)
+  - [周复盘 API](docs/API_WEEKLY_REVIEW.md)
+
+- **科学设计与训练安全**
+  - [科学文档索引](docs/science/README.md)
+  - [科学证据与产品边界](docs/science/fatigue-management-evidence.md)
+  - [训练负荷与恢复指标定义](docs/science/fatigue-indicator-definition.md)
+  - [训练状态决策规则 v1](docs/science/fatigue-decision-rules-v1.md)
+
+- **部署与架构**
+  - [部署说明](docs/DEPLOYMENT.md)
+  - [一键重新部署](docs/REDEPLOY.md)
+  - [Noomi 迁移文档索引](gaitlogic-noomi/docs/migration/README.md)
+
+- **开源与项目治理**
+  - [开源与项目治理规则](OPEN_SOURCE_POLICY.md)
+  - [贡献指南](CONTRIBUTING.md)
+  - [安全策略](SECURITY.md)
+  - [商标使用说明](TRADEMARK.md)
+
+- **项目进展**
+  - [开发路线](docs/开发路线.md)
+  - [版本记录](CHANGELOG.md)
+  - [详细更新历史](docs/更新历史.md)
+
+---
+
+## 🏗 系统架构
+
+GaitLogic Planner 采用前后端分离架构：
+
+- 前端：Vue 3、TypeScript、Vite、Element Plus、ECharts；
+- 后端：FastAPI、SQLAlchemy 2.x、MySQL 8.0+；
+- Excel：openpyxl；
+- AI：OpenAI-compatible SDK；
+- 部署：Nginx 反向代理前端静态资源和后端 API。
+
+![GaitLogic Planner 系统架构图](docs/images/architecture.png)
+
+```text
+GaitLogic Planner
+├── web/                 # Vue 3 + Vite + Element Plus
+├── server/              # FastAPI API layer
+├── planner_core/        # SQLAlchemy models, config, enums
+├── scripts/             # 初始化与辅助脚本
+├── tests/               # pytest 测试
+├── sql/                 # MySQL schema
+└── docs/                # 文档、截图、更新历史
+```
+
+---
+
+## 🧰 技术栈
+
+| 层级 | 技术 |
+| --- | --- |
+| 前端 | Vue 3、TypeScript、Vite、Element Plus、ECharts、Axios |
+| 后端 | FastAPI、SQLAlchemy 2.x、MySQL 8.0+、PyMySQL、Pydantic 2.x、pydantic-settings |
+| Excel | openpyxl |
+| AI | OpenAI-compatible SDK |
+| 测试 | pytest |
+| 部署 | Gunicorn、Uvicorn Worker、Nginx |
+
+---
+
+## 🔬 科学设计与训练安全
+
+GaitLogic 的训练负荷与恢复管理采用外部负荷、内部负荷、恢复状态、表现变化以及疼痛与异常症状相结合的监测框架。
+
+v0.9.0 新增基础版“负荷与恢复”闭环：恢复打卡、session-RPE、最近 7 天滚动负荷、过去 28 天个人基线、四档训练状态和模板化建议。系统不输出疲劳总分、伤病概率或医疗诊断，所有计划调整仍需用户确认。
+
+相关文档：
+
+- [负荷与恢复使用指南](docs/user/training-readiness-guide.md)
+- [训练负荷与恢复实现说明](docs/development/training-load-recovery-implementation.md)
+- [科学证据与产品边界](docs/science/fatigue-management-evidence.md)
+- [训练负荷与恢复指标定义](docs/science/fatigue-indicator-definition.md)
+- [训练状态决策规则 v1](docs/science/fatigue-decision-rules-v1.md)
+
+该功能用于训练管理和趋势参考，不用于医疗诊断、伤病概率预测或过度训练综合征诊断。AI 不能未经用户确认修改正式训练计划。
 
 ---
 
@@ -232,6 +336,7 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 更多
 ├── 训练统计
+├── 负荷与恢复
 ├── Excel 导入
 └── 反馈
 
@@ -258,6 +363,7 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 - 我的训练计划；
 - 训练统计；
+- 负荷与恢复；
 - Excel 导入；
 - 反馈；
 - 高级设置入口。
@@ -597,44 +703,6 @@ AI 设置支持 OpenAI-compatible 模型接口：
 
 ---
 
-## 🏗 系统架构
-
-GaitLogic Planner 采用前后端分离架构：
-
-- 前端：Vue 3、TypeScript、Vite、Element Plus、ECharts；
-- 后端：FastAPI、SQLAlchemy 2.x、MySQL 8.0+；
-- Excel：openpyxl；
-- AI：OpenAI-compatible SDK；
-- 部署：Nginx 反向代理前端静态资源和后端 API。
-
-![GaitLogic Planner 系统架构图](docs/images/architecture.png)
-
-```text
-GaitLogic Planner
-├── web/                 # Vue 3 + Vite + Element Plus
-├── server/              # FastAPI API layer
-├── planner_core/        # SQLAlchemy models, config, enums
-├── scripts/             # 初始化与辅助脚本
-├── tests/               # pytest 测试
-├── sql/                 # MySQL schema
-└── docs/                # 文档、截图、更新历史
-```
-
----
-
-## 🧰 技术栈
-
-| 层级 | 技术 |
-| --- | --- |
-| 前端 | Vue 3、TypeScript、Vite、Element Plus、ECharts、Axios |
-| 后端 | FastAPI、SQLAlchemy 2.x、MySQL 8.0+、PyMySQL、Pydantic 2.x、pydantic-settings |
-| Excel | openpyxl |
-| AI | OpenAI-compatible SDK |
-| 测试 | pytest |
-| 部署 | Gunicorn、Uvicorn Worker、Nginx |
-
----
-
 ## ✅ 测试
 
 后端：
@@ -652,55 +720,6 @@ npm run build
 ```
 
 数据库测试只使用 MySQL。如果当前环境无法连接 MySQL，相关集成测试会跳过，不会切换到 SQLite。
-
----
-
-## 📚 文档索引
-
-### 项目入口与开源治理
-
-这些文件放在仓库根目录，方便代码托管平台和贡献者第一时间找到。
-
-| 文档 | 说明 |
-| --- | --- |
-| [中文 README](README.md) | 项目介绍、快速开始、功能说明和文档入口 |
-| [English README](README-EN.md) | English project overview |
-| [开源治理规则](OPEN_SOURCE_POLICY.md) | 开源范围、治理、AI 辅助代码和训练安全规则 |
-| [贡献指南](CONTRIBUTING.md) | 开发环境、PR 流程、测试和数据库迁移要求 |
-| [安全政策](SECURITY.md) | 私密安全报告方式和支持版本范围 |
-| [商标规则](TRADEMARK.md) | GaitLogic 名称、Logo 和 Fork 品牌边界 |
-
-### 正式项目文档
-
-这些文档放在 `docs/`，用于部署、产品说明、数据库和导入规范。
-
-| 文档 | 说明 |
-| --- | --- |
-| [更新历史](docs/更新历史.md) | 版本变更记录 |
-| [周复盘 API](docs/API_WEEKLY_REVIEW.md) | v0.8 周统计、报告和调整草稿接口 |
-
-### v0.8 数据库升级
-
-已有部署升级到 v0.8 前必须显式执行：
-
-```bash
-python scripts/upgrade_v08_weekly_review.py
-```
-
-该脚本新增周复盘与调整草稿表，并为每日计划增加可空的目标配速字段。应用启动不会自动修改生产数据库。
-| [部署文档](docs/DEPLOYMENT.md) | 部署与运行说明 |
-| [一键重新部署](docs/REDEPLOY.md) | 本地打包、上传服务器和重启服务脚本说明 |
-| [数据库设计](docs/数据库设计.md) | 数据库结构说明 |
-| [Excel 字段映射](docs/Excel字段映射.md) | Excel 导入字段说明 |
-| [SQL Schema](sql/schema.sql) | MySQL 建表脚本 |
-
-### 开发学习材料
-
-这些文档放在 `md/`，用于开发理解、学习笔记和内部辅助说明。
-
-| 文档 | 说明 |
-| --- | --- |
-| [后端学习指南](md/BACKEND_LEARNING_GUIDE.md) | 开发学习与架构理解材料 |
 
 ---
 

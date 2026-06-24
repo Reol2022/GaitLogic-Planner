@@ -37,6 +37,12 @@ const router = createRouter({
       meta: { title: "训练统计" },
     },
     {
+      path: "/training-readiness",
+      name: "TrainingReadiness",
+      component: () => import("@/views/TrainingReadinessView.vue"),
+      meta: { title: "负荷与恢复" },
+    },
+    {
       path: "/today",
       name: "Today",
       component: () => import("@/views/TodayView.vue"),

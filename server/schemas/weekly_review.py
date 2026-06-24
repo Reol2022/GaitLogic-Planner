@@ -45,6 +45,12 @@ class WeeklyReviewMetrics(BaseModel):
     avg_sleep_hours: float | None = None
     avg_hrv: float | None = None
     avg_morning_heart_rate: float | None = None
+    rolling_7d_srpe_load_au: float | None = None
+    baseline_28d_weekly_srpe_load_au: float | None = None
+    recent_to_baseline_load_ratio: float | None = None
+    recovery_checkin_coverage_ratio: float | None = None
+    readiness_data_quality: str | None = None
+    readiness_status: TrainingStatus | None = None
     missing_fields: list[str] = Field(default_factory=list)
     daily_workouts: list[dict[str, Any]] = Field(default_factory=list)
 

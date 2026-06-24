@@ -4,12 +4,26 @@
       title="今日训练"
       :subtitle="showOnboarding ? '第一次使用：你的训练课表还在等待创建或分配。课表准备好后，今天的训练会显示在这里。' : undefined"
     />
-    <div v-if="!showOnboarding" class="daily-advice">
+    <div v-if="!showOnboarding && readinessAvailable" class="daily-advice readiness-card">
+      <div class="readiness-card-main">
+        <strong>今日训练状态：{{ readinessStatusText }}</strong>
+        <p>{{ readinessReasonText }}</p>
+        <span>
+          数据质量：{{ readinessQualityText }} · 最近 7 天负荷变化：{{ readinessLoadChangeText }} ·
+          恢复打卡：{{ todayReadiness?.recovery_checkin_completed ? "已完成" : "未完成" }}
+        </span>
+      </div>
+      <div class="readiness-card-actions">
+        <el-button text @click="router.push('/training-readiness')">查看详情</el-button>
+        <el-button type="primary" plain @click="router.push('/training-readiness')">填写恢复状态</el-button>
+        <el-button v-if="showWeeklyReviewPrompt" plain @click="router.push('/weekly-review')">查看周复盘</el-button>
+      </div>
+    </div>
+    <div v-else-if="!showOnboarding && readinessMessage" class="daily-advice">
       <div>
         <strong>今日训练建议</strong>
-        <p>当前请按今日课表完成训练，并结合身体感受合理调整强度。</p>
+        <p>{{ readinessMessage }}</p>
       </div>
-      <span>疲劳管理接入后，将在这里提供个性化建议</span>
       <el-button v-if="showWeeklyReviewPrompt" type="primary" plain @click="router.push('/weekly-review')">查看周复盘</el-button>
     </div>
 
@@ -177,7 +191,7 @@
                 <el-input v-model="quickForm.pain_location" />
               </el-form-item>
               <el-form-item label="疼痛等级">
-                <el-slider v-model="painLevel" :min="0" :max="5" show-stops />
+                <el-slider v-model="painLevel" :min="0" :max="10" show-stops />
               </el-form-item>
             </div>
             <el-form-item label="明日调整">
@@ -208,8 +222,17 @@ import { listTodayWorkouts } from "@/api/plannedWorkouts";
 import { listTrainingCycles } from "@/api/trainingCycles";
 import { listTrainingBlocks } from "@/api/trainingBlocks";
 import { updateWorkoutLog } from "@/api/workoutLogs";
+import { getTodayReadiness, recalculateReadiness } from "@/api/trainingReadiness";
 import { trackUsageEvent } from "@/api/usageEvents";
-import type { PlannedWorkout, TrainingBlock, TrainingCycle, WorkoutLogPayload, WorkoutStatusNormalized } from "@/types/models";
+import type {
+  PlannedWorkout,
+  TrainingBlock,
+  TrainingCycle,
+  TrainingReadinessToday,
+  TrainingStatus,
+  WorkoutLogPayload,
+  WorkoutStatusNormalized,
+} from "@/types/models";
 import { labelFor, statusOptions } from "@/types/options";
 
 const router = useRouter();
@@ -223,10 +246,28 @@ const quickDialogVisible = ref(false);
 const savingQuick = ref(false);
 const quickWorkout = ref<PlannedWorkout | null>(null);
 const quickForm = reactive<WorkoutLogPayload>(initialQuickForm());
+const todayReadiness = ref<TrainingReadinessToday | null>(null);
+const readinessMessage = ref("");
+const readinessAvailable = computed(() => !!todayReadiness.value && !readinessMessage.value);
 const showOnboarding = computed(() => !loadingCycles.value && cycles.value.length === 0);
 const showWeeklyReviewPrompt = computed(() =>
   blocks.value.some((block) => block.end_date && block.end_date < today.value),
 );
+const readinessStatusText = computed(() =>
+  todayReadiness.value ? readinessStatusLabel(todayReadiness.value.assessment.status) : "数据不足",
+);
+const readinessQualityText = computed(() => {
+  const quality = todayReadiness.value?.assessment.data_quality;
+  if (quality === "high") return "高";
+  if (quality === "medium") return "中";
+  return "低";
+});
+const readinessReasonText = computed(() => todayReadiness.value?.assessment.reasons_json?.[0] || "当前请按今日课表完成训练，并结合身体感受合理调整强度。");
+const readinessLoadChangeText = computed(() => {
+  const value = Number(todayReadiness.value?.assessment.metrics_json?.load_change_percentage);
+  if (!Number.isFinite(value)) return "暂无";
+  return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
+});
 const painLevel = computed({
   get: () => quickForm.pain_level ?? 0,
   set: (value: number) => {
@@ -313,8 +354,31 @@ async function load() {
   loading.value = true;
   try {
     workouts.value = await listTodayWorkouts(today.value);
+    await loadReadiness();
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadReadiness() {
+  try {
+    todayReadiness.value = await getTodayReadiness();
+    readinessMessage.value = "";
+    if (todayReadiness.value) {
+      trackUsageEvent("readiness_card_viewed", { source: "today" });
+    }
+  } catch (error) {
+    const status = (error as any)?.response?.status;
+    todayReadiness.value = null;
+    if (status === 404) {
+      readinessMessage.value = "";
+    } else if (status === 403) {
+      readinessMessage.value = "负荷与恢复功能当前处于灰度测试阶段。";
+    } else if (status === 503) {
+      readinessMessage.value = "训练状态服务暂时不可用，请稍后重试。";
+    } else {
+      readinessMessage.value = "";
+    }
   }
 }
 
@@ -352,10 +416,22 @@ async function saveQuickCheckin() {
     ElMessage.success("训练已打卡");
     quickDialogVisible.value = false;
     trackUsageEvent("workout_log_saved", { planned_workout_id: quickWorkout.value.id });
+    if (readinessAvailable.value) {
+      await recalculateReadiness();
+    }
     await load();
   } finally {
     savingQuick.value = false;
   }
+}
+
+function readinessStatusLabel(status: TrainingStatus) {
+  return {
+    insufficient_data: "数据不足",
+    normal: "状态稳定",
+    watch: "关注恢复",
+    reduce_load: "建议降负荷",
+  }[status];
 }
 
 function statusClass(status?: WorkoutStatusNormalized | null) {
@@ -415,6 +491,24 @@ onMounted(() => {
   flex: 0 0 auto;
   color: var(--muted);
   font-size: 12px;
+}
+
+.readiness-card-main {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.readiness-card-main span {
+  flex: none;
+}
+
+.readiness-card-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .onboarding-copy {
@@ -539,6 +633,15 @@ onMounted(() => {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .readiness-card-actions {
+    width: 100%;
+  }
+
+  .readiness-card-actions .el-button {
+    flex: 1 1 120px;
+    margin-left: 0;
   }
 
   .onboarding-card,

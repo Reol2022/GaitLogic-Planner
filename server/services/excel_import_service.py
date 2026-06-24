@@ -20,7 +20,7 @@ from planner_core.database.models import (
     TrainingCycle,
     WorkoutLog,
 )
-from planner_core.enums import BlockType, ExcelImportStatus, WorkoutStatusNormalized
+from planner_core.enums import BlockType, ExcelImportStatus, PainScaleVersion, WorkoutStatusNormalized
 from planner_core.utils.excel_parse import (
     is_blank,
     normalize_workout_main_type,
@@ -343,8 +343,8 @@ def _import_logs(
                 log = WorkoutLog(user_id=user_id, planned_workout_id=planned.id)
                 db.add(log)
             pain_level = _optional_int(row["疼痛等级"])
-            if pain_level is not None and not 0 <= pain_level <= 5:
-                raise ValueError("疼痛等级必须在 0-5 之间。")
+            if pain_level is not None and not 0 <= pain_level <= 10:
+                raise ValueError("疼痛等级必须在 0-10 之间。")
             status_raw = _optional_text(row["完成状态"])
             log.status_raw = status_raw
             log.status_normalized = normalize_workout_status(status_raw)
@@ -365,6 +365,7 @@ def _import_logs(
             log.leg_feeling = _optional_text(row["腿感"])
             log.pain_location = _optional_text(row["疼痛部位"])
             log.pain_level = pain_level
+            log.pain_scale_version = PainScaleVersion.native_0_10
             log.main_session_data = _optional_text(row["主课数据"])
             log.review_note = _optional_text(row["一句复盘"])
             log.tomorrow_adjustment = _optional_text(row["明日调整"])
@@ -397,8 +398,8 @@ def _import_reviews(
             if block is None:
                 raise ValueError("找不到训练块。")
             max_pain_level = _optional_int(row["最高疼痛等级"])
-            if max_pain_level is not None and not 0 <= max_pain_level <= 5:
-                raise ValueError("最高疼痛等级必须在 0-5 之间。")
+            if max_pain_level is not None and not 0 <= max_pain_level <= 10:
+                raise ValueError("最高疼痛等级必须在 0-10 之间。")
             review = block.block_review or db.scalar(
                 select(BlockReview).where(
                     BlockReview.user_id == user_id,

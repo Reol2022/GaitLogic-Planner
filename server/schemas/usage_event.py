@@ -25,3 +25,11 @@ class ProductMetricsRead(BaseModel):
     workout_log_saved_users: int
     generate_to_apply_rate: float
     apply_to_first_checkin_rate: float
+    training_readiness_allowlisted_users: int = 0
+    recovery_checkin_saved_users: int = 0
+    readiness_detail_viewed_users: int = 0
+    readiness_recalculated_users: int = 0
+    reduce_load_suggestion_viewed_users: int = 0
+    readiness_assessment_success_count: int = 0
+    readiness_status_distribution: dict[str, int] = Field(default_factory=dict)
+    readiness_data_quality_distribution: dict[str, int] = Field(default_factory=dict)

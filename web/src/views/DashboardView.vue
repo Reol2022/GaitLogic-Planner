@@ -521,7 +521,7 @@ function renderHealthChart() {
   healthChart ||= echarts.init(healthChartRef.value);
   const completion = Math.min(numeric(summary.value.completion_rate), 100);
   const rpe = Math.min(numeric(summary.value.avg_rpe) * 10, 100);
-  const pain = Math.min(numeric(summary.value.max_pain_level) * 20, 100);
+  const pain = Math.min(numeric(summary.value.max_pain_level) * 10, 100);
   const doneRate =
     (summary.value.workout_count ?? 0) > 0
       ? ((summary.value.completed_count ?? 0) / (summary.value.workout_count ?? 1)) * 100

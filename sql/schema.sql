@@ -225,6 +225,7 @@ CREATE TABLE IF NOT EXISTS `workout_logs` (
   `leg_feeling` VARCHAR(128) NULL,
   `pain_location` VARCHAR(128) NULL,
   `pain_level` INT NULL,
+  `pain_scale_version` VARCHAR(32) NOT NULL DEFAULT 'native_0_10',
   `main_session_data` TEXT NULL,
   `review_note` TEXT NULL,
   `tomorrow_adjustment` TEXT NULL,
@@ -242,7 +243,7 @@ CREATE TABLE IF NOT EXISTS `workout_logs` (
   CONSTRAINT `fk_workout_logs_user_id`
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
   CONSTRAINT `ck_workout_logs_pain_level_range`
-    CHECK (`pain_level` IS NULL OR (`pain_level` >= 0 AND `pain_level` <= 5))
+    CHECK (`pain_level` IS NULL OR (`pain_level` >= 0 AND `pain_level` <= 10))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `block_reviews` (
@@ -273,7 +274,7 @@ CREATE TABLE IF NOT EXISTS `block_reviews` (
   CONSTRAINT `fk_block_reviews_user_id`
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
   CONSTRAINT `ck_block_reviews_max_pain_level_range`
-    CHECK (`max_pain_level` IS NULL OR (`max_pain_level` >= 0 AND `max_pain_level` <= 5))
+    CHECK (`max_pain_level` IS NULL OR (`max_pain_level` >= 0 AND `max_pain_level` <= 10))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `pace_rules` (
@@ -509,6 +510,103 @@ CREATE TABLE IF NOT EXISTS `excel_import_jobs` (
   KEY `ix_excel_import_jobs_user_id` (`user_id`),
   KEY `ix_excel_import_jobs_file_hash` (`file_hash`),
   CONSTRAINT `fk_excel_import_jobs_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `feature_access` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `feature_key` VARCHAR(64) NOT NULL,
+  `enabled` TINYINT(1) NOT NULL DEFAULT 1,
+  `granted_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `granted_by` BIGINT NULL,
+  `expires_at` DATETIME NULL,
+  `notes` VARCHAR(255) NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_feature_access_user_feature` (`user_id`, `feature_key`),
+  KEY `ix_feature_access_user_id` (`user_id`),
+  KEY `ix_feature_access_granted_by` (`granted_by`),
+  KEY `ix_feature_access_feature_enabled` (`feature_key`, `enabled`),
+  CONSTRAINT `fk_feature_access_user`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_feature_access_granted_by`
+    FOREIGN KEY (`granted_by`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `daily_recovery_checkin` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `checkin_date` DATE NOT NULL,
+  `sleep_duration_minutes` INT NULL,
+  `sleep_quality` INT NULL,
+  `subjective_fatigue` INT NULL,
+  `muscle_soreness` INT NULL,
+  `stress_level` INT NULL,
+  `mood_level` INT NULL,
+  `leg_feeling` INT NULL,
+  `resting_heart_rate_bpm` INT NULL,
+  `hrv_value` DECIMAL(8, 2) NULL,
+  `hrv_metric` VARCHAR(32) NULL,
+  `hrv_source` VARCHAR(64) NULL,
+  `pain_level` INT NULL,
+  `pain_location` VARCHAR(128) NULL,
+  `pain_trend` VARCHAR(16) NOT NULL DEFAULT 'unknown',
+  `pain_affects_gait` TINYINT(1) NULL,
+  `illness_symptoms` VARCHAR(255) NULL,
+  `notes` TEXT NULL,
+  `source` VARCHAR(16) NOT NULL DEFAULT 'manual',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_daily_recovery_user_date` (`user_id`, `checkin_date`),
+  KEY `ix_daily_recovery_user_id` (`user_id`),
+  KEY `ix_daily_recovery_user_date` (`user_id`, `checkin_date`),
+  CONSTRAINT `fk_daily_recovery_user`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `ck_daily_recovery_sleep_quality`
+    CHECK (`sleep_quality` IS NULL OR (`sleep_quality` >= 1 AND `sleep_quality` <= 5)),
+  CONSTRAINT `ck_daily_recovery_subjective_fatigue`
+    CHECK (`subjective_fatigue` IS NULL OR (`subjective_fatigue` >= 1 AND `subjective_fatigue` <= 5)),
+  CONSTRAINT `ck_daily_recovery_muscle_soreness`
+    CHECK (`muscle_soreness` IS NULL OR (`muscle_soreness` >= 1 AND `muscle_soreness` <= 5)),
+  CONSTRAINT `ck_daily_recovery_stress_level`
+    CHECK (`stress_level` IS NULL OR (`stress_level` >= 1 AND `stress_level` <= 5)),
+  CONSTRAINT `ck_daily_recovery_mood_level`
+    CHECK (`mood_level` IS NULL OR (`mood_level` >= 1 AND `mood_level` <= 5)),
+  CONSTRAINT `ck_daily_recovery_leg_feeling`
+    CHECK (`leg_feeling` IS NULL OR (`leg_feeling` >= 1 AND `leg_feeling` <= 5)),
+  CONSTRAINT `ck_daily_recovery_pain_level`
+    CHECK (`pain_level` IS NULL OR (`pain_level` >= 0 AND `pain_level` <= 10))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_readiness_assessment` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `assessment_date` DATE NOT NULL,
+  `status` VARCHAR(32) NOT NULL,
+  `data_quality` VARCHAR(16) NOT NULL,
+  `metrics_json` JSON NOT NULL,
+  `external_load_signals_json` JSON NULL,
+  `internal_load_signals_json` JSON NULL,
+  `recovery_signals_json` JSON NULL,
+  `performance_signals_json` JSON NULL,
+  `pain_signals_json` JSON NULL,
+  `reasons_json` JSON NOT NULL,
+  `recommendations_json` JSON NOT NULL,
+  `missing_data_json` JSON NULL,
+  `source_snapshot_json` JSON NOT NULL,
+  `algorithm_version` VARCHAR(32) NOT NULL,
+  `threshold_version` VARCHAR(32) NOT NULL,
+  `generated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_readiness_user_id` (`user_id`),
+  KEY `ix_readiness_user_date_created` (`user_id`, `assessment_date`, `created_at`),
+  KEY `ix_readiness_user_status` (`user_id`, `status`),
+  CONSTRAINT `fk_readiness_user`
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

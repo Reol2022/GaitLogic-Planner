@@ -75,6 +75,25 @@ def main() -> None:
                     """
                 )
             )
+        if not table_exists(connection, "admin_system_settings", settings.mysql_database):
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE admin_system_settings (
+                      id BIGINT NOT NULL AUTO_INCREMENT,
+                      auth_entry_mode VARCHAR(32) NOT NULL DEFAULT 'standalone',
+                      allow_public_registration TINYINT(1) NOT NULL DEFAULT 1,
+                      updated_by_id BIGINT NULL,
+                      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                      PRIMARY KEY (id),
+                      KEY ix_admin_system_settings_updated_by_id (updated_by_id),
+                      CONSTRAINT fk_admin_system_settings_updated_by_id
+                        FOREIGN KEY (updated_by_id) REFERENCES user_account (id) ON DELETE SET NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    """
+                )
+            )
     print("v0.7 minimal loop database upgrade completed.")
 
 

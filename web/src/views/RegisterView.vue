@@ -51,10 +51,7 @@
       </section>
     </section>
 
-    <footer class="register-footer">
-      <span>Copyright © 2026 GaitLogic Planner</span>
-      <span>严肃跑者训练计划与训练日志系统</span>
-    </footer>
+    <SiteFilingFooter variant="dark" />
   </main>
 </template>
 
@@ -65,6 +62,7 @@ import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { loginUser, registerUser, setStoredToken } from "@/api/auth";
 import { getSystemSettings } from "@/api/systemSettings";
+import SiteFilingFooter from "@/components/SiteFilingFooter.vue";
 import type { UserRegisterPayload } from "@/types/models";
 
 const router = useRouter();
@@ -255,20 +253,6 @@ onMounted(async () => {
   text-decoration: underline;
 }
 
-.register-footer {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 48px;
-  padding: 0 24px;
-  background: #050505;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
-}
-
 @media (max-width: 980px) {
   .register-stage {
     display: flex;
@@ -304,11 +288,5 @@ onMounted(async () => {
     padding: 24px 20px;
   }
 
-  .register-footer {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 6px;
-    padding: 12px 16px;
-  }
 }
 </style>

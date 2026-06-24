@@ -87,6 +87,7 @@ Thumbs.db
 sql/*.local.sql
 sql/*backup*.sql
 sql/*dump*.sql
+sql/gaitlogic_planner.sql
 backups/
 backup/
 

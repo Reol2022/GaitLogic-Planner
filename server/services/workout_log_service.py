@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from planner_core.database.models import WorkoutLog
+from planner_core.enums import PainScaleVersion
 from server.common.exceptions import NotFoundError
 from server.schemas.workout_log import WorkoutLogUpdate
 from server.services.planned_workout_service import get_planned_workout
@@ -44,6 +45,8 @@ def update_workout_log(
         and actual_distance > 0
     ):
         data["avg_pace_seconds_per_km"] = int(round(actual_duration / float(actual_distance)))
+    if "pain_level" in data and "pain_scale_version" not in data:
+        data["pain_scale_version"] = PainScaleVersion.native_0_10
     for key, value in data.items():
         setattr(log, key, value)
     db.commit()

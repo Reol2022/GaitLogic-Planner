@@ -23,7 +23,18 @@ export type UsageEventName =
   | "adjustment_item_selected"
   | "adjustment_item_edited"
   | "adjustment_draft_applied"
-  | "adjustment_draft_rejected";
+  | "adjustment_draft_rejected"
+  | "recovery_checkin_viewed"
+  | "recovery_checkin_saved"
+  | "recovery_checkin_updated"
+  | "recovery_checkin_deleted"
+  | "readiness_card_viewed"
+  | "readiness_detail_viewed"
+  | "readiness_recalculated"
+  | "load_trend_viewed"
+  | "recovery_trend_viewed"
+  | "reduce_load_suggestion_viewed"
+  | "readiness_adjustment_draft_created";
 
 export function trackUsageEvent(
   eventName: UsageEventName,

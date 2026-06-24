@@ -6,9 +6,11 @@ from sqlalchemy.exc import IntegrityError
 
 class AppError(Exception):
     status_code = 400
+    error_code: int | str | None = None
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: str, error_code: int | str | None = None) -> None:
         self.message = message
+        self.error_code = error_code
 
 
 class BadRequestError(AppError):
@@ -38,7 +40,7 @@ class ServiceUnavailableError(AppError):
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,
-        content={"code": exc.status_code, "message": exc.message},
+        content={"code": exc.error_code or exc.status_code, "message": exc.message},
     )
 
 

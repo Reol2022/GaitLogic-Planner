@@ -18,10 +18,13 @@ from server.api.routes import (
     pace_rules,
     planned_workouts,
     onboarding,
+    recovery_checkins,
     system_settings,
     training_calendar,
     training_blocks,
     training_cycles,
+    training_load,
+    training_readiness,
     usage_events,
     weekly_reviews,
     workout_logs,
@@ -37,7 +40,7 @@ from server.common.exceptions import (
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Gaitlogic Planner API",
-        version="0.8.0",
+        version="0.9.0",
         description="Backend API for training plans, logs, dashboard stats, and pace rules.",
     )
     app.add_middleware(
@@ -65,6 +68,9 @@ def create_app() -> FastAPI:
     app.include_router(training_blocks.router, prefix="/api")
     app.include_router(planned_workouts.router, prefix="/api")
     app.include_router(workout_logs.router, prefix="/api")
+    app.include_router(recovery_checkins.router, prefix="/api")
+    app.include_router(training_load.router, prefix="/api")
+    app.include_router(training_readiness.router, prefix="/api")
     app.include_router(dashboard.router, prefix="/api")
     app.include_router(pace_calculator.router, prefix="/api")
     app.include_router(pace_rules.router, prefix="/api")

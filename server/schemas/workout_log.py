@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from planner_core.enums import WorkoutStatusNormalized
+from planner_core.enums import PainScaleVersion, WorkoutStatusNormalized
 
 
 class WorkoutLogBase(BaseModel):
@@ -25,7 +25,8 @@ class WorkoutLogBase(BaseModel):
     weight_kg: Decimal | None = None
     leg_feeling: str | None = None
     pain_location: str | None = None
-    pain_level: int | None = Field(default=None, ge=0, le=5)
+    pain_level: int | None = Field(default=None, ge=0, le=10)
+    pain_scale_version: PainScaleVersion = PainScaleVersion.native_0_10
     main_session_data: str | None = None
     review_note: str | None = None
     tomorrow_adjustment: str | None = None
@@ -52,7 +53,8 @@ class WorkoutLogUpdate(BaseModel):
     weight_kg: Decimal | None = None
     leg_feeling: str | None = None
     pain_location: str | None = None
-    pain_level: int | None = Field(default=None, ge=0, le=5)
+    pain_level: int | None = Field(default=None, ge=0, le=10)
+    pain_scale_version: PainScaleVersion | None = None
     main_session_data: str | None = None
     review_note: str | None = None
     tomorrow_adjustment: str | None = None
@@ -67,4 +69,3 @@ class WorkoutLogRead(WorkoutLogBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-

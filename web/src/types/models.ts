@@ -82,6 +82,7 @@ export interface WorkoutLog {
   leg_feeling?: string | null;
   pain_location?: string | null;
   pain_level?: number | null;
+  pain_scale_version?: "normalized_0_10" | "native_0_10";
   main_session_data?: string | null;
   review_note?: string | null;
   tomorrow_adjustment?: string | null;
@@ -429,6 +430,96 @@ export interface AICoachPreference {
 export type AICoachPreferencePayload = Omit<AICoachPreference, "id" | "created_at" | "updated_at">;
 
 export type TrainingStatus = "insufficient_data" | "normal" | "watch" | "reduce_load";
+export type ReadinessDataQuality = "low" | "medium" | "high";
+export type PainTrend = "improving" | "stable" | "worsening" | "unknown";
+
+export interface RecoveryCheckinPayload {
+  sleep_duration_minutes?: number | null;
+  sleep_quality?: number | null;
+  subjective_fatigue?: number | null;
+  muscle_soreness?: number | null;
+  stress_level?: number | null;
+  mood_level?: number | null;
+  leg_feeling?: number | null;
+  resting_heart_rate_bpm?: number | null;
+  hrv_value?: number | string | null;
+  hrv_metric?: string | null;
+  hrv_source?: string | null;
+  pain_level?: number | null;
+  pain_location?: string | null;
+  pain_trend?: PainTrend;
+  pain_affects_gait?: boolean | null;
+  illness_symptoms?: string | null;
+  notes?: string | null;
+}
+
+export interface RecoveryCheckin extends RecoveryCheckinPayload {
+  id: number;
+  checkin_date: string;
+  source: "manual";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyTrainingLoad {
+  load_date: string;
+  distance_km: number;
+  duration_minutes: number;
+  srpe_load_au?: number | null;
+  easy_distance_km: number;
+  moderate_distance_km: number;
+  high_intensity_distance_km: number;
+  key_workout_count: number;
+  training_session_count: number;
+}
+
+export interface TrainingLoadSummaryRead {
+  assessment_date: string;
+  rolling_7d_distance_km: number;
+  rolling_7d_duration_minutes: number;
+  rolling_7d_srpe_load_au?: number | null;
+  rolling_7d_high_intensity_distance_km: number;
+  rolling_7d_key_workout_count: number;
+  rolling_7d_training_session_count: number;
+  baseline_28d_total_distance_km: number;
+  baseline_28d_weekly_distance_km: number;
+  baseline_28d_total_srpe_load_au?: number | null;
+  baseline_28d_weekly_srpe_load_au?: number | null;
+  baseline_28d_avg_rpe?: number | null;
+  srpe_coverage_ratio: number;
+  recovery_checkin_coverage_ratio: number;
+  recent_to_baseline_load_ratio?: number | null;
+  load_change_percentage?: number | null;
+  distance_change_percentage?: number | null;
+  history_days: number;
+  missing_data: string[];
+}
+
+export interface TrainingReadinessAssessment {
+  id: number;
+  assessment_date: string;
+  status: TrainingStatus;
+  data_quality: ReadinessDataQuality;
+  metrics_json: TrainingLoadSummaryRead;
+  external_load_signals_json?: Array<Record<string, unknown>> | null;
+  internal_load_signals_json?: Array<Record<string, unknown>> | null;
+  recovery_signals_json?: Array<Record<string, unknown>> | null;
+  performance_signals_json?: Array<Record<string, unknown>> | null;
+  pain_signals_json?: Array<Record<string, unknown>> | null;
+  reasons_json: string[];
+  recommendations_json: Array<{ action: string; message: string; reason: string; requires_confirmation: boolean }>;
+  missing_data_json?: string[] | null;
+  algorithm_version: string;
+  threshold_version: string;
+  generated_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TrainingReadinessToday {
+  assessment: TrainingReadinessAssessment;
+  recovery_checkin_completed: boolean;
+}
 export type AdjustmentAction = "keep" | "reduce" | "replace" | "rest";
 export type AdjustmentDraftStatus = "draft" | "partially_applied" | "applied" | "rejected" | "invalid";
 
@@ -456,6 +547,12 @@ export interface WeeklyReviewMetrics {
   long_run?: Record<string, unknown> | null;
   recent_7d_distance_km: number;
   recent_28d_weekly_avg_km: number;
+  rolling_7d_srpe_load_au?: number | null;
+  baseline_28d_weekly_srpe_load_au?: number | null;
+  recent_to_baseline_load_ratio?: number | null;
+  recovery_checkin_coverage_ratio?: number | null;
+  readiness_data_quality?: ReadinessDataQuality | null;
+  readiness_status?: TrainingStatus | null;
   load_change_percentage?: number | null;
   consecutive_high_intensity_days: string[][];
   logged_workout_ratio: number;

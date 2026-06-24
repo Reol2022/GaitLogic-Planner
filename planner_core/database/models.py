@@ -29,10 +29,15 @@ from planner_core.enums import (
     BlockType,
     ExcelImportStatus,
     FeedbackType,
+    FeatureKey,
     PlanAdjustmentAction,
     PlanAdjustmentDraftStatus,
+    PainScaleVersion,
+    PainTrend,
     PaceZoneCode,
     RaceDistance,
+    ReadinessDataQuality,
+    RecoveryCheckinSource,
     TrainingStatus,
     UIMode,
     UsageEventName,
@@ -118,6 +123,15 @@ usage_event_name_enum = Enum(
     native_enum=False,
     length=64,
 )
+feature_key_enum = Enum(FeatureKey, values_callable=enum_values, native_enum=False, length=64)
+pain_trend_enum = Enum(PainTrend, values_callable=enum_values, native_enum=False, length=16)
+recovery_checkin_source_enum = Enum(
+    RecoveryCheckinSource, values_callable=enum_values, native_enum=False, length=16
+)
+pain_scale_version_enum = Enum(PainScaleVersion, values_callable=enum_values, native_enum=False, length=32)
+readiness_data_quality_enum = Enum(
+    ReadinessDataQuality, values_callable=enum_values, native_enum=False, length=16
+)
 weekly_review_status_enum = Enum(WeeklyReviewStatus, values_callable=enum_values, native_enum=False, length=32)
 training_status_enum = Enum(TrainingStatus, values_callable=enum_values, native_enum=False, length=32)
 plan_adjustment_draft_status_enum = Enum(
@@ -185,6 +199,14 @@ class UserAccount(IdMixin, TimestampMixin, Base):
     usage_events: Mapped[list[UsageEvent]] = relationship(back_populates="user")
     weekly_review_reports: Mapped[list[WeeklyReviewReport]] = relationship(back_populates="user")
     plan_adjustment_drafts: Mapped[list[PlanAdjustmentDraft]] = relationship(back_populates="user")
+    feature_access_items: Mapped[list[FeatureAccess]] = relationship(
+        back_populates="user", foreign_keys="FeatureAccess.user_id"
+    )
+    granted_feature_access_items: Mapped[list[FeatureAccess]] = relationship(
+        back_populates="granted_by_user", foreign_keys="FeatureAccess.granted_by"
+    )
+    recovery_checkins: Mapped[list[DailyRecoveryCheckin]] = relationship(back_populates="user")
+    readiness_assessments: Mapped[list[TrainingReadinessAssessment]] = relationship(back_populates="user")
 
 
 class TrainingCycle(IdMixin, TimestampMixin, Base):
@@ -340,7 +362,7 @@ class WorkoutLog(IdMixin, TimestampMixin, Base):
         UniqueConstraint("planned_workout_id", name="uq_workout_logs_planned_workout"),
         Index("ix_workout_logs_status_normalized", "status_normalized"),
         CheckConstraint(
-            "pain_level IS NULL OR (pain_level >= 0 AND pain_level <= 5)",
+            "pain_level IS NULL OR (pain_level >= 0 AND pain_level <= 10)",
             name="ck_workout_logs_pain_level_range",
         ),
         MYSQL_TABLE_ARGS,
@@ -380,6 +402,12 @@ class WorkoutLog(IdMixin, TimestampMixin, Base):
     leg_feeling: Mapped[str | None] = mapped_column(String(128))
     pain_location: Mapped[str | None] = mapped_column(String(128))
     pain_level: Mapped[int | None] = mapped_column(Integer)
+    pain_scale_version: Mapped[PainScaleVersion] = mapped_column(
+        pain_scale_version_enum,
+        nullable=False,
+        default=PainScaleVersion.native_0_10,
+        server_default=PainScaleVersion.native_0_10.value,
+    )
     main_session_data: Mapped[str | None] = mapped_column(Text)
     review_note: Mapped[str | None] = mapped_column(Text)
     tomorrow_adjustment: Mapped[str | None] = mapped_column(Text)
@@ -395,7 +423,7 @@ class BlockReview(IdMixin, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint("block_id", name="uq_block_reviews_block"),
         CheckConstraint(
-            "max_pain_level IS NULL OR (max_pain_level >= 0 AND max_pain_level <= 5)",
+            "max_pain_level IS NULL OR (max_pain_level >= 0 AND max_pain_level <= 10)",
             name="ck_block_reviews_max_pain_level_range",
         ),
         MYSQL_TABLE_ARGS,
@@ -667,6 +695,139 @@ class Feedback(IdMixin, TimestampMixin, Base):
     )
 
     user: Mapped[UserAccount] = relationship(back_populates="feedback_items")
+
+
+class FeatureAccess(IdMixin, TimestampMixin, Base):
+    __tablename__ = "feature_access"
+    __table_args__ = (
+        UniqueConstraint("user_id", "feature_key", name="uq_feature_access_user_feature"),
+        Index("ix_feature_access_feature_enabled", "feature_key", "enabled"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    feature_key: Mapped[FeatureKey] = mapped_column(feature_key_enum, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    granted_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=text("CURRENT_TIMESTAMP")
+    )
+    granted_by: Mapped[int | None] = mapped_column(ForeignKey("user_account.id", ondelete="SET NULL"), index=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime)
+    notes: Mapped[str | None] = mapped_column(String(255))
+
+    user: Mapped[UserAccount] = relationship(
+        back_populates="feature_access_items", foreign_keys=[user_id]
+    )
+    granted_by_user: Mapped[UserAccount | None] = relationship(
+        back_populates="granted_feature_access_items", foreign_keys=[granted_by]
+    )
+
+
+class DailyRecoveryCheckin(IdMixin, TimestampMixin, Base):
+    __tablename__ = "daily_recovery_checkin"
+    __table_args__ = (
+        UniqueConstraint("user_id", "checkin_date", name="uq_daily_recovery_user_date"),
+        Index("ix_daily_recovery_user_date", "user_id", "checkin_date"),
+        CheckConstraint(
+            "sleep_quality IS NULL OR (sleep_quality >= 1 AND sleep_quality <= 5)",
+            name="ck_daily_recovery_sleep_quality",
+        ),
+        CheckConstraint(
+            "subjective_fatigue IS NULL OR (subjective_fatigue >= 1 AND subjective_fatigue <= 5)",
+            name="ck_daily_recovery_subjective_fatigue",
+        ),
+        CheckConstraint(
+            "muscle_soreness IS NULL OR (muscle_soreness >= 1 AND muscle_soreness <= 5)",
+            name="ck_daily_recovery_muscle_soreness",
+        ),
+        CheckConstraint(
+            "stress_level IS NULL OR (stress_level >= 1 AND stress_level <= 5)",
+            name="ck_daily_recovery_stress_level",
+        ),
+        CheckConstraint(
+            "mood_level IS NULL OR (mood_level >= 1 AND mood_level <= 5)",
+            name="ck_daily_recovery_mood_level",
+        ),
+        CheckConstraint(
+            "leg_feeling IS NULL OR (leg_feeling >= 1 AND leg_feeling <= 5)",
+            name="ck_daily_recovery_leg_feeling",
+        ),
+        CheckConstraint(
+            "pain_level IS NULL OR (pain_level >= 0 AND pain_level <= 10)",
+            name="ck_daily_recovery_pain_level",
+        ),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    checkin_date: Mapped[date] = mapped_column(Date, nullable=False)
+    sleep_duration_minutes: Mapped[int | None] = mapped_column(Integer)
+    sleep_quality: Mapped[int | None] = mapped_column(Integer)
+    subjective_fatigue: Mapped[int | None] = mapped_column(Integer)
+    muscle_soreness: Mapped[int | None] = mapped_column(Integer)
+    stress_level: Mapped[int | None] = mapped_column(Integer)
+    mood_level: Mapped[int | None] = mapped_column(Integer)
+    leg_feeling: Mapped[int | None] = mapped_column(Integer)
+    resting_heart_rate_bpm: Mapped[int | None] = mapped_column(Integer)
+    hrv_value: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    hrv_metric: Mapped[str | None] = mapped_column(String(32))
+    hrv_source: Mapped[str | None] = mapped_column(String(64))
+    pain_level: Mapped[int | None] = mapped_column(Integer)
+    pain_location: Mapped[str | None] = mapped_column(String(128))
+    pain_trend: Mapped[PainTrend] = mapped_column(
+        pain_trend_enum,
+        nullable=False,
+        default=PainTrend.unknown,
+        server_default=PainTrend.unknown.value,
+    )
+    pain_affects_gait: Mapped[bool | None] = mapped_column(Boolean)
+    illness_symptoms: Mapped[str | None] = mapped_column(String(255))
+    notes: Mapped[str | None] = mapped_column(Text)
+    source: Mapped[RecoveryCheckinSource] = mapped_column(
+        recovery_checkin_source_enum,
+        nullable=False,
+        default=RecoveryCheckinSource.manual,
+        server_default=RecoveryCheckinSource.manual.value,
+    )
+
+    user: Mapped[UserAccount] = relationship(back_populates="recovery_checkins")
+
+
+class TrainingReadinessAssessment(IdMixin, TimestampMixin, Base):
+    __tablename__ = "training_readiness_assessment"
+    __table_args__ = (
+        Index("ix_readiness_user_date_created", "user_id", "assessment_date", "created_at"),
+        Index("ix_readiness_user_status", "user_id", "status"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    assessment_date: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[TrainingStatus] = mapped_column(training_status_enum, nullable=False)
+    data_quality: Mapped[ReadinessDataQuality] = mapped_column(readiness_data_quality_enum, nullable=False)
+    metrics_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    external_load_signals_json: Mapped[list | None] = mapped_column(JSON)
+    internal_load_signals_json: Mapped[list | None] = mapped_column(JSON)
+    recovery_signals_json: Mapped[list | None] = mapped_column(JSON)
+    performance_signals_json: Mapped[list | None] = mapped_column(JSON)
+    pain_signals_json: Mapped[list | None] = mapped_column(JSON)
+    reasons_json: Mapped[list] = mapped_column(JSON, nullable=False)
+    recommendations_json: Mapped[list] = mapped_column(JSON, nullable=False)
+    missing_data_json: Mapped[list | None] = mapped_column(JSON)
+    source_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    algorithm_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    threshold_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=text("CURRENT_TIMESTAMP")
+    )
+
+    user: Mapped[UserAccount] = relationship(back_populates="readiness_assessments")
 
 
 class UsageEvent(IdMixin, Base):

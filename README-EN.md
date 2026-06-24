@@ -651,8 +651,8 @@ Database tests use MySQL only. If MySQL is not available in the current environm
 | --- | --- |
 | [Changelog](docs/更新历史.md) | Version history |
 | [Deployment](docs/DEPLOYMENT.md) | Deployment and runtime notes |
-| [Database Design](docs/数据库设计.md) | Database structure notes |
-| [Excel Field Mapping](docs/Excel字段映射.md) | Excel import field mapping |
+| [Database Design](md/数据库设计.md) | Database structure notes |
+| [Excel Field Mapping](md/Excel字段映射.md) | Excel import field mapping |
 | [SQL Schema](sql/schema.sql) | MySQL schema |
 
 ---

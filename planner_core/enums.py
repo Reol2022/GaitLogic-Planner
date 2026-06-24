@@ -109,6 +109,43 @@ class TrainingStatus(str, Enum):
     reduce_load = "reduce_load"
 
 
+class ReadinessDataQuality(str, Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class PainTrend(str, Enum):
+    improving = "improving"
+    stable = "stable"
+    worsening = "worsening"
+    unknown = "unknown"
+
+
+class RecoveryCheckinSource(str, Enum):
+    manual = "manual"
+
+
+class PainScaleVersion(str, Enum):
+    normalized_0_10 = "normalized_0_10"
+    native_0_10 = "native_0_10"
+
+
+class FeatureKey(str, Enum):
+    training_readiness = "training_readiness"
+
+
+class ReadinessRecommendationAction(str, Enum):
+    maintain_plan = "maintain_plan"
+    monitor = "monitor"
+    remove_optional_volume = "remove_optional_volume"
+    reduce_easy_volume = "reduce_easy_volume"
+    reduce_quality_volume = "reduce_quality_volume"
+    replace_quality_with_easy = "replace_quality_with_easy"
+    add_recovery_day = "add_recovery_day"
+    seek_professional_evaluation = "seek_professional_evaluation"
+
+
 class PlanAdjustmentDraftStatus(str, Enum):
     draft = "draft"
     partially_applied = "partially_applied"
@@ -148,3 +185,14 @@ class UsageEventName(str, Enum):
     adjustment_item_edited = "adjustment_item_edited"
     adjustment_draft_applied = "adjustment_draft_applied"
     adjustment_draft_rejected = "adjustment_draft_rejected"
+    recovery_checkin_viewed = "recovery_checkin_viewed"
+    recovery_checkin_saved = "recovery_checkin_saved"
+    recovery_checkin_updated = "recovery_checkin_updated"
+    recovery_checkin_deleted = "recovery_checkin_deleted"
+    readiness_card_viewed = "readiness_card_viewed"
+    readiness_detail_viewed = "readiness_detail_viewed"
+    readiness_recalculated = "readiness_recalculated"
+    load_trend_viewed = "load_trend_viewed"
+    recovery_trend_viewed = "recovery_trend_viewed"
+    reduce_load_suggestion_viewed = "reduce_load_suggestion_viewed"
+    readiness_adjustment_draft_created = "readiness_adjustment_draft_created"

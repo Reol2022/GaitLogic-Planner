@@ -13,8 +13,10 @@ from server.schemas.weekly_review import (
     WeeklyReviewSummaryResponse,
 )
 from server.services import plan_adjustment_apply_service, weekly_review_ai_service
+from server.services import readiness_assessment_service
 from server.services.training_status_service import evaluate_training_status
-from server.services.weekly_review_stats_service import build_weekly_review_metrics
+from server.services.training_load_service import build_training_load_summary
+from server.services.weekly_review_stats_service import build_weekly_review_metrics, local_today
 
 router = APIRouter(tags=["weekly reviews"])
 
@@ -27,6 +29,15 @@ def get_weekly_review_summary(
     current_user: UserAccount = Depends(get_current_user),
 ):
     metrics = build_weekly_review_metrics(db, current_user.id, cycle_id, block_id)
+    assessment_date = min(metrics.week_end_date, local_today())
+    load_summary = build_training_load_summary(db, current_user.id, assessment_date)
+    readiness = readiness_assessment_service.get_latest_assessment(db, current_user.id, assessment_date)
+    metrics.rolling_7d_srpe_load_au = load_summary.rolling_7d_srpe_load_au
+    metrics.baseline_28d_weekly_srpe_load_au = load_summary.baseline_28d_weekly_srpe_load_au
+    metrics.recent_to_baseline_load_ratio = load_summary.recent_to_baseline_load_ratio
+    metrics.recovery_checkin_coverage_ratio = load_summary.recovery_checkin_coverage_ratio
+    metrics.readiness_data_quality = readiness.data_quality.value if readiness else None
+    metrics.readiness_status = readiness.status if readiness else None
     return WeeklyReviewSummaryResponse(metrics=metrics, training_status=evaluate_training_status(metrics))
 
 

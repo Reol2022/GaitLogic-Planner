@@ -1,5 +1,7 @@
 # GaitLogic Planner 部署文档
 
+[返回项目首页](../README.md) · [返回文档中心](README.md)
+
 本文档记录 GaitLogic Planner 的生产环境部署方式。
 主项目介绍请查看：[README.md](../README.md)。
 
@@ -82,12 +84,16 @@ DEEPSEEK_MODEL=deepseek-v4-flash
 DEEPSEEK_TIMEOUT_SECONDS=120
 AI_PLAN_DAILY_LIMIT=3
 AI_PLAN_COOLDOWN_SECONDS=60
+TRAINING_READINESS_ROLLOUT_MODE=off
+AI_READINESS_EXPLANATION_ENABLED=false
 ```
 
 注意：
 
 * `JWT_SECRET_KEY` 必须使用足够长的随机字符串；
 * `DEEPSEEK_API_KEY` 不要提交到仓库；
+* `TRAINING_READINESS_ROLLOUT_MODE` 允许 `off`、`allowlist`、`all`，生产升级后应先保持 `off`；
+* `AI_READINESS_EXPLANATION_ENABLED` v0.9 默认保持 `false`，本版本不新增 AI 训练状态解释调用；
 * 生产环境建议将 `.env` 加入 `.gitignore`。
 
 ---
@@ -551,7 +557,51 @@ supervisorctl restart gaitlogic-planner
 
 ---
 
-## 12. 安全建议
+## 12. v0.9 负荷与恢复灰度上线
+
+生产上线建议流程：
+
+1. 备份 MySQL 数据库；
+2. 确认 `.env` 中 `TRAINING_READINESS_ROLLOUT_MODE=off`；
+3. 执行正式迁移：
+
+```bash
+.venv/bin/python scripts/upgrade_v09_training_readiness.py
+```
+
+4. 部署后端；
+5. 部署前端；
+6. 保持功能关闭，检查日志和数据库表；
+7. 使用内部账号授予白名单：
+
+```bash
+.venv/bin/python scripts/manage_feature_access.py grant <username_or_user_id>
+.venv/bin/python scripts/manage_feature_access.py list
+```
+
+8. 将 `.env` 改为：
+
+```env
+TRAINING_READINESS_ROLLOUT_MODE=allowlist
+```
+
+9. 重启后端，使用内部账号验证恢复打卡、训练状态和周复盘集成；
+10. 开启 5-10 名灰度用户，连续观察至少 7 天；
+11. 确认无异常后再决定是否改为 `TRAINING_READINESS_ROLLOUT_MODE=all`。
+
+功能关闭时返回 `404 FEATURE_DISABLED`；灰度未开放时返回 `403 FEATURE_NOT_AVAILABLE`；真实服务异常才返回 `503`。
+
+疼痛量表迁移说明：
+
+```text
+历史训练日志 0-5 疼痛值 -> 0-10：new_value = old_value × 2
+```
+
+迁移后的历史值通过 `pain_scale_version=normalized_0_10` 标记，不应描述为重新测量。
+
+---
+
+## 13. 安全建议
 
 生产环境建议：
 

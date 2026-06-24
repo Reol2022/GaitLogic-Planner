@@ -114,7 +114,7 @@ SHEET_HEADERS: dict[str, list[str]] = {
 MAIN_TYPE_OPTIONS = ["REC", "E", "E+R", "LSD", "M", "T", "T1", "T2", "I", "I/R", "R", "Rest", "Mixed"]
 BLOCK_TYPE_OPTIONS = ["week", "transition", "special"]
 STATUS_OPTIONS = ["高质量完成", "一般完成", "降级完成", "没完成", "未完成", "休息", "取消/休息", "跳过"]
-PAIN_LEVEL_OPTIONS = ["0", "1", "2", "3", "4", "5"]
+PAIN_LEVEL_OPTIONS = [str(value) for value in range(0, 11)]
 
 
 def generate_excel_template_bytes() -> bytes:
@@ -218,7 +218,7 @@ def generate_excel_template_bytes() -> bytes:
         comments={
             "日期": "通过日期匹配训练计划。",
             "完成状态": "空值会按未开始处理。",
-            "疼痛等级": "范围 0-5。",
+            "疼痛等级": "范围 0-10。",
         },
         validations={"完成状态": STATUS_OPTIONS, "疼痛等级": PAIN_LEVEL_OPTIONS},
     )
@@ -244,7 +244,7 @@ def generate_excel_template_bytes() -> bytes:
                 "下周恢复正常二四日结构",
             ]
         ],
-        comments={"训练块名称": "必须与“训练块”Sheet 中的训练块名称一致。", "最高疼痛等级": "范围 0-5。"},
+        comments={"训练块名称": "必须与“训练块”Sheet 中的训练块名称一致。", "最高疼痛等级": "范围 0-10。"},
         validations={"最高疼痛等级": PAIN_LEVEL_OPTIONS},
     )
     _build_data_sheet(
@@ -272,7 +272,7 @@ def _build_instructions_sheet(workbook: Workbook) -> None:
         "距离单位为 km。",
         "时长字段建议使用秒，或使用 HH:MM:SS，后端兼容这两种格式。",
         "配速字段建议使用 秒/公里，或使用 mm:ss，后端兼容这两种格式。",
-        "疼痛等级范围为 0-5。",
+        "疼痛等级范围为 0-10。",
         "完成状态和训练类型请优先使用下拉选项。",
     ]
     for row_index, text in enumerate(instructions, start=3):

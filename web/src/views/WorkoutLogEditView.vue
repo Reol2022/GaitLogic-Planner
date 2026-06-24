@@ -100,7 +100,7 @@
                   <el-input v-model="form.pain_location" />
                 </el-form-item>
                 <el-form-item label="疼痛等级">
-                  <el-slider v-model="painLevel" :min="0" :max="5" show-stops />
+                  <el-slider v-model="painLevel" :min="0" :max="10" show-stops />
                 </el-form-item>
                 <el-form-item label="明日调整" class="full">
                   <el-input v-model="form.tomorrow_adjustment" type="textarea" :rows="2" />

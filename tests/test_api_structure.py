@@ -77,6 +77,17 @@ def test_required_routes_are_registered() -> None:
     assert "GET /api/workout-logs/{planned_workout_id}" in routes
     assert "PUT /api/workout-logs/{planned_workout_id}" in routes
     assert "GET /api/dashboard" in routes
+    assert "GET /api/recovery-checkins/today" in routes
+    assert "PUT /api/recovery-checkins/today" in routes
+    assert "DELETE /api/recovery-checkins/{checkin_date}" in routes
+    assert "GET /api/recovery-checkins" in routes
+    assert "GET /api/training-load/summary" in routes
+    assert "GET /api/training-load/trend" in routes
+    assert "GET /api/training-load/daily" in routes
+    assert "GET /api/training-readiness/today" in routes
+    assert "POST /api/training-readiness/recalculate" in routes
+    assert "GET /api/training-readiness/history" in routes
+    assert "GET /api/training-readiness/{assessment_date}" in routes
     assert "GET /api/stats/blocks/{block_id}" in routes
     assert "GET /api/pace-rules" in routes
     assert "POST /api/pace-rules" in routes
@@ -103,3 +114,5 @@ def test_business_routes_require_login() -> None:
         json={"feedback_type": "bug", "content": "需要登录"},
     )
     assert feedback_response.status_code == 401
+    readiness_response = client.get("/api/training-readiness/today")
+    assert readiness_response.status_code == 401

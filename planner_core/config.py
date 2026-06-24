@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     weekly_review_prompt_override: str | None = Field(
         default=None, validation_alias="WEEKLY_REVIEW_PROMPT_OVERRIDE"
     )
+    training_readiness_rollout_mode: str = Field(
+        default="off", validation_alias="TRAINING_READINESS_ROLLOUT_MODE"
+    )
+    ai_readiness_explanation_enabled: bool = Field(
+        default=False, validation_alias="AI_READINESS_EXPLANATION_ENABLED"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -27,6 +27,7 @@ from server.common.exceptions import BadRequestError, NotFoundError, ServiceUnav
 from server.schemas.weekly_review import (
     PlanAdjustmentDraftRead,
     PlanAdjustmentItemRead,
+    TrainingStatusResult,
     WeeklyReviewAIOutput,
     WeeklyReviewDetailResponse,
     WeeklyReviewListResponse,
@@ -43,6 +44,7 @@ from server.services.ai_plan_service import (
     save_job,
 )
 from server.services.plan_adjustment_validation_service import validate_ai_adjustments
+from server.services.readiness_assessment_service import evaluate_and_save_readiness
 from server.services.training_block_service import get_training_block
 from server.services.training_status_service import evaluate_training_status
 from server.services.weekly_review_prompt import (
@@ -51,6 +53,7 @@ from server.services.weekly_review_prompt import (
     get_weekly_review_system_prompt,
 )
 from server.services.weekly_review_stats_service import build_weekly_review_metrics, save_block_review_metrics
+from server.services.weekly_review_stats_service import local_today
 
 ALGORITHM_VERSION = "weekly-review-rules-v1"
 
@@ -116,6 +119,19 @@ def _subjective_notes(metrics, workouts: list[PlannedWorkout]) -> list[dict]:
 def build_source_snapshot(db: Session, user_id: int, cycle_id: int, source_block_id: int, target_block_id: int | None):
     metrics = build_weekly_review_metrics(db, user_id, cycle_id, source_block_id)
     status_result = evaluate_training_status(metrics)
+    readiness = evaluate_and_save_readiness(db, user_id, min(metrics.week_end_date, local_today()))
+    status_result = TrainingStatusResult(
+        status=readiness.status,
+        reasons=list(readiness.reasons_json or []),
+        signals=[],
+        missing_data=list(readiness.missing_data_json or []),
+    )
+    metrics.readiness_status = readiness.status
+    metrics.readiness_data_quality = readiness.data_quality.value
+    metrics.rolling_7d_srpe_load_au = readiness.metrics_json.get("rolling_7d_srpe_load_au")
+    metrics.baseline_28d_weekly_srpe_load_au = readiness.metrics_json.get("baseline_28d_weekly_srpe_load_au")
+    metrics.recent_to_baseline_load_ratio = readiness.metrics_json.get("recent_to_baseline_load_ratio")
+    metrics.recovery_checkin_coverage_ratio = readiness.metrics_json.get("recovery_checkin_coverage_ratio")
     source = get_training_block(db, source_block_id, user_id)
     target = _target_block(db, user_id, cycle_id, source, target_block_id)
     source_workouts = list(

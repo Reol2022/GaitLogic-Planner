@@ -45,6 +45,10 @@
           <el-icon><DataAnalysis /></el-icon>
           <template #title>训练统计</template>
         </el-menu-item>
+        <el-menu-item index="/training-readiness">
+          <el-icon><TrendCharts /></el-icon>
+          <template #title>负荷与恢复</template>
+        </el-menu-item>
         <el-menu-item index="/excel-import">
           <el-icon><DocumentAdd /></el-icon>
           <template #title>Excel 导入</template>
@@ -155,6 +159,7 @@
           <span>返回我的</span>
         </div>
         <router-view />
+        <SiteFilingFooter />
       </el-main>
     </el-container>
 
@@ -205,6 +210,7 @@ import {
   User,
 } from "@element-plus/icons-vue";
 import { clearStoredToken, getCurrentUser, logoutUser } from "@/api/auth";
+import SiteFilingFooter from "@/components/SiteFilingFooter.vue";
 import type { UserAccount } from "@/types/models";
 import { requestAuth } from "@/utils/authPrompt";
 

@@ -82,7 +82,7 @@ def _validate_values(
         raise BadRequestError("A keep adjustment must preserve distance and workout type.")
     if training_status == TrainingStatus.reduce_load and suggested_distance > original_distance:
         raise BadRequestError("Reduce-load status cannot increase workout distance.")
-    if max_pain_level is not None and max_pain_level >= 3:
+    if max_pain_level is not None and max_pain_level >= 4:
         if INTENSITY_RANK.get(suggested_type, 99) > INTENSITY_RANK.get(original_type, 99):
             raise BadRequestError("Workout intensity cannot increase when notable pain is recorded.")
 
@@ -104,8 +104,16 @@ def _validate_resulting_week(
     if any(right - left == timedelta(days=1) for left, right in zip(high_dates, high_dates[1:])):
         raise BadRequestError("Adjustments cannot produce consecutive high-intensity days.")
     suggested_total = sum(item[2] for item in resulting)
+    original_high_count = sum(1 for workout in workouts if workout.main_type_normalized.value in HIGH_INTENSITY_TYPES)
+    suggested_high_count = sum(1 for _, workout_type, _ in resulting if workout_type in HIGH_INTENSITY_TYPES)
+    if training_status == TrainingStatus.watch and suggested_total > original_total:
+        raise BadRequestError("Watch status cannot increase next week's total distance.")
     if training_status == TrainingStatus.reduce_load and suggested_total > original_total:
         raise BadRequestError("Reduce-load status cannot increase next week's total distance.")
+    if training_status == TrainingStatus.reduce_load and suggested_high_count > original_high_count:
+        raise BadRequestError("Reduce-load status cannot increase high-intensity workouts.")
+    if training_status == TrainingStatus.insufficient_data and original_total > 0 and suggested_total > original_total * 1.05:
+        raise BadRequestError("Insufficient-data status cannot substantially increase next week's total distance.")
     if original_total > 0 and suggested_total > original_total * MAX_WEEKLY_INCREASE_RATIO:
         raise BadRequestError("Suggested weekly distance increases beyond the community safety limit.")
 
