@@ -110,9 +110,13 @@ const router = createRouter({
     },
     {
       path: "/excel-import",
-      name: "ExcelImport",
-      component: () => import("@/views/ExcelImport.vue"),
-      meta: { title: "Excel 导入" },
+      redirect: "/plan-imports",
+    },
+    {
+      path: "/plan-imports",
+      name: "PlanImport",
+      component: () => import("@/views/PlanImportView.vue"),
+      meta: { title: "课表导入" },
     },
     {
       path: "/feedback",

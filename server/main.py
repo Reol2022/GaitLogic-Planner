@@ -1,9 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from server.api.routes import (
     ai_plan,
@@ -16,6 +16,7 @@ from server.api.routes import (
     health,
     pace_calculator,
     pace_rules,
+    plan_imports,
     planned_workouts,
     onboarding,
     recovery_checkins,
@@ -32,7 +33,10 @@ from server.api.routes import (
 from server.common.exceptions import (
     AppError,
     app_error_handler,
+    database_error_handler,
+    http_exception_handler,
     integrity_error_handler,
+    unhandled_exception_handler,
     validation_error_handler,
 )
 
@@ -51,8 +55,11 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_exception_handler(AppError, app_error_handler)
+    app.add_exception_handler(HTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_error_handler)
     app.add_exception_handler(IntegrityError, integrity_error_handler)
+    app.add_exception_handler(SQLAlchemyError, database_error_handler)
+    app.add_exception_handler(Exception, unhandled_exception_handler)
 
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
@@ -74,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard.router, prefix="/api")
     app.include_router(pace_calculator.router, prefix="/api")
     app.include_router(pace_rules.router, prefix="/api")
+    app.include_router(plan_imports.router, prefix="/api")
     app.include_router(usage_events.router, prefix="/api")
     app.include_router(weekly_reviews.router, prefix="/api")
 

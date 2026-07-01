@@ -4,7 +4,13 @@
     <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">
       蜀ICP备2022009555号
     </a>
-    <span>公安备案号：审核中（预留）</span>
+    <a
+      href="https://www.beian.gov.cn/portal/registerSystemInfo?recordcode=51070302110743"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      川公网安备51070302110743号
+    </a>
   </footer>
 </template>
 

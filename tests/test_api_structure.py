@@ -88,6 +88,14 @@ def test_required_routes_are_registered() -> None:
     assert "POST /api/training-readiness/recalculate" in routes
     assert "GET /api/training-readiness/history" in routes
     assert "GET /api/training-readiness/{assessment_date}" in routes
+    assert "POST /api/plan-imports/structured" in routes
+    assert "POST /api/plan-imports/file" in routes
+    assert "GET /api/plan-imports/template" in routes
+    assert "GET /api/plan-imports/{import_id}" in routes
+    assert "PATCH /api/plan-imports/{import_id}/items/{item_id}" in routes
+    assert "POST /api/plan-imports/{import_id}/validate" in routes
+    assert "POST /api/plan-imports/{import_id}/apply" in routes
+    assert "POST /api/plan-imports/{import_id}/cancel" in routes
     assert "GET /api/stats/blocks/{block_id}" in routes
     assert "GET /api/pace-rules" in routes
     assert "POST /api/pace-rules" in routes
@@ -116,3 +124,5 @@ def test_business_routes_require_login() -> None:
     assert feedback_response.status_code == 401
     readiness_response = client.get("/api/training-readiness/today")
     assert readiness_response.status_code == 401
+    plan_import_response = client.post("/api/plan-imports/structured", json={})
+    assert plan_import_response.status_code == 401

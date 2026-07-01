@@ -239,7 +239,9 @@ class TrainingCycle(IdMixin, TimestampMixin, Base):
         passive_deletes=True,
     )
     weekly_review_reports: Mapped[list[WeeklyReviewReport]] = relationship(back_populates="cycle")
-    plan_adjustment_drafts: Mapped[list[PlanAdjustmentDraft]] = relationship(back_populates="cycle")
+    plan_adjustment_drafts: Mapped[list[PlanAdjustmentDraft]] = relationship(
+        back_populates="cycle", foreign_keys="PlanAdjustmentDraft.cycle_id"
+    )
 
 
 class TrainingBlock(IdMixin, TimestampMixin, Base):
@@ -303,7 +305,7 @@ class TrainingBlock(IdMixin, TimestampMixin, Base):
 class PlannedWorkout(IdMixin, TimestampMixin, Base):
     __tablename__ = "planned_workouts"
     __table_args__ = (
-        UniqueConstraint("cycle_id", "workout_date", name="uq_planned_workouts_cycle_date"),
+        UniqueConstraint("cycle_id", "workout_date", "session_index", name="uq_planned_workouts_cycle_date_session"),
         Index("ix_planned_workouts_workout_date", "workout_date"),
         Index("ix_planned_workouts_main_type_normalized", "main_type_normalized"),
         MYSQL_TABLE_ARGS,
@@ -325,6 +327,7 @@ class PlannedWorkout(IdMixin, TimestampMixin, Base):
         index=True,
     )
     workout_date: Mapped[date | None] = mapped_column(Date)
+    session_index: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     date_text: Mapped[str | None] = mapped_column(String(64))
     weekday: Mapped[str | None] = mapped_column(String(32))
     month_text: Mapped[str | None] = mapped_column(String(32))
@@ -343,6 +346,9 @@ class PlannedWorkout(IdMixin, TimestampMixin, Base):
     source_sheet: Mapped[str | None] = mapped_column(String(128))
     source_row: Mapped[int | None] = mapped_column(Integer)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
+    is_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    lock_reason: Mapped[str | None] = mapped_column(String(255))
+    plan_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
 
     user: Mapped[UserAccount] = relationship(back_populates="planned_workouts")
     cycle: Mapped[TrainingCycle] = relationship(back_populates="planned_workouts")
@@ -532,17 +538,17 @@ class PlanAdjustmentDraft(IdMixin, TimestampMixin, Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    review_report_id: Mapped[int] = mapped_column(
-        ForeignKey("weekly_review_report.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    review_report_id: Mapped[int | None] = mapped_column(
+        ForeignKey("weekly_review_report.id", ondelete="CASCADE"), nullable=True, unique=True, index=True
     )
     cycle_id: Mapped[int] = mapped_column(
         ForeignKey("training_cycles.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    source_block_id: Mapped[int] = mapped_column(
-        ForeignKey("training_blocks.id", ondelete="CASCADE"), nullable=False, index=True
+    source_block_id: Mapped[int | None] = mapped_column(
+        ForeignKey("training_blocks.id", ondelete="CASCADE"), nullable=True, index=True
     )
-    target_block_id: Mapped[int] = mapped_column(
-        ForeignKey("training_blocks.id", ondelete="CASCADE"), nullable=False, index=True
+    target_block_id: Mapped[int | None] = mapped_column(
+        ForeignKey("training_blocks.id", ondelete="CASCADE"), nullable=True, index=True
     )
     status: Mapped[PlanAdjustmentDraftStatus] = mapped_column(
         plan_adjustment_draft_status_enum,
@@ -555,10 +561,28 @@ class PlanAdjustmentDraft(IdMixin, TimestampMixin, Base):
     suggested_week_distance_km: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
     applied_at: Mapped[datetime | None] = mapped_column(DateTime)
     rejected_at: Mapped[datetime | None] = mapped_column(DateTime)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime)
+    source_type: Mapped[str | None] = mapped_column(String(32))
+    source_name: Mapped[str | None] = mapped_column(String(128))
+    source_filename: Mapped[str | None] = mapped_column(String(255))
+    raw_payload_hash: Mapped[str | None] = mapped_column(String(64))
+    parser_version: Mapped[str | None] = mapped_column(String(32))
+    merge_strategy: Mapped[str | None] = mapped_column(String(64))
+    anchor_strategy: Mapped[str | None] = mapped_column(String(64))
+    effective_date: Mapped[date | None] = mapped_column(Date)
+    target_cycle_id: Mapped[int | None] = mapped_column(
+        ForeignKey("training_cycles.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    normalized_payload_json: Mapped[list | None] = mapped_column(JSON)
+    diff_summary_json: Mapped[dict | None] = mapped_column(JSON)
+    conflict_summary_json: Mapped[list | None] = mapped_column(JSON)
+    warnings_json: Mapped[list | None] = mapped_column(JSON)
+    client_request_id: Mapped[str | None] = mapped_column(String(128))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     user: Mapped[UserAccount] = relationship(back_populates="plan_adjustment_drafts")
-    review_report: Mapped[WeeklyReviewReport] = relationship(back_populates="adjustment_draft")
-    cycle: Mapped[TrainingCycle] = relationship(back_populates="plan_adjustment_drafts")
+    review_report: Mapped[WeeklyReviewReport | None] = relationship(back_populates="adjustment_draft")
+    cycle: Mapped[TrainingCycle] = relationship(back_populates="plan_adjustment_drafts", foreign_keys=[cycle_id])
     items: Mapped[list[PlanAdjustmentItem]] = relationship(
         back_populates="draft", cascade="all, delete-orphan", passive_deletes=True
     )
@@ -574,9 +598,12 @@ class PlanAdjustmentItem(IdMixin, TimestampMixin, Base):
     draft_id: Mapped[int] = mapped_column(
         ForeignKey("plan_adjustment_draft.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    planned_workout_id: Mapped[int] = mapped_column(
-        ForeignKey("planned_workouts.id", ondelete="RESTRICT"), nullable=False, index=True
+    planned_workout_id: Mapped[int | None] = mapped_column(
+        ForeignKey("planned_workouts.id", ondelete="RESTRICT"), nullable=True, index=True
     )
+    operation: Mapped[str | None] = mapped_column(String(32))
+    planned_date: Mapped[date | None] = mapped_column(Date)
+    session_index: Mapped[int | None] = mapped_column(Integer)
     action: Mapped[PlanAdjustmentAction] = mapped_column(plan_adjustment_action_enum, nullable=False)
     original_content: Mapped[str] = mapped_column(Text, nullable=False)
     suggested_content: Mapped[str] = mapped_column(Text, nullable=False)
@@ -590,9 +617,37 @@ class PlanAdjustmentItem(IdMixin, TimestampMixin, Base):
     is_selected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     is_applied: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     applied_at: Mapped[datetime | None] = mapped_column(DateTime)
+    normalized_item_json: Mapped[dict | None] = mapped_column(JSON)
+    conflict_json: Mapped[list | None] = mapped_column(JSON)
+    warnings_json: Mapped[list | None] = mapped_column(JSON)
+    base_plan_version: Mapped[int | None] = mapped_column(Integer)
+    base_workout_updated_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     draft: Mapped[PlanAdjustmentDraft] = relationship(back_populates="items")
-    planned_workout: Mapped[PlannedWorkout] = relationship(back_populates="adjustment_items")
+    planned_workout: Mapped[PlannedWorkout | None] = relationship(back_populates="adjustment_items")
+
+
+class PlanImportAudit(IdMixin, TimestampMixin, Base):
+    __tablename__ = "plan_import_audit"
+    __table_args__ = (
+        Index("ix_plan_import_audit_user_created", "user_id", "created_at"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    import_id: Mapped[int] = mapped_column(ForeignKey("plan_adjustment_draft.id", ondelete="CASCADE"), nullable=False)
+    source_type: Mapped[str | None] = mapped_column(String(32))
+    merge_strategy: Mapped[str | None] = mapped_column(String(64))
+    effective_date: Mapped[date | None] = mapped_column(Date)
+    created_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    updated_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    removed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    protected_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime)
+    actor_type: Mapped[str] = mapped_column(String(32), nullable=False, default="user", server_default="user")
+    client_request_id: Mapped[str | None] = mapped_column(String(128))
 
 
 class PaceRule(IdMixin, TimestampMixin, Base):

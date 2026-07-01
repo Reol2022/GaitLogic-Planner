@@ -194,6 +194,9 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 - **使用与开发文档**
   - [完整文档中心](docs/README.md)
+  - [课表导入使用指南](docs/user/plan-import-guide.md)
+  - [课表导入 API](docs/api/plan-import-api.md)
+  - [课表导入架构说明](docs/development/plan-import-architecture.md)
   - [负荷与恢复使用指南](docs/user/training-readiness-guide.md)
   - [训练负荷与恢复实现说明](docs/development/training-load-recovery-implementation.md)
   - [后端学习指南](md/BACKEND_LEARNING_GUIDE.md)

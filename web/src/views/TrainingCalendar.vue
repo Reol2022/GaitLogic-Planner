@@ -44,7 +44,15 @@
     </section>
 
     <section class="calendar-layout">
-      <article class="panel calendar-panel" v-loading="loading">
+      <article
+        class="panel calendar-panel"
+        v-loading="loading"
+        @touchstart.passive="handleTouchStart"
+        @touchmove.passive="handleTouchMove"
+        @touchend="handleTouchEnd"
+        @touchcancel="handleTouchCancel"
+      >
+        <div class="mobile-swipe-tip">左右滑动切换月份</div>
         <div class="weekday-grid">
           <span v-for="weekday in weekdays" :key="weekday">{{ weekday }}</span>
         </div>
@@ -56,14 +64,14 @@
             type="button"
             class="calendar-cell"
             :class="[
-              statusClass(day.status_normalized),
+              dayStatusClass(day),
               { selected: selectedDay?.date === day.date, 'is-today': day.date === todayString },
             ]"
-            @click="selectedDay = day"
+            @click="selectDay(day)"
           >
             <span class="day-number">{{ Number(day.date.slice(8, 10)) }}</span>
             <span v-if="day.date === todayString" class="today-badge">今天</span>
-            <span class="day-status">{{ statusSymbol(day.status_normalized) }}</span>
+            <span class="day-status">{{ dayStatusSymbol(day) }}</span>
             <strong>{{ shortMainType(day.main_type) }}</strong>
             <em v-if="day.planned_distance_km">{{ Number(day.planned_distance_km).toFixed(1) }}km</em>
           </button>
@@ -76,8 +84,8 @@
             <h3>{{ selectedDay?.date || "选择日期" }}</h3>
             <p>{{ selectedDay?.weekday || "点击日历中的一天查看详情" }}</p>
           </div>
-          <span v-if="selectedDay" class="detail-status" :class="statusClass(selectedDay.status_normalized)">
-            {{ statusSymbol(selectedDay.status_normalized) || "空" }}
+          <span v-if="selectedDay" class="detail-status" :class="dayStatusClass(selectedDay)">
+            {{ dayStatusSymbol(selectedDay) || "待" }}
           </span>
         </div>
 
@@ -148,6 +156,12 @@ const calendar = ref<TrainingCalendarResult | null>(null);
 const selectedDay = ref<TrainingCalendarDay | null>(null);
 const loading = ref(false);
 const summaryExpanded = ref(false);
+let touchStartX = 0;
+let touchStartY = 0;
+let touchLatestX = 0;
+let touchLatestY = 0;
+let touchActive = false;
+let suppressNextClick = false;
 
 function formatLocalDate(value: Date) {
   const year = value.getFullYear();
@@ -174,16 +188,81 @@ async function load() {
   }
 }
 
+function selectDay(day: TrainingCalendarDay) {
+  if (suppressNextClick) {
+    suppressNextClick = false;
+    return;
+  }
+  selectedDay.value = day;
+}
+
+function shiftMonth(delta: number) {
+  if (loading.value) return;
+  const [year, monthValue] = month.value.split("-").map(Number);
+  const target = new Date(year, monthValue - 1 + delta, 1);
+  const nextYear = target.getFullYear();
+  const nextMonth = String(target.getMonth() + 1).padStart(2, "0");
+  month.value = `${nextYear}-${nextMonth}`;
+  load();
+}
+
+function handleTouchStart(event: TouchEvent) {
+  if (event.touches.length !== 1) return;
+  const touch = event.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  touchLatestX = touch.clientX;
+  touchLatestY = touch.clientY;
+  touchActive = true;
+}
+
+function handleTouchMove(event: TouchEvent) {
+  if (!touchActive || event.touches.length !== 1) return;
+  const touch = event.touches[0];
+  touchLatestX = touch.clientX;
+  touchLatestY = touch.clientY;
+}
+
+function handleTouchEnd() {
+  if (!touchActive) return;
+  const deltaX = touchLatestX - touchStartX;
+  const deltaY = touchLatestY - touchStartY;
+  touchActive = false;
+  if (Math.abs(deltaX) < 64 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+  suppressNextClick = true;
+  window.setTimeout(() => {
+    suppressNextClick = false;
+  }, 260);
+  shiftMonth(deltaX < 0 ? 1 : -1);
+}
+
+function handleTouchCancel() {
+  touchActive = false;
+}
+
 function editSelectedLog() {
   if (!selectedDay.value?.planned_workout_id) return;
   router.push(`/workouts/${selectedDay.value.planned_workout_id}/log`);
 }
 
+function isPastDay(day: TrainingCalendarDay) {
+  return day.date < todayString;
+}
+
+function isUnfilledPastDay(day: TrainingCalendarDay) {
+  return isPastDay(day) && (day.status_normalized === "not_started" || day.status_normalized === "unknown");
+}
+
+function dayStatusSymbol(day: TrainingCalendarDay) {
+  if (isUnfilledPastDay(day)) return "×";
+  return statusSymbol(day.status_normalized);
+}
+
 function statusSymbol(status: WorkoutStatusNormalized) {
   const symbols: Record<WorkoutStatusNormalized, string> = {
-    completed_high: "✓✓",
-    completed_normal: "✓",
-    completed_adjusted: "△",
+    completed_high: "√",
+    completed_normal: "√",
+    completed_adjusted: "半√",
     missed: "×",
     rest: "休",
     rest_or_cancelled: "休",
@@ -192,6 +271,11 @@ function statusSymbol(status: WorkoutStatusNormalized) {
     unknown: "",
   };
   return symbols[status] || "";
+}
+
+function dayStatusClass(day: TrainingCalendarDay) {
+  if (isUnfilledPastDay(day)) return "is-missed";
+  return statusClass(day.status_normalized);
 }
 
 function statusClass(status: WorkoutStatusNormalized) {
@@ -268,6 +352,10 @@ onMounted(async () => {
   padding: 16px;
 }
 
+.mobile-swipe-tip {
+  display: none;
+}
+
 .weekday-grid,
 .month-grid {
   display: grid;
@@ -288,13 +376,27 @@ onMounted(async () => {
   display: grid;
   align-content: start;
   min-height: 96px;
-  padding: 9px;
-  border: 1px solid #d8dde3;
-  border-radius: 6px;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid #d9e2ec;
+  border-radius: 8px;
   color: #172033;
   background: #ffffff;
   text-align: left;
   cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease,
+    background-color 0.18s ease;
+}
+
+@media (hover: hover) {
+  .calendar-cell:not(.is-blank):hover {
+    transform: translateY(-1px);
+    border-color: #9fb5cc;
+    box-shadow: 0 8px 18px rgba(23, 32, 51, 0.08);
+  }
 }
 
 .calendar-cell.is-blank {
@@ -304,52 +406,77 @@ onMounted(async () => {
 }
 
 .calendar-cell.selected {
-  border-color: #1976d2;
-  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.14);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
 }
 
 .calendar-cell.is-today {
-  border-color: #ff8a00;
-  background: linear-gradient(180deg, #fff7ec 0%, #ffffff 70%);
-  box-shadow: inset 0 0 0 2px rgba(255, 138, 0, 0.36);
+  border-color: #2563eb;
+  background:
+    linear-gradient(180deg, rgba(37, 99, 235, 0.08), rgba(255, 255, 255, 0) 62%),
+    #ffffff;
+  box-shadow:
+    inset 0 0 0 2px rgba(37, 99, 235, 0.28),
+    0 10px 22px rgba(37, 99, 235, 0.1);
 }
 
 .calendar-cell.is-today.selected {
   box-shadow:
-    inset 0 0 0 2px rgba(255, 138, 0, 0.42),
-    0 0 0 2px rgba(25, 118, 210, 0.18);
+    inset 0 0 0 2px rgba(37, 99, 235, 0.34),
+    0 0 0 2px rgba(37, 99, 235, 0.18),
+    0 10px 22px rgba(37, 99, 235, 0.1);
 }
 
 .day-number {
+  position: relative;
+  z-index: 1;
+  color: #172033;
+  font-size: 16px;
   font-weight: 750;
 }
 
 .day-status {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  font-weight: 800;
+  top: 7px;
+  right: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 6px;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1;
 }
 
 .today-badge {
   position: absolute;
   right: 7px;
   bottom: 7px;
-  padding: 2px 6px;
+  padding: 2px 7px;
   border-radius: 999px;
   color: #ffffff;
-  background: #ff8a00;
+  background: #2563eb;
   font-size: 11px;
   font-weight: 800;
 }
 
 .calendar-cell strong {
-  margin-top: 14px;
-  color: #1976d2;
+  position: relative;
+  z-index: 1;
+  margin-top: 15px;
+  color: #2563eb;
   font-size: 13px;
+  letter-spacing: 0;
 }
 
 .calendar-cell em {
+  position: relative;
+  z-index: 1;
   margin-top: 4px;
   color: #667085;
   font-size: 12px;
@@ -357,20 +484,49 @@ onMounted(async () => {
 }
 
 .is-done {
-  background: #f0fbf5;
+  border-color: #c7e4d1;
+  background: #f6fcf8;
+}
+
+.is-done .day-status {
+  color: #12764f;
+  background: #e6f6ec;
 }
 
 .is-adjusted {
-  background: #fff8e8;
+  border-color: #ead9a8;
+  background: #fffaf2;
+}
+
+.is-adjusted .day-status {
+  color: #8a5a10;
+  background: #f6ebc8;
 }
 
 .is-missed {
-  background: #fff1f1;
+  border-color: #ecc7c7;
+  background: #fff7f7;
+}
+
+.is-missed .day-status {
+  color: #a73636;
+  background: #f8e4e4;
 }
 
 .is-rest {
   color: #7a4d12;
+  border-color: #ead9a8;
   background: #fffaf0;
+}
+
+.is-rest .day-status {
+  color: #8a5a10;
+  background: #f6ebc8;
+}
+
+.is-pending {
+  border-color: #d9e2ec;
+  background: #ffffff;
 }
 
 .panel-head {
@@ -475,6 +631,18 @@ onMounted(async () => {
     padding: 12px;
   }
 
+  .calendar-panel {
+    touch-action: pan-y;
+  }
+
+  .mobile-swipe-tip {
+    display: block;
+    margin: -2px 0 8px;
+    color: #667085;
+    font-size: 12px;
+    text-align: center;
+  }
+
   .weekday-grid,
   .month-grid {
     gap: 4px;
@@ -483,10 +651,24 @@ onMounted(async () => {
   .calendar-cell {
     min-height: 70px;
     padding: 6px;
+    border-radius: 7px;
+  }
+
+  .day-number {
+    font-size: 14px;
+  }
+
+  .day-status {
+    top: 4px;
+    right: 4px;
+    min-width: 20px;
+    height: 19px;
+    padding: 0 4px;
+    font-size: 10px;
   }
 
   .calendar-cell strong {
-    margin-top: 9px;
+    margin-top: 10px;
     font-size: 12px;
   }
 
@@ -494,14 +676,9 @@ onMounted(async () => {
     display: none;
   }
 
-  .day-status {
-    top: 5px;
-    right: 5px;
-  }
-
   .today-badge {
-    right: 5px;
-    bottom: 5px;
+    right: 4px;
+    bottom: 4px;
     padding: 1px 5px;
     font-size: 10px;
   }

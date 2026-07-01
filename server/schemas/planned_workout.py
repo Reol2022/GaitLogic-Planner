@@ -11,6 +11,7 @@ class PlannedWorkoutBase(BaseModel):
     cycle_id: int
     block_id: int
     workout_date: date | None = None
+    session_index: int = 1
     date_text: str | None = None
     weekday: str | None = None
     month_text: str | None = None
@@ -24,6 +25,9 @@ class PlannedWorkoutBase(BaseModel):
     source_sheet: str | None = None
     source_row: int | None = None
     sort_order: int
+    is_locked: bool = False
+    lock_reason: str | None = None
+    plan_version: int = 1
 
 
 class PlannedWorkoutCreate(PlannedWorkoutBase):
@@ -34,6 +38,7 @@ class PlannedWorkoutUpdate(BaseModel):
     cycle_id: int | None = None
     block_id: int | None = None
     workout_date: date | None = None
+    session_index: int | None = None
     date_text: str | None = None
     weekday: str | None = None
     month_text: str | None = None
@@ -47,6 +52,9 @@ class PlannedWorkoutUpdate(BaseModel):
     source_sheet: str | None = None
     source_row: int | None = None
     sort_order: int | None = None
+    is_locked: bool | None = None
+    lock_reason: str | None = None
+    plan_version: int | None = None
 
 
 class PlannedWorkoutRead(PlannedWorkoutBase):

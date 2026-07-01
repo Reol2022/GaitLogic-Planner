@@ -3,7 +3,7 @@
     <section class="welcome-hero">
       <p>首次使用</p>
       <h1>开始你的训练计划</h1>
-      <span>选择一种开始方式。AI 适合从目标赛事开始，Excel 适合已有计划，手动创建适合高级用户。</span>
+      <span>选择一种开始方式。AI 适合从目标赛事开始，课表导入适合已有计划，手动创建适合高级用户。</span>
     </section>
 
     <section class="welcome-grid">
@@ -12,8 +12,8 @@
         <span>根据当前能力、跑量和比赛目标生成计划草稿。</span>
       </button>
       <button type="button" class="welcome-card" @click="goExcel">
-        <strong>导入已有 Excel 计划</strong>
-        <span>适合已经有训练计划的跑者。</span>
+        <strong>导入已有课表</strong>
+        <span>支持 Excel、CSV、TXT、Markdown 和 JSON。</span>
       </button>
       <button type="button" class="welcome-card" @click="goManual">
         <strong>手动创建训练计划</strong>
@@ -44,7 +44,7 @@ function goAI() {
 
 function goExcel() {
   trackUsageEvent("onboarding_excel_selected");
-  router.push("/excel-import");
+  router.push("/plan-imports");
 }
 
 function goManual() {

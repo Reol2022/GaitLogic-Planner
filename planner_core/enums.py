@@ -147,9 +147,16 @@ class ReadinessRecommendationAction(str, Enum):
 
 
 class PlanAdjustmentDraftStatus(str, Enum):
+    uploaded = "uploaded"
+    parsed = "parsed"
+    validation_failed = "validation_failed"
+    ready = "ready"
+    conflict = "conflict"
     draft = "draft"
     partially_applied = "partially_applied"
     applied = "applied"
+    cancelled = "cancelled"
+    expired = "expired"
     rejected = "rejected"
     invalid = "invalid"
 

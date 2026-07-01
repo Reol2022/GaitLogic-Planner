@@ -101,6 +101,7 @@ export interface PlannedWorkout {
   cycle_id: number;
   block_id: number;
   workout_date?: string | null;
+  session_index: number;
   date_text?: string | null;
   weekday?: string | null;
   month_text?: string | null;
@@ -114,6 +115,9 @@ export interface PlannedWorkout {
   source_sheet?: string | null;
   source_row?: number | null;
   sort_order: number;
+  is_locked: boolean;
+  lock_reason?: string | null;
+  plan_version: number;
   workout_log?: WorkoutLog | null;
   created_at: string;
   updated_at: string;
@@ -123,6 +127,95 @@ export type PlannedWorkoutPayload = Omit<
   PlannedWorkout,
   "id" | "workout_log" | "created_at" | "updated_at"
 >;
+
+export type PlanImportAnchorStrategy = "after_last_completed" | "explicit_date";
+export type PlanImportMergeStrategy =
+  | "replace_uncompleted_from_date"
+  | "replace_uncompleted_in_range"
+  | "append_after_last_planned"
+  | "fill_empty_only";
+export type PlanImportStatus =
+  | "uploaded"
+  | "parsed"
+  | "validation_failed"
+  | "ready"
+  | "conflict"
+  | "applied"
+  | "cancelled"
+  | "expired";
+
+export interface PlanImportWorkoutItem {
+  planned_date?: string | null;
+  day_offset?: number | null;
+  session_index?: number;
+  workout_type: string;
+  title?: string | null;
+  planned_distance_km?: number | string | null;
+  planned_duration_minutes?: number | null;
+  target_pace?: string | null;
+  target_rpe?: number | null;
+  content: string;
+  notes?: string | null;
+  is_rest_day?: boolean;
+  segments?: unknown[] | null;
+}
+
+export interface PlanImportStructuredPayload {
+  target_cycle_id?: number | null;
+  target_block_id?: number | null;
+  source?: string;
+  client_request_id?: string | null;
+  anchor_strategy: PlanImportAnchorStrategy;
+  effective_date?: string | null;
+  merge_strategy: PlanImportMergeStrategy;
+  timezone?: string;
+  workouts: PlanImportWorkoutItem[];
+}
+
+export interface PlanImportDiffSummary {
+  preserved_count: number;
+  created_count: number;
+  updated_count: number;
+  removed_count: number;
+  protected_count: number;
+  conflict_count: number;
+  warning_count: number;
+}
+
+export interface PlanImportIssue {
+  item_index?: number | null;
+  row_number?: number | null;
+  field?: string | null;
+  code: string;
+  message: string;
+}
+
+export interface PlanImportItemRead {
+  id: number;
+  operation?: string | null;
+  planned_date?: string | null;
+  session_index?: number | null;
+  normalized_item?: PlanImportWorkoutItem | null;
+  conflicts?: PlanImportIssue[] | null;
+  warnings?: PlanImportIssue[] | null;
+  is_selected: boolean;
+  is_applied: boolean;
+}
+
+export interface PlanImportDraftRead {
+  import_id: number;
+  status: PlanImportStatus | string;
+  effective_date?: string | null;
+  merge_strategy?: PlanImportMergeStrategy | string | null;
+  anchor_strategy?: PlanImportAnchorStrategy | string | null;
+  source_type?: string | null;
+  source_name?: string | null;
+  normalized_items?: PlanImportWorkoutItem[] | null;
+  diff_summary?: PlanImportDiffSummary | null;
+  conflicts?: PlanImportIssue[] | null;
+  warnings?: PlanImportIssue[] | null;
+  items: PlanImportItemRead[];
+}
 
 export interface PaceRule {
   id: number;

@@ -6,7 +6,7 @@
     >
       <template #actions>
         <el-button :icon="Refresh" :loading="loading" @click="reload">刷新</el-button>
-        <el-button type="primary" :icon="EditPen" @click="checkinDialogVisible = true">填写恢复状态</el-button>
+        <el-button type="primary" :icon="EditPen" @click="openCheckinDialog">填写恢复状态</el-button>
       </template>
     </PageHeader>
 
@@ -161,32 +161,53 @@
       />
       <el-form label-position="top" class="checkin-form">
         <div class="form-grid">
-          <el-form-item label="睡眠质量">
+          <el-form-item>
+            <template #label>
+              <span class="field-label">睡眠质量 <ScaleHelp field="sleep_quality" /></span>
+            </template>
             <el-rate v-model="checkinForm.sleep_quality" :max="5" clearable />
           </el-form-item>
-          <el-form-item label="主观疲劳">
+          <el-form-item>
+            <template #label>
+              <span class="field-label">主观疲劳 <ScaleHelp field="subjective_fatigue" /></span>
+            </template>
             <el-slider v-model="checkinForm.subjective_fatigue" :min="1" :max="5" show-stops />
           </el-form-item>
-          <el-form-item label="肌肉酸痛">
+          <el-form-item>
+            <template #label>
+              <span class="field-label">肌肉酸痛 <ScaleHelp field="muscle_soreness" /></span>
+            </template>
             <el-slider v-model="checkinForm.muscle_soreness" :min="1" :max="5" show-stops />
           </el-form-item>
-          <el-form-item label="压力">
+          <el-form-item>
+            <template #label>
+              <span class="field-label">压力 <ScaleHelp field="stress_level" /></span>
+            </template>
             <el-slider v-model="checkinForm.stress_level" :min="1" :max="5" show-stops />
           </el-form-item>
-          <el-form-item label="腿感">
+          <el-form-item>
+            <template #label>
+              <span class="field-label">腿感 <ScaleHelp field="leg_feeling" /></span>
+            </template>
             <el-rate v-model="checkinForm.leg_feeling" :max="5" clearable />
           </el-form-item>
-          <el-form-item label="疼痛等级">
+          <el-form-item>
+            <template #label>
+              <span class="field-label">疼痛等级 <ScaleHelp field="pain_level" /></span>
+            </template>
             <el-slider v-model="checkinForm.pain_level" :min="0" :max="10" show-stops />
           </el-form-item>
         </div>
         <el-collapse>
           <el-collapse-item title="高级字段" name="advanced">
             <div class="form-grid">
-              <el-form-item label="睡眠时长（分钟）">
-                <el-input-number v-model="checkinForm.sleep_duration_minutes" :min="0" style="width: 100%" />
+              <el-form-item label="睡眠时长（小时）">
+                <el-input-number v-model="checkinForm.sleep_duration_hours" :min="0" :max="24" :step="0.5" style="width: 100%" />
               </el-form-item>
-              <el-form-item label="心情">
+              <el-form-item>
+                <template #label>
+                  <span class="field-label">心情 <ScaleHelp field="mood_level" /></span>
+                </template>
                 <el-rate v-model="checkinForm.mood_level" :max="5" clearable />
               </el-form-item>
               <el-form-item label="静息心率">
@@ -234,13 +255,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from "vue";
-import { EditPen, Refresh } from "@element-plus/icons-vue";
-import { ElMessage } from "element-plus";
+import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { EditPen, Refresh, WarningFilled } from "@element-plus/icons-vue";
+import { ElButton, ElIcon, ElMessage, ElPopover } from "element-plus";
 import * as echarts from "echarts";
 import type { ECharts } from "echarts";
 
 import {
+  getTodayRecoveryCheckin,
   getTodayReadiness,
   getTrainingLoadTrend,
   recalculateReadiness,
@@ -257,6 +279,82 @@ import type {
 } from "@/types/models";
 
 type Signal = { dimension: string; signal_key: string; level: string; message: string; evidence?: Record<string, unknown> };
+type ScaleField =
+  | "sleep_quality"
+  | "subjective_fatigue"
+  | "muscle_soreness"
+  | "stress_level"
+  | "leg_feeling"
+  | "mood_level"
+  | "pain_level";
+type CheckinForm = RecoveryCheckinPayload & { sleep_duration_hours?: number | null };
+
+const scaleHelp: Record<ScaleField, { title: string; items: string[] }> = {
+  sleep_quality: {
+    title: "睡眠质量 1-5",
+    items: ["1 = 很差，醒来仍明显疲惫", "2 = 偏差，睡得不踏实", "3 = 一般，可以正常训练", "4 = 较好，恢复感不错", "5 = 很好，精神和恢复感都很好"],
+  },
+  subjective_fatigue: {
+    title: "主观疲劳 1-5",
+    items: ["1 = 几乎不疲劳", "2 = 轻微疲劳", "3 = 中等疲劳", "4 = 明显疲劳", "5 = 非常疲劳，建议保守训练"],
+  },
+  muscle_soreness: {
+    title: "肌肉酸痛 1-5",
+    items: ["1 = 无酸痛", "2 = 轻微酸痛", "3 = 可感知酸痛但不影响日常", "4 = 明显酸痛，训练需保守", "5 = 很强酸痛，建议减少负荷"],
+  },
+  stress_level: {
+    title: "压力 1-5",
+    items: ["1 = 很放松", "2 = 压力较低", "3 = 一般", "4 = 压力较高", "5 = 压力很高，恢复可能受影响"],
+  },
+  leg_feeling: {
+    title: "腿感 1-5",
+    items: ["1 = 很沉重或不适", "2 = 偏沉，启动困难", "3 = 一般", "4 = 比较轻松", "5 = 很轻快，状态很好"],
+  },
+  mood_level: {
+    title: "心情 1-5",
+    items: ["1 = 很差", "2 = 偏低", "3 = 一般", "4 = 较好", "5 = 很好"],
+  },
+  pain_level: {
+    title: "疼痛等级 0-10",
+    items: ["0 = 无疼痛", "1-3 = 轻微疼痛", "4-6 = 中等疼痛，建议降低强度", "7-10 = 明显疼痛，建议暂停高强度并寻求专业评估"],
+  },
+};
+
+const ScaleHelp = defineComponent({
+  name: "ScaleHelp",
+  props: {
+    field: {
+      type: String,
+      required: true,
+    },
+  },
+  setup(props) {
+    return () => {
+      const help = scaleHelp[props.field as ScaleField];
+      return h(
+        ElPopover,
+        { trigger: "click", width: 280, placement: "top", popperClass: "scale-help-popper" },
+        {
+          reference: () =>
+            h(
+              ElButton,
+              { class: "scale-help-button", text: true, circle: true, "aria-label": `${help.title}说明` },
+              () => h(ElIcon, null, () => h(WarningFilled))
+            ),
+          default: () =>
+            h("div", { class: "scale-help-content" }, [
+              h("strong", help.title),
+              h(
+                "ul",
+                null,
+                help.items.map((item) => h("li", item))
+              ),
+            ]),
+        }
+      );
+    };
+  },
+});
 
 const loading = ref(false);
 const savingCheckin = ref(false);
@@ -267,7 +365,7 @@ const trendDays = ref(42);
 const trendItems = ref<DailyTrainingLoad[]>([]);
 const loadChartRef = ref<HTMLDivElement | null>(null);
 const checkinDialogVisible = ref(false);
-const checkinForm = reactive<RecoveryCheckinPayload>(initialCheckinForm());
+const checkinForm = reactive<CheckinForm>(initialCheckinForm());
 let loadChart: ECharts | null = null;
 
 const summary = computed(() => todayReadiness.value?.assessment.metrics_json as TrainingLoadSummaryRead | undefined);
@@ -280,8 +378,9 @@ const missingDataText = computed(() => {
   return missing.map((item) => missingDataLabel(String(item))).join("、");
 });
 
-function initialCheckinForm(): RecoveryCheckinPayload {
+function initialCheckinForm(): CheckinForm {
   return {
+    sleep_duration_hours: null,
     sleep_quality: null,
     subjective_fatigue: null,
     muscle_soreness: null,
@@ -444,10 +543,66 @@ async function reload() {
   }
 }
 
+function resetCheckinForm() {
+  Object.assign(checkinForm, initialCheckinForm());
+}
+
+function applyCheckinToForm(value: RecoveryCheckinPayload | null) {
+  resetCheckinForm();
+  if (!value) return;
+  Object.assign(checkinForm, {
+    ...value,
+    sleep_duration_hours:
+      value.sleep_duration_minutes == null ? null : Number((value.sleep_duration_minutes / 60).toFixed(1)),
+  });
+}
+
+async function openCheckinDialog() {
+  checkinDialogVisible.value = true;
+  try {
+    applyCheckinToForm(await getTodayRecoveryCheckin());
+  } catch {
+    resetCheckinForm();
+  }
+}
+
+function nullableScale(value: number | null | undefined) {
+  if (value == null || value < 1) return null;
+  return value;
+}
+
+function blankToNull(value: string | null | undefined) {
+  const text = value?.trim();
+  return text ? text : null;
+}
+
+function buildCheckinPayload(): RecoveryCheckinPayload {
+  const sleepHours = checkinForm.sleep_duration_hours;
+  return {
+    sleep_duration_minutes: sleepHours == null ? null : Math.round(sleepHours * 60),
+    sleep_quality: nullableScale(checkinForm.sleep_quality),
+    subjective_fatigue: nullableScale(checkinForm.subjective_fatigue),
+    muscle_soreness: nullableScale(checkinForm.muscle_soreness),
+    stress_level: nullableScale(checkinForm.stress_level),
+    mood_level: nullableScale(checkinForm.mood_level),
+    leg_feeling: nullableScale(checkinForm.leg_feeling),
+    resting_heart_rate_bpm: checkinForm.resting_heart_rate_bpm ?? null,
+    hrv_value: checkinForm.hrv_value ?? null,
+    hrv_metric: blankToNull(checkinForm.hrv_metric),
+    hrv_source: blankToNull(checkinForm.hrv_source),
+    pain_level: checkinForm.pain_level ?? 0,
+    pain_location: blankToNull(checkinForm.pain_location),
+    pain_trend: checkinForm.pain_trend || "unknown",
+    pain_affects_gait: Boolean(checkinForm.pain_affects_gait),
+    illness_symptoms: blankToNull(checkinForm.illness_symptoms),
+    notes: blankToNull(checkinForm.notes),
+  };
+}
+
 async function saveCheckin() {
   savingCheckin.value = true;
   try {
-    await saveTodayRecoveryCheckin(checkinForm);
+    await saveTodayRecoveryCheckin(buildCheckinPayload());
     await recalculateReadiness();
     trackUsageEvent("readiness_recalculated", { source: "recovery_checkin" });
     checkinDialogVisible.value = false;
@@ -551,6 +706,36 @@ onBeforeUnmount(() => {
 
 .checkin-form {
   min-width: 0;
+}
+
+.field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.scale-help-button {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  color: #64748b;
+  vertical-align: middle;
+}
+
+:global(.scale-help-content strong) {
+  display: block;
+  margin-bottom: 8px;
+  color: #172033;
+}
+
+:global(.scale-help-content ul) {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+  color: #4b5563;
+  line-height: 1.5;
 }
 
 .readiness-tag {

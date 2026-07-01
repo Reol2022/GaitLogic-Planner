@@ -27,6 +27,7 @@ from planner_core.database.models import (  # noqa: F401
     PaceProfile,
     PaceRule,
     PaceZone,
+    PlanImportAudit,
     PlanAdjustmentDraft,
     PlanAdjustmentItem,
     PlannedWorkout,

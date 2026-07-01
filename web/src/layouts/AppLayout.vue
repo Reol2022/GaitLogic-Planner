@@ -35,6 +35,10 @@
           <el-icon><List /></el-icon>
           <template #title>我的训练计划</template>
         </el-menu-item>
+        <el-menu-item index="/plan-imports">
+          <el-icon><DocumentAdd /></el-icon>
+          <template #title>课表导入</template>
+        </el-menu-item>
         <el-menu-item index="/pace-calculator">
           <el-icon><Stopwatch /></el-icon>
           <template #title>配速计算器</template>
@@ -48,10 +52,6 @@
         <el-menu-item index="/training-readiness">
           <el-icon><TrendCharts /></el-icon>
           <template #title>负荷与恢复</template>
-        </el-menu-item>
-        <el-menu-item index="/excel-import">
-          <el-icon><DocumentAdd /></el-icon>
-          <template #title>Excel 导入</template>
         </el-menu-item>
         <el-menu-item index="/feedback">
           <el-icon><Message /></el-icon>

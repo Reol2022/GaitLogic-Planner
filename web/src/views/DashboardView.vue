@@ -28,13 +28,13 @@
       <div class="onboarding-copy">
         <div class="onboarding-kicker">首次使用</div>
         <h3>欢迎使用 GaitLogic Planner</h3>
-        <p>先选择一种方式建立你的第一份训练计划。导入现有 Excel 更快，AI 教练适合从目标赛事开始生成草稿。</p>
+        <p>先选择一种方式建立你的第一份训练计划。导入现有课表更快，AI 教练适合从目标赛事开始生成草稿。</p>
       </div>
       <div class="onboarding-actions">
-        <button class="start-option excel-option" type="button" @click="router.push('/excel-import')">
-          <span class="start-option-icon">XLS</span>
-          <strong>用 Excel 导入</strong>
-          <em>下载标准模板，填写训练周期、训练计划和配速规则后上传。</em>
+        <button class="start-option excel-option" type="button" @click="router.push('/plan-imports')">
+          <span class="start-option-icon">IMP</span>
+          <strong>导入课表</strong>
+          <em>支持 Excel、CSV、TXT、Markdown 和 JSON，先生成草稿再确认应用。</em>
         </button>
         <button class="start-option ai-option" type="button" @click="router.push('/ai-plan')">
           <span class="start-option-icon">AI</span>
@@ -46,9 +46,9 @@
 
     <section v-else-if="hasNoWorkoutData" class="empty-data-card">
       <h3>当前范围还没有训练计划</h3>
-      <p>可以先导入标准 Excel 模板，或到训练计划页面手动创建训练内容。</p>
+      <p>可以先导入外部课表，或到训练计划页面手动创建训练内容。</p>
       <div>
-        <el-button type="primary" @click="router.push('/excel-import')">去 Excel 导入</el-button>
+        <el-button type="primary" @click="router.push('/plan-imports')">去课表导入</el-button>
         <el-button @click="router.push('/workouts')">查看训练计划</el-button>
       </div>
     </section>
