@@ -62,13 +62,20 @@ export type TrainingBlockPayload = Omit<TrainingBlock, "id" | "created_at" | "up
 
 export interface WorkoutLog {
   id: number;
-  planned_workout_id: number;
+  planned_workout_id?: number | null;
   status_raw?: string | null;
   status_normalized: WorkoutStatusNormalized;
   actual_distance_km?: number | string | null;
   actual_duration_seconds?: number | null;
+  moving_time_seconds?: number | null;
+  elapsed_time_seconds?: number | null;
   avg_pace_seconds_per_km?: number | null;
   avg_heart_rate?: number | null;
+  max_heart_rate?: number | null;
+  average_cadence_spm?: number | null;
+  max_cadence_spm?: number | null;
+  elevation_gain_m?: number | null;
+  calories_kcal?: number | null;
   rpe?: number | null;
   i_effective_km?: number | string | null;
   t1_effective_km?: number | string | null;
@@ -88,6 +95,19 @@ export interface WorkoutLog {
   tomorrow_adjustment?: string | null;
   alert_message?: string | null;
   completion_rate?: number | string | null;
+  activity_date?: string | null;
+  start_time?: string | null;
+  timezone?: string | null;
+  session_index?: number;
+  sport_type?: string;
+  workout_type?: string | null;
+  title?: string | null;
+  is_unplanned?: boolean;
+  source_type?: string;
+  source_import_batch_id?: number | null;
+  external_activity_id?: string | null;
+  activity_fingerprint?: string | null;
+  field_sources_json?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -215,6 +235,133 @@ export interface PlanImportDraftRead {
   conflicts?: PlanImportIssue[] | null;
   warnings?: PlanImportIssue[] | null;
   items: PlanImportItemRead[];
+}
+
+export type WorkoutImportMergeStrategy =
+  | "create_missing_only"
+  | "fill_empty_fields"
+  | "update_objective_fields"
+  | "manual_review";
+
+export type WorkoutImportAction =
+  | "create_log"
+  | "fill_empty_fields"
+  | "update_objective_fields"
+  | "keep_existing"
+  | "link_to_plan"
+  | "create_unplanned_log"
+  | "skip"
+  | "manual_review";
+
+export interface NormalizedWorkoutActivity {
+  activity_date: string;
+  start_time?: string | null;
+  timezone?: string | null;
+  session_index?: number;
+  sport_type?: string;
+  workout_type?: string | null;
+  title?: string | null;
+  planned_workout_id?: number | null;
+  distance_km?: number | string | null;
+  duration_seconds?: number | null;
+  moving_time_seconds?: number | null;
+  elapsed_time_seconds?: number | null;
+  average_pace_seconds_per_km?: number | null;
+  average_heart_rate_bpm?: number | null;
+  max_heart_rate_bpm?: number | null;
+  average_cadence_spm?: number | null;
+  max_cadence_spm?: number | null;
+  elevation_gain_m?: number | null;
+  calories_kcal?: number | null;
+  rpe?: number | null;
+  pain_level?: number | null;
+  completion_status?: "completed";
+  content?: string | null;
+  notes?: string | null;
+  external_activity_id?: string | null;
+  source?: string | null;
+}
+
+export interface WorkoutImportStructuredPayload {
+  source?: string;
+  timezone?: string;
+  merge_strategy: WorkoutImportMergeStrategy;
+  client_request_id?: string | null;
+  activities: NormalizedWorkoutActivity[];
+}
+
+export interface WorkoutImportIssue {
+  code: string;
+  message: string;
+  row_number?: number | null;
+  field?: string | null;
+}
+
+export interface WorkoutImportPreviewSummary {
+  total_count: number;
+  matched_plan_count: number;
+  matched_log_count: number;
+  unplanned_count: number;
+  ready_count: number;
+  conflict_count: number;
+  invalid_count: number;
+  skipped_count: number;
+}
+
+export interface WorkoutImportItemRead {
+  id: number;
+  row_number?: number | null;
+  activity_date?: string | null;
+  start_time?: string | null;
+  session_index?: number | null;
+  normalized_data_json?: NormalizedWorkoutActivity | null;
+  matched_plan_id?: number | null;
+  matched_log_id?: number | null;
+  match_status: string;
+  match_confidence?: string | null;
+  suggested_action: WorkoutImportAction | string;
+  user_action?: WorkoutImportAction | string | null;
+  validation_errors_json?: WorkoutImportIssue[] | null;
+  warnings_json?: WorkoutImportIssue[] | null;
+  field_diff_json?: Array<Record<string, unknown>> | null;
+  activity_fingerprint?: string | null;
+}
+
+export interface WorkoutImportBatchRead extends WorkoutImportPreviewSummary {
+  id: number;
+  status: string;
+  source_type: string;
+  source_filename?: string | null;
+  merge_strategy: WorkoutImportMergeStrategy | string;
+  timezone: string;
+  client_request_id?: string | null;
+  warnings_json?: WorkoutImportIssue[] | null;
+  preview_summary_json?: WorkoutImportPreviewSummary | null;
+  expires_at?: string | null;
+  applied_at?: string | null;
+  cancelled_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  items: WorkoutImportItemRead[];
+}
+
+export interface WorkoutImportCreateResponse extends WorkoutImportPreviewSummary {
+  batch_id: number;
+  status: string;
+  warnings: WorkoutImportIssue[];
+  items: WorkoutImportItemRead[];
+  preview_summary: WorkoutImportPreviewSummary;
+}
+
+export interface WorkoutImportApplyResponse {
+  batch_id: number;
+  status: string;
+  created_count: number;
+  updated_count: number;
+  linked_plan_count: number;
+  unplanned_count: number;
+  skipped_count: number;
+  subjective_missing_count: number;
 }
 
 export interface PaceRule {

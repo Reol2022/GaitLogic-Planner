@@ -70,7 +70,7 @@ AI-generated content is only a draft for planning. It is not medical advice, reh
 | 🏠 Today's Workout | 📋 My Training Plan | 📅 Training Calendar | 🧠 AI Plan Builder |
 | ✍️ Workout Logs | 🧱 Training Cycles | 📊 Training Stats | 📤 AI Draft Export |
 | 📱 Mobile Bottom Nav | 🧩 Training Blocks | 🧮 Pace Calculator | ⚙️ AI Coach Preferences |
-| ↩️ Back to My Page | 📥 Excel Import | 🎂 Age Reference Analysis | 🛠 Admin Console |
+| ↩️ Back to My Page | 📥 Excel Import | 📥 Workout Log Import | 🛠 Admin Console |
 | 🧾 Beta Feedback | 🏷 Pace Rules | 📈 Completion & Mileage Trends | 🔑 Model Settings |
 
 ---
@@ -186,6 +186,8 @@ Generate a draft with AI or import an Excel plan
   ↓
 Fill in workout logs after training
   ↓
+Backfill completed workout logs when needed
+  ↓
 Review progress in Calendar and Stats
 ```
 
@@ -229,6 +231,7 @@ Plan
 More
 ├── Training Stats
 ├── Excel Import
+├── Workout Log Import
 └── Feedback
 
 Advanced Settings (collapsed by default)
@@ -255,6 +258,7 @@ The My page aggregates mobile entry points:
 - My Training Plan
 - Training Stats
 - Excel Import
+- Workout Log Import
 - Feedback
 - Advanced Settings
 
@@ -274,7 +278,8 @@ When entering secondary pages from My, a back arrow appears in the content area 
 | My Training Plan | Maintain daily planned workouts; mobile uses card lists |
 | Workout Logs | Record actual distance, pace, heart rate, RPE, feelings, and review notes |
 | Training Stats | Review mileage, completion rate, training type distribution, and trends |
-| Excel Import | Download a standard template and import cycles, plans, and logs |
+| Excel Import | Download a standard template and import cycles, blocks, and future plans |
+| Workout Log Import | Backfill completed workout data through a draft-and-confirm workflow |
 | Pace Calculator | Estimate VDOT-like ability and training pace zones from race results |
 | Age/Sex Reference | Optional age and sex fields for separate performance reference only |
 | Pace Rules | Store REC, E, M, T1, T2, I, R pace rules |
@@ -443,6 +448,36 @@ Suitable for users who:
 - want to migrate from offline spreadsheets into the system.
 
 Only the system-generated standard template is supported. Arbitrary non-standard Excel files are not supported. Do not change sheet names, headers, or field order.
+
+</details>
+
+<details>
+<summary><strong>Workout Log Import</strong></summary>
+
+Workout Log Import is for backfilling completed training data. It is separate from Plan Import, which is for future workouts.
+
+Supported inputs:
+
+- pasted structured JSON;
+- JSON files;
+- Excel `.xlsx`;
+- CSV;
+- structured TXT or Markdown.
+
+Every import first creates a draft. Users can review parsed counts, matched plans, existing logs, unplanned activities, conflicts, invalid rows, and field-level diffs before applying. Existing manual subjective data such as RPE, pain, notes, feelings, and review text is not silently overwritten.
+
+Template path:
+
+```text
+templates/workout-import-template.xlsx
+```
+
+API and docs:
+
+- [Workout Import API](docs/api/workout-import-api.md)
+- [Workout Import User Guide](docs/user/workout-import-guide.md)
+- [Workout Import Architecture](docs/development/workout-import-architecture.md)
+- [Workout Import Schema](docs/data/workout-import-schema.md)
 
 </details>
 
@@ -653,6 +688,9 @@ Database tests use MySQL only. If MySQL is not available in the current environm
 | [Deployment](docs/DEPLOYMENT.md) | Deployment and runtime notes |
 | [Database Design](md/数据库设计.md) | Database structure notes |
 | [Excel Field Mapping](md/Excel字段映射.md) | Excel import field mapping |
+| [Workout Import Guide](docs/user/workout-import-guide.md) | Backfill completed workout logs |
+| [Workout Import API](docs/api/workout-import-api.md) | Workout log import API |
+| [Workout Import Architecture](docs/development/workout-import-architecture.md) | Draft, matching, merge, and apply design |
 | [SQL Schema](sql/schema.sql) | MySQL schema |
 
 ---
@@ -667,6 +705,7 @@ The current project scope focuses on training plans, workout logs, and review st
 - training stats and review;
 - pace calculator and pace rules;
 - standard Excel template import;
+- workout log import for completed training data;
 - AI training plan drafts;
 - basic admin configuration.
 
@@ -688,7 +727,7 @@ Explicitly out of scope:
 - Age grading must not override race-result-based training paces.
 - Advanced features should not clutter the default path for ordinary runners.
 - Training plans, logs, review stats, and data stability have priority.
-- Database design should remain compatible with Excel import, web plan creation, workout logs, stats review, and future integrations.
+- Database design should remain compatible with Excel import, workout log import, web plan creation, workout logs, stats review, and future integrations.
 
 ---
 

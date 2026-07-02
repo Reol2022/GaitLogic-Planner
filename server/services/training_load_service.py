@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from planner_core.database.models import DailyRecoveryCheckin, PlannedWorkout, WorkoutLog
 from planner_core.enums import WorkoutMainTypeNormalized, WorkoutStatusNormalized
+from planner_core.utils.excel_parse import normalize_workout_main_type
 from server.common.exceptions import BadRequestError
 from server.domain import readiness_thresholds as thresholds
 from server.domain.review_thresholds import HIGH_INTENSITY_TYPES, KEY_WORKOUT_TYPES
@@ -62,19 +63,19 @@ def _high_intensity_distance(log: WorkoutLog, workout_type: str) -> float:
     return _float(log.actual_distance_km) if workout_type in HIGH_INTENSITY_TYPES else 0.0
 
 
-def _query_logs(db: Session, user_id: int, start_date: date, end_date: date) -> list[tuple[WorkoutLog, PlannedWorkout]]:
+def _query_logs(db: Session, user_id: int, start_date: date, end_date: date) -> list[tuple[WorkoutLog, PlannedWorkout | None]]:
     return list(
         db.execute(
             select(WorkoutLog, PlannedWorkout)
-            .join(PlannedWorkout, PlannedWorkout.id == WorkoutLog.planned_workout_id)
+            .outerjoin(PlannedWorkout, PlannedWorkout.id == WorkoutLog.planned_workout_id)
             .where(
                 WorkoutLog.user_id == user_id,
-                PlannedWorkout.user_id == user_id,
-                PlannedWorkout.workout_date >= start_date,
-                PlannedWorkout.workout_date <= end_date,
-                PlannedWorkout.workout_date <= local_today(),
+                (PlannedWorkout.user_id == user_id) | (PlannedWorkout.id.is_(None)),
+                func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date) >= start_date,
+                func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date) <= end_date,
+                func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date) <= local_today(),
             )
-            .order_by(PlannedWorkout.workout_date, PlannedWorkout.sort_order, PlannedWorkout.id)
+            .order_by(func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date), PlannedWorkout.sort_order, WorkoutLog.id)
         )
     )
 
@@ -100,13 +101,14 @@ def build_daily_training_loads(
         for offset in range((end_date - start_date).days + 1)
     }
     for log, workout in _query_logs(db, user_id, start_date, end_date):
-        if workout.workout_date is None:
+        log_date = workout.workout_date if workout and workout.workout_date else log.activity_date
+        if log_date is None:
             continue
         status = log.status_normalized
         if status not in COMPLETED_STATUSES and status not in REST_STATUSES:
             continue
-        day = by_day[workout.workout_date]
-        workout_type = workout.main_type_normalized.value
+        day = by_day[log_date]
+        workout_type = workout.main_type_normalized.value if workout else normalize_workout_main_type(log.workout_type).value
         distance = _float(log.actual_distance_km)
         duration = _duration_minutes(log.actual_duration_seconds) or 0.0
         srpe = session_srpe_load(log.actual_duration_seconds, log.rpe, status)
@@ -152,7 +154,7 @@ def _safe_change(recent: float | None, baseline: float | None) -> tuple[float | 
     return ratio, round((recent - baseline) / baseline * 100, 1)
 
 
-def _completed_log_counts(log_rows: list[tuple[WorkoutLog, PlannedWorkout]]) -> tuple[int, int]:
+def _completed_log_counts(log_rows: list[tuple[WorkoutLog, PlannedWorkout | None]]) -> tuple[int, int]:
     completed = [
         log for log, _ in log_rows if log.status_normalized in COMPLETED_STATUSES
     ]
@@ -201,9 +203,13 @@ def build_training_load_summary(db: Session, user_id: int, assessment_date: date
         or 0
     )
     first_log_date = db.scalar(
-        select(func.min(PlannedWorkout.workout_date))
-        .join(WorkoutLog, WorkoutLog.planned_workout_id == PlannedWorkout.id)
-        .where(WorkoutLog.user_id == user_id, PlannedWorkout.workout_date <= target_date)
+        select(func.min(func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date)))
+        .select_from(WorkoutLog)
+        .outerjoin(PlannedWorkout, PlannedWorkout.id == WorkoutLog.planned_workout_id)
+        .where(
+            WorkoutLog.user_id == user_id,
+            func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date) <= target_date,
+        )
     )
     history_days = (target_date - first_log_date).days + 1 if first_log_date else 0
     missing = []

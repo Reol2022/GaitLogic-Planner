@@ -28,6 +28,7 @@ from server.api.routes import (
     training_readiness,
     usage_events,
     weekly_reviews,
+    workout_imports,
     workout_logs,
 )
 from server.common.exceptions import (
@@ -82,6 +83,7 @@ def create_app() -> FastAPI:
     app.include_router(pace_calculator.router, prefix="/api")
     app.include_router(pace_rules.router, prefix="/api")
     app.include_router(plan_imports.router, prefix="/api")
+    app.include_router(workout_imports.router, prefix="/api")
     app.include_router(usage_events.router, prefix="/api")
     app.include_router(weekly_reviews.router, prefix="/api")
 

@@ -24,6 +24,9 @@ from planner_core.database.models import (
     UsageEvent,
     UserAccount,
     WeeklyReviewReport,
+    WorkoutImportAudit,
+    WorkoutImportBatch,
+    WorkoutImportItem,
     WorkoutLog,
 )
 
@@ -53,5 +56,8 @@ __all__ = [
     "UsageEvent",
     "UserAccount",
     "WeeklyReviewReport",
+    "WorkoutImportAudit",
+    "WorkoutImportBatch",
+    "WorkoutImportItem",
     "WorkoutLog",
 ]

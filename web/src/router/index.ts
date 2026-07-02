@@ -119,6 +119,12 @@ const router = createRouter({
       meta: { title: "课表导入" },
     },
     {
+      path: "/workout-import",
+      name: "WorkoutImport",
+      component: () => import("@/views/WorkoutImportView.vue"),
+      meta: { title: "训练记录导入" },
+    },
+    {
       path: "/feedback",
       name: "Feedback",
       component: () => import("@/views/FeedbackView.vue"),

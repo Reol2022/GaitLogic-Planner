@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -11,8 +11,15 @@ class WorkoutLogBase(BaseModel):
     status_normalized: WorkoutStatusNormalized = WorkoutStatusNormalized.not_started
     actual_distance_km: Decimal | None = None
     actual_duration_seconds: int | None = None
+    moving_time_seconds: int | None = None
+    elapsed_time_seconds: int | None = None
     avg_pace_seconds_per_km: int | None = None
     avg_heart_rate: int | None = None
+    max_heart_rate: int | None = None
+    average_cadence_spm: int | None = None
+    max_cadence_spm: int | None = None
+    elevation_gain_m: int | None = None
+    calories_kcal: int | None = None
     rpe: int | None = None
     i_effective_km: Decimal | None = None
     t1_effective_km: Decimal | None = None
@@ -32,6 +39,19 @@ class WorkoutLogBase(BaseModel):
     tomorrow_adjustment: str | None = None
     alert_message: str | None = None
     completion_rate: Decimal | None = None
+    activity_date: date | None = None
+    start_time: time | None = None
+    timezone: str | None = None
+    session_index: int = 1
+    sport_type: str = "running"
+    workout_type: str | None = None
+    title: str | None = None
+    is_unplanned: bool = False
+    source_type: str = "manual"
+    source_import_batch_id: int | None = None
+    external_activity_id: str | None = None
+    activity_fingerprint: str | None = None
+    field_sources_json: dict | None = None
 
 
 class WorkoutLogUpdate(BaseModel):
@@ -39,8 +59,15 @@ class WorkoutLogUpdate(BaseModel):
     status_normalized: WorkoutStatusNormalized | None = None
     actual_distance_km: Decimal | None = None
     actual_duration_seconds: int | None = None
+    moving_time_seconds: int | None = None
+    elapsed_time_seconds: int | None = None
     avg_pace_seconds_per_km: int | None = None
     avg_heart_rate: int | None = None
+    max_heart_rate: int | None = None
+    average_cadence_spm: int | None = None
+    max_cadence_spm: int | None = None
+    elevation_gain_m: int | None = None
+    calories_kcal: int | None = None
     rpe: int | None = None
     i_effective_km: Decimal | None = None
     t1_effective_km: Decimal | None = None
@@ -60,11 +87,18 @@ class WorkoutLogUpdate(BaseModel):
     tomorrow_adjustment: str | None = None
     alert_message: str | None = None
     completion_rate: Decimal | None = None
+    activity_date: date | None = None
+    start_time: time | None = None
+    timezone: str | None = None
+    session_index: int | None = None
+    sport_type: str | None = None
+    workout_type: str | None = None
+    title: str | None = None
 
 
 class WorkoutLogRead(WorkoutLogBase):
     id: int
-    planned_workout_id: int
+    planned_workout_id: int | None
     created_at: datetime
     updated_at: datetime
 

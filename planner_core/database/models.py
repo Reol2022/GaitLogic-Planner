@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -16,6 +16,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    Time,
     UniqueConstraint,
     text,
 )
@@ -207,6 +208,8 @@ class UserAccount(IdMixin, TimestampMixin, Base):
     )
     recovery_checkins: Mapped[list[DailyRecoveryCheckin]] = relationship(back_populates="user")
     readiness_assessments: Mapped[list[TrainingReadinessAssessment]] = relationship(back_populates="user")
+    workout_import_batches: Mapped[list[WorkoutImportBatch]] = relationship(back_populates="user")
+    workout_import_audits: Mapped[list[WorkoutImportAudit]] = relationship(back_populates="user")
 
 
 class TrainingCycle(IdMixin, TimestampMixin, Base):
@@ -366,6 +369,8 @@ class WorkoutLog(IdMixin, TimestampMixin, Base):
     __tablename__ = "workout_logs"
     __table_args__ = (
         UniqueConstraint("planned_workout_id", name="uq_workout_logs_planned_workout"),
+        Index("ix_workout_logs_user_activity_date", "user_id", "activity_date", "session_index"),
+        Index("ix_workout_logs_activity_fingerprint", "user_id", "activity_fingerprint"),
         Index("ix_workout_logs_status_normalized", "status_normalized"),
         CheckConstraint(
             "pain_level IS NULL OR (pain_level >= 0 AND pain_level <= 10)",
@@ -374,9 +379,9 @@ class WorkoutLog(IdMixin, TimestampMixin, Base):
         MYSQL_TABLE_ARGS,
     )
 
-    planned_workout_id: Mapped[int] = mapped_column(
-        ForeignKey("planned_workouts.id", ondelete="CASCADE"),
-        nullable=False,
+    planned_workout_id: Mapped[int | None] = mapped_column(
+        ForeignKey("planned_workouts.id", ondelete="SET NULL"),
+        nullable=True,
         index=True,
     )
     user_id: Mapped[int] = mapped_column(
@@ -393,8 +398,15 @@ class WorkoutLog(IdMixin, TimestampMixin, Base):
     )
     actual_distance_km: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
     actual_duration_seconds: Mapped[int | None] = mapped_column(Integer)
+    moving_time_seconds: Mapped[int | None] = mapped_column(Integer)
+    elapsed_time_seconds: Mapped[int | None] = mapped_column(Integer)
     avg_pace_seconds_per_km: Mapped[int | None] = mapped_column(Integer)
     avg_heart_rate: Mapped[int | None] = mapped_column(Integer)
+    max_heart_rate: Mapped[int | None] = mapped_column(Integer)
+    average_cadence_spm: Mapped[int | None] = mapped_column(Integer)
+    max_cadence_spm: Mapped[int | None] = mapped_column(Integer)
+    elevation_gain_m: Mapped[int | None] = mapped_column(Integer)
+    calories_kcal: Mapped[int | None] = mapped_column(Integer)
     rpe: Mapped[int | None] = mapped_column(Integer)
     i_effective_km: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
     t1_effective_km: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
@@ -419,9 +431,22 @@ class WorkoutLog(IdMixin, TimestampMixin, Base):
     tomorrow_adjustment: Mapped[str | None] = mapped_column(Text)
     alert_message: Mapped[str | None] = mapped_column(Text)
     completion_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    activity_date: Mapped[date | None] = mapped_column(Date)
+    start_time: Mapped[time | None] = mapped_column(Time)
+    timezone: Mapped[str | None] = mapped_column(String(64))
+    session_index: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    sport_type: Mapped[str] = mapped_column(String(32), nullable=False, default="running", server_default="running")
+    workout_type: Mapped[str | None] = mapped_column(String(32))
+    title: Mapped[str | None] = mapped_column(String(128))
+    is_unplanned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    source_type: Mapped[str] = mapped_column(String(32), nullable=False, default="manual", server_default="manual")
+    source_import_batch_id: Mapped[int | None] = mapped_column(ForeignKey("workout_import_batch.id", ondelete="SET NULL"), index=True)
+    external_activity_id: Mapped[str | None] = mapped_column(String(128))
+    activity_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    field_sources_json: Mapped[dict | None] = mapped_column(JSON)
 
     user: Mapped[UserAccount] = relationship(back_populates="workout_logs")
-    planned_workout: Mapped[PlannedWorkout] = relationship(back_populates="workout_log")
+    planned_workout: Mapped[PlannedWorkout | None] = relationship(back_populates="workout_log")
 
 
 class BlockReview(IdMixin, TimestampMixin, Base):
@@ -648,6 +673,104 @@ class PlanImportAudit(IdMixin, TimestampMixin, Base):
     applied_at: Mapped[datetime | None] = mapped_column(DateTime)
     actor_type: Mapped[str] = mapped_column(String(32), nullable=False, default="user", server_default="user")
     client_request_id: Mapped[str | None] = mapped_column(String(128))
+
+
+class WorkoutImportBatch(IdMixin, TimestampMixin, Base):
+    __tablename__ = "workout_import_batch"
+    __table_args__ = (
+        UniqueConstraint("user_id", "client_request_id", name="uq_workout_import_user_client_request"),
+        Index("ix_workout_import_batch_user_status", "user_id", "status"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_filename: Mapped[str | None] = mapped_column(String(255))
+    parser_version: Mapped[str | None] = mapped_column(String(32))
+    normalization_version: Mapped[str | None] = mapped_column(String(32))
+    raw_payload_hash: Mapped[str | None] = mapped_column(String(64))
+    merge_strategy: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="ready", server_default="ready")
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Asia/Shanghai", server_default="Asia/Shanghai")
+    total_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    matched_plan_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    matched_log_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    unplanned_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    ready_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    conflict_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    invalid_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    skipped_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    client_request_id: Mapped[str | None] = mapped_column(String(128))
+    warnings_json: Mapped[list | None] = mapped_column(JSON)
+    preview_summary_json: Mapped[dict | None] = mapped_column(JSON)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime)
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    user: Mapped[UserAccount] = relationship(back_populates="workout_import_batches")
+    items: Mapped[list[WorkoutImportItem]] = relationship(
+        back_populates="batch", cascade="all, delete-orphan", passive_deletes=True
+    )
+    audit: Mapped[WorkoutImportAudit | None] = relationship(
+        back_populates="batch", cascade="all, delete-orphan", passive_deletes=True, uselist=False
+    )
+
+
+class WorkoutImportItem(IdMixin, TimestampMixin, Base):
+    __tablename__ = "workout_import_item"
+    __table_args__ = (
+        Index("ix_workout_import_item_batch_date", "batch_id", "activity_date", "session_index"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    batch_id: Mapped[int] = mapped_column(ForeignKey("workout_import_batch.id", ondelete="CASCADE"), nullable=False, index=True)
+    row_number: Mapped[int | None] = mapped_column(Integer)
+    activity_date: Mapped[date | None] = mapped_column(Date)
+    start_time: Mapped[time | None] = mapped_column(Time)
+    session_index: Mapped[int | None] = mapped_column(Integer)
+    normalized_data_json: Mapped[dict | None] = mapped_column(JSON)
+    matched_plan_id: Mapped[int | None] = mapped_column(ForeignKey("planned_workouts.id", ondelete="SET NULL"), index=True)
+    matched_log_id: Mapped[int | None] = mapped_column(ForeignKey("workout_logs.id", ondelete="SET NULL"), index=True)
+    applied_log_id: Mapped[int | None] = mapped_column(ForeignKey("workout_logs.id", ondelete="SET NULL"), index=True)
+    match_status: Mapped[str] = mapped_column(String(32), nullable=False, default="invalid", server_default="invalid")
+    match_confidence: Mapped[str | None] = mapped_column(String(16))
+    suggested_action: Mapped[str] = mapped_column(String(32), nullable=False, default="manual_review", server_default="manual_review")
+    user_action: Mapped[str | None] = mapped_column(String(32))
+    validation_errors_json: Mapped[list | None] = mapped_column(JSON)
+    warnings_json: Mapped[list | None] = mapped_column(JSON)
+    field_diff_json: Mapped[list | None] = mapped_column(JSON)
+    activity_fingerprint: Mapped[str | None] = mapped_column(String(64))
+
+    batch: Mapped[WorkoutImportBatch] = relationship(back_populates="items")
+    matched_plan: Mapped[PlannedWorkout | None] = relationship()
+    matched_log: Mapped[WorkoutLog | None] = relationship(foreign_keys=[matched_log_id])
+    applied_log: Mapped[WorkoutLog | None] = relationship(foreign_keys=[applied_log_id])
+
+
+class WorkoutImportAudit(IdMixin, TimestampMixin, Base):
+    __tablename__ = "workout_import_audit"
+    __table_args__ = (
+        Index("ix_workout_import_audit_user_created", "user_id", "created_at"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    batch_id: Mapped[int] = mapped_column(ForeignKey("workout_import_batch.id", ondelete="CASCADE"), nullable=False, unique=True)
+    source_type: Mapped[str | None] = mapped_column(String(32))
+    merge_strategy: Mapped[str | None] = mapped_column(String(64))
+    total_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    created_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    updated_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    linked_plan_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    unplanned_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    skipped_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    conflict_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime)
+    actor_type: Mapped[str] = mapped_column(String(32), nullable=False, default="user", server_default="user")
+    client_request_id: Mapped[str | None] = mapped_column(String(128))
+
+    user: Mapped[UserAccount] = relationship(back_populates="workout_import_audits")
+    batch: Mapped[WorkoutImportBatch] = relationship(back_populates="audit")
 
 
 class PaceRule(IdMixin, TimestampMixin, Base):

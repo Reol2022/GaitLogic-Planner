@@ -46,6 +46,7 @@ const primaryItems = [
   { path: "/dashboard", title: "训练统计", desc: "查看跑量、完成率和训练分布", icon: DataAnalysis },
   { path: "/training-readiness", title: "负荷与恢复", desc: "查看训练状态、恢复打卡和负荷趋势", icon: TrendCharts },
   { path: "/plan-imports", title: "课表导入", desc: "导入 Excel、CSV、TXT 或 JSON 课表草稿", icon: DocumentAdd },
+  { path: "/workout-import", title: "训练记录导入", desc: "补录已经完成的训练数据", icon: DocumentAdd },
   { path: "/feedback", title: "反馈", desc: "提交问题或使用建议", icon: Message },
 ];
 

@@ -7,7 +7,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from planner_core.database.models import PlannedWorkout
+from planner_core.database.models import PlannedWorkout, WorkoutLog
 from planner_core.enums import WorkoutMainTypeNormalized, WorkoutStatusNormalized
 from server.common.exceptions import BadRequestError
 from server.schemas.training_calendar import (
@@ -40,13 +40,24 @@ def get_training_calendar(
         stmt = stmt.where(PlannedWorkout.cycle_id == cycle_id)
     stmt = stmt.order_by(PlannedWorkout.workout_date, PlannedWorkout.sort_order, PlannedWorkout.id)
     workouts = list(db.scalars(stmt))
+    unplanned_logs = list(
+        db.scalars(
+            select(WorkoutLog).where(
+                WorkoutLog.user_id == user_id,
+                WorkoutLog.planned_workout_id.is_(None),
+                WorkoutLog.activity_date >= start_date,
+                WorkoutLog.activity_date <= end_date,
+            )
+        )
+    )
 
     workout_by_day = {workout.workout_date: workout for workout in workouts if workout.workout_date is not None}
+    unplanned_by_day = {log.activity_date: log for log in unplanned_logs if log.activity_date is not None}
     days: list[TrainingCalendarDayRead] = []
     for day_number in range(1, end_date.day + 1):
         current_date = date(start_date.year, start_date.month, day_number)
         workout = workout_by_day.get(current_date)
-        days.append(build_day(current_date, workout))
+        days.append(build_day(current_date, workout, unplanned_by_day.get(current_date)))
 
     summary = build_summary(days)
     return TrainingCalendarRead(month=month, days=days, summary=summary)
@@ -65,8 +76,23 @@ def month_bounds(month: str) -> tuple[date, date]:
     return date(year, month_number, 1), date(year, month_number, last_day)
 
 
-def build_day(current_date: date, workout: PlannedWorkout | None) -> TrainingCalendarDayRead:
+def build_day(current_date: date, workout: PlannedWorkout | None, unplanned_log: WorkoutLog | None = None) -> TrainingCalendarDayRead:
     if workout is None:
+        if unplanned_log is not None:
+            return TrainingCalendarDayRead(
+                date=current_date,
+                weekday=WEEKDAY_LABELS[current_date.weekday()],
+                planned_content=unplanned_log.title or unplanned_log.main_session_data or "计划外训练",
+                planned_distance_km=None,
+                main_type=WorkoutMainTypeNormalized.unknown,
+                status_normalized=unplanned_log.status_normalized,
+                actual_distance_km=unplanned_log.actual_distance_km,
+                avg_pace_seconds_per_km=unplanned_log.avg_pace_seconds_per_km,
+                avg_heart_rate=unplanned_log.avg_heart_rate,
+                rpe=unplanned_log.rpe,
+                review_note=unplanned_log.review_note,
+                completion_rate=None,
+            )
         return TrainingCalendarDayRead(
             date=current_date,
             weekday=WEEKDAY_LABELS[current_date.weekday()],

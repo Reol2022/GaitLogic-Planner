@@ -53,6 +53,10 @@
           <el-icon><TrendCharts /></el-icon>
           <template #title>负荷与恢复</template>
         </el-menu-item>
+        <el-menu-item index="/workout-import">
+          <el-icon><Upload /></el-icon>
+          <template #title>训练记录导入</template>
+        </el-menu-item>
         <el-menu-item index="/feedback">
           <el-icon><Message /></el-icon>
           <template #title>反馈</template>

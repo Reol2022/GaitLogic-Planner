@@ -76,7 +76,7 @@ AI 生成内容仅作为训练计划草稿，不构成医疗建议、康复建�
 | ✍️ 训练日志 | 🧱 训练周期 | 📊 训练统计 | 📤 AI 草稿导出 |
 | 📝 智能周复盘 | 🧭 负荷与恢复 | ✅ 用户确认后应用 | 🛡 通用安全校验 |
 | 📱 移动端底部导航 | 🧩 训练块 | 🧮 配速计算器 | ⚙️ AI 教练偏好 |
-| ↩️ 我的页返回路径 | 📥 Excel 导入 | 🎂 年龄参考分析 | 🛠 管理后台 |
+| ↩️ 我的页返回路径 | 📥 Excel 导入 | 📥 训练记录导入 | 🛠 管理后台 |
 | 🧾 内测反馈 | 🏷 配速规则 | 📈 完成率与跑量趋势 | 🔑 模型配置 |
 
 ---
@@ -197,6 +197,9 @@ DEEPSEEK_TIMEOUT_SECONDS=120
   - [课表导入使用指南](docs/user/plan-import-guide.md)
   - [课表导入 API](docs/api/plan-import-api.md)
   - [课表导入架构说明](docs/development/plan-import-architecture.md)
+  - [训练记录导入使用指南](docs/user/workout-import-guide.md)
+  - [训练记录导入 API](docs/api/workout-import-api.md)
+  - [训练记录导入架构说明](docs/development/workout-import-architecture.md)
   - [负荷与恢复使用指南](docs/user/training-readiness-guide.md)
   - [训练负荷与恢复实现说明](docs/development/training-load-recovery-implementation.md)
   - [后端学习指南](md/BACKEND_LEARNING_GUIDE.md)
@@ -341,6 +344,7 @@ v0.9.0 新增基础版“负荷与恢复”闭环：恢复打卡、session-RPE�
 ├── 训练统计
 ├── 负荷与恢复
 ├── Excel 导入
+├── 训练记录导入
 └── 反馈
 
 高级设置（默认折叠）
@@ -368,6 +372,7 @@ v0.9.0 新增基础版“负荷与恢复”闭环：恢复打卡、session-RPE�
 - 训练统计；
 - 负荷与恢复；
 - Excel 导入；
+- 训练记录导入；
 - 反馈；
 - 高级设置入口。
 
@@ -387,7 +392,8 @@ v0.9.0 新增基础版“负荷与恢复”闭环：恢复打卡、session-RPE�
 | 我的训练计划 | 维护每日训练安排，移动端使用卡片列表 |
 | 训练日志 | 记录实际距离、配速、心率、RPE、体感和复盘 |
 | 训练统计 | 查看跑量、完成率、训练类型分布和趋势 |
-| Excel 导入 | 下载标准模板，批量导入训练周期、计划和日志 |
+| Excel 导入 | 下载标准模板，批量导入训练周期、训练块和计划 |
+| 训练记录导入 | 补录已经完成的训练数据，先生成草稿再确认应用 |
 | 配速计算器 | 根据比赛成绩估算 VDOT 和训练配速区间 |
 | 年龄/性别参考 | 在配速计算器中记录年龄/性别，仅用于表现参考说明 |
 | 配速规则 | 保存 REC、E、M、T1、T2、I、R 等训练配速规则 |

@@ -103,7 +103,7 @@ def test_enum_values_are_correct() -> None:
     assert [item.value for item in AIPlanDraftStatus] == ["draft", "accepted", "rejected"]
     assert [item.value for item in UIMode] == ["simple", "advanced"]
     assert [item.value for item in AuthEntryMode] == ["standalone", "modal"]
-    assert [item.value for item in FeatureKey] == ["training_readiness"]
+    assert [item.value for item in FeatureKey] == ["training_readiness", "workout_import"]
     assert [item.value for item in PainScaleVersion] == ["normalized_0_10", "native_0_10"]
     assert [item.value for item in PainTrend] == ["improving", "stable", "worsening", "unknown"]
     assert [item.value for item in RecoveryCheckinSource] == ["manual"]
@@ -231,6 +231,9 @@ def test_can_create_all_tables(mysql_session_factory) -> None:
         "feature_access",
         "daily_recovery_checkin",
         "training_readiness_assessment",
+        "workout_import_batch",
+        "workout_import_item",
+        "workout_import_audit",
     }.issubset(set(inspector.get_table_names()))
 
 

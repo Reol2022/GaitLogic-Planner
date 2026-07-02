@@ -133,6 +133,7 @@ class PainScaleVersion(str, Enum):
 
 class FeatureKey(str, Enum):
     training_readiness = "training_readiness"
+    workout_import = "workout_import"
 
 
 class ReadinessRecommendationAction(str, Enum):
@@ -203,3 +204,13 @@ class UsageEventName(str, Enum):
     recovery_trend_viewed = "recovery_trend_viewed"
     reduce_load_suggestion_viewed = "reduce_load_suggestion_viewed"
     readiness_adjustment_draft_created = "readiness_adjustment_draft_created"
+    workout_import_page_viewed = "workout_import_page_viewed"
+    workout_import_file_selected = "workout_import_file_selected"
+    workout_import_json_submitted = "workout_import_json_submitted"
+    workout_import_parsed = "workout_import_parsed"
+    workout_import_validation_failed = "workout_import_validation_failed"
+    workout_import_preview_viewed = "workout_import_preview_viewed"
+    workout_import_item_edited = "workout_import_item_edited"
+    workout_import_applied = "workout_import_applied"
+    workout_import_cancelled = "workout_import_cancelled"
+    workout_import_subjective_data_prompt_viewed = "workout_import_subjective_data_prompt_viewed"

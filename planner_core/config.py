@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     training_readiness_rollout_mode: str = Field(
         default="all", validation_alias="TRAINING_READINESS_ROLLOUT_MODE"
     )
+    workout_import_rollout_mode: str = Field(
+        default="off", validation_alias="WORKOUT_IMPORT_ROLLOUT_MODE"
+    )
     ai_readiness_explanation_enabled: bool = Field(
         default=False, validation_alias="AI_READINESS_EXPLANATION_ENABLED"
     )
