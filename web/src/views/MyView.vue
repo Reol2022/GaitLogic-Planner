@@ -28,8 +28,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted, ref } from "vue";
 import {
   Calendar,
+  Connection,
   DataAnalysis,
   DocumentAdd,
   Grid,
@@ -39,16 +41,22 @@ import {
   Setting,
   TrendCharts,
 } from "@element-plus/icons-vue";
+import { getGarminStatus } from "@/api/garminSync";
 
-const primaryItems = [
+const garminSyncVisible = ref(false);
+
+const allPrimaryItems = [
   { path: "/weekly-review", title: "智能周复盘", desc: "复盘本周并确认下一周调整", icon: Memo },
   { path: "/workouts", title: "我的训练计划", desc: "查看和维护每日训练安排", icon: List },
   { path: "/dashboard", title: "训练统计", desc: "查看跑量、完成率和训练分布", icon: DataAnalysis },
   { path: "/training-readiness", title: "负荷与恢复", desc: "查看训练状态、恢复打卡和负荷趋势", icon: TrendCharts },
   { path: "/plan-imports", title: "课表导入", desc: "导入 Excel、CSV、TXT 或 JSON 课表草稿", icon: DocumentAdd },
   { path: "/workout-import", title: "训练记录导入", desc: "补录已经完成的训练数据", icon: DocumentAdd },
+  { path: "/garmin-sync", title: "Garmin 同步", desc: "连接账号并手动同步跑步活动", icon: Connection },
   { path: "/feedback", title: "反馈", desc: "提交问题或使用建议", icon: Message },
 ];
+
+const primaryItems = computed(() => allPrimaryItems.filter((item) => item.path !== "/garmin-sync" || garminSyncVisible.value));
 
 const advancedItems = [
   { path: "/ai-coach-preference", title: "AI 教练偏好", icon: Setting },
@@ -60,6 +68,15 @@ const advancedItems = [
 function myEntryLink(path: string) {
   return { path, query: { from: "/my" } };
 }
+
+onMounted(async () => {
+  try {
+    await getGarminStatus(true);
+    garminSyncVisible.value = true;
+  } catch {
+    garminSyncVisible.value = false;
+  }
+});
 </script>
 
 <style scoped>

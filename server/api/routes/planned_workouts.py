@@ -13,7 +13,8 @@ from server.schemas.planned_workout import (
     PlannedWorkoutUpdate,
     PlannedWorkoutWithLogRead,
 )
-from server.services import planned_workout_service
+from server.schemas.workout_log import WorkoutCompletionContextRead
+from server.services import planned_workout_service, workout_log_service
 
 router = APIRouter(tags=["planned workouts"])
 
@@ -59,6 +60,24 @@ def get_planned_workout(
     current_user: UserAccount = Depends(get_current_user),
 ):
     return planned_workout_service.get_planned_workout(db, workout_id, current_user.id)
+
+
+@router.get("/planned-workouts/{workout_id}/completion-context", response_model=WorkoutCompletionContextRead)
+def get_completion_context(
+    workout_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    return workout_log_service.get_completion_context(db, workout_id, current_user.id)
+
+
+@router.get("/workouts/{workout_id}/completion-context", response_model=WorkoutCompletionContextRead)
+def get_workout_completion_context(
+    workout_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    return workout_log_service.get_completion_context(db, workout_id, current_user.id)
 
 
 @router.put("/planned-workouts/{workout_id}", response_model=PlannedWorkoutWithLogRead)

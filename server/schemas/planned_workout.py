@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
-from planner_core.enums import WorkoutMainTypeNormalized
+from planner_core.enums import PlannedWorkoutLifecycleStatus, WorkoutMainTypeNormalized
 from server.schemas.workout_log import WorkoutLogRead
 
 
@@ -28,6 +28,7 @@ class PlannedWorkoutBase(BaseModel):
     is_locked: bool = False
     lock_reason: str | None = None
     plan_version: int = 1
+    lifecycle_status: PlannedWorkoutLifecycleStatus = PlannedWorkoutLifecycleStatus.planned
 
 
 class PlannedWorkoutCreate(PlannedWorkoutBase):
@@ -55,6 +56,7 @@ class PlannedWorkoutUpdate(BaseModel):
     is_locked: bool | None = None
     lock_reason: str | None = None
     plan_version: int | None = None
+    lifecycle_status: PlannedWorkoutLifecycleStatus | None = None
 
 
 class PlannedWorkoutRead(PlannedWorkoutBase):

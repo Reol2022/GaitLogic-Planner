@@ -27,6 +27,21 @@ def test_api_docs_are_available_behind_api_prefix() -> None:
     assert openapi_response.json()["info"]["title"] == "Gaitlogic Planner API"
 
 
+def test_local_development_cors_preflight_allows_127_origin() -> None:
+    client = TestClient(app)
+
+    response = client.options(
+        "/api/health",
+        headers={
+            "Origin": "http://127.0.0.1:5173",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
+
+
 def test_required_routes_are_registered() -> None:
     routes = {
         f"{','.join(sorted(route.methods or []))} {route.path}"
@@ -58,8 +73,14 @@ def test_required_routes_are_registered() -> None:
     assert "GET /api/ai-coach-preference" in routes
     assert "PUT /api/ai-coach-preference" in routes
     assert "GET /api/training-cycles" in routes
+    assert "GET /api/training-cycles/active" in routes
+    assert "GET /api/training-cycles/history" in routes
     assert "GET /api/training-calendar" in routes
     assert "POST /api/training-cycles" in routes
+    assert "GET /api/training-cycles/{cycle_id}/activation-preview" in routes
+    assert "POST /api/training-cycles/{cycle_id}/activate" in routes
+    assert "POST /api/training-cycles/{cycle_id}/complete" in routes
+    assert "POST /api/training-cycles/{cycle_id}/archive" in routes
     assert "GET /api/training-cycles/{cycle_id}" in routes
     assert "PUT /api/training-cycles/{cycle_id}" in routes
     assert "DELETE /api/training-cycles/{cycle_id}" in routes
@@ -71,6 +92,8 @@ def test_required_routes_are_registered() -> None:
     assert "GET /api/planned-workouts" in routes
     assert "POST /api/planned-workouts" in routes
     assert "GET /api/planned-workouts/{workout_id}" in routes
+    assert "GET /api/planned-workouts/{workout_id}/completion-context" in routes
+    assert "GET /api/workouts/{workout_id}/completion-context" in routes
     assert "PUT /api/planned-workouts/{workout_id}" in routes
     assert "DELETE /api/planned-workouts/{workout_id}" in routes
     assert "GET /api/today" in routes
@@ -105,6 +128,18 @@ def test_required_routes_are_registered() -> None:
     assert "POST /api/workout-imports/{batch_id}/validate" in routes
     assert "POST /api/workout-imports/{batch_id}/apply" in routes
     assert "POST /api/workout-imports/{batch_id}/cancel" in routes
+    assert "GET /api/integrations/garmin/status" in routes
+    assert "POST /api/integrations/garmin/connect" in routes
+    assert "POST /api/integrations/garmin/connect/mfa" in routes
+    assert "POST /api/integrations/garmin/disconnect" in routes
+    assert "PUT /api/integrations/garmin/settings" in routes
+    assert "POST /api/integrations/garmin/sync" in routes
+    assert "GET /api/integrations/garmin/sync-jobs" in routes
+    assert "GET /api/integrations/garmin/sync-jobs/{job_id}" in routes
+    assert "POST /api/integrations/garmin/sync-jobs/{job_id}/retry" in routes
+    assert "GET /api/integrations/garmin/activities" in routes
+    assert "POST /api/integrations/garmin/activities/reconcile" in routes
+    assert "POST /api/integrations/garmin/activities/{activity_id}/resolve" in routes
     assert "GET /api/stats/blocks/{block_id}" in routes
     assert "GET /api/pace-rules" in routes
     assert "POST /api/pace-rules" in routes
@@ -137,3 +172,5 @@ def test_business_routes_require_login() -> None:
     assert plan_import_response.status_code == 401
     workout_import_response = client.post("/api/workout-imports/structured", json={})
     assert workout_import_response.status_code == 401
+    garmin_response = client.get("/api/integrations/garmin/status")
+    assert garmin_response.status_code == 401

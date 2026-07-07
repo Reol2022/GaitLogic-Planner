@@ -36,6 +36,7 @@ from server.schemas.plan_import import (
     PlanImportStructuredRequest,
     PlanImportWorkoutItem,
 )
+from server.services.training_cycle_lifecycle_service import get_active_cycle
 from server.services.weekly_review_stats_service import COMPLETED_STATUSES, local_today
 
 PARSER_VERSION = "plan-import-parser-v1"
@@ -415,6 +416,18 @@ def _resolve_cycle(db: Session, user_id: int, target_cycle_id: int | None, effec
         cycle = db.scalar(select(TrainingCycle).where(TrainingCycle.user_id == user_id).order_by(TrainingCycle.start_date.desc()))
     if cycle is None:
         raise BadRequestError("请先创建训练周期。")
+    return cycle
+
+
+def _resolve_cycle(db: Session, user_id: int, target_cycle_id: int | None, effective_date: date | None) -> TrainingCycle:
+    if target_cycle_id:
+        cycle = db.scalar(select(TrainingCycle).where(TrainingCycle.id == target_cycle_id, TrainingCycle.user_id == user_id))
+        if cycle is None:
+            raise NotFoundError("Target training cycle not found.")
+        return cycle
+    cycle = get_active_cycle(db, user_id)
+    if cycle is None:
+        raise BadRequestError("当前没有生效中的训练周期，请先启用一个周期或显式选择目标草稿周期。")
     return cycle
 
 

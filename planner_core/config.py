@@ -18,6 +18,19 @@ class Settings(BaseSettings):
         default=7,
         validation_alias="ACCESS_TOKEN_EXPIRE_DAYS",
     )
+    backend_cors_origins: str = Field(
+        default=(
+            "http://localhost:5173,"
+            "http://127.0.0.1:5173,"
+            "http://localhost:4173,"
+            "http://127.0.0.1:4173"
+        ),
+        validation_alias="BACKEND_CORS_ORIGINS",
+    )
+    backend_cors_origin_regex: str | None = Field(
+        default=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+):\d+$",
+        validation_alias="BACKEND_CORS_ORIGIN_REGEX",
+    )
     ai_api_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("AI_API_KEY", "DEEPSEEK_API_KEY"),
@@ -44,6 +57,36 @@ class Settings(BaseSettings):
     )
     workout_import_rollout_mode: str = Field(
         default="off", validation_alias="WORKOUT_IMPORT_ROLLOUT_MODE"
+    )
+    garmin_sync_rollout_mode: str = Field(
+        default="off", validation_alias="GARMIN_SYNC_ROLLOUT_MODE"
+    )
+    garmin_token_encryption_key: str | None = Field(
+        default=None, validation_alias="GARMIN_TOKEN_ENCRYPTION_KEY"
+    )
+    garmin_token_key_version: str = Field(
+        default="v1", validation_alias="GARMIN_TOKEN_KEY_VERSION"
+    )
+    garmin_raw_retention_days: int = Field(
+        default=90, validation_alias="GARMIN_RAW_RETENTION_DAYS"
+    )
+    garmin_initial_sync_days: int = Field(
+        default=90, validation_alias="GARMIN_INITIAL_SYNC_DAYS"
+    )
+    garmin_incremental_overlap_days: int = Field(
+        default=3, validation_alias="GARMIN_INCREMENTAL_OVERLAP_DAYS"
+    )
+    garmin_custom_sync_max_days: int = Field(
+        default=365, validation_alias="GARMIN_CUSTOM_SYNC_MAX_DAYS"
+    )
+    garmin_composite_activity_max_gap_minutes: int = Field(
+        default=90, validation_alias="GARMIN_COMPOSITE_ACTIVITY_MAX_GAP_MINUTES"
+    )
+    garmin_sync_worker_poll_seconds: int = Field(
+        default=5, validation_alias="GARMIN_SYNC_WORKER_POLL_SECONDS"
+    )
+    garmin_sync_max_retries: int = Field(
+        default=3, validation_alias="GARMIN_SYNC_MAX_RETRIES"
     )
     ai_readiness_explanation_enabled: bool = Field(
         default=False, validation_alias="AI_READINESS_EXPLANATION_ENABLED"
@@ -74,6 +117,14 @@ class Settings(BaseSettings):
             f"mysql+pymysql://{user}:{password}@"
             f"{self.mysql_host}:{self.mysql_port}/?charset=utf8mb4"
         )
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [
+            item.strip()
+            for item in (self.backend_cors_origins or "").split(",")
+            if item.strip()
+        ]
 
 
 @lru_cache

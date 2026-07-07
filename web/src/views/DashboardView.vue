@@ -1,13 +1,12 @@
 <template>
   <div class="page-stack dashboard-page">
     <PageHeader title="训练统计" :subtitle="`${currentCycleName} · 训练计划、完成情况、强度结构和身体反馈的实时概览。`">
-      <template v-if="!hasNoCycles" #actions>
+      <template v-if="!hasNoCycles && !hasNoActiveCycle" #actions>
         <div class="hero-actions">
           <el-select
             v-model="cycleId"
-            clearable
             filterable
-            placeholder="全部训练周期"
+            placeholder="当前训练周期"
             style="width: 260px"
             @change="loadDashboard"
           >
@@ -41,6 +40,14 @@
           <strong>用 AI 教练生成</strong>
           <em>输入当前能力、目标赛事和训练偏好，先生成可编辑草稿。</em>
         </button>
+      </div>
+    </section>
+
+    <section v-else-if="hasNoActiveCycle" class="empty-data-card">
+      <h3>当前没有正在进行的训练周期</h3>
+      <p>系统首页、今日训练和训练计划默认只显示 active 周期的数据。请先到训练周期页面启用一个草稿周期。</p>
+      <div>
+        <el-button type="primary" @click="router.push('/cycles')">去启用周期</el-button>
       </div>
     </section>
 
@@ -132,7 +139,7 @@
               <p>{{ distanceModeHint }}</p>
             </div>
             <el-radio-group v-model="distanceMode" size="small" @change="renderDistanceChart">
-              <el-radio-button label="cycle">全部周期</el-radio-button>
+              <el-radio-button label="cycle">当前周期</el-radio-button>
               <el-radio-button label="month">月跑量</el-radio-button>
               <el-radio-button label="week">周跑量</el-radio-button>
             </el-radio-group>
@@ -147,7 +154,7 @@
               <p>{{ typeModeHint }}</p>
             </div>
             <el-radio-group v-model="typeMode" size="small" @change="renderTypeChart">
-              <el-radio-button label="cycle">全部周期</el-radio-button>
+              <el-radio-button label="cycle">当前周期</el-radio-button>
               <el-radio-button label="month">月跑量</el-radio-button>
               <el-radio-button label="week">周跑量</el-radio-button>
             </el-radio-group>
@@ -189,7 +196,7 @@ import * as echarts from "echarts";
 import { getDashboard } from "@/api/dashboard";
 import { listPlannedWorkouts } from "@/api/plannedWorkouts";
 import { listTrainingBlocks } from "@/api/trainingBlocks";
-import { listTrainingCycles } from "@/api/trainingCycles";
+import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles";
 import type { DashboardSummary, PlannedWorkout, TrainingBlock, TrainingCycle } from "@/types/models";
 import { labelFor, mainTypeOptions } from "@/types/options";
 
@@ -210,6 +217,7 @@ interface TypeBucket {
 
 const router = useRouter();
 const cycleId = ref<number | null>(null);
+const activeCycle = ref<TrainingCycle | null>(null);
 const cycles = ref<TrainingCycle[]>([]);
 const blocks = ref<TrainingBlock[]>([]);
 const workouts = ref<PlannedWorkout[]>([]);
@@ -230,17 +238,19 @@ let healthChart: echarts.ECharts | null = null;
 const palette = ["#1976d2", "#1f7a68", "#ff8a00", "#7b68aa", "#bc4b4b", "#5f8d4e", "#8293a4"];
 
 const hasNoCycles = computed(() => cycles.value.length === 0);
-const hasNoWorkoutData = computed(() => !hasNoCycles.value && !!summary.value && summary.value.workout_count === 0);
+const hasNoActiveCycle = computed(() => !hasNoCycles.value && !activeCycle.value);
+const hasNoWorkoutData = computed(() => !hasNoCycles.value && !hasNoActiveCycle.value && !!summary.value && summary.value.workout_count === 0);
 
 const currentCycleName = computed(() => {
-  if (!cycleId.value) return "全部周期";
+  if (activeCycle.value && cycleId.value === activeCycle.value.id) return activeCycle.value.name;
+  if (!cycleId.value) return "当前没有正在进行的训练周期";
   return cycles.value.find((cycle) => cycle.id === cycleId.value)?.name || "当前周期";
 });
 
 const distanceModeHint = computed(() => {
   if (distanceMode.value === "month") return "按月份统计计划公里和实际公里";
   if (distanceMode.value === "week") return "按训练块 / 周统计计划公里和实际公里";
-  return cycleId.value ? "当前周期总量对比" : "按训练周期统计计划公里和实际公里";
+  return "当前训练周期总量对比";
 });
 
 const typeModeHint = computed(() => {
@@ -271,37 +281,6 @@ function numeric(value?: number | string | null) {
 
 function fmt(value?: number | string | null) {
   return numeric(value).toFixed(1);
-}
-
-function parseDate(value?: string | null) {
-  if (!value) return null;
-  const parsed = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function chooseDefaultCycle() {
-  if (cycles.value.length === 0) {
-    cycleId.value = null;
-    return;
-  }
-
-  const today = new Date();
-  const current = cycles.value.find((cycle) => {
-    const start = parseDate(cycle.start_date);
-    const end = parseDate(cycle.end_date);
-    return start && end && start <= today && today <= end;
-  });
-  if (current) {
-    cycleId.value = current.id;
-    return;
-  }
-
-  const recent = [...cycles.value].sort((a, b) => {
-    const left = Date.parse(b.created_at || "") || b.id;
-    const right = Date.parse(a.created_at || "") || a.id;
-    return left - right;
-  })[0];
-  cycleId.value = recent.id;
 }
 
 function workoutKm(workout: PlannedWorkout) {
@@ -571,7 +550,7 @@ function disposeCharts() {
 }
 
 async function loadDashboard() {
-  if (hasNoCycles.value) {
+  if (hasNoCycles.value || hasNoActiveCycle.value) {
     summary.value = null;
     workouts.value = [];
     blocks.value = [];
@@ -593,7 +572,13 @@ async function loadDashboard() {
 
 async function loadCycles() {
   cycles.value = await listTrainingCycles();
-  chooseDefaultCycle();
+  try {
+    activeCycle.value = await getActiveTrainingCycle();
+    cycleId.value = activeCycle.value.id;
+  } catch {
+    activeCycle.value = null;
+    cycleId.value = null;
+  }
 }
 
 async function reloadAll() {
@@ -833,6 +818,7 @@ onBeforeUnmount(() => {
 .chart-card,
 .summary-table-card {
   min-width: 0;
+  overflow-x: auto;
   padding: 16px;
   border: 1px solid #d7d7d7;
   border-radius: 6px;
@@ -881,6 +867,7 @@ onBeforeUnmount(() => {
 
 .summary-table {
   width: 100%;
+  min-width: 720px;
   border-collapse: separate;
   border-spacing: 0;
   overflow: hidden;
@@ -935,11 +922,39 @@ onBeforeUnmount(() => {
 
 @media (max-width: 680px) {
   .dashboard-page {
-    padding: 24px 16px;
+    padding: 16px 10px 84px;
   }
 
   .metric-strip {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .metric-tile {
+    min-height: 76px;
+    padding: 10px 12px;
+  }
+
+  .metric-tile span {
+    font-size: 12px;
+  }
+
+  .metric-tile strong {
+    margin-top: 6px;
+    font-size: 22px;
+  }
+
+  .metric-tile em {
+    display: none;
+  }
+
+  .summary-table-card {
+    padding: 10px;
+  }
+
+  .summary-table {
+    min-width: 660px;
+    font-size: 12px;
   }
 }
 </style>

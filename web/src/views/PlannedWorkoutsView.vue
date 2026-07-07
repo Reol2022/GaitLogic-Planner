@@ -9,8 +9,7 @@
       <div class="filter-row">
         <el-select
           v-model="filterCycleId"
-          clearable
-          placeholder="训练周期"
+          placeholder="当前训练周期"
           style="width: 220px"
           @change="loadFilterBlocks"
         >
@@ -32,8 +31,16 @@
         </el-select>
         <el-button :icon="Search" @click="load">查询</el-button>
       </div>
-      <el-button type="primary" :icon="Plus" @click="openDialog()">新增计划</el-button>
+      <el-button type="primary" :icon="Plus" :disabled="hasNoActiveCycle" @click="openDialog()">新增计划</el-button>
     </div>
+
+    <el-alert
+      v-if="hasNoActiveCycle"
+      title="当前没有正在进行的训练周期，请先到训练周期页面启用一个草稿周期。"
+      type="warning"
+      :closable="false"
+      show-icon
+    />
 
     <div class="panel">
       <el-table class="desktop-workout-table" :data="pagedWorkouts" v-loading="loading">
@@ -176,7 +183,7 @@ import {
   updatePlannedWorkout,
 } from "@/api/plannedWorkouts";
 import { listTrainingBlocks } from "@/api/trainingBlocks";
-import { listTrainingCycles } from "@/api/trainingCycles";
+import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles";
 import type {
   PlannedWorkout,
   PlannedWorkoutPayload,
@@ -189,6 +196,7 @@ import { labelFor, mainTypeOptions, statusOptions } from "@/types/options";
 
 const router = useRouter();
 const cycles = ref<TrainingCycle[]>([]);
+const activeCycle = ref<TrainingCycle | null>(null);
 const blocks = ref<TrainingBlock[]>([]);
 const filterBlocks = ref<TrainingBlock[]>([]);
 const workouts = ref<PlannedWorkout[]>([]);
@@ -201,6 +209,7 @@ const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(20);
+const hasNoActiveCycle = computed(() => cycles.value.length > 0 && !activeCycle.value);
 
 const emptyForm: PlannedWorkoutPayload = {
   cycle_id: 0,
@@ -244,6 +253,13 @@ async function load() {
 
 async function loadCycles() {
   cycles.value = await listTrainingCycles();
+  try {
+    activeCycle.value = await getActiveTrainingCycle();
+    filterCycleId.value = activeCycle.value.id;
+  } catch {
+    activeCycle.value = null;
+    filterCycleId.value = null;
+  }
 }
 
 async function loadBlocks() {
@@ -255,13 +271,14 @@ async function loadBlocks() {
 
 async function loadFilterBlocks() {
   filterBlockId.value = null;
-  filterBlocks.value = await listTrainingBlocks(filterCycleId.value);
+  filterBlocks.value = filterCycleId.value ? await listTrainingBlocks(filterCycleId.value) : [];
   await load();
 }
 
 async function openDialog(row?: PlannedWorkout) {
   Object.assign(form, emptyForm);
-  form.cycle_id = cycles.value[0]?.id || 0;
+  form.cycle_id = filterCycleId.value || activeCycle.value?.id || 0;
+  if (!form.cycle_id) return;
   editingId.value = row?.id ?? null;
   if (row) Object.assign(form, row);
   await loadBlocks();
@@ -299,7 +316,7 @@ async function remove(row: PlannedWorkout) {
 
 onMounted(async () => {
   await loadCycles();
-  filterBlocks.value = await listTrainingBlocks();
+  filterBlocks.value = filterCycleId.value ? await listTrainingBlocks(filterCycleId.value) : [];
   await load();
 });
 </script>

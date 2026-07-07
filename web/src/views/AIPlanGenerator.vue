@@ -43,7 +43,7 @@
 
         <el-form label-position="top" class="ai-form">
           <div class="form-row">
-            <el-form-item label="近期 PB 距离">
+            <el-form-item label="近期参考距离">
               <el-select v-model="form.recent_pb_distance" clearable style="width: 100%">
                 <el-option
                   v-for="item in distanceOptions"
@@ -53,13 +53,13 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item label="近期 PB 成绩">
+            <el-form-item label="近期参考成绩">
               <el-time-picker
                 v-model="form.recent_pb_result"
                 value-format="HH:mm:ss"
                 format="HH:mm:ss"
                 :default-value="new Date(2000, 0, 1, 0, 0, 0)"
-                placeholder="例如 00:16:24"
+                placeholder="例如 00:25:00"
                 style="width: 100%"
               />
             </el-form-item>
@@ -93,7 +93,7 @@
                 value-format="HH:mm:ss"
                 format="HH:mm:ss"
                 :default-value="new Date(2000, 0, 1, 0, 0, 0)"
-                placeholder="例如 01:11:30"
+                placeholder="例如 02:00:00"
                 style="width: 100%"
               />
               <div class="form-help">目标过于激进时，系统会保留目标，但会在计划中提示风险。</div>
@@ -166,7 +166,7 @@
               </div>
               <div class="form-row">
                 <el-form-item label="目标赛事名称">
-                  <el-input v-model="form.target_race_name" placeholder="眉山东坡半马" />
+                  <el-input v-model="form.target_race_name" placeholder="目标赛事名称" />
                 </el-form-item>
                 <el-form-item label="是否可以双跑">
                   <el-switch v-model="form.can_double_run" active-text="可以" inactive-text="不可以" />
@@ -287,15 +287,17 @@
           <p>只显示当前账号生成的 AI 课表草稿。</p>
         </div>
       </div>
-      <el-table :data="drafts" v-loading="loadingDrafts" class="history-table">
+      <el-table :data="drafts" v-loading="loadingDrafts" class="history-table mobile-friendly-table">
         <el-table-column prop="title" label="标题" min-width="220" />
-        <el-table-column prop="status" label="状态" width="100" />
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">{{ statusLabel(row.status) }}</template>
+        </el-table-column>
         <el-table-column label="创建时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="320">
+        <el-table-column label="操作" min-width="360" class-name="action-column history-action-column">
           <template #default="{ row }">
-            <div class="table-actions">
+            <div class="table-actions history-actions">
               <el-button size="small" @click="viewDraft(row.id)">查看</el-button>
               <el-button size="small" type="primary" :disabled="row.status !== 'draft'" @click="apply(row.id)">应用</el-button>
               <el-button size="small" :disabled="row.status !== 'draft'" @click="reject(row.id)">拒绝</el-button>
@@ -334,6 +336,7 @@ import {
 } from "@/api/aiPlan";
 import { trackUsageEvent } from "@/api/usageEvents";
 import type { AIPlanDraft, AIPlanExportFormat, AIPlanGeneratePayload, AIPlanQuota, RaceDistance } from "@/types/models";
+import { statusLabel } from "@/utils/statusLabels";
 
 const router = useRouter();
 const today = new Date().toISOString().slice(0, 10);
@@ -357,20 +360,20 @@ const exportOptions: Array<{ label: string; value: AIPlanExportFormat; extension
 ];
 
 const form = reactive<AIPlanGeneratePayload>({
-  runner_level: "advanced",
-  recent_pb_distance: "5000m",
-  recent_pb_result: "00:00:00",
-  current_weekly_mileage_km: 80,
-  recent_4w_avg_mileage_km: 76,
-  available_training_days_per_week: 6,
+  runner_level: "intermediate",
+  recent_pb_distance: null,
+  recent_pb_result: null,
+  current_weekly_mileage_km: 40,
+  recent_4w_avg_mileage_km: 35,
+  available_training_days_per_week: 5,
   can_double_run: false,
-  fixed_rest_days: ["周六"],
+  fixed_rest_days: [],
   injury_notes: "",
-  training_preferences: "二四日结构，周日长距离；偏丹尼尔斯和阈值训练，但不做激进双阈值。",
-  target_race_name: "眉山东坡马拉松",
+  training_preferences: "",
+  target_race_name: "",
   target_race_date: "",
   target_distance: "half_marathon",
-  target_result: "00:00:00",
+  target_result: null,
   plan_start_date: today,
   plan_weeks: 8,
   intensity_style: "standard",
@@ -961,6 +964,30 @@ onBeforeUnmount(stopGenerationProgress);
   gap: 8px;
 }
 
+.history-actions {
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.history-actions .el-button {
+  flex: 0 0 auto;
+  min-width: 64px;
+  margin-left: 0;
+}
+
+.history-actions :deep(.el-dropdown) {
+  flex: 0 0 auto;
+}
+
+.history-actions :deep(.el-dropdown .el-button) {
+  width: auto;
+}
+
+.history-table :deep(.history-action-column .cell) {
+  overflow: visible;
+}
+
 .history-table {
   width: 100%;
 }
@@ -1011,21 +1038,18 @@ onBeforeUnmount(stopGenerationProgress);
   }
 
   .form-actions,
-  .draft-actions,
-  .table-actions {
+  .draft-actions {
     align-items: stretch;
     flex-direction: column;
   }
 
   .form-actions .el-button,
-  .draft-actions .el-button,
-  .table-actions .el-button {
+  .draft-actions .el-button {
     width: 100%;
     margin-left: 0;
   }
 
-  .draft-actions :deep(.el-dropdown),
-  .table-actions :deep(.el-dropdown) {
+  .draft-actions :deep(.el-dropdown) {
     width: 100%;
   }
 
@@ -1035,11 +1059,6 @@ onBeforeUnmount(stopGenerationProgress);
 
   .week-block {
     overflow-x: auto;
-  }
-
-  .week-block :deep(.el-table),
-  .history-table {
-    min-width: 620px;
   }
 
   .generation-panel {

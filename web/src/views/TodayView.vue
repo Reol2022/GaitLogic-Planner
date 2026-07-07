@@ -4,7 +4,7 @@
       title="今日训练"
       :subtitle="showOnboarding ? '第一次使用：你的训练课表还在等待创建或分配。课表准备好后，今天的训练会显示在这里。' : undefined"
     />
-    <div v-if="!showOnboarding && readinessAvailable" class="daily-advice readiness-card">
+    <div v-if="!showOnboarding && !showNoActiveCycle && readinessAvailable" class="daily-advice readiness-card">
       <div class="readiness-card-main">
         <strong>今日训练状态：{{ readinessStatusText }}</strong>
         <p>{{ readinessReasonText }}</p>
@@ -19,7 +19,7 @@
         <el-button v-if="showWeeklyReviewPrompt" plain @click="router.push('/weekly-review')">查看周复盘</el-button>
       </div>
     </div>
-    <div v-else-if="!showOnboarding && readinessMessage" class="daily-advice">
+    <div v-else-if="!showOnboarding && !showNoActiveCycle && readinessMessage" class="daily-advice">
       <div>
         <strong>今日训练建议</strong>
         <p>{{ readinessMessage }}</p>
@@ -47,12 +47,21 @@
       </div>
     </section>
 
-    <div class="toolbar">
+    <section v-else-if="showNoActiveCycle" class="no-active-card">
+      <div>
+        <div class="onboarding-kicker">当前周期</div>
+        <h3>当前没有正在进行的训练周期</h3>
+        <p>系统可以保存多个训练周期，但首页和今日训练只显示唯一 active 周期的计划。请先启用一个草稿周期。</p>
+      </div>
+      <el-button type="primary" @click="router.push('/cycles')">去启用周期</el-button>
+    </section>
+
+    <div v-if="!showNoActiveCycle" class="toolbar">
       <el-date-picker v-model="today" value-format="YYYY-MM-DD" type="date" @change="load" />
       <el-button :icon="Refresh" @click="load">刷新</el-button>
     </div>
 
-    <div class="panel">
+    <div v-if="!showNoActiveCycle" class="panel">
       <el-table class="desktop-workout-table" :data="workouts" v-loading="loading" empty-text="今天还没有训练计划">
         <el-table-column prop="workout_date" label="日期" width="120" />
         <el-table-column prop="weekday" label="星期" width="90" />
@@ -219,7 +228,7 @@ import { ElMessage } from "element-plus";
 
 import RpeHelp from "@/components/RpeHelp.vue";
 import { listTodayWorkouts } from "@/api/plannedWorkouts";
-import { listTrainingCycles } from "@/api/trainingCycles";
+import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles";
 import { listTrainingBlocks } from "@/api/trainingBlocks";
 import { updateWorkoutLog } from "@/api/workoutLogs";
 import { getTodayReadiness, recalculateReadiness } from "@/api/trainingReadiness";
@@ -239,6 +248,7 @@ const router = useRouter();
 const today = ref(new Date().toISOString().slice(0, 10));
 const workouts = ref<PlannedWorkout[]>([]);
 const cycles = ref<TrainingCycle[]>([]);
+const activeCycle = ref<TrainingCycle | null>(null);
 const blocks = ref<TrainingBlock[]>([]);
 const loading = ref(false);
 const loadingCycles = ref(true);
@@ -250,8 +260,9 @@ const todayReadiness = ref<TrainingReadinessToday | null>(null);
 const readinessMessage = ref("");
 const readinessAvailable = computed(() => !!todayReadiness.value && !readinessMessage.value);
 const showOnboarding = computed(() => !loadingCycles.value && cycles.value.length === 0);
+const showNoActiveCycle = computed(() => !loadingCycles.value && cycles.value.length > 0 && !activeCycle.value);
 const showWeeklyReviewPrompt = computed(() =>
-  blocks.value.some((block) => block.end_date && block.end_date < today.value),
+  !!activeCycle.value && blocks.value.some((block) => block.end_date && block.end_date < today.value),
 );
 const readinessStatusText = computed(() =>
   todayReadiness.value ? readinessStatusLabel(todayReadiness.value.assessment.status) : "数据不足",
@@ -386,8 +397,12 @@ async function loadCycles() {
   loadingCycles.value = true;
   try {
     cycles.value = await listTrainingCycles();
-    const blockGroups = await Promise.all(cycles.value.map((cycle) => listTrainingBlocks(cycle.id)));
-    blocks.value = blockGroups.flat();
+    try {
+      activeCycle.value = await getActiveTrainingCycle();
+    } catch {
+      activeCycle.value = null;
+    }
+    blocks.value = activeCycle.value ? await listTrainingBlocks(activeCycle.value.id) : [];
   } finally {
     loadingCycles.value = false;
   }
@@ -441,10 +456,10 @@ function statusClass(status?: WorkoutStatusNormalized | null) {
   return "status-tag status-pending";
 }
 
-onMounted(() => {
+onMounted(async () => {
   trackUsageEvent("today_viewed");
-  loadCycles();
-  load();
+  await loadCycles();
+  await load();
 });
 </script>
 
@@ -461,6 +476,29 @@ onMounted(() => {
     radial-gradient(circle at 18% 10%, rgba(25, 118, 210, 0.08), transparent 28%),
     #ffffff;
   box-shadow: var(--card-shadow);
+}
+
+.no-active-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: #ffffff;
+  box-shadow: var(--card-shadow);
+}
+
+.no-active-card h3 {
+  margin: 6px 0 8px;
+  color: var(--text);
+}
+
+.no-active-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
 }
 
 .daily-advice {
@@ -645,14 +683,21 @@ onMounted(() => {
   }
 
   .onboarding-card,
+  .no-active-card,
   .onboarding-actions {
     grid-template-columns: 1fr;
   }
 
-  .onboarding-card {
+  .onboarding-card,
+  .no-active-card {
     gap: 16px;
     margin: 0 12px;
     padding: 18px;
+  }
+
+  .no-active-card {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .onboarding-card h3 {

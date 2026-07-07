@@ -28,6 +28,12 @@ export interface TrainingCycle {
   goal?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+  actual_start_date?: string | null;
+  actual_end_date?: string | null;
+  status: "draft" | "active" | "completed" | "archived" | string;
+  activated_at?: string | null;
+  completed_at?: string | null;
+  superseded_by_cycle_id?: number | null;
   target_race_name?: string | null;
   target_race_date?: string | null;
   target_result?: string | null;
@@ -36,7 +42,10 @@ export interface TrainingCycle {
   updated_at: string;
 }
 
-export type TrainingCyclePayload = Omit<TrainingCycle, "id" | "created_at" | "updated_at">;
+export type TrainingCyclePayload = Omit<
+  TrainingCycle,
+  "id" | "status" | "actual_start_date" | "actual_end_date" | "activated_at" | "completed_at" | "superseded_by_cycle_id" | "created_at" | "updated_at"
+>;
 
 export interface TrainingBlock {
   id: number;
@@ -108,6 +117,7 @@ export interface WorkoutLog {
   external_activity_id?: string | null;
   activity_fingerprint?: string | null;
   field_sources_json?: Record<string, unknown> | null;
+  subjective_status?: string;
   created_at: string;
   updated_at: string;
 }
@@ -364,6 +374,129 @@ export interface WorkoutImportApplyResponse {
   subjective_missing_count: number;
 }
 
+export interface GarminConnectionStatus {
+  connected: boolean;
+  connection_id?: number | null;
+  status: string;
+  provider: string;
+  region?: string | null;
+  masked_account_identifier?: string | null;
+  auto_import_enabled: boolean;
+  last_authenticated_at?: string | null;
+  last_successful_sync_at?: string | null;
+  last_error_code?: string | null;
+  last_error_at?: string | null;
+}
+
+export interface GarminConnectPayload {
+  username: string;
+  password: string;
+  region?: string | null;
+}
+
+export interface GarminConnectResponse {
+  status: string;
+  connection?: GarminConnectionStatus | null;
+  mfa_token?: string | null;
+  safe_message?: string | null;
+}
+
+export interface GarminSyncPayload {
+  sync_mode: "incremental" | "initial_backfill" | "recent_7d" | "recent_30d" | "custom_range";
+  start?: string | null;
+  end?: string | null;
+}
+
+export interface ExternalSyncJobRead {
+  id: number;
+  provider: string;
+  sync_mode: string;
+  requested_start?: string | null;
+  requested_end?: string | null;
+  status: string;
+  fetched_count: number;
+  created_count: number;
+  updated_count: number;
+  duplicate_count: number;
+  matched_count: number;
+  unplanned_count: number;
+  needs_review_count: number;
+  ignored_count: number;
+  failed_count: number;
+  started_at?: string | null;
+  finished_at?: string | null;
+  error_code?: string | null;
+  safe_error_message?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExternalActivityRead {
+  id: number;
+  provider: string;
+  external_activity_id: string;
+  activity_name?: string | null;
+  activity_type: string;
+  activity_date: string;
+  start_time_local: string;
+  processing_status: string;
+  resolution_status: string;
+  apply_status: string;
+  composite_session_key?: string | null;
+  match_confidence?: string | null;
+  planned_workout_id?: number | null;
+  workout_log_id?: number | null;
+  distance_m?: number | string | null;
+  duration_seconds?: number | null;
+  average_pace_seconds_per_km?: number | null;
+  average_heart_rate_bpm?: number | null;
+  max_heart_rate_bpm?: number | null;
+  data_quality: string;
+  quality_warnings_json?: string[] | null;
+}
+
+export interface GarminActivityReconcilePayload {
+  start_date?: string | null;
+  end_date?: string | null;
+  dry_run?: boolean;
+  activity_ids?: number[] | null;
+}
+
+export interface GarminActivityReconcileSummary {
+  dry_run: boolean;
+  activity_count: number;
+  estimated_session_count: number;
+  estimated_matched_plan_count: number;
+  estimated_merged_existing_log_count: number;
+  estimated_unplanned_log_count: number;
+  needs_review_count: number;
+  conflict_count: number;
+  applied_count: number;
+}
+
+export interface WorkoutLogGarminActivityContext {
+  id: number;
+  activity_name?: string | null;
+  activity_date: string;
+  start_time_local: string;
+  distance_m?: number | string | null;
+  duration_seconds?: number | null;
+  average_pace_seconds_per_km?: number | null;
+  average_heart_rate_bpm?: number | null;
+  resolution_status: string;
+  apply_status: string;
+}
+
+export interface WorkoutCompletionContext {
+  existing_workout_log?: WorkoutLog | null;
+  linked_garmin_activities: WorkoutLogGarminActivityContext[];
+  candidate_garmin_activities: WorkoutLogGarminActivityContext[];
+  prefilled_objective_fields: Record<string, unknown>;
+  subjective_fields_missing: string[];
+  field_conflicts: Array<Record<string, unknown>>;
+  mode: "manual_full" | "garmin_prefilled" | "merge_conflict" | "already_completed" | string;
+}
+
 export interface PaceRule {
   id: number;
   code: string;
@@ -459,6 +592,9 @@ export interface TrainingCalendarDay {
   rpe?: number | null;
   review_note?: string | null;
   completion_rate?: number | string | null;
+  source_type?: string | null;
+  subjective_status?: string | null;
+  has_garmin_activity?: boolean;
 }
 
 export interface TrainingCalendarSummary {

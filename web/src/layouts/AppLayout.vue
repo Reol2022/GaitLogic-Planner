@@ -57,6 +57,10 @@
           <el-icon><Upload /></el-icon>
           <template #title>训练记录导入</template>
         </el-menu-item>
+        <el-menu-item v-if="garminSyncVisible" index="/garmin-sync">
+          <el-icon><Connection /></el-icon>
+          <template #title>Garmin 同步</template>
+        </el-menu-item>
         <el-menu-item index="/feedback">
           <el-icon><Message /></el-icon>
           <template #title>反馈</template>
@@ -155,7 +159,7 @@
         </el-tabs>
       </div>
 
-      <el-main class="app-main">
+      <el-main class="app-main" @touchstart.passive="handleMobileTouchStart" @touchend.passive="handleMobileTouchEnd">
         <div v-if="showMobileBackToMy" class="mobile-content-back">
           <button type="button" aria-label="返回我的" @click="goBackToMy">
             <el-icon><ArrowLeft /></el-icon>
@@ -196,6 +200,7 @@ import type { TabsPaneContext } from "element-plus";
 import {
   Bell,
   Calendar,
+  Connection,
   DataAnalysis,
   DocumentAdd,
   ArrowLeft,
@@ -214,6 +219,7 @@ import {
   User,
 } from "@element-plus/icons-vue";
 import { clearStoredToken, getCurrentUser, logoutUser } from "@/api/auth";
+import { getGarminStatus } from "@/api/garminSync";
 import SiteFilingFooter from "@/components/SiteFilingFooter.vue";
 import type { UserAccount } from "@/types/models";
 import { requestAuth } from "@/utils/authPrompt";
@@ -226,6 +232,7 @@ interface NavTab {
 const route = useRoute();
 const router = useRouter();
 const currentUser = ref<UserAccount | null>(null);
+const garminSyncVisible = ref(false);
 const sidebarCollapsed = ref(false);
 const tabsVisible = ref(true);
 const visitedTabs = ref<NavTab[]>([{ path: "/today", title: "今日训练" }]);
@@ -254,6 +261,7 @@ const userInitial = computed(() => displayName.value.slice(0, 1).toUpperCase());
 const activeTab = computed(() => route.path);
 const isAdmin = computed(() => currentUser.value?.role === "admin");
 const showMobileBackToMy = computed(() => route.query.from === "/my" && route.path !== "/my");
+const mobileSwipeStart = ref<{ x: number; y: number; time: number } | null>(null);
 
 function addVisitedTab() {
   if (route.meta.public) return;
@@ -332,6 +340,32 @@ function goBackToMy() {
   router.push("/my");
 }
 
+function handleMobileTouchStart(event: TouchEvent) {
+  if (!showMobileBackToMy.value || window.innerWidth > 768) return;
+  const touch = event.touches[0];
+  if (!touch) return;
+  mobileSwipeStart.value = {
+    x: touch.clientX,
+    y: touch.clientY,
+    time: Date.now(),
+  };
+}
+
+function handleMobileTouchEnd(event: TouchEvent) {
+  const start = mobileSwipeStart.value;
+  mobileSwipeStart.value = null;
+  if (!start || !showMobileBackToMy.value || window.innerWidth > 768) return;
+  const touch = event.changedTouches[0];
+  if (!touch) return;
+
+  const deltaX = touch.clientX - start.x;
+  const deltaY = Math.abs(touch.clientY - start.y);
+  const elapsed = Date.now() - start.time;
+  if (start.x <= 90 && deltaX > 70 && deltaY < 55 && elapsed < 800) {
+    goBackToMy();
+  }
+}
+
 function openLoginDialog() {
   requestAuth(route.fullPath);
 }
@@ -339,8 +373,19 @@ function openLoginDialog() {
 async function loadCurrentUser() {
   try {
     currentUser.value = await getCurrentUser();
+    await loadGarminFeatureVisibility();
   } catch {
     currentUser.value = null;
+    garminSyncVisible.value = false;
+  }
+}
+
+async function loadGarminFeatureVisibility() {
+  try {
+    await getGarminStatus(true);
+    garminSyncVisible.value = true;
+  } catch {
+    garminSyncVisible.value = false;
   }
 }
 

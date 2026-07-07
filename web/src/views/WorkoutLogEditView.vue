@@ -4,8 +4,16 @@
 
     <div class="toolbar">
       <el-button :icon="ArrowLeft" @click="router.back()">返回</el-button>
-      <el-button type="primary" :icon="Check" @click="submit">提交日志</el-button>
+      <el-button type="primary" :icon="Check" @click="submit">{{ submitLabel }}</el-button>
     </div>
+
+    <el-alert
+      v-if="completionMode === 'garmin_prefilled'"
+      title="已同步 Garmin 客观数据，补充 RPE、疼痛、腿感和复盘即可。"
+      type="success"
+      show-icon
+      :closable="false"
+    />
 
     <div class="panel">
       <div class="panel-header">
@@ -124,7 +132,7 @@ import { ArrowLeft, Check } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 
 import RpeHelp from "@/components/RpeHelp.vue";
-import { getWorkoutLog, updateWorkoutLog } from "@/api/workoutLogs";
+import { getWorkoutCompletionContext, getWorkoutLog, updateWorkoutLog } from "@/api/workoutLogs";
 import type { WorkoutLogPayload } from "@/types/models";
 import { statusOptions } from "@/types/options";
 
@@ -133,6 +141,7 @@ const router = useRouter();
 const plannedWorkoutId = Number(route.params.id);
 const loading = ref(false);
 const pauseAutoPace = ref(false);
+const completionMode = ref("manual_full");
 const form = reactive<WorkoutLogPayload>({
   status_raw: null,
   status_normalized: "not_started",
@@ -158,6 +167,9 @@ const paceText = computed({
   },
 });
 const autoPaceText = computed(() => formatPace(form.avg_pace_seconds_per_km));
+const submitLabel = computed(() =>
+  completionMode.value === "garmin_prefilled" ? "确认完成并补充训练感受" : "提交日志",
+);
 
 watch(
   () => [form.actual_distance_km, form.actual_duration_seconds],
@@ -193,7 +205,9 @@ async function load() {
   loading.value = true;
   pauseAutoPace.value = true;
   try {
-    const log = await getWorkoutLog(plannedWorkoutId);
+    const context = await getWorkoutCompletionContext(plannedWorkoutId);
+    completionMode.value = context.mode;
+    const log = context.existing_workout_log || await getWorkoutLog(plannedWorkoutId);
     Object.assign(form, log);
   } finally {
     await nextTick();

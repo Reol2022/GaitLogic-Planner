@@ -5,9 +5,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from planner_core.database.models import PlannedWorkout, TrainingBlock
-from planner_core.enums import WorkoutStatusNormalized
+from planner_core.enums import PlannedWorkoutLifecycleStatus, WorkoutStatusNormalized
 from server.common.exceptions import NotFoundError
 from server.schemas.dashboard import BlockStats, DashboardSummary
+from server.services.training_cycle_lifecycle_service import get_active_cycle
 
 
 ZERO = Decimal("0")
@@ -37,10 +38,28 @@ def get_dashboard_summary(
     user_id: int,
     cycle_id: int | None = None,
 ) -> DashboardSummary:
+    if cycle_id is None:
+        active_cycle = get_active_cycle(db, user_id)
+        if active_cycle is None:
+            return DashboardSummary(
+                planned_distance_km=ZERO,
+                actual_distance_km=ZERO,
+                completion_rate=ZERO,
+                workout_count=0,
+                completed_count=0,
+                missed_count=0,
+                avg_rpe=None,
+                max_pain_level=None,
+                main_type_distribution={},
+            )
+        cycle_id = active_cycle.id
     stmt = (
         select(PlannedWorkout)
         .options(selectinload(PlannedWorkout.workout_log))
-        .where(PlannedWorkout.user_id == user_id)
+        .where(
+            PlannedWorkout.user_id == user_id,
+            PlannedWorkout.lifecycle_status == PlannedWorkoutLifecycleStatus.planned,
+        )
     )
     if cycle_id is not None:
         stmt = stmt.where(PlannedWorkout.cycle_id == cycle_id)

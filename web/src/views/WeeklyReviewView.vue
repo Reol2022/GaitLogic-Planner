@@ -138,7 +138,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 
-import { listTrainingCycles } from "@/api/trainingCycles";
+import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles";
 import { listTrainingBlocks } from "@/api/trainingBlocks";
 import { trackUsageEvent } from "@/api/usageEvents";
 import {
@@ -294,7 +294,13 @@ async function rejectDraft() {
 onMounted(async () => {
   trackUsageEvent("weekly_review_viewed");
   cycles.value = await listTrainingCycles();
-  if (!cycleId.value) cycleId.value = cycles.value[0]?.id || null;
+  if (!cycleId.value) {
+    try {
+      cycleId.value = (await getActiveTrainingCycle()).id;
+    } catch {
+      cycleId.value = null;
+    }
+  }
   if (cycleId.value) {
     blocks.value = await listTrainingBlocks(cycleId.value);
     if (!sourceBlockId.value) sourceBlockId.value = blocks.value[blocks.value.length - 1]?.id || null;

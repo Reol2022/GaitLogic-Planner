@@ -20,6 +20,9 @@ class TrainingCalendarDayRead(BaseModel):
     rpe: int | None = None
     review_note: str | None = None
     completion_rate: Decimal | None = None
+    source_type: str | None = None
+    subjective_status: str | None = None
+    has_garmin_activity: bool = False
 
 
 class TrainingCalendarSummaryRead(BaseModel):

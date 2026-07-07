@@ -466,6 +466,8 @@ body {
 .table-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .table-footer {
@@ -794,6 +796,28 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .metric-grid {
+    gap: 8px;
+  }
+
+  .metric-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 58px;
+    padding: 10px 12px;
+  }
+
+  .metric-label {
+    margin: 0;
+    font-size: 12px;
+  }
+
+  .metric-value {
+    margin: 0;
+    font-size: 20px;
+  }
+
   .toolbar,
   .filter-row,
   .table-footer {
@@ -813,6 +837,78 @@ body {
   .table-footer .el-button {
     width: 100%;
     margin-left: 0;
+  }
+
+  .panel:has(.el-table),
+  .panel-body:has(.el-table),
+  .summary-table-card:has(.el-table),
+  .chart-card:has(.el-table),
+  .week-block:has(.el-table),
+  .el-dialog__body:has(.el-table) {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+  }
+
+  .el-table {
+    width: max-content !important;
+    min-width: 100% !important;
+    max-width: none;
+    font-size: 12px;
+  }
+
+  .el-table__inner-wrapper,
+  .el-table__body-wrapper,
+  .el-scrollbar,
+  .el-scrollbar__wrap,
+  .el-scrollbar__view {
+    overflow: visible !important;
+  }
+
+  .el-table .el-table__cell {
+    padding: 7px 0;
+  }
+
+  .el-table .cell {
+    padding: 0 8px;
+    line-height: 1.45;
+  }
+
+  .el-table .el-table__fixed-right,
+  .el-table .el-table__fixed,
+  .el-table .el-table__fixed-right-patch {
+    display: none !important;
+  }
+
+  .el-table .el-table__fixed-right .el-table__fixed-body-wrapper,
+  .el-table .el-table__fixed .el-table__fixed-body-wrapper,
+  .el-table .el-table__fixed-right .el-table__fixed-header-wrapper,
+  .el-table .el-table__fixed .el-table__fixed-header-wrapper {
+    position: static !important;
+  }
+
+  .table-actions {
+    gap: 6px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    min-width: max-content;
+  }
+
+  .table-actions .el-button,
+  .table-actions .el-dropdown,
+  .table-actions .el-dropdown .el-button {
+    flex: 0 0 auto;
+    width: auto !important;
+    min-width: 56px;
+    margin-left: 0 !important;
+    white-space: nowrap;
+  }
+
+  .table-actions .el-button .el-icon + span,
+  .table-actions .el-button span {
+    display: inline-flex;
   }
 
   .el-dialog {

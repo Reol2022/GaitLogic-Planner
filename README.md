@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.9.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.9.3-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -48,6 +48,8 @@ AI 生成内容仅作为训练计划草稿，不构成医疗建议、康复建�
 | --- | --- |
 | 训练计划在 Excel，执行记录在手表，复盘在聊天记录里 | 用训练周期、训练块、每日计划、日志和统计把数据收束到一个系统 |
 | 新用户一打开就被复杂 Dashboard 淹没 | 登录后默认进入“今日训练”，移动端使用底部导航 |
+| 手机查看表格和功能详情时操作不顺手 | 移动端表格支持横向滚动，操作按钮不压缩；从“我的”进入的页面支持右滑返回 |
+| 列表里出现英文状态值 | 常见业务状态、同步状态和草稿状态统一映射为中文展示 |
 | 想用 AI 生成课表，但不希望它直接覆盖正式计划 | AI 只生成草稿，必须由用户确认后才应用 |
 | 想看一个月到底完成了哪些训练 | 训练日历按月展示计划、状态、今天高亮和完成统计 |
 | 每周训练结束后不知道如何调整下一周 | 后端确定性统计与规则引擎先判断，AI 只生成调整草稿，用户确认后才应用 |
@@ -77,7 +79,15 @@ AI 生成内容仅作为训练计划草稿，不构成医疗建议、康复建�
 | 📝 智能周复盘 | 🧭 负荷与恢复 | ✅ 用户确认后应用 | 🛡 通用安全校验 |
 | 📱 移动端底部导航 | 🧩 训练块 | 🧮 配速计算器 | ⚙️ AI 教练偏好 |
 | ↩️ 我的页返回路径 | 📥 Excel 导入 | 📥 训练记录导入 | 🛠 管理后台 |
+| 🔗 Garmin 手动同步 | 🧾 同步任务队列 | 🧬 训练数据标准化 | 🔐 用户令牌加密 |
+| 🟢 唯一当前周期 | 🗂 周期生命周期 | 🔁 周期切换事务 | 🧭 Garmin 周期归属 |
 | 🧾 内测反馈 | 🏷 配速规则 | 📈 完成率与跑量趋势 | 🔑 模型配置 |
+
+训练周期支持 `draft`、`active`、`completed`、`archived` 生命周期；同一用户最多只有一个 `active` 周期。新建周期默认是草稿，启用新周期会结束旧当前周期，并把旧周期未来未完成计划标记为 `superseded`，已完成日志、Garmin 关联和复盘数据会保留。
+
+Garmin 同步采用用户手动触发和后台队列处理；手动创建同步任务后会自动安排一次后台执行，页面会轮询任务状态，刷新任务会同步更新任务和活动列表，失败或部分成功任务支持重试。默认开启“同步后自动导入训练计划”，同步后的活动会写入或合并到 `WorkoutLog`，再关联计划、日历和统计；关闭该开关后仅保存 Garmin 活动，用户可手动重新处理。同日连续活动可合并为一堂复合训练，无法判断时进入待处理。
+
+本地开发 CORS 通过 `BACKEND_CORS_ORIGINS` 和 `BACKEND_CORS_ORIGIN_REGEX` 配置，默认支持 `localhost`、`127.0.0.1`、preview 端口和常见局域网调试地址。
 
 ---
 
@@ -742,12 +752,14 @@ npm run build
 - 训练统计与复盘；
 - 配速计算与配速规则；
 - Excel 标准模板导入；
+- Garmin 手动同步；
 - AI 训练计划草稿；
 - 管理后台基础配置。
 
 明确不做：
 
-- 不接 Garmin / 高驰账号直连；
+- 不做 Garmin / 高驰定时自动同步；
+- 不保存完整 GPS 轨迹或逐秒位置数据；
 - 不做 App / 小程序；
 - 不做广告系统；
 - 不做付费系统；

@@ -588,6 +588,8 @@ def _new_log(user_id: int, activity: NormalizedWorkoutActivity, source_type: str
     log = WorkoutLog(
         user_id=user_id,
         planned_workout_id=plan.id if plan else None,
+        cycle_id=plan.cycle_id if plan else None,
+        cycle_assignment_status="assigned" if plan else "unassigned",
         status_raw="completed",
         status_normalized=WorkoutStatusNormalized.completed_normal,
         pain_scale_version=PainScaleVersion.native_0_10,

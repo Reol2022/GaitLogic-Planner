@@ -31,6 +31,18 @@ class BlockType(str, Enum):
     special = "special"
 
 
+class TrainingCycleStatus(str, Enum):
+    draft = "draft"
+    active = "active"
+    completed = "completed"
+    archived = "archived"
+
+
+class PlannedWorkoutLifecycleStatus(str, Enum):
+    planned = "planned"
+    superseded = "superseded"
+
+
 class ExcelImportStatus(str, Enum):
     pending = "pending"
     running = "running"
@@ -134,6 +146,7 @@ class PainScaleVersion(str, Enum):
 class FeatureKey(str, Enum):
     training_readiness = "training_readiness"
     workout_import = "workout_import"
+    garmin_sync = "garmin_sync"
 
 
 class ReadinessRecommendationAction(str, Enum):
@@ -214,3 +227,11 @@ class UsageEventName(str, Enum):
     workout_import_applied = "workout_import_applied"
     workout_import_cancelled = "workout_import_cancelled"
     workout_import_subjective_data_prompt_viewed = "workout_import_subjective_data_prompt_viewed"
+    garmin_sync_page_viewed = "garmin_sync_page_viewed"
+    garmin_connect_started = "garmin_connect_started"
+    garmin_connect_succeeded = "garmin_connect_succeeded"
+    garmin_connect_failed = "garmin_connect_failed"
+    garmin_sync_requested = "garmin_sync_requested"
+    garmin_sync_succeeded = "garmin_sync_succeeded"
+    garmin_sync_failed = "garmin_sync_failed"
+    garmin_activity_resolution_saved = "garmin_activity_resolution_saved"

@@ -8,13 +8,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from planner_core.database.models import PlannedWorkout, WorkoutLog
-from planner_core.enums import WorkoutMainTypeNormalized, WorkoutStatusNormalized
+from planner_core.enums import PlannedWorkoutLifecycleStatus, WorkoutMainTypeNormalized, WorkoutStatusNormalized
 from server.common.exceptions import BadRequestError
 from server.schemas.training_calendar import (
     TrainingCalendarDayRead,
     TrainingCalendarRead,
     TrainingCalendarSummaryRead,
 )
+from server.services.training_cycle_lifecycle_service import get_active_cycle
 
 WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
@@ -27,11 +28,23 @@ def get_training_calendar(
     month: str,
 ) -> TrainingCalendarRead:
     start_date, end_date = month_bounds(month)
+    if cycle_id is None:
+        active_cycle = get_active_cycle(db, user_id)
+        if active_cycle is None:
+            days = [
+                build_day(date(start_date.year, start_date.month, day_number), None, None)
+                for day_number in range(1, end_date.day + 1)
+            ]
+            return TrainingCalendarRead(month=month, days=days, summary=build_summary(days))
+        cycle_id = active_cycle.id
     stmt = (
         select(PlannedWorkout)
-        .options(selectinload(PlannedWorkout.workout_log))
+        .options(
+            selectinload(PlannedWorkout.workout_log).selectinload(WorkoutLog.external_activity_links)
+        )
         .where(
             PlannedWorkout.user_id == user_id,
+            PlannedWorkout.lifecycle_status == PlannedWorkoutLifecycleStatus.planned,
             PlannedWorkout.workout_date >= start_date,
             PlannedWorkout.workout_date <= end_date,
         )
@@ -44,10 +57,11 @@ def get_training_calendar(
         db.scalars(
             select(WorkoutLog).where(
                 WorkoutLog.user_id == user_id,
+                WorkoutLog.cycle_id == cycle_id,
                 WorkoutLog.planned_workout_id.is_(None),
                 WorkoutLog.activity_date >= start_date,
                 WorkoutLog.activity_date <= end_date,
-            )
+            ).options(selectinload(WorkoutLog.external_activity_links))
         )
     )
 
@@ -92,6 +106,9 @@ def build_day(current_date: date, workout: PlannedWorkout | None, unplanned_log:
                 rpe=unplanned_log.rpe,
                 review_note=unplanned_log.review_note,
                 completion_rate=None,
+                source_type=unplanned_log.source_type,
+                subjective_status=unplanned_log.subjective_status,
+                has_garmin_activity=has_garmin_activity(unplanned_log),
             )
         return TrainingCalendarDayRead(
             date=current_date,
@@ -124,7 +141,16 @@ def build_day(current_date: date, workout: PlannedWorkout | None, unplanned_log:
         rpe=log.rpe if log else None,
         review_note=log.review_note if log else None,
         completion_rate=completion_rate,
+        source_type=log.source_type if log else None,
+        subjective_status=log.subjective_status if log else None,
+        has_garmin_activity=has_garmin_activity(log),
     )
+
+
+def has_garmin_activity(log: WorkoutLog | None) -> bool:
+    if log is None:
+        return False
+    return bool(log.external_activity_links)
 
 
 def build_summary(days: list[TrainingCalendarDayRead]) -> TrainingCalendarSummaryRead:

@@ -15,7 +15,7 @@
 
         <el-form label-position="top" class="calculator-form">
           <el-form-item label="配速档案名称">
-            <el-input v-model="form.name" placeholder="半马 PB 1:12:32" />
+            <el-input v-model="form.name" placeholder="自定义配速档案" />
           </el-form-item>
 
           <div class="form-row">
@@ -63,9 +63,9 @@
           </el-collapse>
 <!-- 
           <div class="quick-times">
-            <button type="button" @click="setRaceResult('00:16:24')">5K 16:24</button>
-            <button type="button" @click="setRaceResult('01:12:32')">半马 1:12:32</button>
-            <button type="button" @click="setRaceResult('02:54:00')">全马 2:54:00</button>
+            <button type="button" @click="setRaceResult('00:25:00')">5K 示例</button>
+            <button type="button" @click="setRaceResult('02:00:00')">半马 示例</button>
+            <button type="button" @click="setRaceResult('04:30:00')">全马 示例</button>
           </div> -->
 
           <div class="form-actions">
@@ -153,7 +153,7 @@
           <p>保存后的档案可以一键写入当前用户的配速规则。</p>
         </div>
       </div>
-      <el-table :data="profiles" v-loading="loadingProfiles">
+      <el-table :data="profiles" v-loading="loadingProfiles" class="mobile-friendly-table">
         <el-table-column prop="name" label="档案名称" min-width="190" />
         <el-table-column label="距离" width="120">
           <template #default="{ row }">{{ raceLabel(row.race_distance) }}</template>
@@ -167,7 +167,7 @@
         <el-table-column label="创建时间" width="170">
           <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" min-width="220" class-name="action-column">
           <template #default="{ row }">
             <div class="table-actions">
               <el-button size="small" @click="loadProfileDetail(row.id)">查看详情</el-button>
@@ -237,8 +237,8 @@ const raceDistanceOptions: Array<{ label: string; value: RaceDistance }> = [
 ];
 
 const form = reactive<PaceCalculatorForm>({
-  name: "半马 PB 1:12:32",
-  race_distance: "half_marathon",
+  name: "默认配速档案",
+  race_distance: "5000m",
   age: null,
   sex: "unknown",
 });

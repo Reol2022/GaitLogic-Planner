@@ -2,8 +2,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from planner_core.database.models import TrainingCycle
+from planner_core.enums import TrainingCycleStatus
 from server.common.exceptions import NotFoundError
 from server.schemas.training_cycle import TrainingCycleCreate, TrainingCycleUpdate
+from server.services import training_cycle_lifecycle_service
 
 
 def list_training_cycles(db: Session, user_id: int) -> list[TrainingCycle]:
@@ -14,6 +16,26 @@ def list_training_cycles(db: Session, user_id: int) -> list[TrainingCycle]:
             .order_by(TrainingCycle.start_date, TrainingCycle.id)
         )
     )
+
+
+def list_history_cycles(db: Session, user_id: int) -> list[TrainingCycle]:
+    return list(
+        db.scalars(
+            select(TrainingCycle)
+            .where(
+                TrainingCycle.user_id == user_id,
+                TrainingCycle.status.in_([TrainingCycleStatus.completed, TrainingCycleStatus.archived]),
+            )
+            .order_by(TrainingCycle.actual_end_date.desc(), TrainingCycle.end_date.desc(), TrainingCycle.id.desc())
+        )
+    )
+
+
+def get_active_cycle(db: Session, user_id: int) -> TrainingCycle:
+    cycle = training_cycle_lifecycle_service.get_active_cycle(db, user_id)
+    if cycle is None:
+        raise NotFoundError("Current user has no active training cycle.")
+    return cycle
 
 
 def get_training_cycle(db: Session, cycle_id: int, user_id: int) -> TrainingCycle:
@@ -29,11 +51,7 @@ def get_training_cycle(db: Session, cycle_id: int, user_id: int) -> TrainingCycl
 
 
 def create_training_cycle(db: Session, payload: TrainingCycleCreate, user_id: int) -> TrainingCycle:
-    cycle = TrainingCycle(**payload.model_dump(), user_id=user_id)
-    db.add(cycle)
-    db.commit()
-    db.refresh(cycle)
-    return cycle
+    return training_cycle_lifecycle_service.create_draft(db, payload, user_id)
 
 
 def update_training_cycle(

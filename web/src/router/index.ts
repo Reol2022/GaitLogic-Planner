@@ -125,6 +125,12 @@ const router = createRouter({
       meta: { title: "训练记录导入" },
     },
     {
+      path: "/garmin-sync",
+      name: "GarminSync",
+      component: () => import("@/views/GarminSyncView.vue"),
+      meta: { title: "Garmin 同步" },
+    },
+    {
       path: "/feedback",
       name: "Feedback",
       component: () => import("@/views/FeedbackView.vue"),

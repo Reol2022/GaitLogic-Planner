@@ -10,6 +10,12 @@ from planner_core.database.models import (
     BlockReview,
     DailyRecoveryCheckin,
     ExcelImportJob,
+    ExternalAccountConnection,
+    ExternalActivity,
+    ExternalActivityLap,
+    ExternalActivityRaw,
+    ExternalActivityResolution,
+    ExternalSyncJob,
     FeatureAccess,
     Feedback,
     PaceProfile,
@@ -28,6 +34,7 @@ from planner_core.database.models import (
     WorkoutImportBatch,
     WorkoutImportItem,
     WorkoutLog,
+    WorkoutLogExternalActivity,
 )
 
 __all__ = [
@@ -42,6 +49,12 @@ __all__ = [
     "BlockReview",
     "DailyRecoveryCheckin",
     "ExcelImportJob",
+    "ExternalAccountConnection",
+    "ExternalActivity",
+    "ExternalActivityLap",
+    "ExternalActivityRaw",
+    "ExternalActivityResolution",
+    "ExternalSyncJob",
     "FeatureAccess",
     "Feedback",
     "PaceProfile",
@@ -60,4 +73,5 @@ __all__ = [
     "WorkoutImportBatch",
     "WorkoutImportItem",
     "WorkoutLog",
+    "WorkoutLogExternalActivity",
 ]

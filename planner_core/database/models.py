@@ -36,9 +36,11 @@ from planner_core.enums import (
     PainScaleVersion,
     PainTrend,
     PaceZoneCode,
+    PlannedWorkoutLifecycleStatus,
     RaceDistance,
     ReadinessDataQuality,
     RecoveryCheckinSource,
+    TrainingCycleStatus,
     TrainingStatus,
     UIMode,
     UsageEventName,
@@ -54,6 +56,18 @@ def enum_values(enum_cls: type) -> list[str]:
 
 block_type_enum = Enum(
     BlockType,
+    values_callable=enum_values,
+    native_enum=False,
+    length=16,
+)
+training_cycle_status_enum = Enum(
+    TrainingCycleStatus,
+    values_callable=enum_values,
+    native_enum=False,
+    length=16,
+)
+planned_workout_lifecycle_status_enum = Enum(
+    PlannedWorkoutLifecycleStatus,
     values_callable=enum_values,
     native_enum=False,
     length=16,
@@ -210,11 +224,19 @@ class UserAccount(IdMixin, TimestampMixin, Base):
     readiness_assessments: Mapped[list[TrainingReadinessAssessment]] = relationship(back_populates="user")
     workout_import_batches: Mapped[list[WorkoutImportBatch]] = relationship(back_populates="user")
     workout_import_audits: Mapped[list[WorkoutImportAudit]] = relationship(back_populates="user")
+    external_account_connections: Mapped[list[ExternalAccountConnection]] = relationship(back_populates="user")
+    external_sync_jobs: Mapped[list[ExternalSyncJob]] = relationship(back_populates="user")
+    external_activities: Mapped[list[ExternalActivity]] = relationship(back_populates="user")
+    external_activity_links: Mapped[list[WorkoutLogExternalActivity]] = relationship(back_populates="user")
 
 
 class TrainingCycle(IdMixin, TimestampMixin, Base):
     __tablename__ = "training_cycles"
-    __table_args__ = MYSQL_TABLE_ARGS
+    __table_args__ = (
+        UniqueConstraint("active_user_id", name="uq_training_cycles_one_active_per_user"),
+        Index("ix_training_cycles_user_status", "user_id", "status"),
+        MYSQL_TABLE_ARGS,
+    )
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("user_account.id", ondelete="CASCADE"),
@@ -225,6 +247,21 @@ class TrainingCycle(IdMixin, TimestampMixin, Base):
     goal: Mapped[str | None] = mapped_column(String(255))
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
+    actual_start_date: Mapped[date | None] = mapped_column(Date)
+    actual_end_date: Mapped[date | None] = mapped_column(Date)
+    status: Mapped[TrainingCycleStatus] = mapped_column(
+        training_cycle_status_enum,
+        nullable=False,
+        default=TrainingCycleStatus.draft,
+        server_default=TrainingCycleStatus.draft.value,
+    )
+    active_user_id: Mapped[int | None] = mapped_column(Integer)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    superseded_by_cycle_id: Mapped[int | None] = mapped_column(
+        ForeignKey("training_cycles.id", ondelete="SET NULL"),
+        index=True,
+    )
     target_race_name: Mapped[str | None] = mapped_column(String(128))
     target_race_date: Mapped[date | None] = mapped_column(Date)
     target_result: Mapped[str | None] = mapped_column(String(64))
@@ -311,6 +348,7 @@ class PlannedWorkout(IdMixin, TimestampMixin, Base):
         UniqueConstraint("cycle_id", "workout_date", "session_index", name="uq_planned_workouts_cycle_date_session"),
         Index("ix_planned_workouts_workout_date", "workout_date"),
         Index("ix_planned_workouts_main_type_normalized", "main_type_normalized"),
+        Index("ix_planned_workouts_lifecycle", "user_id", "cycle_id", "lifecycle_status"),
         MYSQL_TABLE_ARGS,
     )
 
@@ -352,6 +390,12 @@ class PlannedWorkout(IdMixin, TimestampMixin, Base):
     is_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     lock_reason: Mapped[str | None] = mapped_column(String(255))
     plan_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    lifecycle_status: Mapped[PlannedWorkoutLifecycleStatus] = mapped_column(
+        planned_workout_lifecycle_status_enum,
+        nullable=False,
+        default=PlannedWorkoutLifecycleStatus.planned,
+        server_default=PlannedWorkoutLifecycleStatus.planned.value,
+    )
 
     user: Mapped[UserAccount] = relationship(back_populates="planned_workouts")
     cycle: Mapped[TrainingCycle] = relationship(back_populates="planned_workouts")
@@ -369,6 +413,7 @@ class WorkoutLog(IdMixin, TimestampMixin, Base):
     __tablename__ = "workout_logs"
     __table_args__ = (
         UniqueConstraint("planned_workout_id", name="uq_workout_logs_planned_workout"),
+        Index("ix_workout_logs_user_cycle_date", "user_id", "cycle_id", "activity_date"),
         Index("ix_workout_logs_user_activity_date", "user_id", "activity_date", "session_index"),
         Index("ix_workout_logs_activity_fingerprint", "user_id", "activity_fingerprint"),
         Index("ix_workout_logs_status_normalized", "status_normalized"),
@@ -381,6 +426,11 @@ class WorkoutLog(IdMixin, TimestampMixin, Base):
 
     planned_workout_id: Mapped[int | None] = mapped_column(
         ForeignKey("planned_workouts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    cycle_id: Mapped[int | None] = mapped_column(
+        ForeignKey("training_cycles.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -444,9 +494,15 @@ class WorkoutLog(IdMixin, TimestampMixin, Base):
     external_activity_id: Mapped[str | None] = mapped_column(String(128))
     activity_fingerprint: Mapped[str | None] = mapped_column(String(64))
     field_sources_json: Mapped[dict | None] = mapped_column(JSON)
+    subjective_status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", server_default="pending")
+    cycle_assignment_status: Mapped[str] = mapped_column(String(32), nullable=False, default="assigned", server_default="assigned")
 
     user: Mapped[UserAccount] = relationship(back_populates="workout_logs")
     planned_workout: Mapped[PlannedWorkout | None] = relationship(back_populates="workout_log")
+    cycle: Mapped[TrainingCycle | None] = relationship()
+    external_activity_links: Mapped[list[WorkoutLogExternalActivity]] = relationship(
+        back_populates="workout_log", cascade="all, delete-orphan", passive_deletes=True
+    )
 
 
 class BlockReview(IdMixin, TimestampMixin, Base):
@@ -771,6 +827,268 @@ class WorkoutImportAudit(IdMixin, TimestampMixin, Base):
 
     user: Mapped[UserAccount] = relationship(back_populates="workout_import_audits")
     batch: Mapped[WorkoutImportBatch] = relationship(back_populates="audit")
+
+
+class ExternalAccountConnection(IdMixin, TimestampMixin, Base):
+    __tablename__ = "external_account_connection"
+    __table_args__ = (
+        UniqueConstraint("active_user_provider_key", name="uq_external_connection_active_user_provider"),
+        UniqueConstraint("active_account_key", name="uq_external_connection_active_account"),
+        Index("ix_external_connection_user_provider", "user_id", "provider", "status"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, default="garmin", server_default="garmin")
+    region: Mapped[str | None] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="connected", server_default="connected")
+    masked_account_identifier: Mapped[str | None] = mapped_column(String(255))
+    account_identifier_hash: Mapped[str | None] = mapped_column(String(64))
+    active_user_provider_key: Mapped[str | None] = mapped_column(String(128))
+    active_account_key: Mapped[str | None] = mapped_column(String(128))
+    encrypted_token_payload: Mapped[str | None] = mapped_column(Text)
+    token_key_version: Mapped[str | None] = mapped_column(String(32))
+    connector_version: Mapped[str | None] = mapped_column(String(32))
+    auto_import_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    last_authenticated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_successful_sync_at: Mapped[datetime | None] = mapped_column(DateTime)
+    sync_cursor: Mapped[str | None] = mapped_column(String(512))
+    last_error_code: Mapped[str | None] = mapped_column(String(64))
+    last_error_at: Mapped[datetime | None] = mapped_column(DateTime)
+    disconnected_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    user: Mapped[UserAccount] = relationship(back_populates="external_account_connections")
+    sync_jobs: Mapped[list[ExternalSyncJob]] = relationship(back_populates="connection")
+    raw_activities: Mapped[list[ExternalActivityRaw]] = relationship(back_populates="connection")
+    activities: Mapped[list[ExternalActivity]] = relationship(back_populates="connection")
+
+
+class ExternalSyncJob(IdMixin, TimestampMixin, Base):
+    __tablename__ = "external_sync_job"
+    __table_args__ = (
+        UniqueConstraint("connection_id", "idempotency_key", name="uq_external_sync_job_idempotency"),
+        Index("ix_external_sync_job_status_created", "status", "created_at"),
+        Index("ix_external_sync_job_user_created", "user_id", "created_at"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    connection_id: Mapped[int] = mapped_column(ForeignKey("external_account_connection.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, default="garmin", server_default="garmin")
+    sync_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    requested_start: Mapped[datetime | None] = mapped_column(DateTime)
+    requested_end: Mapped[datetime | None] = mapped_column(DateTime)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued", server_default="queued")
+    idempotency_key: Mapped[str | None] = mapped_column(String(128))
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    fetched_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    created_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    updated_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    duplicate_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    matched_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    unplanned_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    needs_review_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    ignored_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    failed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    started_at: Mapped[datetime | None] = mapped_column(DateTime)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    safe_error_message: Mapped[str | None] = mapped_column(String(255))
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    user: Mapped[UserAccount] = relationship(back_populates="external_sync_jobs")
+    connection: Mapped[ExternalAccountConnection] = relationship(back_populates="sync_jobs")
+    raw_activities: Mapped[list[ExternalActivityRaw]] = relationship(back_populates="sync_job")
+    activities: Mapped[list[ExternalActivity]] = relationship(back_populates="sync_job")
+
+
+class ExternalActivityRaw(IdMixin, TimestampMixin, Base):
+    __tablename__ = "external_activity_raw"
+    __table_args__ = (
+        UniqueConstraint("provider", "external_activity_id", "payload_hash", name="uq_external_raw_payload"),
+        Index("ix_external_raw_user_expires", "user_id", "expires_at"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    connection_id: Mapped[int] = mapped_column(ForeignKey("external_account_connection.id", ondelete="CASCADE"), nullable=False, index=True)
+    sync_job_id: Mapped[int | None] = mapped_column(ForeignKey("external_sync_job.id", ondelete="SET NULL"), index=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, default="garmin", server_default="garmin")
+    external_activity_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    raw_payload_json: Mapped[dict | None] = mapped_column(JSON)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime)
+    desensitization_version: Mapped[str] = mapped_column(String(32), nullable=False, default="garmin-raw-v1", server_default="garmin-raw-v1")
+
+    user: Mapped[UserAccount] = relationship()
+    connection: Mapped[ExternalAccountConnection] = relationship(back_populates="raw_activities")
+    sync_job: Mapped[ExternalSyncJob | None] = relationship(back_populates="raw_activities")
+    activity: Mapped[ExternalActivity | None] = relationship(back_populates="raw_activity", uselist=False)
+
+
+class ExternalActivity(IdMixin, TimestampMixin, Base):
+    __tablename__ = "external_activity"
+    __table_args__ = (
+        UniqueConstraint("provider", "external_activity_id", name="uq_external_activity_provider_id"),
+        Index("ix_external_activity_user_date", "user_id", "activity_date", "processing_status"),
+        Index("ix_external_activity_user_status", "user_id", "processing_status"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    connection_id: Mapped[int] = mapped_column(ForeignKey("external_account_connection.id", ondelete="CASCADE"), nullable=False, index=True)
+    sync_job_id: Mapped[int | None] = mapped_column(ForeignKey("external_sync_job.id", ondelete="SET NULL"), index=True)
+    raw_activity_id: Mapped[int | None] = mapped_column(ForeignKey("external_activity_raw.id", ondelete="SET NULL"), index=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, default="garmin", server_default="garmin")
+    external_activity_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    connector_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    normalization_version: Mapped[str] = mapped_column(String(32), nullable=False, default="garmin-activity-v1", server_default="garmin-activity-v1")
+    segmentation_version: Mapped[str | None] = mapped_column(String(64))
+    classification_version: Mapped[str | None] = mapped_column(String(64))
+    payload_hash: Mapped[str | None] = mapped_column(String(64))
+    source_updated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime)
+    activity_name: Mapped[str | None] = mapped_column(String(255))
+    activity_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    activity_subtype: Mapped[str | None] = mapped_column(String(64))
+    start_time_utc: Mapped[datetime | None] = mapped_column(DateTime)
+    start_time_local: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Asia/Shanghai", server_default="Asia/Shanghai")
+    activity_date: Mapped[date] = mapped_column(Date, nullable=False)
+    source_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    processing_status: Mapped[str] = mapped_column(String(32), nullable=False, default="synced", server_default="synced")
+    resolution_status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", server_default="pending")
+    apply_status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_applied", server_default="not_applied")
+    composite_session_key: Mapped[str | None] = mapped_column(String(128))
+    match_confidence: Mapped[str | None] = mapped_column(String(16))
+    planned_workout_id: Mapped[int | None] = mapped_column(ForeignKey("planned_workouts.id", ondelete="SET NULL"), index=True)
+    workout_log_id: Mapped[int | None] = mapped_column(ForeignKey("workout_logs.id", ondelete="SET NULL"), index=True)
+    distance_m: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    duration_seconds: Mapped[int | None] = mapped_column(Integer)
+    timer_time_seconds: Mapped[int | None] = mapped_column(Integer)
+    moving_time_seconds: Mapped[int | None] = mapped_column(Integer)
+    elapsed_time_seconds: Mapped[int | None] = mapped_column(Integer)
+    average_speed_mps: Mapped[Decimal | None] = mapped_column(Numeric(8, 3))
+    average_pace_seconds_per_km: Mapped[int | None] = mapped_column(Integer)
+    max_speed_mps: Mapped[Decimal | None] = mapped_column(Numeric(8, 3))
+    best_pace_seconds_per_km: Mapped[int | None] = mapped_column(Integer)
+    average_heart_rate_bpm: Mapped[int | None] = mapped_column(Integer)
+    max_heart_rate_bpm: Mapped[int | None] = mapped_column(Integer)
+    min_heart_rate_bpm: Mapped[int | None] = mapped_column(Integer)
+    average_cadence_spm: Mapped[int | None] = mapped_column(Integer)
+    max_cadence_spm: Mapped[int | None] = mapped_column(Integer)
+    cadence_normalization_method: Mapped[str | None] = mapped_column(String(64))
+    elevation_gain_m: Mapped[int | None] = mapped_column(Integer)
+    elevation_loss_m: Mapped[int | None] = mapped_column(Integer)
+    calories_kcal: Mapped[int | None] = mapped_column(Integer)
+    average_stride_length_m: Mapped[Decimal | None] = mapped_column(Numeric(6, 3))
+    average_vertical_ratio_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    average_vertical_oscillation_cm: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    average_ground_contact_time_ms: Mapped[int | None] = mapped_column(Integer)
+    ground_contact_balance_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    average_running_power_w: Mapped[int | None] = mapped_column(Integer)
+    max_running_power_w: Mapped[int | None] = mapped_column(Integer)
+    garmin_primary_benefit: Mapped[str | None] = mapped_column(String(128))
+    garmin_aerobic_training_effect: Mapped[Decimal | None] = mapped_column(Numeric(4, 2))
+    garmin_anaerobic_training_effect: Mapped[Decimal | None] = mapped_column(Numeric(4, 2))
+    garmin_training_load: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    garmin_recovery_time_seconds: Mapped[int | None] = mapped_column(Integer)
+    high_intensity_distance_m: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    data_quality: Mapped[str] = mapped_column(String(32), nullable=False, default="valid", server_default="valid")
+    quality_warnings_json: Mapped[list | None] = mapped_column(JSON)
+    field_sources_json: Mapped[dict | None] = mapped_column(JSON)
+    ignored_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    user: Mapped[UserAccount] = relationship(back_populates="external_activities")
+    connection: Mapped[ExternalAccountConnection] = relationship(back_populates="activities")
+    sync_job: Mapped[ExternalSyncJob | None] = relationship(back_populates="activities")
+    raw_activity: Mapped[ExternalActivityRaw | None] = relationship(back_populates="activity")
+    planned_workout: Mapped[PlannedWorkout | None] = relationship()
+    workout_log: Mapped[WorkoutLog | None] = relationship()
+    laps: Mapped[list[ExternalActivityLap]] = relationship(
+        back_populates="activity", cascade="all, delete-orphan", passive_deletes=True
+    )
+    workout_links: Mapped[list[WorkoutLogExternalActivity]] = relationship(
+        back_populates="external_activity", cascade="all, delete-orphan", passive_deletes=True
+    )
+    resolutions: Mapped[list[ExternalActivityResolution]] = relationship(
+        back_populates="external_activity", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class ExternalActivityLap(IdMixin, TimestampMixin, Base):
+    __tablename__ = "external_activity_lap"
+    __table_args__ = (
+        UniqueConstraint("external_activity_id", "lap_index", name="uq_external_activity_lap_index"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    external_activity_id: Mapped[int] = mapped_column(ForeignKey("external_activity.id", ondelete="CASCADE"), nullable=False, index=True)
+    lap_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    external_lap_id: Mapped[str | None] = mapped_column(String(128))
+    start_time: Mapped[datetime | None] = mapped_column(DateTime)
+    start_offset_seconds: Mapped[int | None] = mapped_column(Integer)
+    distance_m: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    duration_seconds: Mapped[int | None] = mapped_column(Integer)
+    timer_time_seconds: Mapped[int | None] = mapped_column(Integer)
+    moving_time_seconds: Mapped[int | None] = mapped_column(Integer)
+    average_speed_mps: Mapped[Decimal | None] = mapped_column(Numeric(8, 3))
+    average_pace_seconds_per_km: Mapped[int | None] = mapped_column(Integer)
+    average_heart_rate_bpm: Mapped[int | None] = mapped_column(Integer)
+    max_heart_rate_bpm: Mapped[int | None] = mapped_column(Integer)
+    average_cadence_spm: Mapped[int | None] = mapped_column(Integer)
+    elevation_gain_m: Mapped[int | None] = mapped_column(Integer)
+    lap_type: Mapped[str | None] = mapped_column(String(64))
+    workout_step_type: Mapped[str | None] = mapped_column(String(64))
+    segment_role: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown", server_default="unknown")
+    classification_source: Mapped[str] = mapped_column(String(64), nullable=False, default="unknown", server_default="unknown")
+    classification_confidence: Mapped[str] = mapped_column(String(16), nullable=False, default="low", server_default="low")
+    data_quality: Mapped[str] = mapped_column(String(32), nullable=False, default="valid", server_default="valid")
+
+    activity: Mapped[ExternalActivity] = relationship(back_populates="laps")
+
+
+class WorkoutLogExternalActivity(IdMixin, TimestampMixin, Base):
+    __tablename__ = "workout_log_external_activity"
+    __table_args__ = (
+        UniqueConstraint("workout_log_id", "external_activity_id", name="uq_workout_log_external_activity"),
+        UniqueConstraint("external_activity_id", name="uq_workout_log_external_single_activity"),
+        Index("ix_workout_log_external_user", "user_id", "workout_log_id"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    workout_log_id: Mapped[int] = mapped_column(ForeignKey("workout_logs.id", ondelete="CASCADE"), nullable=False, index=True)
+    external_activity_id: Mapped[int] = mapped_column(ForeignKey("external_activity.id", ondelete="CASCADE"), nullable=False, index=True)
+    link_type: Mapped[str] = mapped_column(String(32), nullable=False, default="matched", server_default="matched")
+    match_confidence: Mapped[str | None] = mapped_column(String(16))
+    resolution_status: Mapped[str] = mapped_column(String(32), nullable=False, default="auto_applied", server_default="auto_applied")
+    field_sources_json: Mapped[dict | None] = mapped_column(JSON)
+
+    user: Mapped[UserAccount] = relationship(back_populates="external_activity_links")
+    workout_log: Mapped[WorkoutLog] = relationship(back_populates="external_activity_links")
+    external_activity: Mapped[ExternalActivity] = relationship(back_populates="workout_links")
+
+
+class ExternalActivityResolution(IdMixin, TimestampMixin, Base):
+    __tablename__ = "external_activity_resolution"
+    __table_args__ = (
+        Index("ix_external_activity_resolution_user_created", "user_id", "created_at"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    external_activity_id: Mapped[int] = mapped_column(ForeignKey("external_activity.id", ondelete="CASCADE"), nullable=False, index=True)
+    workout_log_id: Mapped[int | None] = mapped_column(ForeignKey("workout_logs.id", ondelete="SET NULL"), index=True)
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    previous_state_json: Mapped[dict | None] = mapped_column(JSON)
+    new_state_json: Mapped[dict | None] = mapped_column(JSON)
+    reason: Mapped[str | None] = mapped_column(String(255))
+    actor_type: Mapped[str] = mapped_column(String(32), nullable=False, default="user", server_default="user")
+
+    external_activity: Mapped[ExternalActivity] = relationship(back_populates="resolutions")
+    workout_log: Mapped[WorkoutLog | None] = relationship()
 
 
 class PaceRule(IdMixin, TimestampMixin, Base):

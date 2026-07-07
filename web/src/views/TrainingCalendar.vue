@@ -7,7 +7,7 @@
     <div class="toolbar calendar-toolbar">
       <div class="filter-row">
         <el-date-picker v-model="month" type="month" value-format="YYYY-MM" placeholder="选择月份" @change="load" />
-        <el-select v-model="cycleId" clearable placeholder="全部训练周期" style="width: 220px" @change="load">
+        <el-select v-model="cycleId" placeholder="当前训练周期" style="width: 220px" @change="load">
           <el-option v-for="cycle in cycles" :key="cycle.id" :label="cycle.name" :value="cycle.id" />
         </el-select>
       </div>
@@ -137,7 +137,7 @@ import { useRouter } from "vue-router";
 import { EditPen, Refresh } from "@element-plus/icons-vue";
 
 import { getTrainingCalendar } from "@/api/trainingCalendar";
-import { listTrainingCycles } from "@/api/trainingCycles";
+import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles";
 import type {
   TrainingCalendarDay,
   TrainingCalendarResult,
@@ -151,6 +151,7 @@ const weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "�
 const todayString = formatLocalDate(new Date());
 const month = ref(todayString.slice(0, 7));
 const cycleId = ref<number | null>(null);
+const activeCycle = ref<TrainingCycle | null>(null);
 const cycles = ref<TrainingCycle[]>([]);
 const calendar = ref<TrainingCalendarResult | null>(null);
 const selectedDay = ref<TrainingCalendarDay | null>(null);
@@ -317,6 +318,13 @@ function formatPace(seconds?: number | null) {
 
 onMounted(async () => {
   cycles.value = await listTrainingCycles();
+  try {
+    activeCycle.value = await getActiveTrainingCycle();
+    cycleId.value = activeCycle.value.id;
+  } catch {
+    activeCycle.value = null;
+    cycleId.value = null;
+  }
   await load();
 });
 </script>

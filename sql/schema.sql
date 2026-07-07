@@ -29,6 +29,13 @@ CREATE TABLE IF NOT EXISTS `training_cycles` (
   `goal` VARCHAR(255) NULL,
   `start_date` DATE NULL,
   `end_date` DATE NULL,
+  `actual_start_date` DATE NULL,
+  `actual_end_date` DATE NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'draft',
+  `active_user_id` BIGINT NULL,
+  `activated_at` DATETIME NULL,
+  `completed_at` DATETIME NULL,
+  `superseded_by_cycle_id` BIGINT NULL,
   `target_race_name` VARCHAR(128) NULL,
   `target_race_date` DATE NULL,
   `target_result` VARCHAR(64) NULL,
@@ -36,9 +43,14 @@ CREATE TABLE IF NOT EXISTS `training_cycles` (
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_training_cycles_one_active_per_user` (`active_user_id`),
   KEY `ix_training_cycles_user_id` (`user_id`),
+  KEY `ix_training_cycles_user_status` (`user_id`, `status`),
+  KEY `ix_training_cycles_superseded_by_cycle_id` (`superseded_by_cycle_id`),
   CONSTRAINT `fk_training_cycles_user_id`
-    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_training_cycles_superseded_by_cycle_id`
+    FOREIGN KEY (`superseded_by_cycle_id`) REFERENCES `training_cycles` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `training_blocks` (
@@ -94,6 +106,7 @@ CREATE TABLE IF NOT EXISTS `planned_workouts` (
   `is_locked` TINYINT(1) NOT NULL DEFAULT 0,
   `lock_reason` VARCHAR(255) NULL,
   `plan_version` INT NOT NULL DEFAULT 1,
+  `lifecycle_status` VARCHAR(16) NOT NULL DEFAULT 'planned',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -103,6 +116,7 @@ CREATE TABLE IF NOT EXISTS `planned_workouts` (
   KEY `ix_planned_workouts_block_id` (`block_id`),
   KEY `ix_planned_workouts_workout_date` (`workout_date`),
   KEY `ix_planned_workouts_main_type_normalized` (`main_type_normalized`),
+  KEY `ix_planned_workouts_lifecycle` (`user_id`, `cycle_id`, `lifecycle_status`),
   CONSTRAINT `fk_planned_workouts_cycle_id`
     FOREIGN KEY (`cycle_id`) REFERENCES `training_cycles` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_planned_workouts_block_id`
@@ -293,6 +307,7 @@ CREATE TABLE IF NOT EXISTS `workout_import_batch` (
 CREATE TABLE IF NOT EXISTS `workout_logs` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `planned_workout_id` BIGINT NULL,
+  `cycle_id` BIGINT NULL,
   `user_id` BIGINT NOT NULL,
   `status_raw` VARCHAR(64) NULL,
   `status_normalized` VARCHAR(32) NOT NULL DEFAULT 'not_started',
@@ -339,18 +354,24 @@ CREATE TABLE IF NOT EXISTS `workout_logs` (
   `external_activity_id` VARCHAR(128) NULL,
   `activity_fingerprint` VARCHAR(64) NULL,
   `field_sources_json` JSON NULL,
+  `subjective_status` VARCHAR(32) NOT NULL DEFAULT 'pending',
+  `cycle_assignment_status` VARCHAR(32) NOT NULL DEFAULT 'assigned',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_workout_logs_planned_workout` (`planned_workout_id`),
   KEY `ix_workout_logs_planned_workout_id` (`planned_workout_id`),
+  KEY `ix_workout_logs_cycle_id` (`cycle_id`),
   KEY `ix_workout_logs_user_id` (`user_id`),
+  KEY `ix_workout_logs_user_cycle_date` (`user_id`, `cycle_id`, `activity_date`),
   KEY `ix_workout_logs_user_activity_date` (`user_id`, `activity_date`, `session_index`),
   KEY `ix_workout_logs_activity_fingerprint` (`user_id`, `activity_fingerprint`),
   KEY `ix_workout_logs_source_import_batch_id` (`source_import_batch_id`),
   KEY `ix_workout_logs_status_normalized` (`status_normalized`),
   CONSTRAINT `fk_workout_logs_planned_workout_id`
     FOREIGN KEY (`planned_workout_id`) REFERENCES `planned_workouts` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_workout_logs_cycle_id`
+    FOREIGN KEY (`cycle_id`) REFERENCES `training_cycles` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_workout_logs_user_id`
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_workout_logs_source_import_batch_id`
@@ -800,4 +821,268 @@ CREATE TABLE IF NOT EXISTS `usage_event` (
   KEY `ix_usage_event_event_occurred` (`event_name`, `occurred_at`),
   CONSTRAINT `fk_usage_event_user_id`
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `external_account_connection` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `provider` VARCHAR(32) NOT NULL DEFAULT 'garmin',
+  `region` VARCHAR(32) NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'connected',
+  `masked_account_identifier` VARCHAR(255) NULL,
+  `account_identifier_hash` VARCHAR(64) NULL,
+  `active_user_provider_key` VARCHAR(128) NULL,
+  `active_account_key` VARCHAR(128) NULL,
+  `encrypted_token_payload` TEXT NULL,
+  `token_key_version` VARCHAR(32) NULL,
+  `connector_version` VARCHAR(32) NULL,
+  `auto_import_enabled` TINYINT(1) NOT NULL DEFAULT 1,
+  `last_authenticated_at` DATETIME NULL,
+  `last_successful_sync_at` DATETIME NULL,
+  `sync_cursor` VARCHAR(512) NULL,
+  `last_error_code` VARCHAR(64) NULL,
+  `last_error_at` DATETIME NULL,
+  `disconnected_at` DATETIME NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_external_connection_active_user_provider` (`active_user_provider_key`),
+  UNIQUE KEY `uq_external_connection_active_account` (`active_account_key`),
+  KEY `ix_external_connection_user_provider` (`user_id`, `provider`, `status`),
+  CONSTRAINT `fk_external_connection_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `external_sync_job` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `connection_id` BIGINT NOT NULL,
+  `provider` VARCHAR(32) NOT NULL DEFAULT 'garmin',
+  `sync_mode` VARCHAR(32) NOT NULL,
+  `requested_start` DATETIME NULL,
+  `requested_end` DATETIME NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'queued',
+  `idempotency_key` VARCHAR(128) NULL,
+  `attempt_count` INT NOT NULL DEFAULT 0,
+  `fetched_count` INT NOT NULL DEFAULT 0,
+  `created_count` INT NOT NULL DEFAULT 0,
+  `updated_count` INT NOT NULL DEFAULT 0,
+  `duplicate_count` INT NOT NULL DEFAULT 0,
+  `matched_count` INT NOT NULL DEFAULT 0,
+  `unplanned_count` INT NOT NULL DEFAULT 0,
+  `needs_review_count` INT NOT NULL DEFAULT 0,
+  `ignored_count` INT NOT NULL DEFAULT 0,
+  `failed_count` INT NOT NULL DEFAULT 0,
+  `started_at` DATETIME NULL,
+  `finished_at` DATETIME NULL,
+  `error_code` VARCHAR(64) NULL,
+  `safe_error_message` VARCHAR(255) NULL,
+  `locked_at` DATETIME NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_external_sync_job_idempotency` (`connection_id`, `idempotency_key`),
+  KEY `ix_external_sync_job_status_created` (`status`, `created_at`),
+  KEY `ix_external_sync_job_user_created` (`user_id`, `created_at`),
+  KEY `ix_external_sync_job_connection_id` (`connection_id`),
+  CONSTRAINT `fk_external_sync_job_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_external_sync_job_connection_id`
+    FOREIGN KEY (`connection_id`) REFERENCES `external_account_connection` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `external_activity_raw` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `connection_id` BIGINT NOT NULL,
+  `sync_job_id` BIGINT NULL,
+  `provider` VARCHAR(32) NOT NULL DEFAULT 'garmin',
+  `external_activity_id` VARCHAR(128) NOT NULL,
+  `payload_hash` VARCHAR(64) NOT NULL,
+  `raw_payload_json` JSON NULL,
+  `fetched_at` DATETIME NOT NULL,
+  `expires_at` DATETIME NULL,
+  `desensitization_version` VARCHAR(32) NOT NULL DEFAULT 'garmin-raw-v1',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_external_raw_payload` (`provider`, `external_activity_id`, `payload_hash`),
+  KEY `ix_external_raw_user_expires` (`user_id`, `expires_at`),
+  KEY `ix_external_raw_connection_id` (`connection_id`),
+  KEY `ix_external_raw_sync_job_id` (`sync_job_id`),
+  CONSTRAINT `fk_external_raw_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_external_raw_connection_id`
+    FOREIGN KEY (`connection_id`) REFERENCES `external_account_connection` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_external_raw_sync_job_id`
+    FOREIGN KEY (`sync_job_id`) REFERENCES `external_sync_job` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `external_activity` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `connection_id` BIGINT NOT NULL,
+  `sync_job_id` BIGINT NULL,
+  `raw_activity_id` BIGINT NULL,
+  `provider` VARCHAR(32) NOT NULL DEFAULT 'garmin',
+  `external_activity_id` VARCHAR(128) NOT NULL,
+  `connector_version` VARCHAR(32) NOT NULL,
+  `normalization_version` VARCHAR(32) NOT NULL DEFAULT 'garmin-activity-v1',
+  `segmentation_version` VARCHAR(64) NULL,
+  `classification_version` VARCHAR(64) NULL,
+  `payload_hash` VARCHAR(64) NULL,
+  `source_updated_at` DATETIME NULL,
+  `fetched_at` DATETIME NULL,
+  `activity_name` VARCHAR(255) NULL,
+  `activity_type` VARCHAR(64) NOT NULL,
+  `activity_subtype` VARCHAR(64) NULL,
+  `start_time_utc` DATETIME NULL,
+  `start_time_local` DATETIME NOT NULL,
+  `timezone` VARCHAR(64) NOT NULL DEFAULT 'Asia/Shanghai',
+  `activity_date` DATE NOT NULL,
+  `source_deleted` TINYINT(1) NOT NULL DEFAULT 0,
+  `processing_status` VARCHAR(32) NOT NULL DEFAULT 'synced',
+  `resolution_status` VARCHAR(32) NOT NULL DEFAULT 'pending',
+  `apply_status` VARCHAR(32) NOT NULL DEFAULT 'not_applied',
+  `composite_session_key` VARCHAR(128) NULL,
+  `match_confidence` VARCHAR(16) NULL,
+  `planned_workout_id` BIGINT NULL,
+  `workout_log_id` BIGINT NULL,
+  `distance_m` DECIMAL(10, 2) NULL,
+  `duration_seconds` INT NULL,
+  `timer_time_seconds` INT NULL,
+  `moving_time_seconds` INT NULL,
+  `elapsed_time_seconds` INT NULL,
+  `average_speed_mps` DECIMAL(8, 3) NULL,
+  `average_pace_seconds_per_km` INT NULL,
+  `max_speed_mps` DECIMAL(8, 3) NULL,
+  `best_pace_seconds_per_km` INT NULL,
+  `average_heart_rate_bpm` INT NULL,
+  `max_heart_rate_bpm` INT NULL,
+  `min_heart_rate_bpm` INT NULL,
+  `average_cadence_spm` INT NULL,
+  `max_cadence_spm` INT NULL,
+  `cadence_normalization_method` VARCHAR(64) NULL,
+  `elevation_gain_m` INT NULL,
+  `elevation_loss_m` INT NULL,
+  `calories_kcal` INT NULL,
+  `average_stride_length_m` DECIMAL(6, 3) NULL,
+  `average_vertical_ratio_percent` DECIMAL(5, 2) NULL,
+  `average_vertical_oscillation_cm` DECIMAL(5, 2) NULL,
+  `average_ground_contact_time_ms` INT NULL,
+  `ground_contact_balance_percent` DECIMAL(5, 2) NULL,
+  `average_running_power_w` INT NULL,
+  `max_running_power_w` INT NULL,
+  `garmin_primary_benefit` VARCHAR(128) NULL,
+  `garmin_aerobic_training_effect` DECIMAL(4, 2) NULL,
+  `garmin_anaerobic_training_effect` DECIMAL(4, 2) NULL,
+  `garmin_training_load` DECIMAL(8, 2) NULL,
+  `garmin_recovery_time_seconds` INT NULL,
+  `high_intensity_distance_m` DECIMAL(10, 2) NULL,
+  `data_quality` VARCHAR(32) NOT NULL DEFAULT 'valid',
+  `quality_warnings_json` JSON NULL,
+  `field_sources_json` JSON NULL,
+  `ignored_at` DATETIME NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_external_activity_provider_id` (`provider`, `external_activity_id`),
+  KEY `ix_external_activity_user_date` (`user_id`, `activity_date`, `processing_status`),
+  KEY `ix_external_activity_user_status` (`user_id`, `processing_status`),
+  KEY `ix_external_activity_connection_id` (`connection_id`),
+  KEY `ix_external_activity_sync_job_id` (`sync_job_id`),
+  KEY `ix_external_activity_raw_activity_id` (`raw_activity_id`),
+  KEY `ix_external_activity_planned_workout_id` (`planned_workout_id`),
+  KEY `ix_external_activity_workout_log_id` (`workout_log_id`),
+  CONSTRAINT `fk_external_activity_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_external_activity_connection_id`
+    FOREIGN KEY (`connection_id`) REFERENCES `external_account_connection` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_external_activity_sync_job_id`
+    FOREIGN KEY (`sync_job_id`) REFERENCES `external_sync_job` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_external_activity_raw_activity_id`
+    FOREIGN KEY (`raw_activity_id`) REFERENCES `external_activity_raw` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_external_activity_planned_workout_id`
+    FOREIGN KEY (`planned_workout_id`) REFERENCES `planned_workouts` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_external_activity_workout_log_id`
+    FOREIGN KEY (`workout_log_id`) REFERENCES `workout_logs` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `external_activity_lap` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `external_activity_id` BIGINT NOT NULL,
+  `lap_index` INT NOT NULL,
+  `external_lap_id` VARCHAR(128) NULL,
+  `start_time` DATETIME NULL,
+  `start_offset_seconds` INT NULL,
+  `distance_m` DECIMAL(10, 2) NULL,
+  `duration_seconds` INT NULL,
+  `timer_time_seconds` INT NULL,
+  `moving_time_seconds` INT NULL,
+  `average_speed_mps` DECIMAL(8, 3) NULL,
+  `average_pace_seconds_per_km` INT NULL,
+  `average_heart_rate_bpm` INT NULL,
+  `max_heart_rate_bpm` INT NULL,
+  `average_cadence_spm` INT NULL,
+  `elevation_gain_m` INT NULL,
+  `lap_type` VARCHAR(64) NULL,
+  `workout_step_type` VARCHAR(64) NULL,
+  `segment_role` VARCHAR(32) NOT NULL DEFAULT 'unknown',
+  `classification_source` VARCHAR(64) NOT NULL DEFAULT 'unknown',
+  `classification_confidence` VARCHAR(16) NOT NULL DEFAULT 'low',
+  `data_quality` VARCHAR(32) NOT NULL DEFAULT 'valid',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_external_activity_lap_index` (`external_activity_id`, `lap_index`),
+  CONSTRAINT `fk_external_activity_lap_external_activity_id`
+    FOREIGN KEY (`external_activity_id`) REFERENCES `external_activity` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `workout_log_external_activity` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `workout_log_id` BIGINT NOT NULL,
+  `external_activity_id` BIGINT NOT NULL,
+  `link_type` VARCHAR(32) NOT NULL DEFAULT 'matched',
+  `match_confidence` VARCHAR(16) NULL,
+  `resolution_status` VARCHAR(32) NOT NULL DEFAULT 'auto_applied',
+  `field_sources_json` JSON NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_workout_log_external_activity` (`workout_log_id`, `external_activity_id`),
+  UNIQUE KEY `uq_workout_log_external_single_activity` (`external_activity_id`),
+  KEY `ix_workout_log_external_user` (`user_id`, `workout_log_id`),
+  KEY `ix_workout_log_external_external_activity_id` (`external_activity_id`),
+  CONSTRAINT `fk_workout_log_external_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_workout_log_external_workout_log_id`
+    FOREIGN KEY (`workout_log_id`) REFERENCES `workout_logs` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_workout_log_external_external_activity_id`
+    FOREIGN KEY (`external_activity_id`) REFERENCES `external_activity` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `external_activity_resolution` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `external_activity_id` BIGINT NOT NULL,
+  `workout_log_id` BIGINT NULL,
+  `action` VARCHAR(32) NOT NULL,
+  `previous_state_json` JSON NULL,
+  `new_state_json` JSON NULL,
+  `reason` VARCHAR(255) NULL,
+  `actor_type` VARCHAR(32) NOT NULL DEFAULT 'user',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_external_activity_resolution_user_created` (`user_id`, `created_at`),
+  KEY `ix_external_activity_resolution_external_activity_id` (`external_activity_id`),
+  KEY `ix_external_activity_resolution_workout_log_id` (`workout_log_id`),
+  CONSTRAINT `fk_external_activity_resolution_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_external_activity_resolution_external_activity_id`
+    FOREIGN KEY (`external_activity_id`) REFERENCES `external_activity` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_external_activity_resolution_workout_log_id`
+    FOREIGN KEY (`workout_log_id`) REFERENCES `workout_logs` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

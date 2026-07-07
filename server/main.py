@@ -5,6 +5,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
+from planner_core.config import get_settings
 from server.api.routes import (
     ai_plan,
     ai_coach_preference,
@@ -13,6 +14,7 @@ from server.api.routes import (
     dashboard,
     excel,
     feedback,
+    garmin_sync,
     health,
     pace_calculator,
     pace_rules,
@@ -43,6 +45,7 @@ from server.common.exceptions import (
 
 
 def create_app() -> FastAPI:
+    settings = get_settings()
     app = FastAPI(
         title="Gaitlogic Planner API",
         version="0.9.0",
@@ -50,7 +53,8 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173"],
+        allow_origins=settings.cors_origins_list,
+        allow_origin_regex=settings.backend_cors_origin_regex,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -69,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(ai_coach_preference.router, prefix="/api")
     app.include_router(excel.router, prefix="/api")
     app.include_router(feedback.router, prefix="/api")
+    app.include_router(garmin_sync.router, prefix="/api")
     app.include_router(onboarding.router, prefix="/api")
     app.include_router(system_settings.router, prefix="/api")
     app.include_router(training_calendar.router, prefix="/api")

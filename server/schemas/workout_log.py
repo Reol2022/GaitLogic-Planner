@@ -7,6 +7,7 @@ from planner_core.enums import PainScaleVersion, WorkoutStatusNormalized
 
 
 class WorkoutLogBase(BaseModel):
+    cycle_id: int | None = None
     status_raw: str | None = None
     status_normalized: WorkoutStatusNormalized = WorkoutStatusNormalized.not_started
     actual_distance_km: Decimal | None = None
@@ -52,6 +53,8 @@ class WorkoutLogBase(BaseModel):
     external_activity_id: str | None = None
     activity_fingerprint: str | None = None
     field_sources_json: dict | None = None
+    subjective_status: str = "pending"
+    cycle_assignment_status: str = "assigned"
 
 
 class WorkoutLogUpdate(BaseModel):
@@ -103,3 +106,28 @@ class WorkoutLogRead(WorkoutLogBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class WorkoutLogGarminActivityContext(BaseModel):
+    id: int
+    activity_name: str | None = None
+    activity_date: date
+    start_time_local: datetime
+    distance_m: Decimal | None = None
+    duration_seconds: int | None = None
+    average_pace_seconds_per_km: int | None = None
+    average_heart_rate_bpm: int | None = None
+    resolution_status: str
+    apply_status: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class WorkoutCompletionContextRead(BaseModel):
+    existing_workout_log: WorkoutLogRead | None = None
+    linked_garmin_activities: list[WorkoutLogGarminActivityContext] = []
+    candidate_garmin_activities: list[WorkoutLogGarminActivityContext] = []
+    prefilled_objective_fields: dict = {}
+    subjective_fields_missing: list[str] = []
+    field_conflicts: list[dict] = []
+    mode: str = "manual_full"

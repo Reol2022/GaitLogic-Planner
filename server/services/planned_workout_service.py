@@ -4,11 +4,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from planner_core.database.models import PlannedWorkout, WorkoutLog
-from planner_core.enums import WorkoutMainTypeNormalized, WorkoutStatusNormalized
+from planner_core.enums import PlannedWorkoutLifecycleStatus, WorkoutMainTypeNormalized, WorkoutStatusNormalized
 from server.common.exceptions import BadRequestError, NotFoundError
 from server.schemas.planned_workout import PlannedWorkoutCreate, PlannedWorkoutUpdate
 from server.services.training_block_service import get_training_block
 from server.services.training_cycle_service import get_training_cycle
+from server.services.training_cycle_lifecycle_service import get_active_cycle
 
 
 def list_planned_workouts(
@@ -20,10 +21,18 @@ def list_planned_workouts(
     end_date: date | None = None,
     main_type_normalized: WorkoutMainTypeNormalized | None = None,
 ) -> list[PlannedWorkout]:
+    if cycle_id is None:
+        active_cycle = get_active_cycle(db, user_id)
+        if active_cycle is None:
+            return []
+        cycle_id = active_cycle.id
     stmt = (
         select(PlannedWorkout)
         .options(selectinload(PlannedWorkout.workout_log))
-        .where(PlannedWorkout.user_id == user_id)
+        .where(
+            PlannedWorkout.user_id == user_id,
+            PlannedWorkout.lifecycle_status == PlannedWorkoutLifecycleStatus.planned,
+        )
     )
     if cycle_id is not None:
         stmt = stmt.where(PlannedWorkout.cycle_id == cycle_id)
@@ -65,6 +74,7 @@ def create_planned_workout(
         user_id=user_id,
         workout_log=WorkoutLog(
             user_id=user_id,
+            cycle_id=payload.cycle_id,
             status_raw=None,
             status_normalized=WorkoutStatusNormalized.not_started,
         ),

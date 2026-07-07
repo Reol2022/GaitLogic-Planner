@@ -41,9 +41,11 @@ from planner_core.enums import (
     PainScaleVersion,
     PainTrend,
     PaceZoneCode,
+    PlannedWorkoutLifecycleStatus,
     RaceDistance,
     ReadinessDataQuality,
     RecoveryCheckinSource,
+    TrainingCycleStatus,
     WorkoutMainTypeNormalized,
     WorkoutStatusNormalized,
     UIMode,
@@ -76,6 +78,8 @@ def test_enum_values_are_correct() -> None:
         "unknown",
     ]
     assert [item.value for item in BlockType] == ["week", "transition", "special"]
+    assert [item.value for item in TrainingCycleStatus] == ["draft", "active", "completed", "archived"]
+    assert [item.value for item in PlannedWorkoutLifecycleStatus] == ["planned", "superseded"]
     assert [item.value for item in ExcelImportStatus] == [
         "pending",
         "running",
@@ -103,7 +107,7 @@ def test_enum_values_are_correct() -> None:
     assert [item.value for item in AIPlanDraftStatus] == ["draft", "accepted", "rejected"]
     assert [item.value for item in UIMode] == ["simple", "advanced"]
     assert [item.value for item in AuthEntryMode] == ["standalone", "modal"]
-    assert [item.value for item in FeatureKey] == ["training_readiness", "workout_import"]
+    assert [item.value for item in FeatureKey] == ["training_readiness", "workout_import", "garmin_sync"]
     assert [item.value for item in PainScaleVersion] == ["normalized_0_10", "native_0_10"]
     assert [item.value for item in PainTrend] == ["improving", "stable", "worsening", "unknown"]
     assert [item.value for item in RecoveryCheckinSource] == ["manual"]
@@ -200,6 +204,7 @@ def create_plan_graph() -> tuple[TrainingCycle, TrainingBlock, PlannedWorkout]:
         sort_order=1,
         workout_log=WorkoutLog(
             user=user,
+            cycle=cycle,
             status_normalized=WorkoutStatusNormalized.not_started,
         ),
     )
@@ -425,6 +430,33 @@ def test_planned_workout_cycle_and_workout_date_are_unique(mysql_session_factory
             ]
         )
 
+        with pytest.raises(IntegrityError):
+            session.commit()
+        session.rollback()
+    finally:
+        session.close()
+
+
+def test_only_one_active_cycle_per_user(mysql_session_factory) -> None:
+    session = mysql_session_factory()
+    try:
+        user = UserAccount(username=f"user_{uuid4().hex[:8]}", password_hash="test-hash")
+        session.add_all(
+            [
+                TrainingCycle(
+                    user=user,
+                    name="Active A",
+                    status=TrainingCycleStatus.active,
+                    active_user_id=1,
+                ),
+                TrainingCycle(
+                    user=user,
+                    name="Active B",
+                    status=TrainingCycleStatus.active,
+                    active_user_id=1,
+                ),
+            ]
+        )
         with pytest.raises(IntegrityError):
             session.commit()
         session.rollback()

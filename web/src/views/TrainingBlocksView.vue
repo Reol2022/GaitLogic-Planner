@@ -4,11 +4,11 @@
 
     <div class="toolbar">
       <div class="filter-row">
-        <el-select v-model="cycleId" clearable placeholder="全部周期" style="width: 240px" @change="load">
+        <el-select v-model="cycleId" placeholder="当前训练周期" style="width: 240px" @change="load">
           <el-option v-for="cycle in cycles" :key="cycle.id" :label="cycle.name" :value="cycle.id" />
         </el-select>
       </div>
-      <el-button type="primary" :icon="Plus" @click="openDialog()">新增训练块</el-button>
+      <el-button type="primary" :icon="Plus" :disabled="hasNoActiveCycle" @click="openDialog()">新增训练块</el-button>
     </div>
 
     <div class="panel">
@@ -99,7 +99,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { Delete, Edit, Plus } from "@element-plus/icons-vue";
 import { ElMessageBox } from "element-plus";
 
-import { listTrainingCycles } from "@/api/trainingCycles";
+import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles";
 import {
   createTrainingBlock,
   deleteTrainingBlock,
@@ -110,6 +110,7 @@ import type { TrainingBlock, TrainingBlockPayload, TrainingCycle } from "@/types
 import { blockTypeOptions } from "@/types/options";
 
 const cycles = ref<TrainingCycle[]>([]);
+const activeCycle = ref<TrainingCycle | null>(null);
 const blocks = ref<TrainingBlock[]>([]);
 const cycleId = ref<number | null>(null);
 const loading = ref(false);
@@ -117,6 +118,7 @@ const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(10);
+const hasNoActiveCycle = computed(() => cycles.value.length > 0 && !activeCycle.value);
 
 const emptyForm: TrainingBlockPayload = {
   cycle_id: 0,
@@ -143,9 +145,21 @@ const pagedBlocks = computed(() => {
 
 async function loadCycles() {
   cycles.value = await listTrainingCycles();
+  try {
+    activeCycle.value = await getActiveTrainingCycle();
+    cycleId.value = activeCycle.value.id;
+  } catch {
+    activeCycle.value = null;
+    cycleId.value = null;
+  }
 }
 
 async function load() {
+  if (!cycleId.value) {
+    blocks.value = [];
+    currentPage.value = 1;
+    return;
+  }
   loading.value = true;
   try {
     blocks.value = await listTrainingBlocks(cycleId.value);
@@ -157,7 +171,8 @@ async function load() {
 
 function openDialog(row?: TrainingBlock) {
   Object.assign(form, emptyForm);
-  form.cycle_id = cycleId.value || cycles.value[0]?.id || 0;
+  form.cycle_id = cycleId.value || activeCycle.value?.id || 0;
+  if (!form.cycle_id) return;
   editingId.value = row?.id ?? null;
   if (row) Object.assign(form, row);
   dialogVisible.value = true;

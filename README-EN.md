@@ -9,7 +9,7 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.7.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.9.3-1976d2?style=for-the-badge" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?style=for-the-badge&logo=vue.js&logoColor=white" />
@@ -44,6 +44,8 @@ AI-generated content is only a draft for planning. It is not medical advice, reh
 | --- | --- |
 | Training plans live in Excel, execution lives in watch apps, and reviews live in chat notes | Training cycles, blocks, daily workouts, logs, and stats are kept in one system |
 | New users are overwhelmed by a complex dashboard | Users land on Today's Workout by default; mobile uses a bottom navigation bar |
+| Tables and nested feature pages are awkward on phones | Mobile tables scroll horizontally with readable action buttons; pages opened from My support swipe-right back |
+| Raw English status values appear in tables | Common business, sync, and draft statuses are mapped to localized Chinese labels in the UI |
 | You want AI help, but do not want AI to overwrite your real plan | AI creates editable drafts only; users must explicitly apply them |
 | You want to see the whole month's completion status at a glance | The training calendar shows planned workouts, completion states, today's highlight, and monthly summary |
 | Pace zones are hard to maintain by memory | Recent race results estimate VDOT-like ability and generate training pace zones |
@@ -71,7 +73,15 @@ AI-generated content is only a draft for planning. It is not medical advice, reh
 | ✍️ Workout Logs | 🧱 Training Cycles | 📊 Training Stats | 📤 AI Draft Export |
 | 📱 Mobile Bottom Nav | 🧩 Training Blocks | 🧮 Pace Calculator | ⚙️ AI Coach Preferences |
 | ↩️ Back to My Page | 📥 Excel Import | 📥 Workout Log Import | 🛠 Admin Console |
+| 🔗 Manual Garmin Sync | 🧾 Sync Job Queue | 🧬 Activity Normalization | 🔐 User Token Encryption |
+| 🟢 Single Active Cycle | 🗂 Cycle Lifecycle | 🔁 Transactional Switch | 🧭 Garmin Cycle Assignment |
 | 🧾 Beta Feedback | 🏷 Pace Rules | 📈 Completion & Mileage Trends | 🔑 Model Settings |
+
+Training cycles support the `draft`, `active`, `completed`, and `archived` lifecycle. Each user can have at most one `active` cycle. New cycles are drafts by default; activating a new cycle completes the previous active cycle and marks its future unfinished workouts as `superseded` while preserving completed logs, Garmin links, and review history.
+
+Garmin sync is manually triggered and processed by a worker queue. A manual sync request schedules one background run, the page polls job status, refreshes both jobs and activities, and failed or partially successful jobs can be retried. "Auto import after sync" is enabled by default: synced activities are written or merged into `WorkoutLog`, then linked to plans, calendars, and stats. When disabled, Garmin activities are stored only and can be reprocessed manually. Continuous same-day activities can become one composite session, while ambiguous cases go to review.
+
+Local development CORS is configurable through `BACKEND_CORS_ORIGINS` and `BACKEND_CORS_ORIGIN_REGEX`, with defaults for `localhost`, `127.0.0.1`, preview ports, and common LAN debug URLs.
 
 ---
 
@@ -706,12 +716,14 @@ The current project scope focuses on training plans, workout logs, and review st
 - pace calculator and pace rules;
 - standard Excel template import;
 - workout log import for completed training data;
+- manual Garmin sync;
 - AI training plan drafts;
 - basic admin configuration.
 
 Explicitly out of scope:
 
-- no Garmin / COROS account integration;
+- no scheduled Garmin / COROS auto-sync;
+- no full GPS tracks or per-second location storage;
 - no mobile app or mini program;
 - no ads system;
 - no paid subscription system;
