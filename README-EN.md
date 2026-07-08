@@ -9,7 +9,7 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.9.3-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.9.5-1976d2?style=for-the-badge" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?style=for-the-badge&logo=vue.js&logoColor=white" />
@@ -73,13 +73,16 @@ AI-generated content is only a draft for planning. It is not medical advice, reh
 | ✍️ Workout Logs | 🧱 Training Cycles | 📊 Training Stats | 📤 AI Draft Export |
 | 📱 Mobile Bottom Nav | 🧩 Training Blocks | 🧮 Pace Calculator | ⚙️ AI Coach Preferences |
 | ↩️ Back to My Page | 📥 Excel Import | 📥 Workout Log Import | 🛠 Admin Console |
-| 🔗 Manual Garmin Sync | 🧾 Sync Job Queue | 🧬 Activity Normalization | 🔐 User Token Encryption |
+| 🔗 Multi-platform Data Sync | 🧾 Sync Job Queue | 🧬 Activity Normalization | 🔐 User Token Encryption |
 | 🟢 Single Active Cycle | 🗂 Cycle Lifecycle | 🔁 Transactional Switch | 🧭 Garmin Cycle Assignment |
 | 🧾 Beta Feedback | 🏷 Pace Rules | 📈 Completion & Mileage Trends | 🔑 Model Settings |
 
 Training cycles support the `draft`, `active`, `completed`, and `archived` lifecycle. Each user can have at most one `active` cycle. New cycles are drafts by default; activating a new cycle completes the previous active cycle and marks its future unfinished workouts as `superseded` while preserving completed logs, Garmin links, and review history.
 
 Garmin sync is manually triggered and processed by a worker queue. A manual sync request schedules one background run, the page polls job status, refreshes both jobs and activities, and failed or partially successful jobs can be retried. "Auto import after sync" is enabled by default: synced activities are written or merged into `WorkoutLog`, then linked to plans, calendars, and stats. When disabled, Garmin activities are stored only and can be reprocessed manually. Continuous same-day activities can become one composite session, while ambiguous cases go to review.
+v0.9.4 adds a provider-neutral Data Sync framework. Garmin is now the `garmin` provider; the new user entry is Data Sync, while `/garmin-sync` and `/api/integrations/garmin/*` remain compatible. The generic API lives under `/api/data-sync/*`, and future platforms can be added through provider adapters.
+
+v0.9.5 simplifies the daily workflow: desktop navigation is grouped into Training, Plan, Analysis, and My; the mobile bottom bar is fixed to Today / Calendar / Plan / Analysis / My. The release adds a task center, a training plan center, and data management, while Today's Workout aggregates pending actions and latest activity sync without triggering automatic page-load sync. It also adds a unified version display sourced from `web/package.json`; desktop shows it in the sidebar brand area to the right of Planner and aligned with GaitLogic, while mobile shows it lower in the header brand area.
 
 Local development CORS is configurable through `BACKEND_CORS_ORIGINS` and `BACKEND_CORS_ORIGIN_REGEX`, with defaults for `localhost`, `127.0.0.1`, preview ports, and common LAN debug URLs.
 
@@ -96,7 +99,7 @@ Local development CORS is configurable through `BACKEND_CORS_ORIGINS` and `BACKE
 At widths `<= 768px`, the sidebar is hidden and replaced with a bottom navigation bar:
 
 ```text
-Today / Calendar / AI Plan / Pace / My
+Today / Calendar / Plan / Analysis / My
 ```
 
 ### Desktop workspace
@@ -260,7 +263,7 @@ Admin Console (admin only)
 <summary><strong>Mobile Bottom Navigation</strong></summary>
 
 ```text
-Today / Calendar / AI Plan / Pace / My
+Today / Calendar / Plan / Analysis / My
 ```
 
 The My page aggregates mobile entry points:

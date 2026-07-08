@@ -27,6 +27,33 @@
       <el-button v-if="showWeeklyReviewPrompt" type="primary" plain @click="router.push('/weekly-review')">查看周复盘</el-button>
     </div>
 
+    <section
+      v-if="!showOnboarding && !showNoActiveCycle && (dashboardTasks.length > 0 || connectedDataSources > 0)"
+      class="today-hub"
+    >
+      <div class="today-hub-main">
+        <strong>{{ dashboardTasks.length > 0 ? "今日还有待处理事项" : "设备数据可同步" }}</strong>
+        <p>
+          {{
+            dashboardTasks[0]?.description ||
+            "如果今天已经跑完，可以同步最新活动；页面不会自动触发同步。"
+          }}
+        </p>
+      </div>
+      <div class="today-hub-actions">
+        <el-button v-if="dashboardTasks.length > 0" plain @click="router.push('/todos')">查看待办</el-button>
+        <el-button
+          v-if="connectedDataSources > 0"
+          type="primary"
+          plain
+          :loading="syncingLatest"
+          @click="syncLatestActivity"
+        >
+          同步最新活动
+        </el-button>
+      </div>
+    </section>
+
     <section v-if="showOnboarding" class="onboarding-card">
       <div class="onboarding-copy">
         <div class="onboarding-kicker">首次使用</div>
@@ -233,8 +260,11 @@ import { listTrainingBlocks } from "@/api/trainingBlocks";
 import { updateWorkoutLog } from "@/api/workoutLogs";
 import { getTodayReadiness, recalculateReadiness } from "@/api/trainingReadiness";
 import { trackUsageEvent } from "@/api/usageEvents";
+import { startDataSync } from "@/api/dataSync";
+import { getTodayDashboard } from "@/api/simplifiedWorkflow";
 import type {
   PlannedWorkout,
+  TaskItem,
   TrainingBlock,
   TrainingCycle,
   TrainingReadinessToday,
@@ -258,6 +288,10 @@ const quickWorkout = ref<PlannedWorkout | null>(null);
 const quickForm = reactive<WorkoutLogPayload>(initialQuickForm());
 const todayReadiness = ref<TrainingReadinessToday | null>(null);
 const readinessMessage = ref("");
+const dashboardTasks = ref<TaskItem[]>([]);
+const connectedDataSources = ref(0);
+const firstConnectedProvider = ref<string | null>(null);
+const syncingLatest = ref(false);
 const readinessAvailable = computed(() => !!todayReadiness.value && !readinessMessage.value);
 const showOnboarding = computed(() => !loadingCycles.value && cycles.value.length === 0);
 const showNoActiveCycle = computed(() => !loadingCycles.value && cycles.value.length > 0 && !activeCycle.value);
@@ -365,9 +399,22 @@ async function load() {
   loading.value = true;
   try {
     workouts.value = await listTodayWorkouts(today.value);
-    await loadReadiness();
+    await Promise.all([loadReadiness(), loadDailyHub()]);
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadDailyHub() {
+  try {
+    const dashboard = await getTodayDashboard(true);
+    dashboardTasks.value = dashboard.tasks;
+    connectedDataSources.value = dashboard.data_sync.connected_count;
+    firstConnectedProvider.value = dashboard.data_sync.providers.find((item) => item.connected)?.provider || null;
+  } catch {
+    dashboardTasks.value = [];
+    connectedDataSources.value = 0;
+    firstConnectedProvider.value = null;
   }
 }
 
@@ -437,6 +484,17 @@ async function saveQuickCheckin() {
     await load();
   } finally {
     savingQuick.value = false;
+  }
+}
+
+async function syncLatestActivity() {
+  syncingLatest.value = true;
+  try {
+    await startDataSync(firstConnectedProvider.value || "garmin", { sync_mode: "recent_7d" }, `today-${Date.now()}`);
+    ElMessage.success("已创建同步任务");
+    await loadDailyHub();
+  } finally {
+    syncingLatest.value = false;
   }
 }
 
@@ -529,6 +587,38 @@ onMounted(async () => {
   flex: 0 0 auto;
   color: var(--muted);
   font-size: 12px;
+}
+
+.today-hub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #cfe2ff;
+  border-radius: var(--card-radius);
+  background: #f8fbff;
+}
+
+.today-hub-main {
+  min-width: 0;
+}
+
+.today-hub-main strong {
+  color: var(--text);
+}
+
+.today-hub-main p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.today-hub-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
 }
 
 .readiness-card-main {
@@ -680,6 +770,16 @@ onMounted(async () => {
   .readiness-card-actions .el-button {
     flex: 1 1 120px;
     margin-left: 0;
+  }
+
+  .today-hub {
+    align-items: stretch;
+    flex-direction: column;
+    margin: 0 12px;
+  }
+
+  .today-hub-actions {
+    justify-content: flex-end;
   }
 
   .onboarding-card,

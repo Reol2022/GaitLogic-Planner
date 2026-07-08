@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.9.3-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.9.5-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -79,14 +79,16 @@ AI 生成内容仅作为训练计划草稿，不构成医疗建议、康复建�
 | 📝 智能周复盘 | 🧭 负荷与恢复 | ✅ 用户确认后应用 | 🛡 通用安全校验 |
 | 📱 移动端底部导航 | 🧩 训练块 | 🧮 配速计算器 | ⚙️ AI 教练偏好 |
 | ↩️ 我的页返回路径 | 📥 Excel 导入 | 📥 训练记录导入 | 🛠 管理后台 |
-| 🔗 Garmin 手动同步 | 🧾 同步任务队列 | 🧬 训练数据标准化 | 🔐 用户令牌加密 |
+| 🔗 多平台数据同步 | 🧾 同步任务队列 | 🧬 训练数据标准化 | 🔐 用户令牌加密 |
 | 🟢 唯一当前周期 | 🗂 周期生命周期 | 🔁 周期切换事务 | 🧭 Garmin 周期归属 |
 | 🧾 内测反馈 | 🏷 配速规则 | 📈 完成率与跑量趋势 | 🔑 模型配置 |
 
 训练周期支持 `draft`、`active`、`completed`、`archived` 生命周期；同一用户最多只有一个 `active` 周期。新建周期默认是草稿，启用新周期会结束旧当前周期，并把旧周期未来未完成计划标记为 `superseded`，已完成日志、Garmin 关联和复盘数据会保留。
 
 Garmin 同步采用用户手动触发和后台队列处理；手动创建同步任务后会自动安排一次后台执行，页面会轮询任务状态，刷新任务会同步更新任务和活动列表，失败或部分成功任务支持重试。默认开启“同步后自动导入训练计划”，同步后的活动会写入或合并到 `WorkoutLog`，再关联计划、日历和统计；关闭该开关后仅保存 Garmin 活动，用户可手动重新处理。同日连续活动可合并为一堂复合训练，无法判断时进入待处理。
+v0.9.4 新增 Data Sync 通用框架，Garmin 已迁移为 `garmin` provider；新入口为“数据同步”，旧 `/garmin-sync` 和 `/api/integrations/garmin/*` 保持兼容。通用 API 位于 `/api/data-sync/*`，后续平台只需接入 provider adapter。
 
+v0.9.5 进一步重构为极简训练闭环：桌面导航收敛为训练、计划、分析、我的四组，移动端底栏固定为“今日 / 日历 / 计划 / 分析 / 我的”；新增待办中心、训练计划中心和数据管理入口，今日页聚合待办和同步最新活动，设备客观数据预填后只要求用户补充主观训练反馈；同时增加统一版本号展示，版本号来自 `web/package.json`，网页端显示在侧边栏品牌区 `GaitLogic` 下方、`Planner` 右侧并右对齐品牌名，移动端在顶部品牌区下沉显示。
 本地开发 CORS 通过 `BACKEND_CORS_ORIGINS` 和 `BACKEND_CORS_ORIGIN_REGEX` 配置，默认支持 `localhost`、`127.0.0.1`、preview 端口和常见局域网调试地址。
 
 ---
@@ -102,7 +104,7 @@ Garmin 同步采用用户手动触发和后台队列处理；手动创建同步�
 宽度 `<= 768px` 时隐藏侧边栏，改用底部导航：
 
 ```text
-今日 / 日历 / AI计划 / 配速 / 我的
+今日 / 日历 / 计划 / 分析 / 我的
 ```
 
 ### 桌面端工作台
@@ -128,6 +130,54 @@ Garmin 同步采用用户手动触发和后台队列处理；手动创建同步�
 <p align="center">
   <img src="docs/images/pace-calculator.png" alt="配速计算器" width="820" />
 </p>
+
+### 新版今日训练
+
+<p align="center">
+  <img src="docs/images/today-workspace.png" alt="新版今日训练工作台" width="820" />
+</p>
+
+新版今日页聚合当天训练、待处理事项和最近同步的训练活动。设备同步得到的距离、时长、配速、心率等客观数据会自动预填，用户主要补充 RPE、体感和一句复盘等主观反馈。
+
+### 待办中心
+
+<p align="center">
+  <img src="docs/images/todo-center.png" alt="训练待办中心" width="820" />
+</p>
+
+待办中心集中展示当前需要处理的训练事项，减少用户在训练计划、同步活动、训练日志和复盘页面之间反复查找。
+
+### 训练计划中心
+
+<p align="center">
+  <img src="docs/images/training-plan-center.png" alt="训练计划中心" width="820" />
+</p>
+
+训练计划中心作为计划相关功能的统一入口，用于查看当前训练周期、每日训练安排以及 AI 制定计划、Excel 导入等计划创建方式。
+
+### 数据同步
+
+<p align="center">
+  <img src="docs/images/data-sync.png" alt="多平台训练数据同步" width="820" />
+</p>
+
+数据同步页面基于统一的 Data Sync 框架管理不同运动平台。当前已经接入 Garmin，并保留后续扩展其他 provider adapter 的能力。
+
+### 数据管理
+
+<p align="center">
+  <img src="docs/images/data-management.png" alt="训练数据管理" width="820" />
+</p>
+
+数据管理页面集中提供训练数据同步、训练记录导入和相关数据处理入口，让计划管理与训练数据维护保持相对独立。
+
+### 版本号展示
+
+<p align="center">
+  <img src="docs/images/version-display.png" alt="GaitLogic Planner 版本号展示" width="820" />
+</p>
+
+系统版本号统一读取自 `web/package.json`。桌面端显示在侧边栏品牌区域，移动端显示在顶部品牌区域，便于用户反馈问题时确认当前版本。
 
 ---
 
@@ -373,7 +423,7 @@ v0.9.0 新增基础版“负荷与恢复”闭环：恢复打卡、session-RPE�
 <summary><strong>移动端底部导航</strong></summary>
 
 ```text
-今日 / 日历 / AI计划 / 配速 / 我的
+今日 / 日历 / 计划 / 分析 / 我的
 ```
 
 “我的”页面提供移动端聚合入口：
@@ -443,6 +493,43 @@ v0.9.0 新增基础版“负荷与恢复”闭环：恢复打卡、session-RPE�
 - 训练后快速填写日志。
 
 首页也会在新用户没有训练周期时显示首次使用指引，提供 AI 制定计划和 Excel 导入入口。
+
+</details>
+<details open>
+<summary><strong>新版今日工作台与待办中心</strong></summary>
+
+v0.9.5 对今日训练页面进行了重新整理，使其成为日常训练闭环的主要入口。
+
+![新版今日训练工作台](docs/images/today-workspace.png)
+
+页面会聚合展示：
+
+* 今天的训练计划；
+* 当前需要处理的训练事项；
+* 最近同步的训练活动；
+* 训练日志填写入口；
+* 当前训练完成状态；
+* 主观训练反馈补充入口。
+
+当 Garmin 等设备数据已经同步时，系统会优先使用距离、时长、平均配速和平均心率等客观数据预填训练日志。用户只需要补充 RPE、身体感受、疼痛情况和一句复盘等设备无法直接获取的信息。
+
+待办中心用于集中呈现当前账号中仍需用户处理的训练事项。
+
+![训练待办中心](docs/images/todo-center.png)
+
+它的目标不是增加一套新的训练流程，而是把原本分散在计划、日志、同步和复盘页面中的待处理事项统一收束，帮助用户更快完成：
+
+```text
+查看今天训练
+  ↓
+处理同步活动
+  ↓
+补充主观反馈
+  ↓
+完成训练日志
+  ↓
+进入统计与复盘
+```
 
 </details>
 
@@ -529,6 +616,29 @@ v0.9.0 新增基础版“负荷与恢复”闭环：恢复打卡、session-RPE�
 </details>
 
 <details open>
+<summary><strong>训练计划中心</strong></summary>
+
+训练计划中心是 v0.9.5 新增的计划聚合入口。
+
+![训练计划中心](docs/images/training-plan-center.png)
+
+它将普通用户最常使用的计划能力集中到一个页面，减少在多个菜单之间来回切换。
+
+计划相关入口包括：
+
+* 查看当前训练计划；
+* 查看当前训练周期；
+* 进入每日训练安排；
+* 使用 AI 生成训练计划草稿；
+* 通过标准 Excel 模板导入训练计划；
+* 查看和管理已有计划。
+
+训练计划中心只负责组织和展示计划入口。AI 生成的内容仍然是草稿，必须经过用户确认后才能应用为正式训练计划。
+
+</details>
+
+
+<details open>
 <summary><strong>训练统计</strong></summary>
 
 训练统计用于查看训练数据概览，帮助用户快速了解近期训练状态。
@@ -561,6 +671,87 @@ v0.9.0 新增基础版“负荷与恢复”闭环：恢复打卡、session-RPE�
 ```
 
 这些能力被归入高级设置，避免干扰普通用户的日常路径。
+
+</details>
+<details open>
+<summary><strong>数据同步</strong></summary>
+
+v0.9.4 新增通用 Data Sync 数据同步框架，Garmin 同步已经迁移为 `garmin` provider。
+
+![多平台训练数据同步](docs/images/data-sync.png)
+
+数据同步采用用户手动触发与后台任务队列结合的方式：
+
+```text
+用户创建同步任务
+  ↓
+系统安排后台执行
+  ↓
+页面轮询同步状态
+  ↓
+保存平台活动
+  ↓
+导入或合并训练日志
+  ↓
+关联训练计划、日历和统计
+```
+
+同步页面支持：
+
+* 手动创建同步任务；
+* 查看任务执行状态；
+* 刷新同步任务和活动列表；
+* 重试失败或部分成功的任务；
+* 查看同步后的训练活动；
+* 控制是否自动导入训练日志；
+* 手动重新处理已经同步的活动。
+
+默认开启“同步后自动导入训练计划”。同步活动会写入或合并到 `WorkoutLog`，并尝试关联对应的每日训练计划。
+
+关闭自动导入后，系统只保存平台活动，不会直接写入训练日志，用户可以稍后手动处理。
+
+同一天内连续完成的多段活动可以合并为一堂复合训练。系统无法可靠判断时，活动会进入待处理状态，由用户确认。
+
+当前通用 API：
+
+```text
+/api/data-sync/*
+```
+
+旧 Garmin 页面和接口继续保持兼容：
+
+```text
+/garmin-sync
+/api/integrations/garmin/*
+```
+
+后续接入其他运动平台时，可以通过新的 provider adapter 扩展，不需要重新实现完整的同步任务、状态管理和活动处理流程。
+
+</details>
+<details open>
+<summary><strong>数据管理</strong></summary>
+
+数据管理是 v0.9.5 新增的统一数据入口。
+
+![训练数据管理](docs/images/data-management.png)
+
+该页面用于集中管理训练数据相关功能，包括：
+
+* 运动平台数据同步；
+* 已完成训练记录导入；
+* 同步任务和平台活动处理；
+* 训练数据补录；
+* 数据导入状态查看；
+* 需要人工确认的数据处理入口。
+
+数据管理与训练计划中心分别承担不同职责：
+
+| 页面     | 主要职责                |
+| ------ | ------------------- |
+| 训练计划中心 | 管理未来准备执行的训练安排       |
+| 数据管理   | 管理已经产生或从外部平台导入的训练数据 |
+
+通过拆分计划和数据入口，普通用户不需要理解底层训练周期、同步任务和数据表关系，也可以完成日常训练管理。
 
 </details>
 

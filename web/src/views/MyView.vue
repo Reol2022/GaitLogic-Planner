@@ -34,6 +34,8 @@ import {
   Connection,
   DataAnalysis,
   DocumentAdd,
+  Bell,
+  FolderOpened,
   Grid,
   List,
   Message,
@@ -41,24 +43,27 @@ import {
   Setting,
   TrendCharts,
 } from "@element-plus/icons-vue";
-import { getGarminStatus } from "@/api/garminSync";
+import { listDataSyncProviders } from "@/api/dataSync";
 
 const garminSyncVisible = ref(false);
 
 const allPrimaryItems = [
-  { path: "/weekly-review", title: "智能周复盘", desc: "复盘本周并确认下一周调整", icon: Memo },
-  { path: "/workouts", title: "我的训练计划", desc: "查看和维护每日训练安排", icon: List },
-  { path: "/dashboard", title: "训练统计", desc: "查看跑量、完成率和训练分布", icon: DataAnalysis },
-  { path: "/training-readiness", title: "负荷与恢复", desc: "查看训练状态、恢复打卡和负荷趋势", icon: TrendCharts },
-  { path: "/plan-imports", title: "课表导入", desc: "导入 Excel、CSV、TXT 或 JSON 课表草稿", icon: DocumentAdd },
-  { path: "/workout-import", title: "训练记录导入", desc: "补录已经完成的训练数据", icon: DocumentAdd },
-  { path: "/garmin-sync", title: "Garmin 同步", desc: "连接账号并手动同步跑步活动", icon: Connection },
+  { path: "/todos", title: "待办中心", desc: "处理缺少感受、待确认活动和周复盘。", icon: Bell },
+  { path: "/data-sync", title: "数据同步", desc: "连接运动平台并同步跑步活动", icon: Connection },
+  { path: "/data-management", title: "数据管理", desc: "导入课表、补录训练和查看导入历史。", icon: FolderOpened },
   { path: "/feedback", title: "反馈", desc: "提交问题或使用建议", icon: Message },
+  { path: "/my", title: "设置", desc: "账号和使用偏好入口。", icon: Setting },
 ];
 
-const primaryItems = computed(() => allPrimaryItems.filter((item) => item.path !== "/garmin-sync" || garminSyncVisible.value));
+const primaryItems = computed(() => allPrimaryItems.filter((item) => item.path !== "/data-sync" || garminSyncVisible.value));
 
 const advancedItems = [
+  { path: "/training-plan", title: "训练计划中心", icon: List },
+  { path: "/weekly-review", title: "智能周复盘", icon: Memo },
+  { path: "/dashboard", title: "训练统计", icon: DataAnalysis },
+  { path: "/training-readiness", title: "负荷与恢复", icon: TrendCharts },
+  { path: "/plan-imports", title: "课表导入", icon: DocumentAdd },
+  { path: "/workout-import", title: "训练记录导入", icon: DocumentAdd },
   { path: "/ai-coach-preference", title: "AI 教练偏好", icon: Setting },
   { path: "/cycles", title: "训练周期", icon: Calendar },
   { path: "/blocks", title: "训练块", icon: Grid },
@@ -71,7 +76,7 @@ function myEntryLink(path: string) {
 
 onMounted(async () => {
   try {
-    await getGarminStatus(true);
+    await listDataSyncProviders(true);
     garminSyncVisible.value = true;
   } catch {
     garminSyncVisible.value = false;

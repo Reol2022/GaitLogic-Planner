@@ -147,6 +147,7 @@ class FeatureKey(str, Enum):
     training_readiness = "training_readiness"
     workout_import = "workout_import"
     garmin_sync = "garmin_sync"
+    simplified_workflow = "simplified_workflow"
 
 
 class ReadinessRecommendationAction(str, Enum):
@@ -235,3 +236,16 @@ class UsageEventName(str, Enum):
     garmin_sync_succeeded = "garmin_sync_succeeded"
     garmin_sync_failed = "garmin_sync_failed"
     garmin_activity_resolution_saved = "garmin_activity_resolution_saved"
+    today_page_viewed = "today_page_viewed"
+    today_workout_completed = "today_workout_completed"
+    subjective_data_completed = "subjective_data_completed"
+    quick_recovery_saved = "quick_recovery_saved"
+    task_center_viewed = "task_center_viewed"
+    task_completed = "task_completed"
+    training_plan_center_viewed = "training_plan_center_viewed"
+    auto_sync_enabled = "auto_sync_enabled"
+    auto_sync_disabled = "auto_sync_disabled"
+    auto_sync_executed = "auto_sync_executed"
+    weekly_review_confirmed = "weekly_review_confirmed"
+    simple_mode_enabled = "simple_mode_enabled"
+    advanced_mode_enabled = "advanced_mode_enabled"

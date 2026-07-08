@@ -97,11 +97,17 @@ def test_required_routes_are_registered() -> None:
     assert "PUT /api/planned-workouts/{workout_id}" in routes
     assert "DELETE /api/planned-workouts/{workout_id}" in routes
     assert "GET /api/today" in routes
+    assert "GET /api/dashboard/today" in routes
+    assert "GET /api/todos" in routes
+    assert "PATCH /api/todos/{task_key}" in routes
+    assert "GET /api/training-plan/overview" in routes
     assert "GET /api/workout-logs/{planned_workout_id}" in routes
     assert "PUT /api/workout-logs/{planned_workout_id}" in routes
     assert "GET /api/dashboard" in routes
     assert "GET /api/recovery-checkins/today" in routes
     assert "PUT /api/recovery-checkins/today" in routes
+    assert "GET /api/recovery-checkins/quick" in routes
+    assert "PUT /api/recovery-checkins/quick" in routes
     assert "DELETE /api/recovery-checkins/{checkin_date}" in routes
     assert "GET /api/recovery-checkins" in routes
     assert "GET /api/training-load/summary" in routes
@@ -128,6 +134,23 @@ def test_required_routes_are_registered() -> None:
     assert "POST /api/workout-imports/{batch_id}/validate" in routes
     assert "POST /api/workout-imports/{batch_id}/apply" in routes
     assert "POST /api/workout-imports/{batch_id}/cancel" in routes
+    assert "GET /api/data-sync/providers" in routes
+    assert "GET /api/data-sync/summary" in routes
+    assert "GET /api/data-sync/connections" in routes
+    assert "GET /api/data-sync/connections/{provider_key}" in routes
+    assert "PATCH /api/data-sync/connections/{provider_key}/preferences" in routes
+    assert "POST /api/data-sync/connections/{provider_key}/connect" in routes
+    assert "POST /api/data-sync/connections/{provider_key}/challenge" in routes
+    assert "POST /api/data-sync/connections/{provider_key}/disconnect" in routes
+    assert "POST /api/data-sync/connections/{provider_key}/sync" in routes
+    assert "GET /api/data-sync/sync-jobs" in routes
+    assert "GET /api/data-sync/sync-jobs/{job_id}" in routes
+    assert "POST /api/data-sync/sync-jobs/{job_id}/retry" in routes
+    assert "GET /api/data-sync/activities" in routes
+    assert "GET /api/data-sync/activities/{activity_id}" in routes
+    assert "POST /api/data-sync/activities/{activity_id}/reprocess" in routes
+    assert "POST /api/data-sync/activities/{activity_id}/ignore" in routes
+    assert "POST /api/data-sync/activities/{activity_id}/restore" in routes
     assert "GET /api/integrations/garmin/status" in routes
     assert "POST /api/integrations/garmin/connect" in routes
     assert "POST /api/integrations/garmin/connect/mfa" in routes
@@ -172,5 +195,13 @@ def test_business_routes_require_login() -> None:
     assert plan_import_response.status_code == 401
     workout_import_response = client.post("/api/workout-imports/structured", json={})
     assert workout_import_response.status_code == 401
+    data_sync_response = client.get("/api/data-sync/providers")
+    assert data_sync_response.status_code == 401
+    todo_response = client.get("/api/todos")
+    assert todo_response.status_code == 401
+    today_dashboard_response = client.get("/api/dashboard/today")
+    assert today_dashboard_response.status_code == 401
+    training_plan_response = client.get("/api/training-plan/overview")
+    assert training_plan_response.status_code == 401
     garmin_response = client.get("/api/integrations/garmin/status")
     assert garmin_response.status_code == 401

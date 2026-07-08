@@ -39,6 +39,8 @@ const STATUS_LABELS: Record<string, string> = {
   rest_or_cancelled: "休息 / 取消",
   not_started: "未开始",
   unknown: "未知",
+  available: "可用",
+  disabled_in_production: "未开放",
   incremental: "最新",
   initial_backfill: "首次回填",
   recent_7d: "最近 7 天",

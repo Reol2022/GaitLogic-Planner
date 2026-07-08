@@ -850,6 +850,8 @@ class ExternalAccountConnection(IdMixin, TimestampMixin, Base):
     token_key_version: Mapped[str | None] = mapped_column(String(32))
     connector_version: Mapped[str | None] = mapped_column(String(32))
     auto_import_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    auto_sync_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    auto_sync_last_run_at: Mapped[datetime | None] = mapped_column(DateTime)
     last_authenticated_at: Mapped[datetime | None] = mapped_column(DateTime)
     last_successful_sync_at: Mapped[datetime | None] = mapped_column(DateTime)
     sync_cursor: Mapped[str | None] = mapped_column(String(512))

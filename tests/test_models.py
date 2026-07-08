@@ -107,7 +107,7 @@ def test_enum_values_are_correct() -> None:
     assert [item.value for item in AIPlanDraftStatus] == ["draft", "accepted", "rejected"]
     assert [item.value for item in UIMode] == ["simple", "advanced"]
     assert [item.value for item in AuthEntryMode] == ["standalone", "modal"]
-    assert [item.value for item in FeatureKey] == ["training_readiness", "workout_import", "garmin_sync"]
+    assert [item.value for item in FeatureKey] == ["training_readiness", "workout_import", "garmin_sync", "simplified_workflow"]
     assert [item.value for item in PainScaleVersion] == ["normalized_0_10", "native_0_10"]
     assert [item.value for item in PainTrend] == ["improving", "stable", "worsening", "unknown"]
     assert [item.value for item in RecoveryCheckinSource] == ["manual"]

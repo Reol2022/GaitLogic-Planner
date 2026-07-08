@@ -11,6 +11,7 @@ from server.api.routes import (
     ai_coach_preference,
     admin,
     auth,
+    data_sync,
     dashboard,
     excel,
     feedback,
@@ -23,9 +24,11 @@ from server.api.routes import (
     onboarding,
     recovery_checkins,
     system_settings,
+    task_center,
     training_calendar,
     training_blocks,
     training_cycles,
+    training_plan,
     training_load,
     training_readiness,
     usage_events,
@@ -73,11 +76,14 @@ def create_app() -> FastAPI:
     app.include_router(ai_coach_preference.router, prefix="/api")
     app.include_router(excel.router, prefix="/api")
     app.include_router(feedback.router, prefix="/api")
+    app.include_router(data_sync.router, prefix="/api")
     app.include_router(garmin_sync.router, prefix="/api")
     app.include_router(onboarding.router, prefix="/api")
     app.include_router(system_settings.router, prefix="/api")
+    app.include_router(task_center.router, prefix="/api")
     app.include_router(training_calendar.router, prefix="/api")
     app.include_router(training_cycles.router, prefix="/api")
+    app.include_router(training_plan.router, prefix="/api")
     app.include_router(training_blocks.router, prefix="/api")
     app.include_router(planned_workouts.router, prefix="/api")
     app.include_router(workout_logs.router, prefix="/api")

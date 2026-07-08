@@ -8,12 +8,19 @@
     </div>
 
     <el-alert
-      v-if="completionMode === 'garmin_prefilled'"
-      title="已同步 Garmin 客观数据，补充 RPE、疼痛、腿感和复盘即可。"
+      v-if="isDevicePrefilled"
+      title="已同步设备客观数据，补充 RPE、疼痛、腿感和复盘即可。"
       type="success"
       show-icon
       :closable="false"
     />
+
+    <section v-if="isDevicePrefilled && deviceMetricRows.length" class="device-metrics">
+      <div v-for="item in deviceMetricRows" :key="item.label">
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+      </div>
+    </section>
 
     <div class="panel">
       <div class="panel-header">
@@ -27,10 +34,10 @@
                 <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
-            <el-form-item label="实际 km">
+            <el-form-item v-if="!isDevicePrefilled" label="实际 km">
               <el-input-number v-model="form.actual_distance_km" :precision="2" :min="0" style="width: 100%" />
             </el-form-item>
-            <el-form-item label="实际时长">
+            <el-form-item v-if="!isDevicePrefilled" label="实际时长">
               <el-time-picker
                 v-model="durationText"
                 format="HH:mm:ss"
@@ -40,7 +47,7 @@
                 style="width: 100%"
               />
             </el-form-item>
-            <el-form-item label="平均配速">
+            <el-form-item v-if="!isDevicePrefilled" label="平均配速">
               <el-time-picker
                 v-model="paceText"
                 format="mm:ss"
@@ -51,7 +58,7 @@
               />
               <div v-if="autoPaceText" class="form-help">根据实际距离和时长自动估算：{{ autoPaceText }}</div>
             </el-form-item>
-            <el-form-item label="均心率">
+            <el-form-item v-if="!isDevicePrefilled" label="均心率">
               <el-input-number v-model="form.avg_heart_rate" :min="0" style="width: 100%" />
             </el-form-item>
             <el-form-item>
@@ -133,7 +140,7 @@ import { ElMessage } from "element-plus";
 
 import RpeHelp from "@/components/RpeHelp.vue";
 import { getWorkoutCompletionContext, getWorkoutLog, updateWorkoutLog } from "@/api/workoutLogs";
-import type { WorkoutLogPayload } from "@/types/models";
+import type { WorkoutCompletionContext, WorkoutLogPayload } from "@/types/models";
 import { statusOptions } from "@/types/options";
 
 const route = useRoute();
@@ -142,6 +149,7 @@ const plannedWorkoutId = Number(route.params.id);
 const loading = ref(false);
 const pauseAutoPace = ref(false);
 const completionMode = ref("manual_full");
+const completionContext = ref<WorkoutCompletionContext | null>(null);
 const form = reactive<WorkoutLogPayload>({
   status_raw: null,
   status_normalized: "not_started",
@@ -167,9 +175,19 @@ const paceText = computed({
   },
 });
 const autoPaceText = computed(() => formatPace(form.avg_pace_seconds_per_km));
+const isDevicePrefilled = computed(() => ["device_prefilled", "garmin_prefilled"].includes(completionMode.value));
 const submitLabel = computed(() =>
-  completionMode.value === "garmin_prefilled" ? "确认完成并补充训练感受" : "提交日志",
+  isDevicePrefilled.value ? "确认完成并补充训练感受" : "提交日志",
 );
+const deviceMetricRows = computed(() => {
+  const fields = completionContext.value?.prefilled_objective_fields || {};
+  return [
+    { label: "实际距离", value: fields.actual_distance_km ? `${fields.actual_distance_km} km` : "" },
+    { label: "实际时长", value: fields.actual_duration_seconds ? formatDuration(Number(fields.actual_duration_seconds)) : "" },
+    { label: "平均配速", value: fields.avg_pace_seconds_per_km ? formatPace(Number(fields.avg_pace_seconds_per_km)) : "" },
+    { label: "平均心率", value: fields.avg_heart_rate ? `${fields.avg_heart_rate}` : "" },
+  ].filter((item) => item.value);
+});
 
 watch(
   () => [form.actual_distance_km, form.actual_duration_seconds],
@@ -201,11 +219,21 @@ function formatPace(value?: number | null) {
   return `${minutes}:${String(value % 60).padStart(2, "0")}/km`;
 }
 
+function formatDuration(value?: number | null) {
+  if (!value) return "";
+  const hours = Math.floor(value / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  const seconds = value % 60;
+  if (hours > 0) return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 async function load() {
   loading.value = true;
   pauseAutoPace.value = true;
   try {
     const context = await getWorkoutCompletionContext(plannedWorkoutId);
+    completionContext.value = context;
     completionMode.value = context.mode;
     const log = context.existing_workout_log || await getWorkoutLog(plannedWorkoutId);
     Object.assign(form, log);
@@ -229,6 +257,32 @@ onMounted(load);
   margin-top: 8px;
 }
 
+.device-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.device-metrics > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: #ffffff;
+  box-shadow: var(--card-shadow);
+}
+
+.device-metrics span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.device-metrics strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
 .form-help {
   margin-top: 6px;
   color: var(--muted);
@@ -237,6 +291,11 @@ onMounted(load);
 }
 
 @media (max-width: 768px) {
+  .device-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0 12px;
+  }
+
   .toolbar {
     align-items: stretch;
   }

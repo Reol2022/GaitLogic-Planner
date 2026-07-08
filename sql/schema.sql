@@ -837,6 +837,8 @@ CREATE TABLE IF NOT EXISTS `external_account_connection` (
   `token_key_version` VARCHAR(32) NULL,
   `connector_version` VARCHAR(32) NULL,
   `auto_import_enabled` TINYINT(1) NOT NULL DEFAULT 1,
+  `auto_sync_enabled` TINYINT(1) NOT NULL DEFAULT 0,
+  `auto_sync_last_run_at` DATETIME NULL,
   `last_authenticated_at` DATETIME NULL,
   `last_successful_sync_at` DATETIME NULL,
   `sync_cursor` VARCHAR(512) NULL,

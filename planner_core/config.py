@@ -61,6 +61,15 @@ class Settings(BaseSettings):
     garmin_sync_rollout_mode: str = Field(
         default="off", validation_alias="GARMIN_SYNC_ROLLOUT_MODE"
     )
+    data_sync_rollout_mode: str = Field(
+        default="inherit", validation_alias="DATA_SYNC_ROLLOUT_MODE"
+    )
+    data_sync_mock_provider_enabled: bool = Field(
+        default=False, validation_alias="DATA_SYNC_MOCK_PROVIDER_ENABLED"
+    )
+    simplified_workflow_rollout_mode: str = Field(
+        default="all", validation_alias="SIMPLIFIED_WORKFLOW_ROLLOUT_MODE"
+    )
     garmin_token_encryption_key: str | None = Field(
         default=None, validation_alias="GARMIN_TOKEN_ENCRYPTION_KEY"
     )

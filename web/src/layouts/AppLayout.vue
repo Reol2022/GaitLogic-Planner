@@ -2,10 +2,13 @@
   <el-container class="app-shell" :class="{ 'is-collapsed': sidebarCollapsed }">
     <el-aside :width="sidebarCollapsed ? '72px' : '272px'" class="app-sidebar">
       <div class="brand">
-        <div v-if="sidebarCollapsed" class="brand-mini">GL</div>
+        <div v-if="sidebarCollapsed" class="brand-mini" :title="`${APP_NAME} ${APP_VERSION_LABEL}`">GL</div>
         <div v-else class="brand-lockup">
           <strong>GaitLogic</strong>
-          <small>Planner</small>
+          <div class="brand-subline">
+            <small>Planner</small>
+            <AppVersion class="brand-version" />
+          </div>
         </div>
       </div>
 
@@ -16,7 +19,7 @@
         router
         class="side-menu"
       >
-        <div v-if="!sidebarCollapsed" class="menu-section">常用</div>
+        <div v-if="!sidebarCollapsed" class="menu-section">训练</div>
         <el-menu-item index="/today">
           <el-icon><Timer /></el-icon>
           <template #title>今日训练</template>
@@ -27,24 +30,12 @@
         </el-menu-item>
 
         <div v-if="!sidebarCollapsed" class="menu-section">计划</div>
-        <el-menu-item index="/ai-plan">
-          <el-icon><Odometer /></el-icon>
-          <template #title>AI 制定计划</template>
-        </el-menu-item>
-        <el-menu-item index="/workouts">
+        <el-menu-item index="/training-plan">
           <el-icon><List /></el-icon>
-          <template #title>我的训练计划</template>
-        </el-menu-item>
-        <el-menu-item index="/plan-imports">
-          <el-icon><DocumentAdd /></el-icon>
-          <template #title>课表导入</template>
-        </el-menu-item>
-        <el-menu-item index="/pace-calculator">
-          <el-icon><Stopwatch /></el-icon>
-          <template #title>配速计算器</template>
+          <template #title>训练计划</template>
         </el-menu-item>
 
-        <div v-if="!sidebarCollapsed" class="menu-section">更多</div>
+        <div v-if="!sidebarCollapsed" class="menu-section">分析</div>
         <el-menu-item index="/dashboard">
           <el-icon><DataAnalysis /></el-icon>
           <template #title>训练统计</template>
@@ -53,41 +44,28 @@
           <el-icon><TrendCharts /></el-icon>
           <template #title>负荷与恢复</template>
         </el-menu-item>
-        <el-menu-item index="/workout-import">
-          <el-icon><Upload /></el-icon>
-          <template #title>训练记录导入</template>
+
+        <div v-if="!sidebarCollapsed" class="menu-section">我的</div>
+        <el-menu-item index="/todos">
+          <el-icon><Bell /></el-icon>
+          <template #title>待办中心</template>
         </el-menu-item>
-        <el-menu-item v-if="garminSyncVisible" index="/garmin-sync">
+        <el-menu-item v-if="garminSyncVisible" index="/data-sync">
           <el-icon><Connection /></el-icon>
-          <template #title>Garmin 同步</template>
+          <template #title>数据同步</template>
+        </el-menu-item>
+        <el-menu-item index="/data-management">
+          <el-icon><FolderOpened /></el-icon>
+          <template #title>数据管理</template>
         </el-menu-item>
         <el-menu-item index="/feedback">
           <el-icon><Message /></el-icon>
           <template #title>反馈</template>
         </el-menu-item>
-
-        <el-sub-menu index="advanced-settings">
-          <template #title>
-            <el-icon><Setting /></el-icon>
-            <span>高级设置</span>
-          </template>
-          <el-menu-item index="/ai-coach-preference">
-            <el-icon><Setting /></el-icon>
-            <template #title>AI 教练偏好</template>
-          </el-menu-item>
-          <el-menu-item index="/cycles">
-            <el-icon><Calendar /></el-icon>
-            <template #title>训练周期</template>
-          </el-menu-item>
-          <el-menu-item index="/blocks">
-            <el-icon><Grid /></el-icon>
-            <template #title>训练块</template>
-          </el-menu-item>
-          <el-menu-item index="/pace-rules">
-            <el-icon><TrendCharts /></el-icon>
-            <template #title>配速规则</template>
-          </el-menu-item>
-        </el-sub-menu>
+        <el-menu-item index="/my">
+          <el-icon><User /></el-icon>
+          <template #title>设置</template>
+        </el-menu-item>
 
         <template v-if="isAdmin">
           <div v-if="!sidebarCollapsed" class="menu-section">管理后台</div>
@@ -112,6 +90,10 @@
             :icon="sidebarCollapsed ? Expand : Fold"
             @click="sidebarCollapsed = !sidebarCollapsed"
           />
+          <div class="mobile-brand" :title="`${APP_NAME} ${APP_VERSION_LABEL}`">
+            <strong>{{ APP_NAME }}</strong>
+            <AppVersion compact />
+          </div>
           <div class="page-heading">
             <h1>{{ pageTitle }}</h1>
             <p>训练计划、执行日志与跑量趋势</p>
@@ -119,8 +101,8 @@
         </div>
         <div class="header-tools">
           <span class="sync-text">本地训练台</span>
-          <el-button class="tool-icon" text :icon="Upload" />
-          <el-button class="tool-icon" text :icon="Bell" />
+          <el-button class="tool-icon" text :icon="Upload" @click="router.push('/data-management')" />
+          <el-button class="tool-icon" text :icon="Bell" @click="router.push('/todos')" />
           <el-dropdown trigger="click" @command="handleHeaderSettingCommand">
             <el-button class="tool-icon settings-trigger" text :icon="Setting" />
             <template #dropdown>
@@ -202,16 +184,13 @@ import {
   Calendar,
   Connection,
   DataAnalysis,
-  DocumentAdd,
   ArrowLeft,
   Expand,
   Fold,
-  Grid,
+  FolderOpened,
   List,
   Message,
-  Odometer,
   Setting,
-  Stopwatch,
   SwitchButton,
   Timer,
   TrendCharts,
@@ -219,9 +198,11 @@ import {
   User,
 } from "@element-plus/icons-vue";
 import { clearStoredToken, getCurrentUser, logoutUser } from "@/api/auth";
-import { getGarminStatus } from "@/api/garminSync";
+import { listDataSyncProviders } from "@/api/dataSync";
+import AppVersion from "@/components/common/AppVersion.vue";
 import SiteFilingFooter from "@/components/SiteFilingFooter.vue";
 import type { UserAccount } from "@/types/models";
+import { APP_NAME, APP_VERSION_LABEL } from "@/config/app";
 import { requestAuth } from "@/utils/authPrompt";
 
 interface NavTab {
@@ -250,8 +231,8 @@ const tabContextMenu = ref<{
 const mobileNavItems = [
   { path: "/today", label: "今日", icon: Timer },
   { path: "/training-calendar", label: "日历", icon: Calendar },
-  { path: "/ai-plan", label: "AI计划", icon: Odometer },
-  { path: "/pace-calculator", label: "配速", icon: Stopwatch },
+  { path: "/training-plan", label: "计划", icon: List },
+  { path: "/dashboard", label: "分析", icon: DataAnalysis },
   { path: "/my", label: "我的", icon: User },
 ];
 
@@ -382,7 +363,7 @@ async function loadCurrentUser() {
 
 async function loadGarminFeatureVisibility() {
   try {
-    await getGarminStatus(true);
+    await listDataSyncProviders(true);
     garminSyncVisible.value = true;
   } catch {
     garminSyncVisible.value = false;
@@ -436,6 +417,7 @@ onBeforeUnmount(() => {
 
 .brand-lockup {
   display: grid;
+  width: max-content;
   color: #ffffff;
 }
 
@@ -448,6 +430,18 @@ onBeforeUnmount(() => {
 .brand-lockup small {
   color: #9aa4af;
   font-size: 12px;
+}
+
+.brand-subline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+
+.brand-version {
+  color: #8f9aa6;
 }
 
 .brand-mini {
@@ -554,6 +548,10 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
+.mobile-brand {
+  display: none;
+}
+
 .sync-text {
   color: #667085;
   font-size: 12px;
@@ -654,10 +652,35 @@ onBeforeUnmount(() => {
     display: none;
   }
 
+  .mobile-brand {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1px;
+    min-width: 0;
+    padding-top: 5px;
+    color: #172033;
+  }
+
+  .mobile-brand strong {
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  .mobile-brand :deep(.app-version) {
+    font-size: 10px;
+    line-height: 1.1;
+    opacity: 0.66;
+  }
+
   .app-header {
-    height: auto;
-    min-height: 58px;
-    padding: 10px 14px;
+    height: 64px;
+    min-height: 64px;
+    padding: 12px 14px 8px;
   }
 
   .header-left,
@@ -749,18 +772,12 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 520px) {
-  .app-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .header-left,
-  .header-tools {
-    width: 100%;
-    justify-content: space-between;
+  .header-left {
+    min-width: 0;
   }
 
   .header-tools {
+    flex: 0 0 auto;
     justify-content: flex-end;
   }
 }

@@ -73,6 +73,8 @@ def get_connection_status(db: Session, user_id: int) -> GarminConnectionStatus:
         region=connection.region,
         masked_account_identifier=connection.masked_account_identifier,
         auto_import_enabled=connection.auto_import_enabled,
+        auto_sync_enabled=connection.auto_sync_enabled,
+        auto_sync_last_run_at=connection.auto_sync_last_run_at,
         last_authenticated_at=connection.last_authenticated_at,
         last_successful_sync_at=connection.last_successful_sync_at,
         last_error_code=connection.last_error_code,

@@ -55,6 +55,24 @@ const router = createRouter({
       meta: { title: "训练日历" },
     },
     {
+      path: "/todos",
+      name: "TaskCenter",
+      component: () => import("@/views/TaskCenterView.vue"),
+      meta: { title: "待办中心" },
+    },
+    {
+      path: "/training-plan",
+      name: "TrainingPlanCenter",
+      component: () => import("@/views/TrainingPlanCenterView.vue"),
+      meta: { title: "训练计划" },
+    },
+    {
+      path: "/data-management",
+      name: "DataManagement",
+      component: () => import("@/views/DataManagementView.vue"),
+      meta: { title: "数据管理" },
+    },
+    {
       path: "/weekly-review",
       name: "WeeklyReview",
       component: () => import("@/views/WeeklyReviewView.vue"),
@@ -113,6 +131,14 @@ const router = createRouter({
       redirect: "/plan-imports",
     },
     {
+      path: "/my-training-plan",
+      redirect: "/training-plan",
+    },
+    {
+      path: "/plan-import",
+      redirect: "/training-plan?tab=import",
+    },
+    {
       path: "/plan-imports",
       name: "PlanImport",
       component: () => import("@/views/PlanImportView.vue"),
@@ -126,6 +152,16 @@ const router = createRouter({
     },
     {
       path: "/garmin-sync",
+      redirect: "/data-sync/garmin",
+    },
+    {
+      path: "/data-sync",
+      name: "DataSync",
+      component: () => import("@/views/DataSyncView.vue"),
+      meta: { title: "数据同步" },
+    },
+    {
+      path: "/data-sync/garmin",
       name: "GarminSync",
       component: () => import("@/views/GarminSyncView.vue"),
       meta: { title: "Garmin 同步" },

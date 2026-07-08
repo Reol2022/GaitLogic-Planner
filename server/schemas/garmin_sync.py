@@ -16,6 +16,8 @@ class GarminConnectionStatus(BaseModel):
     region: str | None = None
     masked_account_identifier: str | None = None
     auto_import_enabled: bool = True
+    auto_sync_enabled: bool = False
+    auto_sync_last_run_at: datetime | None = None
     last_authenticated_at: datetime | None = None
     last_successful_sync_at: datetime | None = None
     last_error_code: str | None = None

@@ -382,6 +382,8 @@ export interface GarminConnectionStatus {
   region?: string | null;
   masked_account_identifier?: string | null;
   auto_import_enabled: boolean;
+  auto_sync_enabled?: boolean;
+  auto_sync_last_run_at?: string | null;
   last_authenticated_at?: string | null;
   last_successful_sync_at?: string | null;
   last_error_code?: string | null;
@@ -405,6 +407,39 @@ export interface GarminSyncPayload {
   sync_mode: "incremental" | "initial_backfill" | "recent_7d" | "recent_30d" | "custom_range";
   start?: string | null;
   end?: string | null;
+}
+
+export interface ProviderCapabilities {
+  connect: boolean;
+  disconnect: boolean;
+  mfa: boolean;
+  manual_sync: boolean;
+  incremental_sync: boolean;
+  initial_backfill: boolean;
+  custom_range_sync: boolean;
+  activity_reprocess: boolean;
+  activity_ignore: boolean;
+  activity_restore: boolean;
+  auto_import_setting: boolean;
+  webhooks: boolean;
+}
+
+export interface ProviderDescriptor {
+  key: string;
+  display_name: string;
+  status: string;
+  auth_flows: string[];
+  capabilities: ProviderCapabilities;
+  supported_sync_modes: string[];
+  notes?: string | null;
+}
+
+export interface DataSyncConnectionRead extends GarminConnectionStatus {
+  descriptor?: ProviderDescriptor | null;
+}
+
+export interface ProviderListResponse {
+  providers: ProviderDescriptor[];
 }
 
 export interface ExternalSyncJobRead {
@@ -494,7 +529,75 @@ export interface WorkoutCompletionContext {
   prefilled_objective_fields: Record<string, unknown>;
   subjective_fields_missing: string[];
   field_conflicts: Array<Record<string, unknown>>;
-  mode: "manual_full" | "garmin_prefilled" | "merge_conflict" | "already_completed" | string;
+  mode: "manual_full" | "device_prefilled" | "garmin_prefilled" | "merge_conflict" | "already_completed" | "pending_sync" | string;
+}
+
+export interface TaskItem {
+  task_key: string;
+  task_type: string;
+  title: string;
+  description?: string | null;
+  priority: number;
+  count: number;
+  action_path: string;
+  source_type?: string | null;
+  source_id?: number | null;
+  created_at?: string | null;
+}
+
+export interface TaskListResponse {
+  items: TaskItem[];
+  total: number;
+}
+
+export interface DataSyncProviderSummary {
+  provider: string;
+  connected: boolean;
+  status: string;
+  masked_account_identifier?: string | null;
+  auto_import_enabled: boolean;
+  auto_sync_enabled: boolean;
+  auto_sync_last_run_at?: string | null;
+  last_successful_sync_at?: string | null;
+  last_error_code?: string | null;
+}
+
+export interface DataSyncSummary {
+  providers: DataSyncProviderSummary[];
+  connected_count: number;
+  needs_review_count: number;
+  failed_job_count: number;
+}
+
+export interface TrainingPlanOverview {
+  has_active_cycle: boolean;
+  active_cycle?: TrainingCycle | null;
+  current_block?: Record<string, unknown> | null;
+  week_start: string;
+  week_end: string;
+  week_workouts: PlannedWorkout[];
+  primary_actions: Array<{ label: string; path: string }>;
+  advanced_links: Array<{ label: string; path: string }>;
+}
+
+export interface TodayDashboard {
+  today: string;
+  has_active_cycle: boolean;
+  workouts: PlannedWorkout[];
+  tasks: TaskItem[];
+  data_sync: DataSyncSummary;
+  recovery_checkin_completed: boolean;
+}
+
+export interface RecoveryQuickPayload {
+  leg_feeling: "good" | "normal" | "bad";
+  fatigue: "low" | "normal" | "high";
+  pain: "none" | "mild" | "obvious";
+}
+
+export interface RecoveryQuickRead extends Partial<RecoveryQuickPayload> {
+  checkin_date: string;
+  raw?: Record<string, unknown> | null;
 }
 
 export interface PaceRule {

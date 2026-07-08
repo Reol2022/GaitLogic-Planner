@@ -112,11 +112,11 @@ def get_completion_context(db: Session, planned_workout_id: int, user_id: int) -
                 missing.append(key)
     mode = "manual_full"
     if log is not None and linked:
-        mode = "garmin_prefilled" if missing else "already_completed"
+        mode = "device_prefilled" if missing else "already_completed"
     elif log is not None:
         mode = "already_completed"
     elif candidates:
-        mode = "garmin_prefilled"
+        mode = "device_prefilled"
     return WorkoutCompletionContextRead(
         existing_workout_log=log,
         linked_garmin_activities=linked,

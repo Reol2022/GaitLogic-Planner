@@ -18,10 +18,16 @@ from server.schemas.garmin_sync import (
     GarminSyncSettingsUpdate,
     GarminSyncRequest,
 )
-from server.services import garmin_sync_service
+from server.integrations.activity_sync.facade import DataSyncFacade
+from server.integrations.activity_sync.schemas import DataSyncChallengeRequest, DataSyncConnectRequest, DataSyncRequest
+from server.integrations.activity_sync.workers.sync_worker import run_sync_job_in_background
 from server.services.feature_access_service import assert_garmin_sync_available
 
 router = APIRouter(prefix="/integrations/garmin", tags=["garmin-sync"])
+
+
+def _facade(db: Session, current_user: UserAccount) -> DataSyncFacade:
+    return DataSyncFacade(db, current_user)
 
 
 @router.get("/status", response_model=GarminConnectionStatus)
@@ -30,7 +36,8 @@ def get_status(
     current_user: UserAccount = Depends(get_current_user),
 ) -> GarminConnectionStatus:
     assert_garmin_sync_available(db, current_user)
-    return garmin_sync_service.get_connection_status(db, current_user.id)
+    connection = _facade(db, current_user).get_connection("garmin")
+    return GarminConnectionStatus(**connection.model_dump(exclude={"descriptor"}))
 
 
 @router.post("/connect", response_model=GarminConnectResponse)
@@ -40,7 +47,16 @@ def connect(
     current_user: UserAccount = Depends(get_current_user),
 ) -> GarminConnectResponse:
     assert_garmin_sync_available(db, current_user)
-    return garmin_sync_service.connect(db, current_user, payload)
+    response = _facade(db, current_user).connect(
+        "garmin",
+        DataSyncConnectRequest(username=payload.username, password=payload.password, region=payload.region),
+    )
+    return GarminConnectResponse(
+        status=response.status,
+        connection=GarminConnectionStatus(**response.connection.model_dump(exclude={"descriptor"})) if response.connection else None,
+        mfa_token=response.mfa_token,
+        safe_message=response.safe_message,
+    )
 
 
 @router.post("/connect/mfa", response_model=GarminConnectResponse)
@@ -50,7 +66,16 @@ def submit_mfa(
     current_user: UserAccount = Depends(get_current_user),
 ) -> GarminConnectResponse:
     assert_garmin_sync_available(db, current_user)
-    return garmin_sync_service.submit_mfa(db, current_user, payload)
+    response = _facade(db, current_user).challenge(
+        "garmin",
+        DataSyncChallengeRequest(mfa_token=payload.mfa_token, mfa_code=payload.mfa_code),
+    )
+    return GarminConnectResponse(
+        status=response.status,
+        connection=GarminConnectionStatus(**response.connection.model_dump(exclude={"descriptor"})) if response.connection else None,
+        mfa_token=response.mfa_token,
+        safe_message=response.safe_message,
+    )
 
 
 @router.post("/disconnect", response_model=GarminConnectionStatus)
@@ -59,7 +84,8 @@ def disconnect(
     current_user: UserAccount = Depends(get_current_user),
 ) -> GarminConnectionStatus:
     assert_garmin_sync_available(db, current_user)
-    return garmin_sync_service.disconnect(db, current_user.id)
+    connection = _facade(db, current_user).disconnect("garmin")
+    return GarminConnectionStatus(**connection.model_dump(exclude={"descriptor"}))
 
 
 @router.put("/settings", response_model=GarminConnectionStatus)
@@ -69,7 +95,7 @@ def update_settings(
     current_user: UserAccount = Depends(get_current_user),
 ) -> GarminConnectionStatus:
     assert_garmin_sync_available(db, current_user)
-    return garmin_sync_service.update_sync_settings(db, current_user.id, payload)
+    return _facade(db, current_user).update_garmin_sync_settings(payload)
 
 
 @router.post("/sync", response_model=ExternalSyncJobRead)
@@ -81,9 +107,13 @@ def enqueue_sync(
     current_user: UserAccount = Depends(get_current_user),
 ) -> ExternalSyncJobRead:
     assert_garmin_sync_available(db, current_user)
-    job = garmin_sync_service.enqueue_sync_job(db, current_user.id, payload, idempotency_key)
+    job = _facade(db, current_user).create_sync_job(
+        "garmin",
+        DataSyncRequest(sync_mode=payload.sync_mode, start=payload.start, end=payload.end),
+        idempotency_key,
+    )
     if job.status == "queued":
-        background_tasks.add_task(garmin_sync_service.run_sync_job_in_background, job.id)
+        background_tasks.add_task(run_sync_job_in_background, job.id)
     return job
 
 
@@ -93,7 +123,7 @@ def list_sync_jobs(
     current_user: UserAccount = Depends(get_current_user),
 ) -> list[ExternalSyncJobRead]:
     assert_garmin_sync_available(db, current_user)
-    return garmin_sync_service.list_sync_jobs(db, current_user.id)
+    return _facade(db, current_user).list_sync_jobs(provider_key="garmin")
 
 
 @router.get("/sync-jobs/{job_id}", response_model=ExternalSyncJobRead)
@@ -103,7 +133,7 @@ def get_sync_job(
     current_user: UserAccount = Depends(get_current_user),
 ) -> ExternalSyncJobRead:
     assert_garmin_sync_available(db, current_user)
-    return garmin_sync_service.get_sync_job(db, current_user.id, job_id)
+    return _facade(db, current_user).get_sync_job(job_id)
 
 
 @router.post("/sync-jobs/{job_id}/retry", response_model=ExternalSyncJobRead)
@@ -113,7 +143,7 @@ def retry_sync_job(
     current_user: UserAccount = Depends(get_current_user),
 ) -> ExternalSyncJobRead:
     assert_garmin_sync_available(db, current_user)
-    return garmin_sync_service.retry_sync_job(db, current_user.id, job_id)
+    return _facade(db, current_user).retry_sync_job(job_id)
 
 
 @router.get("/activities", response_model=list[ExternalActivityRead])
@@ -122,7 +152,7 @@ def list_activities(
     current_user: UserAccount = Depends(get_current_user),
 ) -> list[ExternalActivityRead]:
     assert_garmin_sync_available(db, current_user)
-    return garmin_sync_service.list_activities(db, current_user.id)
+    return _facade(db, current_user).list_activities(provider_key="garmin")
 
 
 @router.post("/activities/reconcile", response_model=GarminActivityReconcileSummary)
@@ -132,7 +162,7 @@ def reconcile_activities(
     current_user: UserAccount = Depends(get_current_user),
 ) -> GarminActivityReconcileSummary:
     assert_garmin_sync_available(db, current_user)
-    return garmin_sync_service.reconcile_activities(db, current_user.id, payload)
+    return _facade(db, current_user).reconcile_garmin_activities(payload)
 
 
 @router.post("/activities/{activity_id}/resolve", response_model=ExternalActivityRead)
@@ -143,4 +173,4 @@ def resolve_activity(
     current_user: UserAccount = Depends(get_current_user),
 ) -> ExternalActivityRead:
     assert_garmin_sync_available(db, current_user)
-    return garmin_sync_service.resolve_activity(db, current_user.id, activity_id, payload)
+    return _facade(db, current_user).resolve_garmin_activity(activity_id, payload)

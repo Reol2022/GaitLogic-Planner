@@ -1,5 +1,13 @@
 # 安全政策
 
+## v0.9.4 Data Sync 安全补充
+
+- Provider adapter 不得保存明文密码、MFA、cookie、session 或 access token。
+- 平台 token payload 必须通过 `token_encryption_service` 加密保存。
+- 原始活动 payload 入库前必须脱敏，不保存完整 GPS 轨迹、polyline、逐点位置或设备序列号。
+- `/api/data-sync/*` 与旧 Garmin API 均必须基于当前登录用户上下文，不允许前端传入 `user_id` 决定数据归属。
+- Mock provider 默认生产禁用，只能通过显式配置开启。
+
 ## 支持的版本
 
 当前项目仍处于内测和快速迭代阶段。安全修复优先支持：
