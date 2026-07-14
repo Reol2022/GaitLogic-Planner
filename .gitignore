@@ -1,4 +1,24 @@
 # Python
+# Repository-boundary private data. Keep source SQL schemas and migrations tracked.
+data/private/
+data/raw/
+data/user-data/
+exports/
+survey/raw/
+user-study/raw-data/
+user-study/interviews/raw/
+competition/private/
+competition/results/
+competition/videos/
+competition/defense/
+competition/submissions/private/
+docs/competition/private/
+credentials/
+secrets/
+tokens/
+garmin_tokens/
+database-backups/
+
 __pycache__/
 **/__pycache__/
 *.py[cod]

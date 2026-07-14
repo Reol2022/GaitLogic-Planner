@@ -100,6 +100,14 @@ class Settings(BaseSettings):
     ai_readiness_explanation_enabled: bool = Field(
         default=False, validation_alias="AI_READINESS_EXPLANATION_ENABLED"
     )
+    # Competition-only capabilities are opt-in and remain off in normal product
+    # environments. Keep these checks centralized in settings.
+    app_env: str = Field(default="development", validation_alias="APP_ENV")
+    competition_mode: bool = Field(default=False, validation_alias="COMPETITION_MODE")
+    enable_experiment_dashboard: bool = Field(default=False, validation_alias="ENABLE_EXPERIMENT_DASHBOARD")
+    enable_agent_trace: bool = Field(default=False, validation_alias="ENABLE_AGENT_TRACE")
+    enable_survey_module: bool = Field(default=False, validation_alias="ENABLE_SURVEY_MODULE")
+    enable_competition_demo_data: bool = Field(default=False, validation_alias="ENABLE_COMPETITION_DEMO_DATA")
 
     model_config = SettingsConfigDict(
         env_file=".env",
