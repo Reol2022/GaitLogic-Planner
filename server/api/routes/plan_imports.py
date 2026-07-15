@@ -1,11 +1,12 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, Query, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from planner_core.database.models import UserAccount
 from server.api.deps import get_current_user, get_db
+from server.common.exceptions import BadRequestError
 from server.schemas.plan_import import (
     PlanImportApplyResponse,
     PlanImportCreateResponse,
@@ -14,6 +15,7 @@ from server.schemas.plan_import import (
     PlanImportStructuredRequest,
 )
 from server.services import plan_import_service, plan_import_template_service
+from server.services.training_rule_loop_service import validate_plan_import_draft
 
 router = APIRouter(prefix="/plan-imports", tags=["plan imports"])
 
@@ -102,9 +104,15 @@ def validate_plan_import(
 @router.post("/{import_id}/apply", response_model=PlanImportApplyResponse)
 def apply_plan_import(
     import_id: int,
+    confirm_high: bool = Query(default=False),
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user),
 ) -> PlanImportApplyResponse:
+    validation = validate_plan_import_draft(db, current_user.id, import_id)
+    if validation.evaluation.final_action == "block_auto_apply":
+        raise BadRequestError("Rule validation blocked automatic plan application.")
+    if validation.evaluation.final_action == "require_user_review" and not confirm_high:
+        raise BadRequestError("Rule validation requires explicit user confirmation.")
     return plan_import_service.apply_plan_import(db, current_user.id, import_id)
 
 

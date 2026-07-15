@@ -201,6 +201,12 @@ const router = createRouter({
       meta: { title: "系统设置" },
     },
     {
+      path: "/admin/rule-governance",
+      name: "AdminRuleGovernance",
+      component: () => import("@/views/AdminRuleGovernance.vue"),
+      meta: { title: "科学规则治理" },
+    },
+    {
       path: "/404",
       name: "NotFound",
       component: () => import("@/views/NotFoundView.vue"),

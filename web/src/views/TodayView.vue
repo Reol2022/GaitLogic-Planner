@@ -27,6 +27,51 @@
       <el-button v-if="showWeeklyReviewPrompt" type="primary" plain @click="router.push('/weekly-review')">查看周复盘</el-button>
     </div>
 
+    <section v-if="!showOnboarding && !showNoActiveCycle" class="rule-advice-card" v-loading="ruleEvaluationLoading">
+      <div class="rule-advice-head">
+        <div>
+          <span class="rule-kicker">科学规则建议</span>
+          <h3>{{ todayRuleEvaluation?.title || "今日训练建议" }}</h3>
+          <p>{{ todayRuleEvaluation?.message || "正在根据今日计划、近期训练和恢复记录生成建议。" }}</p>
+        </div>
+        <el-tag :type="ruleStatusTagType" effect="plain">{{ ruleStatusText }}</el-tag>
+      </div>
+      <div class="rule-advice-meta">
+        <span>{{ ruleDataLimitedText }}</span>
+        <span>评估时间：{{ formatDateTime(todayRuleEvaluation?.evaluated_at) }}</span>
+        <span>命中规则：{{ todayRuleEvaluation?.evaluation.matched_rules.length || 0 }}</span>
+      </div>
+      <el-alert
+        v-if="todayRuleEvaluation?.data_limited"
+        title="当前建议基于有限数据，系统不会根据缺失数据推测恢复状态。"
+        type="info"
+        :closable="false"
+        show-icon
+      />
+      <el-collapse v-if="todayRuleEvaluation?.evaluation.matched_rules.length" class="rule-hit-collapse">
+        <el-collapse-item title="查看触发原因" name="rules">
+          <div
+            v-for="rule in todayRuleEvaluation.evaluation.matched_rules"
+            :key="rule.rule_code"
+            class="rule-hit-item"
+          >
+            <div>
+              <strong>{{ rule.title }}</strong>
+              <span>{{ severityLabel(rule.severity) }} · {{ rule.rule_code }}</span>
+            </div>
+            <p>{{ rule.explanation }}</p>
+          </div>
+        </el-collapse-item>
+      </el-collapse>
+      <div class="rule-advice-actions">
+        <el-button size="small" :loading="ruleEvaluationLoading" @click="loadRuleEvaluation">刷新建议</el-button>
+        <el-button size="small" type="primary" plain :loading="ruleEvaluationLoading" @click="recalculateRuleEvaluation">
+          重新评估
+        </el-button>
+        <el-button size="small" text @click="router.push('/training-readiness')">填写恢复状态</el-button>
+      </div>
+    </section>
+
     <section
       v-if="!showOnboarding && !showNoActiveCycle && (dashboardTasks.length > 0 || connectedDataSources > 0)"
       class="today-hub"
@@ -259,11 +304,13 @@ import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles
 import { listTrainingBlocks } from "@/api/trainingBlocks";
 import { updateWorkoutLog } from "@/api/workoutLogs";
 import { getTodayReadiness, recalculateReadiness } from "@/api/trainingReadiness";
+import { getTodayRuleEvaluation, recalculateTodayRuleEvaluation } from "@/api/ruleLoop";
 import { trackUsageEvent } from "@/api/usageEvents";
 import { startDataSync } from "@/api/dataSync";
 import { getTodayDashboard } from "@/api/simplifiedWorkflow";
 import type {
   PlannedWorkout,
+  RuleLoopEvaluation,
   TaskItem,
   TrainingBlock,
   TrainingCycle,
@@ -292,6 +339,8 @@ const dashboardTasks = ref<TaskItem[]>([]);
 const connectedDataSources = ref(0);
 const firstConnectedProvider = ref<string | null>(null);
 const syncingLatest = ref(false);
+const todayRuleEvaluation = ref<RuleLoopEvaluation | null>(null);
+const ruleEvaluationLoading = ref(false);
 const readinessAvailable = computed(() => !!todayReadiness.value && !readinessMessage.value);
 const showOnboarding = computed(() => !loadingCycles.value && cycles.value.length === 0);
 const showNoActiveCycle = computed(() => !loadingCycles.value && cycles.value.length > 0 && !activeCycle.value);
@@ -313,6 +362,15 @@ const readinessLoadChangeText = computed(() => {
   if (!Number.isFinite(value)) return "暂无";
   return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 });
+const ruleStatusText = computed(() => actionLabel(todayRuleEvaluation.value?.evaluation.final_action || "show_info"));
+const ruleStatusTagType = computed(() => {
+  const action = todayRuleEvaluation.value?.evaluation.final_action;
+  if (action === "block_auto_apply" || action === "require_user_review" || action === "rest_recommended") return "danger";
+  if (action === "adjust_recommended" || action === "downgrade_recommended" || action === "monitor") return "warning";
+  if (action === "keep_plan" || action === "no_action") return "success";
+  return "info";
+});
+const ruleDataLimitedText = computed(() => (todayRuleEvaluation.value?.data_limited ? "数据完整度：有限" : "数据完整度：可评估"));
 const painLevel = computed({
   get: () => quickForm.pain_level ?? 0,
   set: (value: number) => {
@@ -399,9 +457,30 @@ async function load() {
   loading.value = true;
   try {
     workouts.value = await listTodayWorkouts(today.value);
-    await Promise.all([loadReadiness(), loadDailyHub()]);
+    await Promise.all([loadReadiness(), loadDailyHub(), loadRuleEvaluation()]);
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadRuleEvaluation() {
+  ruleEvaluationLoading.value = true;
+  try {
+    todayRuleEvaluation.value = await getTodayRuleEvaluation(today.value);
+  } catch {
+    todayRuleEvaluation.value = null;
+  } finally {
+    ruleEvaluationLoading.value = false;
+  }
+}
+
+async function recalculateRuleEvaluation() {
+  ruleEvaluationLoading.value = true;
+  try {
+    todayRuleEvaluation.value = await recalculateTodayRuleEvaluation(today.value);
+    ElMessage.success("今日规则建议已重新评估");
+  } finally {
+    ruleEvaluationLoading.value = false;
   }
 }
 
@@ -481,6 +560,7 @@ async function saveQuickCheckin() {
     if (readinessAvailable.value) {
       await recalculateReadiness();
     }
+    await recalculateRuleEvaluation();
     await load();
   } finally {
     savingQuick.value = false;
@@ -505,6 +585,35 @@ function readinessStatusLabel(status: TrainingStatus) {
     watch: "关注恢复",
     reduce_load: "建议降负荷",
   }[status];
+}
+
+function actionLabel(action: string) {
+  return {
+    no_action: "暂无额外建议",
+    show_info: "信息提示",
+    keep_plan: "按计划执行",
+    monitor: "注意观察",
+    adjust_recommended: "建议适度调整",
+    downgrade_recommended: "建议降低强度",
+    rest_recommended: "建议休息",
+    require_user_review: "需要重新确认",
+    block_auto_apply: "已阻止自动应用",
+  }[action] || "训练管理提示";
+}
+
+function severityLabel(severity: string) {
+  return {
+    info: "信息",
+    notice: "关注",
+    caution: "建议调整",
+    high: "必须确认",
+    blocking: "阻止自动应用",
+  }[severity] || severity;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "暂无";
+  return new Date(value).toLocaleString();
 }
 
 function statusClass(status?: WorkoutStatusNormalized | null) {
@@ -587,6 +696,82 @@ onMounted(async () => {
   flex: 0 0 auto;
   color: var(--muted);
   font-size: 12px;
+}
+
+.rule-advice-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: #ffffff;
+  box-shadow: var(--card-shadow);
+}
+
+.rule-advice-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.rule-kicker {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.rule-advice-head h3 {
+  margin: 4px 0 6px;
+  color: var(--text);
+}
+
+.rule-advice-head p,
+.rule-hit-item p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.rule-advice-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.rule-hit-collapse {
+  border-top: 1px solid var(--card-border);
+  border-bottom: 1px solid var(--card-border);
+}
+
+.rule-hit-item {
+  display: grid;
+  gap: 5px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.rule-hit-item:last-child {
+  border-bottom: 0;
+}
+
+.rule-hit-item div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rule-hit-item span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.rule-advice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .today-hub {
@@ -769,6 +954,18 @@ onMounted(async () => {
 
   .readiness-card-actions .el-button {
     flex: 1 1 120px;
+    margin-left: 0;
+  }
+
+  .rule-advice-head,
+  .rule-hit-item div,
+  .rule-advice-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .rule-advice-actions .el-button {
+    width: 100%;
     margin-left: 0;
   }
 

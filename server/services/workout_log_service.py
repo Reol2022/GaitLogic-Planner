@@ -6,6 +6,7 @@ from planner_core.enums import PainScaleVersion
 from server.common.exceptions import NotFoundError
 from server.schemas.workout_log import WorkoutCompletionContextRead, WorkoutLogUpdate
 from server.services.planned_workout_service import get_planned_workout
+from server.services import training_rule_service
 
 
 def get_workout_log_by_planned_workout(
@@ -51,6 +52,26 @@ def update_workout_log(
         setattr(log, key, value)
     log.subjective_status = _subjective_status(log)
     db.commit()
+    db.refresh(log)
+    training_rule_service.mark_stale_for_context(
+        db,
+        user_id=user_id,
+        context_type="workout_review",
+        context_id=str(log.id),
+        stale_reason="workout_log_updated",
+    )
+    if log.activity_date:
+        training_rule_service.mark_stale_for_context(
+            db,
+            user_id=user_id,
+            context_type="daily_adjustment",
+            context_id=log.activity_date.isoformat(),
+            stale_reason="workout_log_updated",
+        )
+    db.commit()
+    from server.services.training_rule_loop_service import review_workout_log
+
+    review_workout_log(db, user_id, log.id, force=True)
     db.refresh(log)
     return log
 

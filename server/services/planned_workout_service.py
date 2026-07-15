@@ -10,6 +10,7 @@ from server.schemas.planned_workout import PlannedWorkoutCreate, PlannedWorkoutU
 from server.services.training_block_service import get_training_block
 from server.services.training_cycle_service import get_training_cycle
 from server.services.training_cycle_lifecycle_service import get_active_cycle
+from server.services import training_rule_service
 
 
 def list_planned_workouts(
@@ -82,6 +83,14 @@ def create_planned_workout(
     db.add(workout)
     db.commit()
     db.refresh(workout)
+    training_rule_service.mark_stale_for_context(
+        db,
+        user_id=user_id,
+        context_type="plan_validation",
+        context_id=f"cycle:{payload.cycle_id}",
+        stale_reason="planned_workout_created",
+    )
+    db.commit()
     return get_planned_workout(db, workout.id, user_id)
 
 
@@ -105,12 +114,29 @@ def update_planned_workout(
         setattr(workout, key, value)
     db.commit()
     db.refresh(workout)
+    training_rule_service.mark_stale_for_context(
+        db,
+        user_id=user_id,
+        context_type="plan_validation",
+        context_id=f"cycle:{workout.cycle_id}",
+        stale_reason="planned_workout_updated",
+    )
+    db.commit()
     return get_planned_workout(db, workout.id, user_id)
 
 
 def delete_planned_workout(db: Session, workout_id: int, user_id: int) -> None:
     workout = get_planned_workout(db, workout_id, user_id)
+    cycle_id = workout.cycle_id
     db.delete(workout)
+    db.commit()
+    training_rule_service.mark_stale_for_context(
+        db,
+        user_id=user_id,
+        context_type="plan_validation",
+        context_id=f"cycle:{cycle_id}",
+        stale_reason="planned_workout_deleted",
+    )
     db.commit()
 
 

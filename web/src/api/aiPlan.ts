@@ -22,8 +22,10 @@ export function getAIPlanDraftDetail(id: number) {
   return request.get<AIPlanDraft>(`/ai-plan/drafts/${id}`);
 }
 
-export function applyAIPlanDraft(id: number) {
-  return request.post<{ message: string; cycle_id: number }>(`/ai-plan/drafts/${id}/apply`);
+export function applyAIPlanDraft(id: number, confirmHigh = false) {
+  return request.post<{ message: string; cycle_id: number }>(`/ai-plan/drafts/${id}/apply`, undefined, {
+    params: { confirm_high: confirmHigh },
+  });
 }
 
 export function rejectAIPlanDraft(id: number) {

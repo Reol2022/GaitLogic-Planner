@@ -179,7 +179,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { UploadFile, UploadUserFile } from "element-plus";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { DocumentAdd, Download, Upload, UploadFilled } from "@element-plus/icons-vue";
 import {
   applyPlanImport,
@@ -191,6 +191,7 @@ import {
   uploadPlanImportFile,
   validatePlanImport,
 } from "@/api/planImports";
+import { validatePlanImportDraft } from "@/api/ruleLoop";
 import type {
   PlanImportAnchorStrategy,
   PlanImportDraftRead,
@@ -377,7 +378,20 @@ async function handleApply() {
   if (!draft.value) return;
   applying.value = true;
   try {
-    await applyPlanImport(draft.value.import_id);
+    const validation = await validatePlanImportDraft(draft.value.import_id, true);
+    if (validation.evaluation.final_action === "block_auto_apply") {
+      ElMessage.error(validation.message || "规则校验已阻止自动应用，请先调整导入草稿。");
+      return;
+    }
+    const needsConfirm = validation.evaluation.final_action === "require_user_review";
+    if (needsConfirm) {
+      await ElMessageBox.confirm(
+        validation.message || "规则校验提示该导入计划需要二次确认。确认后仍可应用，但建议先检查问题日期。",
+        "导入前规则校验",
+        { confirmButtonText: "继续导入", cancelButtonText: "返回检查", type: "warning" },
+      );
+    }
+    await applyPlanImport(draft.value.import_id, needsConfirm);
     draft.value = await validatePlanImport(draft.value.import_id);
     ElMessage.success("导入草稿已应用");
   } finally {

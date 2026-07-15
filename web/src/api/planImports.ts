@@ -50,8 +50,10 @@ export function validatePlanImport(importId: number) {
   return request.post<PlanImportDraftRead>(`/plan-imports/${importId}/validate`);
 }
 
-export function applyPlanImport(importId: number) {
-  return request.post<{ import_id: number; status: string; diff_summary: unknown }>(`/plan-imports/${importId}/apply`);
+export function applyPlanImport(importId: number, confirmHigh = false) {
+  return request.post<{ import_id: number; status: string; diff_summary: unknown }>(`/plan-imports/${importId}/apply`, undefined, {
+    params: { confirm_high: confirmHigh },
+  });
 }
 
 export function cancelPlanImport(importId: number) {

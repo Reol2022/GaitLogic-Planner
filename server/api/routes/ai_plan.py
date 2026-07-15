@@ -15,7 +15,9 @@ from server.schemas.ai_plan import (
     AIPlanQuotaRead,
 )
 from server.services import ai_plan_service
+from server.common.exceptions import BadRequestError
 from server.services.ai_plan_export_service import SUPPORTED_EXPORT_FORMATS, export_ai_plan_draft
+from server.services.training_rule_loop_service import validate_ai_plan_draft
 
 router = APIRouter(prefix="/ai-plan", tags=["AI plan"])
 
@@ -81,9 +83,15 @@ def export_ai_plan_draft_file(
 @router.post("/drafts/{draft_id}/apply", response_model=AIPlanApplyResponse)
 def apply_ai_plan_draft(
     draft_id: int,
+    confirm_high: bool = Query(default=False),
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user),
 ):
+    validation = validate_ai_plan_draft(db, current_user.id, draft_id)
+    if validation.evaluation.final_action == "block_auto_apply":
+        raise BadRequestError("Rule validation blocked automatic plan application.")
+    if validation.evaluation.final_action == "require_user_review" and not confirm_high:
+        raise BadRequestError("Rule validation requires explicit user confirmation.")
     cycle = ai_plan_service.apply_draft_to_training_plan(db, draft_id, current_user.id)
     return AIPlanApplyResponse(message="AI 课表草稿已应用为正式训练计划", cycle_id=cycle.id)
 

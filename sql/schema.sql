@@ -1088,3 +1088,294 @@ CREATE TABLE IF NOT EXISTS `external_activity_resolution` (
   CONSTRAINT `fk_external_activity_resolution_workout_log_id`
     FOREIGN KEY (`workout_log_id`) REFERENCES `workout_logs` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_knowledge_items` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `code` VARCHAR(96) NOT NULL,
+  `name` VARCHAR(128) NOT NULL,
+  `english_name` VARCHAR(128) NULL,
+  `category` VARCHAR(64) NOT NULL,
+  `definition` TEXT NOT NULL,
+  `aliases_json` JSON NOT NULL,
+  `attributes_json` JSON NOT NULL,
+  `related_codes_json` JSON NOT NULL,
+  `source_refs_json` JSON NOT NULL,
+  `evidence_level` VARCHAR(64) NOT NULL DEFAULT 'product_rule',
+  `version` VARCHAR(32) NOT NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'active',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_training_knowledge_items_code` (`code`),
+  KEY `ix_training_knowledge_items_category_status` (`category`, `status`),
+  KEY `ix_training_knowledge_items_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_evidence_sources` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `code` VARCHAR(96) NOT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `authors` TEXT NULL,
+  `publication_year` INT NULL,
+  `source_type` VARCHAR(64) NOT NULL,
+  `publication_name` VARCHAR(255) NULL,
+  `doi` VARCHAR(255) NULL,
+  `url` VARCHAR(512) NULL,
+  `language` VARCHAR(32) NULL,
+  `summary` TEXT NOT NULL,
+  `evidence_level` VARCHAR(64) NOT NULL,
+  `review_status` VARCHAR(32) NOT NULL DEFAULT 'draft',
+  `copyright_note` TEXT NULL,
+  `metadata_json` JSON NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_training_evidence_sources_code` (`code`),
+  KEY `ix_training_evidence_type_level` (`source_type`, `evidence_level`),
+  KEY `ix_training_evidence_review_status` (`review_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_rule_versions` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `rule_code` VARCHAR(96) NOT NULL,
+  `version` VARCHAR(32) NOT NULL,
+  `name` VARCHAR(128) NOT NULL,
+  `description` TEXT NULL,
+  `category` VARCHAR(64) NOT NULL,
+  `scope` VARCHAR(64) NOT NULL,
+  `conditions_json` JSON NOT NULL,
+  `result_json` JSON NOT NULL,
+  `applicability_json` JSON NOT NULL,
+  `thresholds_json` JSON NOT NULL,
+  `explanation_template` TEXT NOT NULL,
+  `severity` VARCHAR(32) NOT NULL,
+  `priority` INT NOT NULL DEFAULT 0,
+  `source_type` VARCHAR(64) NOT NULL,
+  `lifecycle_status` VARCHAR(32) NOT NULL DEFAULT 'draft',
+  `content_hash` VARCHAR(64) NOT NULL,
+  `change_summary` TEXT NULL,
+  `created_by` BIGINT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `published_at` DATETIME NULL,
+  `retired_at` DATETIME NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_training_rule_versions_code_version` (`rule_code`, `version`),
+  KEY `ix_training_rule_versions_code_status` (`rule_code`, `lifecycle_status`),
+  KEY `ix_training_rule_versions_scope_status` (`scope`, `lifecycle_status`),
+  KEY `ix_training_rule_versions_content_hash` (`content_hash`),
+  KEY `ix_training_rule_versions_created_by` (`created_by`),
+  CONSTRAINT `fk_training_rule_versions_created_by`
+    FOREIGN KEY (`created_by`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_rules` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `code` VARCHAR(96) NOT NULL,
+  `name` VARCHAR(128) NOT NULL,
+  `description` TEXT NULL,
+  `category` VARCHAR(64) NOT NULL,
+  `scope` VARCHAR(64) NOT NULL DEFAULT 'generic',
+  `conditions_json` JSON NOT NULL,
+  `result_json` JSON NOT NULL,
+  `explanation_template` TEXT NOT NULL,
+  `severity` VARCHAR(32) NOT NULL DEFAULT 'info',
+  `priority` INT NOT NULL DEFAULT 0,
+  `evidence_refs_json` JSON NOT NULL,
+  `version` VARCHAR(32) NOT NULL,
+  `current_version` VARCHAR(32) NULL,
+  `lifecycle_status` VARCHAR(32) NOT NULL DEFAULT 'published',
+  `applicability_json` JSON NOT NULL,
+  `thresholds_json` JSON NOT NULL,
+  `current_version_id` BIGINT NULL,
+  `enabled` TINYINT(1) NOT NULL DEFAULT 1,
+  `public` TINYINT(1) NOT NULL DEFAULT 1,
+  `source_type` VARCHAR(64) NOT NULL DEFAULT 'product_rule',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_training_rules_code` (`code`),
+  KEY `ix_training_rules_category_enabled` (`category`, `enabled`),
+  KEY `ix_training_rules_scope_enabled` (`scope`, `enabled`),
+  KEY `ix_training_rules_severity` (`severity`),
+  KEY `ix_training_rules_lifecycle` (`lifecycle_status`),
+  KEY `ix_training_rules_current_version_id` (`current_version_id`),
+  CONSTRAINT `fk_training_rules_current_version_id`
+    FOREIGN KEY (`current_version_id`) REFERENCES `training_rule_versions` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_rule_evidence_links` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `rule_code` VARCHAR(96) NOT NULL,
+  `rule_version` VARCHAR(32) NOT NULL,
+  `evidence_source_code` VARCHAR(96) NOT NULL,
+  `relationship_type` VARCHAR(64) NOT NULL,
+  `support_note` TEXT NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_rule_evidence_version_link` (`rule_code`, `rule_version`, `evidence_source_code`, `relationship_type`),
+  KEY `ix_rule_evidence_rule` (`rule_code`, `rule_version`),
+  KEY `ix_rule_evidence_source` (`evidence_source_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_rule_reviews` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `rule_code` VARCHAR(96) NOT NULL,
+  `rule_version` VARCHAR(32) NOT NULL,
+  `reviewer_id` BIGINT NULL,
+  `review_status` VARCHAR(32) NOT NULL DEFAULT 'pending',
+  `review_comment` TEXT NULL,
+  `checklist_json` JSON NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_training_rule_reviews_rule` (`rule_code`, `rule_version`),
+  KEY `ix_training_rule_reviews_status` (`review_status`),
+  KEY `ix_training_rule_reviews_reviewer_id` (`reviewer_id`),
+  CONSTRAINT `fk_training_rule_reviews_reviewer_id`
+    FOREIGN KEY (`reviewer_id`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_rule_test_cases` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `code` VARCHAR(96) NOT NULL,
+  `name` VARCHAR(128) NOT NULL,
+  `description` TEXT NULL,
+  `context_type` VARCHAR(64) NOT NULL,
+  `facts_json` JSON NOT NULL,
+  `expected_result_json` JSON NOT NULL,
+  `tags_json` JSON NOT NULL,
+  `source_type` VARCHAR(32) NOT NULL DEFAULT 'positive',
+  `enabled` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_training_rule_test_cases_code` (`code`),
+  KEY `ix_training_rule_test_cases_context` (`context_type`, `enabled`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_rule_test_runs` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `ruleset_version` VARCHAR(64) NOT NULL,
+  `run_type` VARCHAR(32) NOT NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'running',
+  `total_cases` INT NOT NULL DEFAULT 0,
+  `passed_cases` INT NOT NULL DEFAULT 0,
+  `failed_cases` INT NOT NULL DEFAULT 0,
+  `result_summary_json` JSON NOT NULL,
+  `started_at` DATETIME NOT NULL,
+  `finished_at` DATETIME NULL,
+  `created_by` BIGINT NULL,
+  PRIMARY KEY (`id`),
+  KEY `ix_training_rule_test_runs_created` (`started_at`),
+  KEY `ix_training_rule_test_runs_ruleset` (`ruleset_version`),
+  KEY `ix_training_rule_test_runs_created_by` (`created_by`),
+  CONSTRAINT `fk_training_rule_test_runs_created_by`
+    FOREIGN KEY (`created_by`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_rule_test_results` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `test_run_id` BIGINT NOT NULL,
+  `test_case_code` VARCHAR(96) NOT NULL,
+  `passed` TINYINT(1) NOT NULL DEFAULT 0,
+  `actual_result_json` JSON NOT NULL,
+  `expected_result_json` JSON NOT NULL,
+  `diff_json` JSON NOT NULL,
+  `duration_ms` INT NOT NULL DEFAULT 0,
+  `error_message` TEXT NULL,
+  PRIMARY KEY (`id`),
+  KEY `ix_training_rule_test_results_run` (`test_run_id`),
+  KEY `ix_training_rule_test_results_case` (`test_case_code`),
+  CONSTRAINT `fk_training_rule_test_results_run`
+    FOREIGN KEY (`test_run_id`) REFERENCES `training_rule_test_runs` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_rule_audit_logs` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `actor_user_id` BIGINT NULL,
+  `action` VARCHAR(64) NOT NULL,
+  `target_type` VARCHAR(64) NOT NULL,
+  `target_code` VARCHAR(96) NULL,
+  `target_version` VARCHAR(32) NULL,
+  `before_snapshot_json` JSON NULL,
+  `after_snapshot_json` JSON NULL,
+  `reason` TEXT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_training_rule_audit_actor_created` (`actor_user_id`, `created_at`),
+  KEY `ix_training_rule_audit_target` (`target_type`, `target_code`, `target_version`),
+  CONSTRAINT `fk_training_rule_audit_actor`
+    FOREIGN KEY (`actor_user_id`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_rule_evaluations` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `context_type` VARCHAR(64) NOT NULL,
+  `context_id` VARCHAR(128) NULL,
+  `input_snapshot_json` JSON NOT NULL,
+  `final_result_json` JSON NOT NULL,
+  `dominant_rule_code` VARCHAR(96) NULL,
+  `engine_version` VARCHAR(32) NOT NULL,
+  `ruleset_version` VARCHAR(64) NOT NULL,
+  `facts_hash` VARCHAR(64) NULL,
+  `source_version` VARCHAR(64) NULL,
+  `is_stale` TINYINT(1) NOT NULL DEFAULT 0,
+  `stale_reason` VARCHAR(255) NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_training_rule_eval_user_created` (`user_id`, `created_at`),
+  KEY `ix_training_rule_eval_context` (`context_type`, `context_id`),
+  KEY `ix_training_rule_eval_hash` (`user_id`, `context_type`, `context_id`, `facts_hash`),
+  CONSTRAINT `fk_training_rule_eval_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_rule_hits` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `evaluation_id` BIGINT NOT NULL,
+  `rule_code` VARCHAR(96) NOT NULL,
+  `rule_version` VARCHAR(32) NOT NULL,
+  `matched` TINYINT(1) NOT NULL DEFAULT 1,
+  `severity` VARCHAR(32) NOT NULL,
+  `priority` INT NOT NULL,
+  `input_snapshot_json` JSON NOT NULL,
+  `output_json` JSON NOT NULL,
+  `explanation` TEXT NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_training_rule_hits_evaluation_id` (`evaluation_id`),
+  KEY `ix_training_rule_hits_rule_code` (`rule_code`),
+  CONSTRAINT `fk_training_rule_hits_evaluation_id`
+    FOREIGN KEY (`evaluation_id`) REFERENCES `training_rule_evaluations` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `training_adjustment_drafts` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `source_type` VARCHAR(64) NOT NULL,
+  `source_evaluation_id` BIGINT NULL,
+  `cycle_id` BIGINT NULL,
+  `week_start` DATE NULL,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'draft',
+  `adjustment_json` JSON NOT NULL,
+  `explanation_json` JSON NOT NULL,
+  `original_plan_snapshot_json` JSON NOT NULL,
+  `applied_result_json` JSON NULL,
+  `facts_hash` VARCHAR(64) NULL,
+  `source_version` VARCHAR(64) NULL,
+  `applied_at` DATETIME NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_training_adjustment_user_status` (`user_id`, `status`),
+  KEY `ix_training_adjustment_user_source` (`user_id`, `source_type`, `source_evaluation_id`),
+  KEY `ix_training_adjustment_cycle_week` (`cycle_id`, `week_start`),
+  KEY `ix_training_adjustment_source_evaluation_id` (`source_evaluation_id`),
+  CONSTRAINT `fk_training_adjustment_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_training_adjustment_source_evaluation_id`
+    FOREIGN KEY (`source_evaluation_id`) REFERENCES `training_rule_evaluations` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_training_adjustment_cycle_id`
+    FOREIGN KEY (`cycle_id`) REFERENCES `training_cycles` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

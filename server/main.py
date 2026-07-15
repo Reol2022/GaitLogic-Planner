@@ -23,14 +23,19 @@ from server.api.routes import (
     planned_workouts,
     onboarding,
     recovery_checkins,
+    runner_state,
+    rule_loop,
     system_settings,
     task_center,
     training_calendar,
     training_blocks,
     training_cycles,
+    training_knowledge,
     training_plan,
     training_load,
     training_readiness,
+    training_rule_governance,
+    training_rules,
     usage_events,
     weekly_reviews,
     workout_imports,
@@ -51,7 +56,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="Gaitlogic Planner API",
-        version="0.9.0",
+        version="0.10.2",
         description="Backend API for training plans, logs, dashboard stats, and pace rules.",
     )
     app.add_middleware(
@@ -82,12 +87,17 @@ def create_app() -> FastAPI:
     app.include_router(system_settings.router, prefix="/api")
     app.include_router(task_center.router, prefix="/api")
     app.include_router(training_calendar.router, prefix="/api")
+    app.include_router(training_knowledge.router, prefix="/api")
+    app.include_router(training_rule_governance.router, prefix="/api")
+    app.include_router(training_rules.router, prefix="/api")
     app.include_router(training_cycles.router, prefix="/api")
     app.include_router(training_plan.router, prefix="/api")
     app.include_router(training_blocks.router, prefix="/api")
     app.include_router(planned_workouts.router, prefix="/api")
     app.include_router(workout_logs.router, prefix="/api")
     app.include_router(recovery_checkins.router, prefix="/api")
+    app.include_router(runner_state.router, prefix="/api")
+    app.include_router(rule_loop.router, prefix="/api")
     app.include_router(training_load.router, prefix="/api")
     app.include_router(training_readiness.router, prefix="/api")
     app.include_router(dashboard.router, prefix="/api")

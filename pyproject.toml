@@ -1,6 +1,6 @@
 [project]
 name = "gaitlogic-planner"
-version = "0.8.0"
+version = "0.10.2"
 description = "Training plan and log database layer for serious runners."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,6 +12,7 @@ dependencies = [
     "pydantic-settings>=2.0,<3.0",
     "pytest>=8.0,<9.0",
     "openpyxl>=3.1,<4.0",
+    "PyYAML>=6.0,<7.0",
     "python-multipart>=0.0.9,<1.0",
     "openai>=1.0,<2.0",
     "cryptography>=42.0,<47.0",

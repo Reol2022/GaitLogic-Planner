@@ -228,6 +228,11 @@ class UserAccount(IdMixin, TimestampMixin, Base):
     external_sync_jobs: Mapped[list[ExternalSyncJob]] = relationship(back_populates="user")
     external_activities: Mapped[list[ExternalActivity]] = relationship(back_populates="user")
     external_activity_links: Mapped[list[WorkoutLogExternalActivity]] = relationship(back_populates="user")
+    training_rule_evaluations: Mapped[list[TrainingRuleEvaluation]] = relationship(back_populates="user")
+    training_adjustment_drafts: Mapped[list[TrainingAdjustmentDraft]] = relationship(back_populates="user")
+    training_rule_reviews: Mapped[list[TrainingRuleReview]] = relationship(back_populates="reviewer")
+    training_rule_test_runs: Mapped[list[TrainingRuleTestRun]] = relationship(back_populates="created_by_user")
+    training_rule_audit_logs: Mapped[list[TrainingRuleAuditLog]] = relationship(back_populates="actor")
 
 
 class TrainingCycle(IdMixin, TimestampMixin, Base):
@@ -1581,6 +1586,359 @@ class AIPlanDraftWorkout(IdMixin, TimestampMixin, Base):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
 
     draft: Mapped[AIPlanDraft] = relationship(back_populates="workouts")
+
+
+class TrainingKnowledgeItem(IdMixin, TimestampMixin, Base):
+    __tablename__ = "training_knowledge_items"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_training_knowledge_items_code"),
+        Index("ix_training_knowledge_items_category_status", "category", "status"),
+        Index("ix_training_knowledge_items_status", "status"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    code: Mapped[str] = mapped_column(String(96), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    english_name: Mapped[str | None] = mapped_column(String(128))
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    definition: Mapped[str] = mapped_column(Text, nullable=False)
+    aliases_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    attributes_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    related_codes_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    source_refs_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    evidence_level: Mapped[str] = mapped_column(String(64), nullable=False, default="product_rule")
+    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active", server_default="active")
+
+
+class TrainingRule(IdMixin, TimestampMixin, Base):
+    __tablename__ = "training_rules"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_training_rules_code"),
+        Index("ix_training_rules_category_enabled", "category", "enabled"),
+        Index("ix_training_rules_scope_enabled", "scope", "enabled"),
+        Index("ix_training_rules_severity", "severity"),
+        Index("ix_training_rules_lifecycle", "lifecycle_status"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    code: Mapped[str] = mapped_column(String(96), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    scope: Mapped[str] = mapped_column(String(64), nullable=False, default="generic", server_default="generic")
+    conditions_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    result_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    explanation_template: Mapped[str] = mapped_column(Text, nullable=False)
+    severity: Mapped[str] = mapped_column(String(32), nullable=False, default="info", server_default="info")
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    evidence_refs_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False, default="product_rule", server_default="product_rule")
+    current_version: Mapped[str | None] = mapped_column(String(32))
+    lifecycle_status: Mapped[str] = mapped_column(String(32), nullable=False, default="published", server_default="published")
+    applicability_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    thresholds_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    current_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("training_rule_versions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
+    versions: Mapped[list[TrainingRuleVersion]] = relationship(
+        back_populates="current_rule",
+        foreign_keys="TrainingRuleVersion.rule_code",
+        primaryjoin="TrainingRule.code == foreign(TrainingRuleVersion.rule_code)",
+        viewonly=True,
+    )
+    current_version_row: Mapped[TrainingRuleVersion | None] = relationship(foreign_keys=[current_version_id])
+
+
+class TrainingEvidenceSource(IdMixin, TimestampMixin, Base):
+    __tablename__ = "training_evidence_sources"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_training_evidence_sources_code"),
+        Index("ix_training_evidence_type_level", "source_type", "evidence_level"),
+        Index("ix_training_evidence_review_status", "review_status"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    code: Mapped[str] = mapped_column(String(96), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    authors: Mapped[str | None] = mapped_column(Text)
+    publication_year: Mapped[int | None] = mapped_column(Integer)
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    publication_name: Mapped[str | None] = mapped_column(String(255))
+    doi: Mapped[str | None] = mapped_column(String(255))
+    url: Mapped[str | None] = mapped_column(String(512))
+    language: Mapped[str | None] = mapped_column(String(32))
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence_level: Mapped[str] = mapped_column(String(64), nullable=False)
+    review_status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft", server_default="draft")
+    copyright_note: Mapped[str | None] = mapped_column(Text)
+    metadata_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class TrainingRuleEvidenceLink(IdMixin, Base):
+    __tablename__ = "training_rule_evidence_links"
+    __table_args__ = (
+        UniqueConstraint("rule_code", "rule_version", "evidence_source_code", "relationship_type", name="uq_rule_evidence_version_link"),
+        Index("ix_rule_evidence_rule", "rule_code", "rule_version"),
+        Index("ix_rule_evidence_source", "evidence_source_code"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    rule_code: Mapped[str] = mapped_column(String(96), nullable=False)
+    rule_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    evidence_source_code: Mapped[str] = mapped_column(String(96), nullable=False)
+    relationship_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    support_note: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=text("CURRENT_TIMESTAMP")
+    )
+
+
+class TrainingRuleVersion(IdMixin, Base):
+    __tablename__ = "training_rule_versions"
+    __table_args__ = (
+        UniqueConstraint("rule_code", "version", name="uq_training_rule_versions_code_version"),
+        Index("ix_training_rule_versions_code_status", "rule_code", "lifecycle_status"),
+        Index("ix_training_rule_versions_scope_status", "scope", "lifecycle_status"),
+        Index("ix_training_rule_versions_content_hash", "content_hash"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    rule_code: Mapped[str] = mapped_column(String(96), nullable=False)
+    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    scope: Mapped[str] = mapped_column(String(64), nullable=False)
+    conditions_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    result_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    applicability_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    thresholds_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    explanation_template: Mapped[str] = mapped_column(Text, nullable=False)
+    severity: Mapped[str] = mapped_column(String(32), nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    lifecycle_status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft", server_default="draft")
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    change_summary: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("user_account.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=text("CURRENT_TIMESTAMP")
+    )
+    published_at: Mapped[datetime | None] = mapped_column(DateTime)
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    current_rule: Mapped[TrainingRule | None] = relationship(
+        back_populates="versions",
+        primaryjoin="foreign(TrainingRuleVersion.rule_code) == TrainingRule.code",
+        viewonly=True,
+    )
+
+
+class TrainingRuleReview(IdMixin, TimestampMixin, Base):
+    __tablename__ = "training_rule_reviews"
+    __table_args__ = (
+        Index("ix_training_rule_reviews_rule", "rule_code", "rule_version"),
+        Index("ix_training_rule_reviews_status", "review_status"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    rule_code: Mapped[str] = mapped_column(String(96), nullable=False)
+    rule_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    reviewer_id: Mapped[int | None] = mapped_column(ForeignKey("user_account.id", ondelete="SET NULL"), nullable=True)
+    review_status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", server_default="pending")
+    review_comment: Mapped[str | None] = mapped_column(Text)
+    checklist_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+    reviewer: Mapped[UserAccount | None] = relationship(back_populates="training_rule_reviews")
+
+
+class TrainingRuleTestCase(IdMixin, TimestampMixin, Base):
+    __tablename__ = "training_rule_test_cases"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_training_rule_test_cases_code"),
+        Index("ix_training_rule_test_cases_context", "context_type", "enabled"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    code: Mapped[str] = mapped_column(String(96), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    context_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    facts_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    expected_result_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    tags_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    source_type: Mapped[str] = mapped_column(String(32), nullable=False, default="positive", server_default="positive")
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+
+
+class TrainingRuleTestRun(IdMixin, Base):
+    __tablename__ = "training_rule_test_runs"
+    __table_args__ = (
+        Index("ix_training_rule_test_runs_created", "started_at"),
+        Index("ix_training_rule_test_runs_ruleset", "ruleset_version"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    ruleset_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    run_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="running", server_default="running")
+    total_cases: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    passed_cases: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    failed_cases: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    result_summary_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("user_account.id", ondelete="SET NULL"), nullable=True)
+
+    created_by_user: Mapped[UserAccount | None] = relationship(back_populates="training_rule_test_runs")
+    results: Mapped[list[TrainingRuleTestResult]] = relationship(
+        back_populates="test_run",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class TrainingRuleTestResult(IdMixin, Base):
+    __tablename__ = "training_rule_test_results"
+    __table_args__ = (
+        Index("ix_training_rule_test_results_run", "test_run_id"),
+        Index("ix_training_rule_test_results_case", "test_case_code"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    test_run_id: Mapped[int] = mapped_column(ForeignKey("training_rule_test_runs.id", ondelete="CASCADE"), nullable=False)
+    test_case_code: Mapped[str] = mapped_column(String(96), nullable=False)
+    passed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    actual_result_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    expected_result_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    diff_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    error_message: Mapped[str | None] = mapped_column(Text)
+
+    test_run: Mapped[TrainingRuleTestRun] = relationship(back_populates="results")
+
+
+class TrainingRuleAuditLog(IdMixin, Base):
+    __tablename__ = "training_rule_audit_logs"
+    __table_args__ = (
+        Index("ix_training_rule_audit_actor_created", "actor_user_id", "created_at"),
+        Index("ix_training_rule_audit_target", "target_type", "target_code", "target_version"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("user_account.id", ondelete="SET NULL"), nullable=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_code: Mapped[str | None] = mapped_column(String(96))
+    target_version: Mapped[str | None] = mapped_column(String(32))
+    before_snapshot_json: Mapped[dict | None] = mapped_column(JSON)
+    after_snapshot_json: Mapped[dict | None] = mapped_column(JSON)
+    reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=text("CURRENT_TIMESTAMP")
+    )
+
+    actor: Mapped[UserAccount | None] = relationship(back_populates="training_rule_audit_logs")
+
+
+class TrainingRuleEvaluation(IdMixin, Base):
+    __tablename__ = "training_rule_evaluations"
+    __table_args__ = (
+        Index("ix_training_rule_eval_user_created", "user_id", "created_at"),
+        Index("ix_training_rule_eval_context", "context_type", "context_id"),
+        Index("ix_training_rule_eval_hash", "user_id", "context_type", "context_id", "facts_hash"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    context_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    context_id: Mapped[str | None] = mapped_column(String(128))
+    input_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    final_result_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    dominant_rule_code: Mapped[str | None] = mapped_column(String(96))
+    engine_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    ruleset_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    facts_hash: Mapped[str | None] = mapped_column(String(64))
+    source_version: Mapped[str | None] = mapped_column(String(64))
+    is_stale: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    stale_reason: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=text("CURRENT_TIMESTAMP")
+    )
+
+    user: Mapped[UserAccount] = relationship(back_populates="training_rule_evaluations")
+    hits: Mapped[list[TrainingRuleHit]] = relationship(
+        back_populates="evaluation",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class TrainingRuleHit(IdMixin, Base):
+    __tablename__ = "training_rule_hits"
+    __table_args__ = (
+        Index("ix_training_rule_hits_evaluation_id", "evaluation_id"),
+        Index("ix_training_rule_hits_rule_code", "rule_code"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    evaluation_id: Mapped[int] = mapped_column(
+        ForeignKey("training_rule_evaluations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    rule_code: Mapped[str] = mapped_column(String(96), nullable=False)
+    rule_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    matched: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    severity: Mapped[str] = mapped_column(String(32), nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False)
+    input_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    output_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=text("CURRENT_TIMESTAMP")
+    )
+
+    evaluation: Mapped[TrainingRuleEvaluation] = relationship(back_populates="hits")
+
+
+class TrainingAdjustmentDraft(IdMixin, TimestampMixin, Base):
+    __tablename__ = "training_adjustment_drafts"
+    __table_args__ = (
+        Index("ix_training_adjustment_user_status", "user_id", "status"),
+        Index("ix_training_adjustment_user_source", "user_id", "source_type", "source_evaluation_id"),
+        Index("ix_training_adjustment_cycle_week", "cycle_id", "week_start"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    source_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_evaluation_id: Mapped[int | None] = mapped_column(
+        ForeignKey("training_rule_evaluations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    cycle_id: Mapped[int | None] = mapped_column(
+        ForeignKey("training_cycles.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    week_start: Mapped[date | None] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft", server_default="draft")
+    adjustment_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    explanation_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    original_plan_snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    applied_result_json: Mapped[dict | None] = mapped_column(JSON)
+    facts_hash: Mapped[str | None] = mapped_column(String(64))
+    source_version: Mapped[str | None] = mapped_column(String(64))
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    user: Mapped[UserAccount] = relationship(back_populates="training_adjustment_drafts")
+    source_evaluation: Mapped[TrainingRuleEvaluation | None] = relationship()
+    cycle: Mapped[TrainingCycle | None] = relationship()
 
 
 class ExcelImportJob(IdMixin, TimestampMixin, Base):

@@ -999,6 +999,76 @@ export interface TrainingReadinessToday {
   assessment: TrainingReadinessAssessment;
   recovery_checkin_completed: boolean;
 }
+
+export type RuleAction =
+  | "no_action"
+  | "show_info"
+  | "keep_plan"
+  | "monitor"
+  | "adjust_recommended"
+  | "downgrade_recommended"
+  | "rest_recommended"
+  | "require_user_review"
+  | "block_auto_apply"
+  | string;
+
+export interface RuleMatchedItem {
+  rule_code: string;
+  rule_version: string;
+  severity: "info" | "notice" | "caution" | "high" | "blocking" | string;
+  priority: number;
+  action: RuleAction;
+  recommendation?: string | null;
+  explanation: string;
+  output: Record<string, unknown>;
+}
+
+export interface RuleEvaluationResult {
+  evaluation_id?: number | null;
+  context_type: string;
+  final_action: RuleAction;
+  dominant_rule_code?: string | null;
+  matched_rules: RuleMatchedItem[];
+  conflict_resolution: Record<string, unknown>;
+  recommendations: string[];
+  engine_version: string;
+  ruleset_version: string;
+}
+
+export interface RuleLoopSummary {
+  blocking: number;
+  high: number;
+  caution: number;
+  notice: number;
+  info: number;
+}
+
+export interface RuleLoopEvaluation {
+  validation_status: string;
+  title: string;
+  message: string;
+  data_limited: boolean;
+  summary: RuleLoopSummary;
+  evaluation: RuleEvaluationResult;
+  facts_hash?: string | null;
+  generated_adjustment_draft_id?: number | null;
+  evaluated_at?: string | null;
+}
+
+export interface TrainingAdjustmentDraft {
+  id: number;
+  source_type: string;
+  source_evaluation_id?: number | null;
+  cycle_id?: number | null;
+  week_start?: string | null;
+  status: string;
+  adjustment_json: Record<string, unknown>;
+  explanation_json: Record<string, unknown>;
+  original_plan_snapshot_json: Record<string, unknown>;
+  applied_result_json?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
 export type AdjustmentAction = "keep" | "reduce" | "replace" | "rest";
 export type AdjustmentDraftStatus = "draft" | "partially_applied" | "applied" | "rejected" | "invalid";
 

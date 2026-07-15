@@ -322,7 +322,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { Download } from "@element-plus/icons-vue";
 
 import {
@@ -334,6 +334,7 @@ import {
   getAIPlanQuota,
   rejectAIPlanDraft,
 } from "@/api/aiPlan";
+import { validateAiPlanDraft } from "@/api/ruleLoop";
 import { trackUsageEvent } from "@/api/usageEvents";
 import type { AIPlanDraft, AIPlanExportFormat, AIPlanGeneratePayload, AIPlanQuota, RaceDistance } from "@/types/models";
 import { statusLabel } from "@/utils/statusLabels";
@@ -622,7 +623,20 @@ async function apply(id: number) {
   if (applying.value) return;
   applying.value = true;
   try {
-    const result = await applyAIPlanDraft(id);
+    const validation = await validateAiPlanDraft(id, true);
+    if (validation.evaluation.final_action === "block_auto_apply") {
+      ElMessage.error(validation.message || "规则校验已阻止自动应用，请先调整草稿。");
+      return;
+    }
+    const needsConfirm = validation.evaluation.final_action === "require_user_review";
+    if (needsConfirm) {
+      await ElMessageBox.confirm(
+        validation.message || "规则校验提示该计划需要二次确认。确认后仍可应用，但建议先检查关键课和恢复安排。",
+        "应用前规则校验",
+        { confirmButtonText: "确认应用", cancelButtonText: "返回检查", type: "warning" },
+      );
+    }
+    const result = await applyAIPlanDraft(id, needsConfirm);
     trackUsageEvent("ai_plan_applied", { draft_id: id, cycle_id: result.cycle_id });
     ElMessage.success("计划已采用，接下来从今天的训练开始。");
     await router.push("/today");

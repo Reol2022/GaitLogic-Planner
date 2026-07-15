@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.9.5-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.10.2-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -52,7 +52,7 @@ AI 生成内容仅作为训练计划草稿，不构成医疗建议、康复建�
 | 列表里出现英文状态值 | 常见业务状态、同步状态和草稿状态统一映射为中文展示 |
 | 想用 AI 生成课表，但不希望它直接覆盖正式计划 | AI 只生成草稿，必须由用户确认后才应用 |
 | 想看一个月到底完成了哪些训练 | 训练日历按月展示计划、状态、今天高亮和完成统计 |
-| 每周训练结束后不知道如何调整下一周 | 后端确定性统计与规则引擎先判断，AI 只生成调整草稿，用户确认后才应用 |
+| 每周训练结束后不知道如何调整下一周 | 后端确定性统计与规则引擎先判断，生成结构化调整草稿，用户确认后才应用 |
 | 配速区间靠经验记忆，不好维护 | 根据比赛成绩估算近似 VDOT，并保存配速档案和规则 |
 | 年龄和性别会不会影响训练配速 | 年龄/性别只做参考分析，不改变原始 VDOT 和训练配速 |
 
@@ -89,6 +89,12 @@ Garmin 同步采用用户手动触发和后台队列处理；手动创建同步�
 v0.9.4 新增 Data Sync 通用框架，Garmin 已迁移为 `garmin` provider；新入口为“数据同步”，旧 `/garmin-sync` 和 `/api/integrations/garmin/*` 保持兼容。通用 API 位于 `/api/data-sync/*`，后续平台只需接入 provider adapter。
 
 v0.9.5 进一步重构为极简训练闭环：桌面导航收敛为训练、计划、分析、我的四组，移动端底栏固定为“今日 / 日历 / 计划 / 分析 / 我的”；新增待办中心、训练计划中心和数据管理入口，今日页聚合待办和同步最新活动，设备客观数据预填后只要求用户补充主观训练反馈；同时增加统一版本号展示，版本号来自 `web/package.json`，网页端显示在侧边栏品牌区 `GaitLogic` 下方、`Planner` 右侧并右对齐品牌名，移动端在顶部品牌区下沉显示。
+
+v0.10.0 starts the training knowledge model and deterministic scientific rule infrastructure. This phase adds versioned knowledge items, YAML/JSON rule loading, a safe rule DSL, deterministic evaluation, rule-hit explanations, evaluation snapshots, and read/evaluate APIs. The rule engine only returns structured suggestions or review/block-auto-apply signals; it does not modify official training plans and does not provide medical diagnosis.
+
+v0.10.1 将科学规则引擎接入真实训练闭环：AI 计划草稿、Excel 导入和手动计划应用前可运行规则校验；今日训练页显示结构化建议；训练日志保存后可生成规则复盘；周复盘可生成下周调整草稿。所有调整都需要用户确认，blocking 会阻止自动应用，high 会要求二次确认。
+
+v0.10.2 建立科学规则治理与验证体系：规则需要登记证据来源、适用范围、阈值声明和版本历史；新版本需审核、测试和发布后进入正式规则集；后台可查看测试覆盖率、回归结果、影响分析、冲突诊断和运行质量统计。历史评估保留原规则版本，回滚不会覆盖既有结论。
 本地开发 CORS 通过 `BACKEND_CORS_ORIGINS` 和 `BACKEND_CORS_ORIGIN_REGEX` 配置，默认支持 `localhost`、`127.0.0.1`、preview 端口和常见局域网调试地址。
 
 ---

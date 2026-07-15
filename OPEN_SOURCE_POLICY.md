@@ -1,5 +1,53 @@
 # GaitLogic 开源与项目治理规则
 
+## v0.10.2 Open Source Boundary
+
+Community:
+evidence source schema, rule version model, lifecycle state machine, review
+workflow, release and rollback services, anonymous rule test case format,
+regression runner, impact analysis, coverage statistics, conflict diagnostics,
+rule package manifest format, public evidence index, admin governance API,
+basic governance page, audit mechanism, tests, and documentation.
+
+Official / Private:
+official advanced rule packages, commercial coach rule bundles, private
+training-strategy evidence interpretation, internal elite-runner thresholds,
+production prompts, private rule weights, real-user historical replay results,
+personalized tuning data, user-behavior-derived recommendation policy, Coach
+Engine proprietary logic, official cloud release strategy, commercial approval
+records, and third-party restricted content.
+
+Community edition requirements:
+the community edition can independently create rules, review rules, test rules,
+publish basic rules, rollback rules, and run without private services.
+
+## v0.10.1 Open Source Boundary
+
+Community:
+unified training facts schema, plan analyzer, plan validation flow, daily rule
+evaluation, workout rule review, weekly rule review, structured adjustment
+drafts, user confirmation mechanism, basic rule set, Chinese action/severity
+labels, API schemas, tests, docs, and example-safe data structures.
+
+Official / Private:
+advanced training strategy combinations, official premium period templates,
+private runner-level weights, proprietary adjustment magnitude models,
+production prompts, user-behavior-derived recommendation policy, commercial
+coach rules, cloud risk control, real user training data, third-party platform
+secrets, and future private Coach Engine logic.
+
+## v0.10.0 Open Source Boundary
+
+Community:
+general knowledge structure, rule DSL, deterministic rule engine, basic product
+rules, safety boundaries, API schemas, tests, docs, and public science boundary
+notes.
+
+Official / Private:
+advanced training strategy, private rule combinations, personalized tuning,
+cloud risk-control parameters, production prompts, real user training data,
+tokens, provider credentials, and future private Coach Engine logic.
+
 ## v0.9.5 开源边界补充
 
 进入公开仓库：极简训练闭环信息架构、待办中心实时聚合、训练计划中心、数据管理入口、今日聚合 API、快速恢复打卡 API、数据同步偏好字段、`device_prefilled` 通用完成上下文、灰度开关、迁移脚本、统一版本号展示、版本发布同步规范、测试和文档。

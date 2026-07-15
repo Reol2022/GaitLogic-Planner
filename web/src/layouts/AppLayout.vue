@@ -77,6 +77,10 @@
             <el-icon><Setting /></el-icon>
             <template #title>系统设置</template>
           </el-menu-item>
+          <el-menu-item index="/admin/rule-governance">
+            <el-icon><DataAnalysis /></el-icon>
+            <template #title>科学规则治理</template>
+          </el-menu-item>
         </template>
       </el-menu>
     </el-aside>
