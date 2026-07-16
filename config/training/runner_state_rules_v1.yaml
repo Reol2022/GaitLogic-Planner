@@ -1,0 +1,33 @@
+version: "runner-state-rules-1.0.0"
+
+data_sufficiency:
+  minimum_valid_workouts_28d: 6
+  minimum_active_weeks_28d: 2
+  minimum_previous_21d_workouts: 3
+  minimum_previous_21d_active_weeks: 2
+  minimum_rpe_coverage: 0.50
+  minimum_planned_sessions_for_consistency: 4
+  minimum_available_fatigue_signals: 3
+
+volume_trend:
+  decreasing_below: 0.70
+  stable_upper: 1.25
+  increasing_upper: 1.50
+
+consistency:
+  high_completion_rate: 0.85
+  moderate_completion_rate: 0.60
+  high_active_weeks: 4
+  moderate_active_weeks: 3
+  high_weekly_session_cv: 0.25
+  moderate_weekly_session_cv: 0.50
+  minimum_average_sessions_per_week_for_high: 2.0
+
+fatigue:
+  rpe_delta_moderate: 0.50
+  rpe_delta_high: 1.00
+  completion_rate_drop: 0.25
+  frequent_high_intensity_sessions: 3
+  consecutive_high_intensity_days: 2
+  elevated_score: 2
+  high_score: 4

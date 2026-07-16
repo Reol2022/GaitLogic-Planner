@@ -14,8 +14,9 @@ router = APIRouter(prefix="/runner-state", tags=["runner state"])
     response_model=RunnerStateCurrentResponse,
     summary="Get the current runner-state snapshot",
     description=(
-        "Calculates a non-persistent 7-day and 28-day runner-state snapshot for "
-        "the authenticated user. Inferred states remain UNKNOWN in v0.10.3-A."
+        "Calculates a non-persistent runner-state snapshot and versioned heuristic "
+        "inference for the authenticated user. Results support training review, "
+        "do not constitute medical advice, and never modify the training plan."
     ),
 )
 def get_current_runner_state(

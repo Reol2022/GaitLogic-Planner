@@ -93,6 +93,12 @@ def _effective_type(log: WorkoutLog, workout: PlannedWorkout | None) -> WorkoutM
     if workout is not None:
         value = workout.main_type_normalized
         return value if isinstance(value, WorkoutMainTypeNormalized) else WorkoutMainTypeNormalized(value)
+    if isinstance(log.workout_type, WorkoutMainTypeNormalized):
+        return log.workout_type
+    try:
+        return WorkoutMainTypeNormalized(str(log.workout_type).strip().lower())
+    except ValueError:
+        pass
     return normalize_workout_main_type(log.workout_type)
 
 
@@ -329,7 +335,7 @@ def build_runner_state_snapshot(
     if last_quality_date is not None and last_quality_date <= window_end:
         days_since_quality = (window_end - last_quality_date).days
 
-    return RunnerStateSnapshot(
+    snapshot = RunnerStateSnapshot(
         identity=RunnerIdentityReference(
             runner_id=runner_id,
             generated_at=generated_at,
@@ -384,6 +390,16 @@ def build_runner_state_snapshot(
             heart_rate_coverage_28d=metrics_28d.heart_rate_coverage,
             limitations=sorted(limitations),
         ),
+    )
+    # Import locally so the inference layer can reuse the Foundation aggregation
+    # helpers without creating a module import cycle.
+    from server.services.runner_state_inference_service import RunnerStateInferenceService
+
+    return RunnerStateInferenceService().infer(
+        snapshot,
+        log_rows=rows,
+        planned_workouts=planned_workouts,
+        cycle=cycle,
     )
 
 
