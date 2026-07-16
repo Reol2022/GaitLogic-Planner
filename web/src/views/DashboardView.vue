@@ -1,24 +1,27 @@
 <template>
   <div class="page-stack dashboard-page">
     <PageHeader title="训练统计" :subtitle="`${currentCycleName} · 训练计划、完成情况、强度结构和身体反馈的实时概览。`">
-      <template v-if="!hasNoCycles && !hasNoActiveCycle" #actions>
+      <template #actions>
         <div class="hero-actions">
-          <el-select
-            v-model="cycleId"
-            filterable
-            placeholder="当前训练周期"
-            style="width: 260px"
-            @change="loadDashboard"
-          >
-            <el-option
-              v-for="cycle in cycles"
-              :key="cycle.id"
-              :label="cycle.name"
-              :value="cycle.id"
-            />
-          </el-select>
-          <el-button :icon="Refresh" type="primary" @click="reloadAll">刷新</el-button>
-          <el-button @click="router.push('/weekly-review')">周复盘</el-button>
+          <template v-if="!hasNoCycles && !hasNoActiveCycle">
+            <el-select
+              v-model="cycleId"
+              filterable
+              placeholder="当前训练周期"
+              style="width: 260px"
+              @change="loadDashboard"
+            >
+              <el-option
+                v-for="cycle in cycles"
+                :key="cycle.id"
+                :label="cycle.name"
+                :value="cycle.id"
+              />
+            </el-select>
+            <el-button :icon="Refresh" type="primary" @click="reloadAll">刷新</el-button>
+            <el-button @click="router.push('/weekly-review')">周复盘</el-button>
+          </template>
+          <el-button @click="router.push('/runner-state')">训练状态</el-button>
         </div>
       </template>
     </PageHeader>

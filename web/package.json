@@ -1,25 +1,30 @@
 {
-    "version":  "0.10.2",
-    "name":  "gaitlogic-planner-web",
-    "scripts":  {
-                    "preview":  "vite preview --config ../vite.web.config.mjs --host 0.0.0.0",
-                    "build":  "vite build --config ../vite.web.config.mjs",
-                    "dev":  "vite --config ../vite.web.config.mjs --host 0.0.0.0"
-                },
-    "devDependencies":  {
-                            "@vitejs/plugin-vue":  "^5.1.4",
-                            "typescript":  "^5.7.2",
-                            "vite":  "^5.4.11",
-                            "vue-tsc":  "^2.2.0"
-                        },
-    "type":  "module",
-    "dependencies":  {
-                         "@element-plus/icons-vue":  "^2.3.1",
-                         "axios":  "^1.7.9",
-                         "echarts":  "^5.6.0",
-                         "element-plus":  "^2.9.2",
-                         "vue":  "^3.5.13",
-                         "vue-router":  "^4.5.0"
-                     },
-    "private":  true
+    "version": "0.10.2",
+    "name": "gaitlogic-planner-web",
+    "scripts": {
+        "preview": "vite preview --config ../vite.web.config.mjs --host 0.0.0.0",
+        "build": "vite build --config ../vite.web.config.mjs",
+        "dev": "vite --config ../vite.web.config.mjs --host 0.0.0.0",
+        "test": "vitest run --config vitest.config.ts",
+        "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-vue": "^5.1.4",
+        "@vue/test-utils": "^2.4.6",
+        "jsdom": "^25.0.1",
+        "typescript": "^5.7.2",
+        "vite": "^5.4.11",
+        "vitest": "^2.1.9",
+        "vue-tsc": "^2.2.0"
+    },
+    "type": "module",
+    "dependencies": {
+        "@element-plus/icons-vue": "^2.3.1",
+        "axios": "^1.7.9",
+        "echarts": "^5.6.0",
+        "element-plus": "^2.9.2",
+        "vue": "^3.5.13",
+        "vue-router": "^4.5.0"
+    },
+    "private": true
 }

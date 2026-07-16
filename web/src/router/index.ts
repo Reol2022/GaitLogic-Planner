@@ -43,6 +43,12 @@ const router = createRouter({
       meta: { title: "负荷与恢复" },
     },
     {
+      path: "/runner-state",
+      name: "RunnerState",
+      component: () => import("@/views/RunnerStateView.vue"),
+      meta: { title: "训练状态" },
+    },
+    {
       path: "/today",
       name: "Today",
       component: () => import("@/views/TodayView.vue"),

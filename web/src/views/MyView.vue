@@ -48,6 +48,7 @@ import { listDataSyncProviders } from "@/api/dataSync";
 const garminSyncVisible = ref(false);
 
 const allPrimaryItems = [
+  { path: "/runner-state", title: "训练状态", desc: "查看当前跑量趋势、训练执行和训练压力信号。", icon: TrendCharts },
   { path: "/todos", title: "待办中心", desc: "处理缺少感受、待确认活动和周复盘。", icon: Bell },
   { path: "/data-sync", title: "数据同步", desc: "连接运动平台并同步跑步活动", icon: Connection },
   { path: "/data-management", title: "数据管理", desc: "导入课表、补录训练和查看导入历史。", icon: FolderOpened },
