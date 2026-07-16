@@ -56,8 +56,8 @@
             class="rule-hit-item"
           >
             <div>
-              <strong>{{ rule.title }}</strong>
-              <span>{{ severityLabel(rule.severity) }} · {{ rule.rule_code }}</span>
+              <strong>{{ rule.rule_code }}</strong>
+              <span>{{ severityLabel(rule.severity) }} · {{ rule.rule_version }}</span>
             </div>
             <p>{{ rule.explanation }}</p>
           </div>

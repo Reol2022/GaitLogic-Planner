@@ -153,10 +153,19 @@ export interface PlannedWorkout {
   updated_at: string;
 }
 
-export type PlannedWorkoutPayload = Omit<
+type PlannedWorkoutWritableFields = Omit<
   PlannedWorkout,
   "id" | "workout_log" | "created_at" | "updated_at"
 >;
+
+type PlannedWorkoutServerDefaultFields = "session_index" | "is_locked" | "plan_version";
+
+export type PlannedWorkoutCreatePayload = Omit<
+  PlannedWorkoutWritableFields,
+  PlannedWorkoutServerDefaultFields
+> & Partial<Pick<PlannedWorkoutWritableFields, PlannedWorkoutServerDefaultFields>>;
+
+export type PlannedWorkoutUpdatePayload = Partial<PlannedWorkoutCreatePayload>;
 
 export type PlanImportAnchorStrategy = "after_last_completed" | "explicit_date";
 export type PlanImportMergeStrategy =

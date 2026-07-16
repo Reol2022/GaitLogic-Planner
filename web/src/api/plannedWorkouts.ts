@@ -1,7 +1,8 @@
 import request from "./request";
 import type {
   PlannedWorkout,
-  PlannedWorkoutPayload,
+  PlannedWorkoutCreatePayload,
+  PlannedWorkoutUpdatePayload,
   WorkoutMainTypeNormalized,
 } from "@/types/models";
 
@@ -17,11 +18,11 @@ export function listPlannedWorkouts(filters: WorkoutFilters = {}) {
   return request.get<PlannedWorkout[]>("/planned-workouts", { params: filters });
 }
 
-export function createPlannedWorkout(payload: PlannedWorkoutPayload) {
+export function createPlannedWorkout(payload: PlannedWorkoutCreatePayload) {
   return request.post<PlannedWorkout>("/planned-workouts", payload);
 }
 
-export function updatePlannedWorkout(id: number, payload: Partial<PlannedWorkoutPayload>) {
+export function updatePlannedWorkout(id: number, payload: PlannedWorkoutUpdatePayload) {
   return request.put<PlannedWorkout>(`/planned-workouts/${id}`, payload);
 }
 

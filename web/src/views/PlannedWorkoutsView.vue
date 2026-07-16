@@ -186,7 +186,7 @@ import { listTrainingBlocks } from "@/api/trainingBlocks";
 import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles";
 import type {
   PlannedWorkout,
-  PlannedWorkoutPayload,
+  PlannedWorkoutCreatePayload,
   TrainingBlock,
   TrainingCycle,
   WorkoutMainTypeNormalized,
@@ -211,7 +211,26 @@ const currentPage = ref(1);
 const pageSize = ref(20);
 const hasNoActiveCycle = computed(() => cycles.value.length > 0 && !activeCycle.value);
 
-const emptyForm: PlannedWorkoutPayload = {
+type PlannedWorkoutForm = Pick<
+  PlannedWorkoutCreatePayload,
+  | "cycle_id"
+  | "block_id"
+  | "workout_date"
+  | "date_text"
+  | "weekday"
+  | "month_text"
+  | "phase_name"
+  | "planned_content"
+  | "focus_note"
+  | "planned_distance_km"
+  | "main_type_raw"
+  | "main_type_normalized"
+  | "source_sheet"
+  | "source_row"
+  | "sort_order"
+>;
+
+const emptyForm: PlannedWorkoutForm = {
   cycle_id: 0,
   block_id: 0,
   workout_date: null,
@@ -228,7 +247,7 @@ const emptyForm: PlannedWorkoutPayload = {
   source_row: null,
   sort_order: 1,
 };
-const form = reactive<PlannedWorkoutPayload>({ ...emptyForm });
+const form = reactive<PlannedWorkoutForm>({ ...emptyForm });
 
 const pagedWorkouts = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value;
@@ -280,7 +299,25 @@ async function openDialog(row?: PlannedWorkout) {
   form.cycle_id = filterCycleId.value || activeCycle.value?.id || 0;
   if (!form.cycle_id) return;
   editingId.value = row?.id ?? null;
-  if (row) Object.assign(form, row);
+  if (row) {
+    Object.assign(form, {
+      cycle_id: row.cycle_id,
+      block_id: row.block_id,
+      workout_date: row.workout_date,
+      date_text: row.date_text,
+      weekday: row.weekday,
+      month_text: row.month_text,
+      phase_name: row.phase_name,
+      planned_content: row.planned_content,
+      focus_note: row.focus_note,
+      planned_distance_km: row.planned_distance_km,
+      main_type_raw: row.main_type_raw,
+      main_type_normalized: row.main_type_normalized,
+      source_sheet: row.source_sheet,
+      source_row: row.source_row,
+      sort_order: row.sort_order,
+    });
+  }
   await loadBlocks();
   dialogVisible.value = true;
 }
