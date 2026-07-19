@@ -120,7 +120,7 @@ data/uploads/
 storage/
 private/
 
-# Personal/local markdown notes not intended for open source
+# Personal/local markdown notes not intended for source control
 local-md/
 personal-md/
 notes/
@@ -133,6 +133,8 @@ notes/
 
 # Local agent instructions
 AGENTS.md
+
+# Legacy local-only docs kept out of the public repo
 数据库设计.md
 BACKEND_LEARNING_GUIDE.md
 Excel字段映射.md

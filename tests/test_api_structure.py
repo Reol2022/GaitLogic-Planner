@@ -117,6 +117,56 @@ def test_required_routes_are_registered() -> None:
     assert "POST /api/training-readiness/recalculate" in routes
     assert "GET /api/training-readiness/history" in routes
     assert "GET /api/training-readiness/{assessment_date}" in routes
+    assert "GET /api/training-knowledge/categories" in routes
+    assert "GET /api/training-knowledge/items" in routes
+    assert "GET /api/training-knowledge/items/{code}" in routes
+    assert "GET /api/training-rules" in routes
+    assert "GET /api/training-rules/{code}" in routes
+    assert "POST /api/training-rules/evaluate" in routes
+    assert "GET /api/training-rules/evaluations" in routes
+    assert "GET /api/training-rules/evaluations/{evaluation_id}" in routes
+    assert "PATCH /api/training-rules/{code}/enabled" in routes
+    assert "POST /api/training-rules/validate-definition" in routes
+    assert "POST /api/training-rules/sync" in routes
+    assert "POST /api/training-rules/validate-plan" in routes
+    assert "POST /api/training-plans/{cycle_id}/validate" in routes
+    assert "GET /api/training-plans/{cycle_id}/latest-validation" in routes
+    assert "POST /api/ai-plan-drafts/{draft_id}/validate" in routes
+    assert "POST /api/plan-import-drafts/{import_id}/validate" in routes
+    assert "GET /api/training-readiness/today-evaluation" in routes
+    assert "POST /api/training-readiness/today-evaluation" in routes
+    assert "POST /api/training-readiness/today-evaluation/recalculate" in routes
+    assert "GET /api/workout-logs/{workout_log_id}/rule-review" in routes
+    assert "POST /api/workout-logs/{workout_log_id}/rule-review" in routes
+    assert "GET /api/weekly-reviews/{review_id}/rule-evaluation" in routes
+    assert "POST /api/weekly-reviews/{review_id}/rule-evaluation" in routes
+    assert "POST /api/weekly-reviews/{review_id}/adjustment-draft" in routes
+    assert "GET /api/training-adjustment-drafts" in routes
+    assert "GET /api/training-adjustment-drafts/{draft_id}" in routes
+    assert "POST /api/training-adjustment-drafts/{draft_id}/confirm" in routes
+    assert "POST /api/training-adjustment-drafts/{draft_id}/apply" in routes
+    assert "POST /api/training-adjustment-drafts/{draft_id}/reject" in routes
+    assert "GET /api/training-evidence/public/{code}" in routes
+    assert "GET /api/admin/training-evidence" in routes
+    assert "POST /api/admin/training-evidence" in routes
+    assert "GET /api/admin/training-evidence/{code}" in routes
+    assert "PATCH /api/admin/training-evidence/{code}" in routes
+    assert "POST /api/admin/training-evidence/{code}/archive" in routes
+    assert "GET /api/admin/training-rules/{code}/versions" in routes
+    assert "GET /api/admin/training-rules/{code}/versions/{version}" in routes
+    assert "POST /api/admin/training-rules/{code}/versions" in routes
+    assert "POST /api/admin/training-rules/{code}/versions/{version}/submit-review" in routes
+    assert "GET /api/admin/training-rule-reviews" in routes
+    assert "POST /api/admin/training-rule-reviews/{review_id}/approve" in routes
+    assert "POST /api/admin/training-rules/{code}/versions/{version}/publish" in routes
+    assert "POST /api/admin/training-rules/{code}/versions/{version}/rollback" in routes
+    assert "GET /api/admin/training-rule-test-cases" in routes
+    assert "POST /api/admin/training-rule-tests/run" in routes
+    assert "GET /api/admin/training-rules/coverage" in routes
+    assert "GET /api/admin/training-rules/metrics" in routes
+    assert "POST /api/admin/training-rules/impact-analysis" in routes
+    assert "GET /api/admin/training-rules/conflicts" in routes
+    assert "POST /api/admin/training-rule-packages/validate" in routes
     assert "POST /api/plan-imports/structured" in routes
     assert "POST /api/plan-imports/file" in routes
     assert "GET /api/plan-imports/template" in routes
@@ -203,5 +253,17 @@ def test_business_routes_require_login() -> None:
     assert today_dashboard_response.status_code == 401
     training_plan_response = client.get("/api/training-plan/overview")
     assert training_plan_response.status_code == 401
+    knowledge_response = client.get("/api/training-knowledge/categories")
+    assert knowledge_response.status_code == 401
+    rule_response = client.post("/api/training-rules/evaluate", json={})
+    assert rule_response.status_code == 401
+    rule_loop_response = client.get("/api/training-readiness/today-evaluation")
+    assert rule_loop_response.status_code == 401
+    adjustment_response = client.get("/api/training-adjustment-drafts")
+    assert adjustment_response.status_code == 401
+    evidence_response = client.get("/api/admin/training-evidence")
+    assert evidence_response.status_code == 401
+    coverage_response = client.get("/api/admin/training-rules/coverage")
+    assert coverage_response.status_code == 401
     garmin_response = client.get("/api/integrations/garmin/status")
     assert garmin_response.status_code == 401

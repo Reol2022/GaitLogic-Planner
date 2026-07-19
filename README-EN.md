@@ -9,7 +9,7 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.9.5-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.10.2-1976d2?style=for-the-badge" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?style=for-the-badge&logo=vue.js&logoColor=white" />
@@ -83,6 +83,12 @@ Garmin sync is manually triggered and processed by a worker queue. A manual sync
 v0.9.4 adds a provider-neutral Data Sync framework. Garmin is now the `garmin` provider; the new user entry is Data Sync, while `/garmin-sync` and `/api/integrations/garmin/*` remain compatible. The generic API lives under `/api/data-sync/*`, and future platforms can be added through provider adapters.
 
 v0.9.5 simplifies the daily workflow: desktop navigation is grouped into Training, Plan, Analysis, and My; the mobile bottom bar is fixed to Today / Calendar / Plan / Analysis / My. The release adds a task center, a training plan center, and data management, while Today's Workout aggregates pending actions and latest activity sync without triggering automatic page-load sync. It also adds a unified version display sourced from `web/package.json`; desktop shows it in the sidebar brand area to the right of Planner and aligned with GaitLogic, while mobile shows it lower in the header brand area.
+
+v0.10.0 starts the training knowledge model and deterministic scientific rule infrastructure: versioned knowledge items, safe YAML/JSON rule loading, a controlled rule DSL, stable conflict resolution, rule-hit explanations, evaluation snapshots, and read/evaluate APIs. The engine returns structured suggestions and review/block-auto-apply signals only; it does not modify official plans or provide medical diagnosis.
+
+v0.10.1 connects the rule engine to the real training loop: plan validation before AI draft, Excel import, or manual plan application; Today's Workout rule advice; post-workout rule review; and weekly review adjustment drafts. All adjustments require user confirmation, blocking results stop automatic application, and high-severity results require explicit confirmation.
+
+v0.10.2 adds rule governance and validation: evidence sources, applicability, threshold declarations, immutable rule versions, review, release, rollback, regression tests, impact analysis, coverage, conflict diagnostics, and aggregate runtime metrics. Historical evaluations keep their original rule version.
 
 Local development CORS is configurable through `BACKEND_CORS_ORIGINS` and `BACKEND_CORS_ORIGIN_REGEX`, with defaults for `localhost`, `127.0.0.1`, preview ports, and common LAN debug URLs.
 

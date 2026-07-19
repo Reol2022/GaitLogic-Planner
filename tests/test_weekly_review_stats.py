@@ -54,8 +54,12 @@ def db_session():
         )
     except pymysql.MySQLError as exc:
         pytest.skip(f"MySQL unavailable: {exc}")
-    with connection.cursor() as cursor:
-        cursor.execute(f"CREATE DATABASE `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f"CREATE DATABASE `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+    except pymysql.MySQLError as exc:
+        connection.close()
+        pytest.skip(f"MySQL test database cannot be created: {exc}")
     connection.close()
     engine = create_engine(settings.database_url.replace(settings.mysql_database, database), future=True)
     Base.metadata.create_all(engine)
