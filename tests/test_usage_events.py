@@ -125,7 +125,8 @@ def test_illegal_event_name_is_rejected(client: TestClient) -> None:
         headers={"Authorization": f"Bearer {token}"},
         json={"event_name": "free_text_event"},
     )
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert response.json()["code"] == "VALIDATION_ERROR"
 
 
 def test_sensitive_metadata_is_rejected(client: TestClient) -> None:

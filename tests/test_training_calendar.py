@@ -14,7 +14,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from planner_core.database.base import Base
 from planner_core.database.models import PlannedWorkout, TrainingBlock, TrainingCycle, UserAccount, WorkoutLog
-from planner_core.enums import BlockType, WorkoutMainTypeNormalized, WorkoutStatusNormalized
+from planner_core.enums import (
+    BlockType,
+    TrainingCycleStatus,
+    WorkoutMainTypeNormalized,
+    WorkoutStatusNormalized,
+)
 from server.api.deps import get_current_user, get_db
 from server.main import app
 
@@ -95,7 +100,14 @@ def calendar_client(mysql_session_factory):
 
 
 def seed_user_calendar(session: Session, user: UserAccount, *, include_completed: bool) -> None:
-    cycle = TrainingCycle(user=user, name="2026 夏训", start_date=date(2026, 6, 1), end_date=date(2026, 6, 30))
+    cycle = TrainingCycle(
+        user=user,
+        name="2026 夏训",
+        start_date=date(2026, 6, 1),
+        end_date=date(2026, 6, 30),
+        status=TrainingCycleStatus.active,
+        active_user_id=user.id,
+    )
     block = TrainingBlock(user=user, cycle=cycle, block_name="Week 1", block_type=BlockType.week, sort_order=1)
     completed_status = WorkoutStatusNormalized.completed_normal if include_completed else WorkoutStatusNormalized.missed
     session.add_all(
