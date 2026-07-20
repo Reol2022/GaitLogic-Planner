@@ -40,6 +40,7 @@ from planner_core.enums import (
     RaceDistance,
     ReadinessDataQuality,
     RecoveryCheckinSource,
+    RunnerStateSnapshotTriggerType,
     TrainingCycleStatus,
     TrainingStatus,
     UIMode,
@@ -155,6 +156,12 @@ plan_adjustment_draft_status_enum = Enum(
 plan_adjustment_action_enum = Enum(
     PlanAdjustmentAction, values_callable=enum_values, native_enum=False, length=16
 )
+runner_state_snapshot_trigger_type_enum = Enum(
+    RunnerStateSnapshotTriggerType,
+    values_callable=enum_values,
+    native_enum=False,
+    length=32,
+)
 
 
 class UserAccount(IdMixin, TimestampMixin, Base):
@@ -233,6 +240,11 @@ class UserAccount(IdMixin, TimestampMixin, Base):
     training_rule_reviews: Mapped[list[TrainingRuleReview]] = relationship(back_populates="reviewer")
     training_rule_test_runs: Mapped[list[TrainingRuleTestRun]] = relationship(back_populates="created_by_user")
     training_rule_audit_logs: Mapped[list[TrainingRuleAuditLog]] = relationship(back_populates="actor")
+    runner_state_snapshots: Mapped[list[RunnerStateSnapshotRecord]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class TrainingCycle(IdMixin, TimestampMixin, Base):
@@ -1333,6 +1345,66 @@ class TrainingReadinessAssessment(IdMixin, TimestampMixin, Base):
     user: Mapped[UserAccount] = relationship(back_populates="readiness_assessments")
 
 
+class RunnerStateSnapshotRecord(IdMixin, Base):
+    __tablename__ = "runner_state_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "data_cutoff_date",
+            "payload_hash",
+            name="uq_runner_state_snapshot_user_cutoff_hash",
+        ),
+        Index(
+            "ix_runner_state_snapshots_user_cutoff",
+            "user_id",
+            "data_cutoff_date",
+        ),
+        Index(
+            "ix_runner_state_snapshots_user_created",
+            "user_id",
+            "created_at",
+        ),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False
+    )
+    snapshot_date: Mapped[date] = mapped_column(Date, nullable=False)
+    data_cutoff_date: Mapped[date] = mapped_column(Date, nullable=False)
+    calculated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    trigger_type: Mapped[RunnerStateSnapshotTriggerType] = mapped_column(
+        runner_state_snapshot_trigger_type_enum,
+        nullable=False,
+        default=RunnerStateSnapshotTriggerType.MANUAL,
+        server_default=RunnerStateSnapshotTriggerType.MANUAL.value,
+    )
+    trigger_reference: Mapped[str | None] = mapped_column(String(128))
+    snapshot_schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    ruleset_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    distance_7d_km: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    distance_28d_km: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    volume_trend: Mapped[str | None] = mapped_column(String(32))
+    training_consistency: Mapped[str | None] = mapped_column(String(32))
+    fatigue_state: Mapped[str | None] = mapped_column(String(32))
+    training_phase: Mapped[str | None] = mapped_column(String(32))
+    risk_flag_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    evidence_coverage: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    data_completeness: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    snapshot_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    payload_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    user: Mapped[UserAccount] = relationship(back_populates="runner_state_snapshots")
+
+
 class UsageEvent(IdMixin, Base):
     __tablename__ = "usage_event"
     __table_args__ = (
@@ -1890,7 +1962,7 @@ class TrainingRuleHit(IdMixin, Base):
     )
 
     evaluation_id: Mapped[int] = mapped_column(
-        ForeignKey("training_rule_evaluations.id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("training_rule_evaluations.id", ondelete="CASCADE"), nullable=False
     )
     rule_code: Mapped[str] = mapped_column(String(96), nullable=False)
     rule_version: Mapped[str] = mapped_column(String(32), nullable=False)
