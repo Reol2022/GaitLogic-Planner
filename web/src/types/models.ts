@@ -453,6 +453,7 @@ export interface ProviderListResponse {
 
 export interface ExternalSyncJobRead {
   id: number;
+  sync_run_id?: string;
   provider: string;
   sync_mode: string;
   requested_start?: string | null;
@@ -467,6 +468,12 @@ export interface ExternalSyncJobRead {
   needs_review_count: number;
   ignored_count: number;
   failed_count: number;
+  is_committed?: boolean;
+  committed_at?: string | null;
+  created_log_count?: number;
+  updated_log_count?: number;
+  unchanged_activity_count?: number;
+  runner_state_affecting_change_count?: number;
   started_at?: string | null;
   finished_at?: string | null;
   error_code?: string | null;

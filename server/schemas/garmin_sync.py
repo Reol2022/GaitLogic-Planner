@@ -56,6 +56,7 @@ class ExternalSyncJobRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    sync_run_id: str
     provider: str
     sync_mode: str
     requested_start: datetime | None
@@ -70,6 +71,12 @@ class ExternalSyncJobRead(BaseModel):
     needs_review_count: int
     ignored_count: int
     failed_count: int
+    is_committed: bool
+    committed_at: datetime | None
+    created_log_count: int
+    updated_log_count: int
+    unchanged_activity_count: int
+    runner_state_affecting_change_count: int
     started_at: datetime | None
     finished_at: datetime | None
     error_code: str | None

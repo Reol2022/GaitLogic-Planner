@@ -7,8 +7,9 @@ from collections import Counter
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
+from uuid import uuid4
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from planner_core.config import get_settings
@@ -28,6 +29,7 @@ from planner_core.database.models import (
 from planner_core.enums import PlannedWorkoutLifecycleStatus, PainScaleVersion, TrainingCycleStatus, WorkoutStatusNormalized
 from server.common.exceptions import BadRequestError, NotFoundError, ServiceUnavailableError, TooManyRequestsError
 from server.integrations.activity_provider import GarminActivityProvider, MockActivityProvider, ProviderActivity, ProviderError
+from server.integrations.activity_sync.outcome import GarminSyncRunOutcome, WorkoutLogMaterialChangeTracker
 from server.schemas.garmin_sync import (
     ExternalActivityRead,
     GarminActivityReconcileRequest,
@@ -147,6 +149,8 @@ def enqueue_sync_job(
     user_id: int,
     payload: GarminSyncRequest,
     idempotency_key: str | None = None,
+    *,
+    _sync_run_id: str | None = None,
 ) -> ExternalSyncJobRead:
     connection = _require_connection(db, user_id)
     if connection.status != "connected":
@@ -180,6 +184,7 @@ def enqueue_sync_job(
         requested_end=end,
         status="queued",
         idempotency_key=idempotency_key,
+        sync_run_id=_sync_run_id or str(uuid4()),
     )
     db.add(job)
     db.commit()
@@ -207,7 +212,13 @@ def retry_sync_job(db: Session, user_id: int, job_id: int) -> ExternalSyncJobRea
     if job.status not in {"failed", "partially_succeeded"}:
         raise BadRequestError("只有失败或部分成功的同步任务可以重试。")
     request = GarminSyncRequest(sync_mode=job.sync_mode, start=job.requested_start, end=job.requested_end)
-    return enqueue_sync_job(db, user_id, request, idempotency_key=f"retry-{job.id}-{datetime.utcnow().timestamp()}")
+    return enqueue_sync_job(
+        db,
+        user_id,
+        request,
+        idempotency_key=f"retry-{uuid4()}",
+        _sync_run_id=job.sync_run_id,
+    )
 
 
 def list_activities(db: Session, user_id: int, limit: int = 50) -> list[ExternalActivityRead]:
@@ -311,52 +322,67 @@ def resolve_activity(
     return ExternalActivityRead.model_validate(activity)
 
 
-def run_next_sync_job(db: Session) -> ExternalSyncJobRead | None:
-    job = db.scalar(
-        select(ExternalSyncJob)
-        .where(ExternalSyncJob.status == "queued")
-        .order_by(ExternalSyncJob.created_at.asc())
-        .limit(1)
-        .with_for_update(skip_locked=True)
+def claim_sync_job(db: Session, job_id: int) -> bool:
+    """Atomically grant execution rights to one queued-job claimant."""
+
+    now = datetime.utcnow()
+    result = db.execute(
+        update(ExternalSyncJob)
+        .where(ExternalSyncJob.id == job_id, ExternalSyncJob.status == "queued")
+        .values(
+            status="running",
+            attempt_count=ExternalSyncJob.attempt_count + 1,
+            started_at=now,
+            locked_at=now,
+            is_committed=False,
+            committed_at=None,
+        )
+        .execution_options(synchronize_session=False)
     )
-    if job is None:
-        return None
-    run_sync_job(db, job.id)
-    refreshed = db.get(ExternalSyncJob, job.id)
-    return ExternalSyncJobRead.model_validate(refreshed) if refreshed else None
+    claimed = result.rowcount == 1
+    if claimed:
+        db.commit()
+        db.expire_all()
+    else:
+        db.rollback()
+    return claimed
 
 
-def run_sync_job_in_background(job_id: int) -> None:
-    from planner_core.database.session import SessionLocal
+def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
+    if not claim_sync_job(db, job_id):
+        existing = db.get(ExternalSyncJob, job_id)
+        if existing is None:
+            raise NotFoundError("同步任务不存在。")
+        return _outcome_from_job(existing, claimed=False, warning_codes=("JOB_NOT_CLAIMED",))
 
-    with SessionLocal() as db:
-        run_sync_job(db, job_id)
-
-
-def run_sync_job(db: Session, job_id: int) -> None:
     job = db.scalar(
         select(ExternalSyncJob)
         .where(ExternalSyncJob.id == job_id)
         .options(selectinload(ExternalSyncJob.connection))
-        .with_for_update()
     )
-    if job is None or job.status not in {"queued", "running"}:
-        return
-    job.status = "running"
-    job.started_at = job.started_at or datetime.utcnow()
-    job.locked_at = datetime.utcnow()
-    job.attempt_count += 1
-    db.commit()
+    if job is None:
+        raise NotFoundError("同步任务不存在。")
+
+    tracker = WorkoutLogMaterialChangeTracker()
+    unchanged_activity_count = 0
+    successful_activity_count = 0
+    fetched_count = 0
+    failed_count = 0
     try:
         connection = job.connection
         token_payload = decrypt_token_payload(connection.encrypted_token_payload)
         provider = _provider_for_connection(connection)
         provider.restore_session(token_payload)
-        activities = provider.fetch_activities(job.requested_start or datetime.utcnow() - timedelta(days=90), job.requested_end or datetime.utcnow())
+        activities = provider.fetch_activities(
+            job.requested_start or datetime.utcnow() - timedelta(days=90),
+            job.requested_end or datetime.utcnow(),
+        )
         same_day_counts = Counter(activity.start_time_local.date() for activity in activities)
-        job.fetched_count = len(activities)
+        fetched_count = len(activities)
+        job.fetched_count = fetched_count
         activity_errors: list[str] = []
         for provider_activity in activities:
+            activity_tracker = WorkoutLogMaterialChangeTracker()
             try:
                 with db.begin_nested():
                     result = _process_provider_activity(
@@ -365,7 +391,13 @@ def run_sync_job(db: Session, job_id: int) -> None:
                         provider_activity,
                         provider.connector_version,
                         same_day_activity_count=same_day_counts[provider_activity.start_time_local.date()],
+                        material_tracker=activity_tracker,
                     )
+                successful_activity_count += 1
+                if activity_tracker.has_material_change():
+                    tracker.merge(activity_tracker)
+                else:
+                    unchanged_activity_count += 1
                 if result == "created":
                     job.created_count += 1
                 elif result == "updated":
@@ -374,38 +406,89 @@ def run_sync_job(db: Session, job_id: int) -> None:
                     job.duplicate_count += 1
             except Exception as exc:
                 logger.exception("Failed to process Garmin activity id=%s", provider_activity.external_activity_id)
-                job.failed_count += 1
-                activity_errors.append(f"{provider_activity.external_activity_id}（{_safe_activity_error(exc)}）")
+                failed_count += 1
+                job.failed_count = failed_count
+                activity_errors.append(f"{provider_activity.external_activity_id}: {_safe_activity_error(exc)}")
+
+        if fetched_count > 0 and successful_activity_count == 0:
+            db.rollback()
+            return _mark_job_failed(
+                db,
+                job_id,
+                "ALL_ACTIVITIES_FAILED",
+                "所有 Garmin 活动均处理失败，本次同步未提交训练数据。",
+                fetched_count=fetched_count,
+                failed_count=failed_count,
+            )
+
         refreshed_token = provider.refresh_session()
         if refreshed_token:
             connection.encrypted_token_payload = encrypt_token_payload(refreshed_token)
             connection.token_key_version = get_settings().garmin_token_key_version
-        processed_count = (
-            job.created_count
-            + job.updated_count
-            + job.duplicate_count
-            + job.matched_count
-            + job.unplanned_count
-            + job.needs_review_count
-            + job.ignored_count
-        )
-        if job.failed_count == 0 or processed_count > 0:
+        if failed_count == 0 or successful_activity_count > 0:
             connection.last_successful_sync_at = datetime.utcnow()
-        job.status = "succeeded" if job.failed_count == 0 else "partially_succeeded"
+        job.status = "succeeded" if failed_count == 0 else "partially_succeeded"
         if activity_errors:
             job.error_code = "ACTIVITY_PROCESSING_PARTIAL_FAILURE"
-            preview = "、".join(activity_errors[:5])
-            suffix = " 等" if len(activity_errors) > 5 else ""
-            job.safe_error_message = _truncate_error_message(f"{len(activity_errors)} 条 Garmin 活动处理失败：{preview}{suffix}")
+            preview = "; ".join(activity_errors[:5])
+            suffix = " ..." if len(activity_errors) > 5 else ""
+            job.safe_error_message = _truncate_error_message(
+                f"{len(activity_errors)} 条 Garmin 活动处理失败：{preview}{suffix}"
+            )
+        material_counts = tracker.counts()
+        job.created_log_count = material_counts.created_log_count
+        job.updated_log_count = material_counts.updated_log_count
+        job.unchanged_activity_count = unchanged_activity_count
+        job.runner_state_affecting_change_count = material_counts.runner_state_affecting_change_count
+        job.is_committed = True
+        job.committed_at = datetime.utcnow()
         job.finished_at = datetime.utcnow()
-        db.commit()
+        try:
+            db.commit()
+        except Exception:
+            logger.exception("Garmin sync final commit failed id=%s", job_id)
+            db.rollback()
+            return _mark_job_failed(
+                db,
+                job_id,
+                "SYNC_COMMIT_FAILED",
+                "Garmin 同步数据提交失败，请稍后重试。",
+                fetched_count=fetched_count,
+                failed_count=failed_count,
+            )
+        warning_codes = ("ACTIVITY_PROCESSING_PARTIAL_FAILURE",) if activity_errors else ()
+        return _outcome_from_job(job, claimed=True, warning_codes=warning_codes)
     except ProviderError as exc:
-        _fail_job(db, job, exc.code, exc.safe_message)
+        db.rollback()
+        return _mark_job_failed(
+            db,
+            job_id,
+            exc.code,
+            exc.safe_message,
+            fetched_count=fetched_count,
+            failed_count=failed_count,
+        )
     except BadRequestError as exc:
-        _fail_job(db, job, str(exc.error_code or "SYNC_FAILED"), exc.message)
+        db.rollback()
+        return _mark_job_failed(
+            db,
+            job_id,
+            str(exc.error_code or "SYNC_FAILED"),
+            exc.message,
+            fetched_count=fetched_count,
+            failed_count=failed_count,
+        )
     except Exception:
         logger.exception("Garmin sync job failed unexpectedly id=%s", job_id)
-        _fail_job(db, job, "SYNC_FAILED", "Garmin 同步任务执行失败，请稍后重试。")
+        db.rollback()
+        return _mark_job_failed(
+            db,
+            job_id,
+            "SYNC_FAILED",
+            "Garmin 同步任务执行失败，请稍后重试。",
+            fetched_count=fetched_count,
+            failed_count=failed_count,
+        )
 
 
 def _process_provider_activity(
@@ -415,6 +498,7 @@ def _process_provider_activity(
     connector_version: str,
     *,
     same_day_activity_count: int = 1,
+    material_tracker: WorkoutLogMaterialChangeTracker | None = None,
 ) -> str:
     raw_payload = _desensitize_payload(provider_activity.raw_payload)
     payload_hash = _payload_hash(raw_payload)
@@ -456,7 +540,13 @@ def _process_provider_activity(
         result = "duplicate" if is_duplicate else "updated"
     _replace_laps(activity, provider_activity)
     if job.connection.auto_import_enabled:
-        _match_and_apply(db, job, activity, same_day_activity_count=same_day_activity_count)
+        _match_and_apply(
+            db,
+            job,
+            activity,
+            same_day_activity_count=same_day_activity_count,
+            material_tracker=material_tracker,
+        )
     else:
         _mark_activity_import_deferred(activity)
     db.flush()
@@ -611,6 +701,7 @@ def _match_and_apply(
     activity: ExternalActivity,
     *,
     same_day_activity_count: int = 1,
+    material_tracker: WorkoutLogMaterialChangeTracker | None = None,
 ) -> None:
     if activity.activity_type not in SUPPORTED_ACTIVITY_TYPES:
         _set_activity_state(activity, "ignored", "not_applied", processing_status="ignored")
@@ -623,6 +714,8 @@ def _match_and_apply(
     if existing_link is not None:
         log = db.get(WorkoutLog, existing_link.workout_log_id)
         if log is not None:
+            if material_tracker is not None:
+                material_tracker.capture_before(log)
             _recalculate_log_from_linked_activities(db, log)
             activity.workout_log_id = log.id
             activity.planned_workout_id = log.planned_workout_id
@@ -652,7 +745,14 @@ def _match_and_apply(
     if existing_log_id is None and plan is None:
         existing_unplanned_log = _find_nearby_unplanned_log(db, activity)
         existing_log_id = existing_unplanned_log.id if existing_unplanned_log else None
-    log = _create_or_fill_log(db, activity, plan, confidence, auto_applied=True)
+    log = _create_or_fill_log(
+        db,
+        activity,
+        plan,
+        confidence,
+        auto_applied=True,
+        material_tracker=material_tracker,
+    )
     activity.workout_log_id = log.id
     activity.planned_workout_id = plan.id if plan else None
     _set_activity_state(
@@ -725,6 +825,7 @@ def _create_or_fill_log(
     confidence: str,
     *,
     auto_applied: bool,
+    material_tracker: WorkoutLogMaterialChangeTracker | None = None,
 ) -> WorkoutLog:
     log = plan.workout_log if plan and plan.workout_log else None
     resolved_cycle_id = plan.cycle_id if plan else None
@@ -767,7 +868,11 @@ def _create_or_fill_log(
         )
         db.add(log)
         db.flush()
+        if material_tracker is not None:
+            material_tracker.capture_created(log)
     else:
+        if material_tracker is not None:
+            material_tracker.capture_before(log)
         if plan is not None:
             log.cycle_id = plan.cycle_id
             log.cycle_assignment_status = "assigned"
@@ -1212,16 +1317,67 @@ def _activity_state(activity: ExternalActivity) -> dict[str, Any]:
     }
 
 
-def _fail_job(db: Session, job: ExternalSyncJob, code: str, message: str) -> None:
+def _outcome_from_job(
+    job: ExternalSyncJob,
+    *,
+    claimed: bool,
+    warning_codes: tuple[str, ...] = (),
+) -> GarminSyncRunOutcome:
+    return GarminSyncRunOutcome(
+        job_id=int(job.id),
+        sync_run_id=job.sync_run_id,
+        claimed=claimed,
+        committed=job.is_committed,
+        final_status=job.status,
+        created_log_count=job.created_log_count,
+        updated_log_count=job.updated_log_count,
+        unchanged_activity_count=job.unchanged_activity_count,
+        runner_state_affecting_change_count=job.runner_state_affecting_change_count,
+        warning_codes=warning_codes,
+    )
+
+
+def _mark_job_failed(
+    db: Session,
+    job_id: int,
+    code: str,
+    message: str,
+    *,
+    fetched_count: int = 0,
+    failed_count: int = 0,
+) -> GarminSyncRunOutcome:
+    """Persist failure metadata only after the training transaction was rolled back."""
+
+    job = db.scalar(
+        select(ExternalSyncJob)
+        .where(ExternalSyncJob.id == job_id)
+        .options(selectinload(ExternalSyncJob.connection))
+    )
+    if job is None:
+        raise NotFoundError("同步任务不存在。")
+    now = datetime.utcnow()
     job.status = "failed"
     job.error_code = code
-    job.safe_error_message = message
-    job.finished_at = datetime.utcnow()
+    job.safe_error_message = _truncate_error_message(message)
+    job.fetched_count = max(fetched_count, 0)
+    job.failed_count = max(failed_count, 0)
+    job.is_committed = False
+    job.committed_at = None
+    job.created_log_count = 0
+    job.updated_log_count = 0
+    job.unchanged_activity_count = 0
+    job.runner_state_affecting_change_count = 0
+    job.finished_at = now
     job.connection.last_error_code = code
-    job.connection.last_error_at = datetime.utcnow()
+    job.connection.last_error_at = now
     if code in {"TOKEN_DECRYPTION_FAILED", "REAUTHENTICATION_REQUIRED", "AUTHENTICATION_REQUIRED"}:
         job.connection.status = "reauthentication_required"
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return _outcome_from_job(job, claimed=True, warning_codes=(code,))
 
 
 def _safe_activity_error(exc: Exception) -> str:
