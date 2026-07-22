@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, time
 from decimal import Decimal
+from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
@@ -40,6 +41,7 @@ from planner_core.enums import (
     RaceDistance,
     ReadinessDataQuality,
     RecoveryCheckinSource,
+    RunnerStateSnapshotReceiptStatus,
     RunnerStateSnapshotTriggerType,
     TrainingCycleStatus,
     TrainingStatus,
@@ -161,6 +163,12 @@ runner_state_snapshot_trigger_type_enum = Enum(
     values_callable=enum_values,
     native_enum=False,
     length=32,
+)
+runner_state_snapshot_receipt_status_enum = Enum(
+    RunnerStateSnapshotReceiptStatus,
+    values_callable=enum_values,
+    native_enum=False,
+    length=40,
 )
 
 
@@ -888,6 +896,7 @@ class ExternalSyncJob(IdMixin, TimestampMixin, Base):
         UniqueConstraint("connection_id", "idempotency_key", name="uq_external_sync_job_idempotency"),
         Index("ix_external_sync_job_status_created", "status", "created_at"),
         Index("ix_external_sync_job_user_created", "user_id", "created_at"),
+        Index("ix_external_sync_job_sync_run_id", "sync_run_id"),
         MYSQL_TABLE_ARGS,
     )
 
@@ -899,6 +908,11 @@ class ExternalSyncJob(IdMixin, TimestampMixin, Base):
     requested_end: Mapped[datetime | None] = mapped_column(DateTime)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued", server_default="queued")
     idempotency_key: Mapped[str | None] = mapped_column(String(128))
+    sync_run_id: Mapped[str] = mapped_column(
+        String(36),
+        nullable=False,
+        default=lambda: str(uuid4()),
+    )
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     fetched_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
@@ -909,6 +923,17 @@ class ExternalSyncJob(IdMixin, TimestampMixin, Base):
     needs_review_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     ignored_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     failed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    is_committed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    committed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_log_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    updated_log_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    unchanged_activity_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    runner_state_affecting_change_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
     started_at: Mapped[datetime | None] = mapped_column(DateTime)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     error_code: Mapped[str | None] = mapped_column(String(64))
@@ -1403,6 +1428,68 @@ class RunnerStateSnapshotRecord(IdMixin, Base):
     payload_hash: Mapped[str] = mapped_column(String(64), nullable=False)
 
     user: Mapped[UserAccount] = relationship(back_populates="runner_state_snapshots")
+
+
+class RunnerStateSnapshotTriggerReceipt(IdMixin, TimestampMixin, Base):
+    __tablename__ = "runner_state_snapshot_trigger_receipt"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "trigger_type",
+            "trigger_reference",
+            name="uq_runner_state_receipt_user_trigger_reference",
+        ),
+        CheckConstraint(
+            "material_change_count >= 0",
+            name="ck_runner_state_receipt_material_change_nonnegative",
+        ),
+        CheckConstraint(
+            "attempt_count >= 0",
+            name="ck_runner_state_receipt_attempt_count_nonnegative",
+        ),
+        Index("ix_runner_state_receipt_user_created", "user_id", "created_at"),
+        Index("ix_runner_state_receipt_sync_job", "sync_job_id"),
+        Index("ix_runner_state_receipt_status_locked", "status", "locked_at"),
+        Index("ix_runner_state_receipt_snapshot", "snapshot_id"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False
+    )
+    trigger_type: Mapped[RunnerStateSnapshotTriggerType] = mapped_column(
+        runner_state_snapshot_trigger_type_enum,
+        nullable=False,
+    )
+    trigger_reference: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[RunnerStateSnapshotReceiptStatus] = mapped_column(
+        runner_state_snapshot_receipt_status_enum,
+        nullable=False,
+    )
+    snapshot_id: Mapped[int | None] = mapped_column(
+        ForeignKey("runner_state_snapshots.id", ondelete="SET NULL")
+    )
+    sync_job_id: Mapped[int | None] = mapped_column(
+        ForeignKey("external_sync_job.id", ondelete="SET NULL")
+    )
+    material_change_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    is_committed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
+    attempt_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    processing_token: Mapped[str | None] = mapped_column(String(36))
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    safe_error_message: Mapped[str | None] = mapped_column(String(255))
+
+    user: Mapped[UserAccount] = relationship(viewonly=True)
+    snapshot: Mapped[RunnerStateSnapshotRecord | None] = relationship(viewonly=True)
+    sync_job: Mapped[ExternalSyncJob | None] = relationship(viewonly=True)
 
 
 class UsageEvent(IdMixin, Base):

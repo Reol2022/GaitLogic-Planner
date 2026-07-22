@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+import hashlib
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -24,6 +25,7 @@ from server.schemas.runner_state_snapshot import (
     RunnerStateSnapshotCreateResult,
     RunnerStateSnapshotDetail,
     RunnerStateSnapshotListResponse,
+    RunnerStateTimelineRange,
 )
 from server.services.runner_state_service import RunnerStateService, build_runner_state_snapshot
 from server.services.runner_state_snapshot_serializer import (
@@ -299,42 +301,25 @@ def test_different_cutoff_date_allows_same_values(snapshot_database) -> None:
         assert service.save_current(user).created is True
 
 
-def test_concurrent_duplicate_rolls_back_and_requeries(snapshot_database, monkeypatch) -> None:
+def test_existing_duplicate_is_reused_across_sessions(snapshot_database) -> None:
     _engine, factory = snapshot_database
     with factory() as session, factory() as concurrent_session:
         user = _user(session, "concurrent-fictional-runner")
         snapshot = _snapshot(user.id)
+        first = RunnerStateSnapshotService(
+            concurrent_session,
+            runner_state_service=_StateStub(snapshot),
+            clock=lambda: datetime(2026, 7, 15, 20, tzinfo=SHANGHAI),
+        ).save_current(concurrent_session.get(UserAccount, user.id))
         service = RunnerStateSnapshotService(
             session,
             runner_state_service=_StateStub(snapshot),
             clock=lambda: datetime(2026, 7, 15, 20, tzinfo=SHANGHAI),
         )
-        original_commit = session.commit
-        rollback_called = False
-        original_rollback = session.rollback
-
-        def competing_commit() -> None:
-            pending = next(item for item in session.new if isinstance(item, RunnerStateSnapshotRecord))
-            values = {
-                column.name: getattr(pending, column.name)
-                for column in RunnerStateSnapshotRecord.__table__.columns
-                if column.name != "id"
-            }
-            concurrent_session.add(RunnerStateSnapshotRecord(**values))
-            concurrent_session.commit()
-            original_commit()
-
-        def tracked_rollback() -> None:
-            nonlocal rollback_called
-            rollback_called = True
-            original_rollback()
-
-        monkeypatch.setattr(session, "commit", competing_commit)
-        monkeypatch.setattr(session, "rollback", tracked_rollback)
         result = service.save_current(user)
 
         assert result.duplicate is True
-        assert rollback_called is True
+        assert result.snapshot.id == first.snapshot.id
         assert concurrent_session.scalar(select(func_count(RunnerStateSnapshotRecord.id))) == 1
 
 
@@ -568,3 +553,203 @@ def test_snapshot_routes_do_not_offer_update_or_delete_methods() -> None:
         for method in route.methods
     }
     assert methods == {"GET", "POST"}
+
+
+def _timeline_record(
+    *,
+    user_id: int,
+    cutoff: date,
+    created_at: datetime,
+    distance_7d_km: float | None = 20,
+    distance_28d_km: float | None = 80,
+    risk_flags: list[dict] | None = None,
+) -> RunnerStateSnapshotRecord:
+    payload = serialize_runner_state_snapshot(_snapshot(user_id, cutoff=cutoff))
+    payload["data_quality"]["rpe_coverage_28d"] = 0.625
+    payload["data_quality"]["heart_rate_coverage_28d"] = 0.5
+    payload["risk_flags"] = risk_flags or []
+    identity = f"{user_id}:{cutoff.isoformat()}:{created_at.isoformat()}:{distance_7d_km}"
+    return RunnerStateSnapshotRecord(
+        user_id=user_id,
+        snapshot_date=cutoff,
+        data_cutoff_date=cutoff,
+        calculated_at=created_at,
+        created_at=created_at,
+        trigger_type=RunnerStateSnapshotTriggerType.MANUAL,
+        snapshot_schema_version=RUNNER_STATE_SNAPSHOT_SCHEMA_VERSION,
+        ruleset_version="runner-state-rules-1.0.0",
+        distance_7d_km=Decimal(str(distance_7d_km)) if distance_7d_km is not None else None,
+        distance_28d_km=Decimal(str(distance_28d_km)) if distance_28d_km is not None else None,
+        volume_trend="STABLE",
+        training_consistency="HIGH",
+        fatigue_state="NORMAL",
+        training_phase="UNKNOWN",
+        risk_flag_count=len(payload["risk_flags"]),
+        evidence_coverage=Decimal("0.8"),
+        data_completeness=Decimal("0.75"),
+        snapshot_payload=payload,
+        payload_hash=hashlib.sha256(identity.encode()).hexdigest(),
+    )
+
+
+def test_timeline_range_boundaries_use_natural_days_and_calendar_months() -> None:
+    end = date(2026, 7, 19)
+    assert RunnerStateSnapshotService._timeline_start_date(
+        end, RunnerStateTimelineRange.DAYS_28
+    ) == date(2026, 6, 22)
+    assert RunnerStateSnapshotService._timeline_start_date(
+        end, RunnerStateTimelineRange.WEEKS_12
+    ) == date(2026, 4, 27)
+    assert RunnerStateSnapshotService._timeline_start_date(
+        end, RunnerStateTimelineRange.MONTHS_6
+    ) == date(2026, 1, 19)
+    assert RunnerStateSnapshotService._timeline_start_date(
+        date(2024, 8, 31), RunnerStateTimelineRange.MONTHS_6
+    ) == date(2024, 2, 29)
+
+
+def test_timeline_selects_latest_snapshot_per_date_and_counts_all(snapshot_database) -> None:
+    _engine, factory = snapshot_database
+    risk = {
+        "code": "VOLUME_SPIKE",
+        "severity": "WARNING",
+        "message": "虚构跑量提示",
+        "suggested_action_type": "REVIEW",
+        "triggered_rule": "volume_ratio > 1.5",
+        "evidence": [],
+    }
+    with factory() as session:
+        owner = _user(session, "timeline-owner")
+        older = _timeline_record(
+            user_id=owner.id,
+            cutoff=date(2026, 7, 18),
+            created_at=datetime(2026, 7, 18, 9),
+            distance_7d_km=18,
+        )
+        latest = _timeline_record(
+            user_id=owner.id,
+            cutoff=date(2026, 7, 18),
+            created_at=datetime(2026, 7, 18, 21),
+            distance_7d_km=28,
+            risk_flags=[risk],
+        )
+        previous = _timeline_record(
+            user_id=owner.id,
+            cutoff=date(2026, 7, 17),
+            created_at=datetime(2026, 7, 17, 20),
+        )
+        session.add_all([older, latest, previous])
+        session.commit()
+
+        service = RunnerStateSnapshotService(
+            session,
+            runner_state_service=_StateStub(_snapshot(owner.id)),
+            clock=lambda: datetime(2026, 7, 19, 0, 15, tzinfo=SHANGHAI),
+        )
+        before = (len(session.new), len(session.dirty), len(session.deleted))
+        result = service.list_timeline_snapshots(
+            user_id=owner.id, timeline_range=RunnerStateTimelineRange.DAYS_28
+        )
+
+        assert result.total_snapshots == 3
+        assert result.days_with_snapshots == 2
+        assert [item.data_cutoff_date for item in result.items] == [
+            date(2026, 7, 17),
+            date(2026, 7, 18),
+        ]
+        assert result.items[-1].id == latest.id
+        assert result.items[-1].distance_7d_km == 28
+        assert result.items[-1].distance_28d_weekly_average_km == 20
+        assert result.items[-1].rpe_coverage_28d == 0.625
+        assert result.items[-1].heart_rate_coverage_28d == 0.5
+        assert result.items[-1].risk_flags[0].code.value == "VOLUME_SPIKE"
+        assert (len(session.new), len(session.dirty), len(session.deleted)) == before
+
+
+def test_timeline_uses_larger_id_when_created_at_matches(snapshot_database) -> None:
+    _engine, factory = snapshot_database
+    with factory() as session:
+        owner = _user(session, "timeline-id-owner")
+        timestamp = datetime(2026, 7, 18, 21)
+        first = _timeline_record(
+            user_id=owner.id,
+            cutoff=date(2026, 7, 18),
+            created_at=timestamp,
+            distance_7d_km=18,
+        )
+        second = _timeline_record(
+            user_id=owner.id,
+            cutoff=date(2026, 7, 18),
+            created_at=timestamp,
+            distance_7d_km=22,
+        )
+        session.add_all([first, second])
+        session.commit()
+        result = RunnerStateSnapshotService(
+            session,
+            clock=lambda: datetime(2026, 7, 19, 12, tzinfo=SHANGHAI),
+        ).list_timeline_snapshots(
+            user_id=owner.id, timeline_range=RunnerStateTimelineRange.DAYS_28
+        )
+        assert len(result.items) == 1
+        assert result.items[0].id == second.id
+
+
+def test_timeline_is_user_scoped_and_empty_for_user_without_records(snapshot_database) -> None:
+    _engine, factory = snapshot_database
+    with factory() as session:
+        owner = _user(session, "timeline-private-owner")
+        other = _user(session, "timeline-private-other")
+        session.add(
+            _timeline_record(
+                user_id=owner.id,
+                cutoff=date(2026, 7, 18),
+                created_at=datetime(2026, 7, 18, 21),
+            )
+        )
+        session.commit()
+        result = RunnerStateSnapshotService(
+            session,
+            clock=lambda: datetime(2026, 7, 19, 12, tzinfo=SHANGHAI),
+        ).list_timeline_snapshots(
+            user_id=other.id, timeline_range=RunnerStateTimelineRange.DAYS_28
+        )
+        assert result.total_snapshots == 0
+        assert result.days_with_snapshots == 0
+        assert result.items == []
+
+
+def test_timeline_api_defaults_to_28d_and_hides_internal_payload(monkeypatch) -> None:
+    current_user = UserAccount(id=806, username="timeline-api", password_hash="x", status="active")
+    seen: list[tuple[int, RunnerStateTimelineRange]] = []
+
+    class FakeService:
+        def __init__(self, db) -> None:
+            pass
+
+        def list_timeline_snapshots(self, *, user_id, timeline_range):
+            seen.append((user_id, timeline_range))
+            return {
+                "range": timeline_range,
+                "start_date": date(2026, 6, 22),
+                "end_date": date(2026, 7, 19),
+                "days_with_snapshots": 0,
+                "total_snapshots": 0,
+                "items": [],
+            }
+
+    monkeypatch.setattr(runner_state_routes, "RunnerStateSnapshotService", FakeService)
+    app.dependency_overrides[get_current_user] = lambda: current_user
+    app.dependency_overrides[get_db] = lambda: object()
+    try:
+        response = TestClient(app).get("/api/runner-state/snapshots/timeline")
+        invalid = TestClient(app).get("/api/runner-state/snapshots/timeline?range=1y")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert seen == [(806, RunnerStateTimelineRange.DAYS_28)]
+    assert response.json()["range"] == "28d"
+    for hidden in ("snapshot_payload", "payload_hash", "user_id"):
+        assert hidden not in response.text
+    assert invalid.status_code == 400

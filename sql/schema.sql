@@ -865,6 +865,7 @@ CREATE TABLE IF NOT EXISTS `external_sync_job` (
   `requested_end` DATETIME NULL,
   `status` VARCHAR(32) NOT NULL DEFAULT 'queued',
   `idempotency_key` VARCHAR(128) NULL,
+  `sync_run_id` VARCHAR(36) NOT NULL,
   `attempt_count` INT NOT NULL DEFAULT 0,
   `fetched_count` INT NOT NULL DEFAULT 0,
   `created_count` INT NOT NULL DEFAULT 0,
@@ -875,6 +876,12 @@ CREATE TABLE IF NOT EXISTS `external_sync_job` (
   `needs_review_count` INT NOT NULL DEFAULT 0,
   `ignored_count` INT NOT NULL DEFAULT 0,
   `failed_count` INT NOT NULL DEFAULT 0,
+  `is_committed` TINYINT(1) NOT NULL DEFAULT 0,
+  `committed_at` DATETIME NULL,
+  `created_log_count` INT NOT NULL DEFAULT 0,
+  `updated_log_count` INT NOT NULL DEFAULT 0,
+  `unchanged_activity_count` INT NOT NULL DEFAULT 0,
+  `runner_state_affecting_change_count` INT NOT NULL DEFAULT 0,
   `started_at` DATETIME NULL,
   `finished_at` DATETIME NULL,
   `error_code` VARCHAR(64) NULL,
@@ -886,6 +893,7 @@ CREATE TABLE IF NOT EXISTS `external_sync_job` (
   UNIQUE KEY `uq_external_sync_job_idempotency` (`connection_id`, `idempotency_key`),
   KEY `ix_external_sync_job_status_created` (`status`, `created_at`),
   KEY `ix_external_sync_job_user_created` (`user_id`, `created_at`),
+  KEY `ix_external_sync_job_sync_run_id` (`sync_run_id`),
   KEY `ix_external_sync_job_connection_id` (`connection_id`),
   CONSTRAINT `fk_external_sync_job_user_id`
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
@@ -1378,4 +1386,72 @@ CREATE TABLE IF NOT EXISTS `training_adjustment_drafts` (
     FOREIGN KEY (`source_evaluation_id`) REFERENCES `training_rule_evaluations` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_training_adjustment_cycle_id`
     FOREIGN KEY (`cycle_id`) REFERENCES `training_cycles` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `runner_state_snapshots` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `snapshot_date` DATE NOT NULL,
+  `data_cutoff_date` DATE NOT NULL,
+  `calculated_at` DATETIME NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `trigger_type` VARCHAR(32) NOT NULL DEFAULT 'MANUAL',
+  `trigger_reference` VARCHAR(128) NULL,
+  `snapshot_schema_version` VARCHAR(64) NOT NULL,
+  `ruleset_version` VARCHAR(64) NOT NULL,
+  `distance_7d_km` DECIMAL(10,2) NULL,
+  `distance_28d_km` DECIMAL(10,2) NULL,
+  `volume_trend` VARCHAR(32) NULL,
+  `training_consistency` VARCHAR(32) NULL,
+  `fatigue_state` VARCHAR(32) NULL,
+  `training_phase` VARCHAR(32) NULL,
+  `risk_flag_count` INT NOT NULL DEFAULT 0,
+  `evidence_coverage` DECIMAL(6,4) NULL,
+  `data_completeness` DECIMAL(6,4) NULL,
+  `snapshot_payload` JSON NOT NULL,
+  `payload_hash` VARCHAR(64) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_runner_state_snapshot_user_cutoff_hash`
+    (`user_id`, `data_cutoff_date`, `payload_hash`),
+  KEY `ix_runner_state_snapshots_user_cutoff` (`user_id`, `data_cutoff_date`),
+  KEY `ix_runner_state_snapshots_user_created` (`user_id`, `created_at`),
+  CONSTRAINT `fk_runner_state_snapshots_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `runner_state_snapshot_trigger_receipt` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `trigger_type` VARCHAR(32) NOT NULL,
+  `trigger_reference` VARCHAR(128) NOT NULL,
+  `status` VARCHAR(40) NOT NULL,
+  `snapshot_id` BIGINT NULL,
+  `sync_job_id` BIGINT NULL,
+  `material_change_count` INT NOT NULL DEFAULT 0,
+  `is_committed` TINYINT(1) NOT NULL DEFAULT 0,
+  `attempt_count` INT NOT NULL DEFAULT 0,
+  `processing_token` VARCHAR(36) NULL,
+  `locked_at` DATETIME NULL,
+  `completed_at` DATETIME NULL,
+  `error_code` VARCHAR(64) NULL,
+  `safe_error_message` VARCHAR(255) NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `uq_runner_state_receipt_user_trigger_reference`
+    UNIQUE (`user_id`, `trigger_type`, `trigger_reference`),
+  CONSTRAINT `ck_runner_state_receipt_material_change_nonnegative`
+    CHECK (`material_change_count` >= 0),
+  CONSTRAINT `ck_runner_state_receipt_attempt_count_nonnegative`
+    CHECK (`attempt_count` >= 0),
+  KEY `ix_runner_state_receipt_user_created` (`user_id`, `created_at`),
+  KEY `ix_runner_state_receipt_sync_job` (`sync_job_id`),
+  KEY `ix_runner_state_receipt_status_locked` (`status`, `locked_at`),
+  KEY `ix_runner_state_receipt_snapshot` (`snapshot_id`),
+  CONSTRAINT `fk_runner_state_receipt_user_id`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_runner_state_receipt_snapshot_id`
+    FOREIGN KEY (`snapshot_id`) REFERENCES `runner_state_snapshots` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_runner_state_receipt_sync_job_id`
+    FOREIGN KEY (`sync_job_id`) REFERENCES `external_sync_job` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from planner_core.enums import RunnerStateSnapshotTriggerType
+from server.schemas.runner_state import RunnerStateRiskFlag
+
+
+class RunnerStateTimelineRange(str, Enum):
+    DAYS_28 = "28d"
+    WEEKS_12 = "12w"
+    MONTHS_6 = "6m"
 
 
 class RunnerStateSnapshotCreateRequest(BaseModel):
@@ -47,3 +55,19 @@ class RunnerStateSnapshotListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class RunnerStateTimelineItem(RunnerStateSnapshotListItem):
+    distance_28d_weekly_average_km: float | None = None
+    rpe_coverage_28d: float | None = Field(default=None, ge=0, le=1)
+    heart_rate_coverage_28d: float | None = Field(default=None, ge=0, le=1)
+    risk_flags: list[RunnerStateRiskFlag] = Field(default_factory=list)
+
+
+class RunnerStateTimelineResponse(BaseModel):
+    range: RunnerStateTimelineRange
+    start_date: date
+    end_date: date
+    days_with_snapshots: int
+    total_snapshots: int
+    items: list[RunnerStateTimelineItem]

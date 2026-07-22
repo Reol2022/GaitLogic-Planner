@@ -1,4 +1,10 @@
-import type { RunnerStateSnapshot } from "@/types/runnerState";
+import type {
+  RunnerStateSnapshot,
+  RunnerStateSnapshotDetail,
+  RunnerStateSnapshotListResponse,
+  RunnerStateTimelineItem,
+  RunnerStateTimelineResponse,
+} from "@/types/runnerState";
 
 export function createRunnerStateSnapshot(): RunnerStateSnapshot {
   return {
@@ -119,4 +125,50 @@ export function createRunnerStateSnapshot(): RunnerStateSnapshot {
       limitations: ["training_phase_unavailable_no_structured_cycle_phase"],
     },
   };
+}
+
+export function createRunnerStateTimelineItem(overrides: Partial<RunnerStateTimelineItem> = {}): RunnerStateTimelineItem {
+  return {
+    id: 3001,
+    snapshot_date: "2026-07-15",
+    data_cutoff_date: "2026-07-15",
+    calculated_at: "2026-07-15T20:00:00+08:00",
+    created_at: "2026-07-15T20:01:00+08:00",
+    trigger_type: "MANUAL",
+    snapshot_schema_version: "runner-state-snapshot-1.0.0",
+    ruleset_version: "runner-state-rules-1.0.0",
+    distance_7d_km: 52,
+    distance_28d_km: 160,
+    distance_28d_weekly_average_km: 40,
+    volume_trend: "STABLE",
+    training_consistency: "HIGH",
+    fatigue_state: "NORMAL",
+    training_phase: "UNKNOWN",
+    risk_flag_count: 0,
+    evidence_coverage: 0.8,
+    data_completeness: 0.86,
+    rpe_coverage_28d: 0.72,
+    heart_rate_coverage_28d: 0.5,
+    risk_flags: [],
+    ...overrides,
+  };
+}
+
+export function createRunnerStateTimeline(items = [createRunnerStateTimelineItem()]): RunnerStateTimelineResponse {
+  return {
+    range: "28d",
+    start_date: "2026-06-22",
+    end_date: "2026-07-19",
+    days_with_snapshots: new Set(items.map((item) => item.data_cutoff_date)).size,
+    total_snapshots: items.length,
+    items,
+  };
+}
+
+export function createRunnerStateSnapshotList(items = [createRunnerStateTimelineItem()]): RunnerStateSnapshotListResponse {
+  return { items, total: items.length, limit: 30, offset: 0 };
+}
+
+export function createRunnerStateSnapshotDetail(): RunnerStateSnapshotDetail {
+  return { ...createRunnerStateTimelineItem(), snapshot_payload: createRunnerStateSnapshot() };
 }

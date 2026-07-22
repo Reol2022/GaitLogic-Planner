@@ -451,6 +451,20 @@ export interface ProviderListResponse {
   providers: ProviderDescriptor[];
 }
 
+export type RunnerStateSnapshotSyncStatus =
+  | "PROCESSING"
+  | "CREATED"
+  | "DUPLICATE_PAYLOAD"
+  | "SKIPPED_NO_MATERIAL_CHANGE"
+  | "SKIPPED_NOT_COMMITTED"
+  | "FAILED_NON_BLOCKING";
+
+export interface RunnerStateSnapshotSyncResult {
+  status: RunnerStateSnapshotSyncStatus;
+  snapshot_id: number | null;
+  error_code: string | null;
+}
+
 export interface ExternalSyncJobRead {
   id: number;
   sync_run_id?: string;
@@ -480,6 +494,7 @@ export interface ExternalSyncJobRead {
   safe_error_message?: string | null;
   created_at: string;
   updated_at: string;
+  runner_state_snapshot?: RunnerStateSnapshotSyncResult | null;
 }
 
 export interface ExternalActivityRead {

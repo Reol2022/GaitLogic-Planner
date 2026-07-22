@@ -310,6 +310,8 @@ def test_no_activity_sync_commits_with_zero_material_change(mysql_factory, monke
         outcome = garmin_sync_service.run_sync_job(session, job.id)
         assert outcome == GarminSyncRunOutcome(
             job_id=job.id,
+            user_id=job.user_id,
+            provider="garmin",
             sync_run_id=job.sync_run_id,
             claimed=True,
             committed=True,

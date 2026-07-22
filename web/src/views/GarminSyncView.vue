@@ -88,6 +88,11 @@
             新增 {{ row.created_count }} / 更新 {{ row.updated_count }} / 待处理 {{ row.needs_review_count }} / 失败 {{ row.failed_count }}
           </template>
         </el-table-column>
+        <el-table-column label="训练状态" min-width="250">
+          <template #default="{ row }">
+            <RunnerStateSnapshotSyncStatus :result="row.runner_state_snapshot" />
+          </template>
+        </el-table-column>
         <el-table-column prop="safe_error_message" label="错误" min-width="180" show-overflow-tooltip />
         <el-table-column label="操作" min-width="90" class-name="action-column">
           <template #default="{ row }">
@@ -176,7 +181,13 @@ import {
   updateGarminSyncSettings,
 } from "@/api/garminSync";
 import { getRequestErrorMessage } from "@/api/request";
+import RunnerStateSnapshotSyncStatus from "@/components/runner-state/RunnerStateSnapshotSyncStatus.vue";
 import type { ExternalActivityRead, ExternalSyncJobRead, GarminConnectionStatus, GarminSyncPayload } from "@/types/models";
+import {
+  hasActiveSyncJobs,
+  hasProcessingRunnerStateReceipt,
+  shouldContinueGarminPolling,
+} from "@/utils/garminSyncStatus";
 import { statusLabel as formatStatusLabel } from "@/utils/statusLabels";
 
 const emptyStatus: GarminConnectionStatus = { connected: false, status: "disconnected", provider: "garmin", auto_import_enabled: true };
@@ -192,6 +203,7 @@ const savingSettings = ref(false);
 const connectError = ref("");
 const customRange = ref<[Date, Date] | null>(null);
 let pollTimer: ReturnType<typeof window.setTimeout> | null = null;
+let receiptPollCount = 0;
 
 const connectForm = reactive({
   username: "",
@@ -227,9 +239,14 @@ async function loadAll(options: { silent?: boolean } = {}) {
       const [jobRows, activityRows] = await Promise.all([listGarminSyncJobs(), listGarminActivities()]);
       jobs.value = jobRows;
       activities.value = activityRows;
-      if (hasRunningJobs(jobRows)) {
+      if (hasActiveSyncJobs(jobRows)) {
+        receiptPollCount = 0;
+        schedulePolling();
+      } else if (shouldContinueGarminPolling(jobRows, receiptPollCount)) {
+        receiptPollCount += 1;
         schedulePolling();
       } else {
+        if (!hasProcessingRunnerStateReceipt(jobRows)) receiptPollCount = 0;
         stopPolling();
       }
     } else {
@@ -365,10 +382,6 @@ function activityTagType(value: string) {
   if (value === "needs_review") return "warning";
   if (value === "failed") return "danger";
   return "info";
-}
-
-function hasRunningJobs(rows = jobs.value) {
-  return rows.some((row) => row.status === "queued" || row.status === "running");
 }
 
 function schedulePolling() {

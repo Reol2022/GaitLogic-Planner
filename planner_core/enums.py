@@ -161,6 +161,33 @@ class ReadinessRecommendationAction(str, Enum):
     seek_professional_evaluation = "seek_professional_evaluation"
 
 
+class RunnerStateSnapshotTriggerType(str, Enum):
+    MANUAL = "MANUAL"
+    GARMIN_SYNC = "GARMIN_SYNC"
+    DAILY = "DAILY"
+    PLAN_ADJUSTMENT = "PLAN_ADJUSTMENT"
+    SYSTEM = "SYSTEM"
+
+
+class RunnerStateSnapshotReceiptStatus(str, Enum):
+    PROCESSING = "PROCESSING"
+    CREATED = "CREATED"
+    DUPLICATE_PAYLOAD = "DUPLICATE_PAYLOAD"
+    SKIPPED_NO_MATERIAL_CHANGE = "SKIPPED_NO_MATERIAL_CHANGE"
+    SKIPPED_NOT_COMMITTED = "SKIPPED_NOT_COMMITTED"
+    FAILED_NON_BLOCKING = "FAILED_NON_BLOCKING"
+
+
+class RunnerStateAutoSnapshotStatus(str, Enum):
+    CREATED = "CREATED"
+    DUPLICATE_PAYLOAD = "DUPLICATE_PAYLOAD"
+    SKIPPED_NO_MATERIAL_CHANGE = "SKIPPED_NO_MATERIAL_CHANGE"
+    SKIPPED_NOT_COMMITTED = "SKIPPED_NOT_COMMITTED"
+    FAILED_NON_BLOCKING = "FAILED_NON_BLOCKING"
+    ALREADY_PROCESSED_TRIGGER = "ALREADY_PROCESSED_TRIGGER"
+    PROCESSING_BY_ANOTHER_WORKER = "PROCESSING_BY_ANOTHER_WORKER"
+
+
 class PlanAdjustmentDraftStatus(str, Enum):
     uploaded = "uploaded"
     parsed = "parsed"

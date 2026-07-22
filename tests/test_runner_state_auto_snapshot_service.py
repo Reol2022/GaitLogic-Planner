@@ -24,6 +24,9 @@ from planner_core.enums import (
     RunnerStateSnapshotReceiptStatus,
     RunnerStateSnapshotTriggerType,
 )
+from server.integrations.activity_sync.outcome import GarminSyncRunOutcome
+from server.integrations.activity_sync.pipeline import ActivitySyncPipeline
+from server.services import garmin_sync_service
 from server.services.runner_state_auto_snapshot_service import (
     RUNNER_STATE_RECEIPT_LEASE,
     RunnerStateAutoSnapshotService,
@@ -223,6 +226,59 @@ def test_material_change_creates_garmin_snapshot_and_receipt(auto_snapshot_facto
         assert receipt.snapshot_id == snapshot.id
         assert snapshot.trigger_type == RunnerStateSnapshotTriggerType.GARMIN_SYNC
         assert snapshot.trigger_reference == f"garmin-sync:{job.sync_run_id}"
+
+
+def test_pipeline_uses_an_independent_session_for_real_auto_snapshot_service(
+    auto_snapshot_factory,
+    monkeypatch,
+) -> None:
+    created_sessions: list[Session] = []
+    with auto_snapshot_factory() as sync_session:
+        user, job = _user_job(sync_session)
+        outcome = GarminSyncRunOutcome(
+            job_id=int(job.id),
+            user_id=int(user.id),
+            provider="garmin",
+            sync_run_id=job.sync_run_id,
+            claimed=True,
+            committed=True,
+            final_status="succeeded",
+            created_log_count=1,
+            runner_state_affecting_change_count=1,
+        )
+        monkeypatch.setattr(
+            garmin_sync_service,
+            "run_sync_job",
+            lambda _db, _job_id: outcome,
+        )
+
+        def snapshot_session_factory() -> Session:
+            session = auto_snapshot_factory()
+            created_sessions.append(session)
+            return session
+
+        state_stub = _StateStub(_snapshot(user.id))
+        result = ActivitySyncPipeline(
+            snapshot_session_factory=snapshot_session_factory,
+            auto_snapshot_service_factory=lambda session: _service(session, state_stub),
+        ).run_job(sync_session, job.id)
+
+        assert len(created_sessions) == 1
+        assert created_sessions[0] is not sync_session
+        assert result.sync_outcome is outcome
+        assert result.runner_state_snapshot is not None
+        assert result.runner_state_snapshot.status == RunnerStateAutoSnapshotStatus.CREATED
+        assert state_stub.calls == 1
+
+    with auto_snapshot_factory() as verification_session:
+        receipt = verification_session.scalar(
+            select(RunnerStateSnapshotTriggerReceipt).where(
+                RunnerStateSnapshotTriggerReceipt.user_id == user.id,
+                RunnerStateSnapshotTriggerReceipt.sync_job_id == job.id,
+            )
+        )
+        assert receipt is not None
+        assert receipt.status == RunnerStateSnapshotReceiptStatus.CREATED
 
 
 def test_same_trigger_replay_does_not_recalculate(auto_snapshot_factory) -> None:

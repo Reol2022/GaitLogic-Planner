@@ -6,6 +6,7 @@ import type {
   TrainingConsistencyState,
   TrainingPhaseState,
   VolumeTrendState,
+  RunnerStateSnapshotTriggerType,
 } from "@/types/runnerState";
 
 export type StateTone = "neutral" | "positive" | "notice" | "attention";
@@ -75,6 +76,14 @@ export const riskTitleLabels: Record<string, string> = {
   RPE_ABOVE_BASELINE: "近期主观用力感高于基线",
   RECENT_COMPLETION_DROP: "近期计划完成率下降",
   FREQUENT_HIGH_INTENSITY_SESSIONS: "近期高强度训练较多",
+};
+
+export const snapshotTriggerLabels: Record<RunnerStateSnapshotTriggerType, string> = {
+  MANUAL: "手动保存",
+  GARMIN_SYNC: "Garmin同步",
+  DAILY: "每日快照",
+  PLAN_ADJUSTMENT: "计划调整",
+  SYSTEM: "系统记录",
 };
 
 export const evidenceMetricLabels: Record<string, string> = {

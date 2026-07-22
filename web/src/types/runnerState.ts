@@ -167,3 +167,59 @@ export interface RunnerStateSnapshot {
 export interface RunnerStateCurrentResponse {
   snapshot: RunnerStateSnapshot;
 }
+
+export type RunnerStateTimelineRange = "28d" | "12w" | "6m";
+export type RunnerStateSnapshotTriggerType = "MANUAL" | "GARMIN_SYNC" | "DAILY" | "PLAN_ADJUSTMENT" | "SYSTEM";
+
+export interface RunnerStateSnapshotListItem {
+  id: number;
+  snapshot_date: string;
+  data_cutoff_date: string;
+  calculated_at: string;
+  created_at: string;
+  trigger_type: RunnerStateSnapshotTriggerType;
+  snapshot_schema_version: string;
+  ruleset_version: string;
+  distance_7d_km?: number | null;
+  distance_28d_km?: number | null;
+  volume_trend?: VolumeTrendState | null;
+  training_consistency?: TrainingConsistencyState | null;
+  fatigue_state?: FatigueState | null;
+  training_phase?: TrainingPhaseState | null;
+  risk_flag_count: number;
+  evidence_coverage?: number | null;
+  data_completeness?: number | null;
+}
+
+export interface RunnerStateTimelineItem extends RunnerStateSnapshotListItem {
+  distance_28d_weekly_average_km?: number | null;
+  rpe_coverage_28d?: number | null;
+  heart_rate_coverage_28d?: number | null;
+  risk_flags: RunnerStateRiskFlag[];
+}
+
+export interface RunnerStateTimelineResponse {
+  range: RunnerStateTimelineRange;
+  start_date: string;
+  end_date: string;
+  days_with_snapshots: number;
+  total_snapshots: number;
+  items: RunnerStateTimelineItem[];
+}
+
+export interface RunnerStateSnapshotListResponse {
+  items: RunnerStateSnapshotListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface RunnerStateSnapshotDetail extends RunnerStateSnapshotListItem {
+  snapshot_payload: RunnerStateSnapshot;
+}
+
+export interface RunnerStateSnapshotCreateResult {
+  snapshot: RunnerStateSnapshotDetail;
+  created: boolean;
+  duplicate: boolean;
+}
