@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115,<1.0",
+    "tzdata>=2024.1; platform_system == 'Windows'",
     "SQLAlchemy>=2.0,<3.0",
     "PyMySQL>=1.1,<2.0",
     "pydantic>=2.0,<3.0",
