@@ -9,7 +9,7 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.10.2-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.10.3-1976d2?style=for-the-badge" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?style=for-the-badge&logo=vue.js&logoColor=white" />
@@ -39,6 +39,16 @@ Plan -> Execute -> Log -> Analyze -> Review -> Adjust -> Continue
 ```
 
 AI-generated content is only a draft for planning. It is not medical advice, rehabilitation guidance, or a professional coaching prescription. Training should still be adjusted according to recovery, injury history, weather, terrain, and real feedback.
+
+### v0.10.3 Runner State
+
+v0.10.3 adds current runner state, 7/28-day training metrics, deterministic inference, Evidence and data-quality explanations, plus manual history snapshots, trends, and details. When Garmin sync produces a material training-fact change, an independent transaction can create a non-blocking state snapshot:
+
+```text
+Garmin training facts -> Material Change -> Runner State -> automatic snapshot -> history trends -> explainable feedback
+```
+
+Runner State does not provide medical diagnosis, use a large language model to calculate state, or automatically generate or modify an official training plan.
 
 | Problem | How GaitLogic Planner Helps |
 | --- | --- |

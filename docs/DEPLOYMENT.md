@@ -601,7 +601,36 @@ TRAINING_READINESS_ROLLOUT_MODE=allowlist
 
 ---
 
-## 13. 安全建议
+## 13. v0.10.3 Runner State 与 Garmin 自动快照迁移
+
+部署 v0.10.3 前必须备份目标数据库，并先在与生产版本一致的隔离 MySQL 环境验证 upgrade、应用启动和 downgrade。不要在生产环境重复执行迁移，也不要把测试账号、测试库名或数据库凭据写入仓库。
+
+升级顺序固定为：
+
+```bash
+.venv/bin/python scripts/upgrade_v0103_runner_state_snapshots.py upgrade
+.venv/bin/python scripts/upgrade_v0103_garmin_sync_material_change.py upgrade
+.venv/bin/python scripts/upgrade_v0103_runner_state_snapshot_receipts.py upgrade
+```
+
+如需在隔离验证环境回滚，必须严格反序执行：
+
+```bash
+.venv/bin/python scripts/upgrade_v0103_runner_state_snapshot_receipts.py downgrade
+.venv/bin/python scripts/upgrade_v0103_garmin_sync_material_change.py downgrade
+.venv/bin/python scripts/upgrade_v0103_runner_state_snapshots.py downgrade
+```
+
+运行语义：
+
+- Garmin 同步训练事实使用主事务 Session A；只有 Session A 完成后，Pipeline 才进入自动快照后置处理。
+- Runner State 自动快照使用独立 Session B；Session B 失败必须 rollback 并关闭，但不得回滚 Session A 或改变同步 Job 终态。
+- 自动快照失败采用非阻塞结果；`FAILED_NON_BLOCKING` 不应被展示为 Garmin 同步失败。
+- BackgroundTask 与轮询 Worker 必须继续只调用统一 `ActivitySyncPipeline`，不得在路由、任务或 Worker 中增加第二个快照入口。
+
+---
+
+## 14. 安全建议
 
 生产环境建议：
 

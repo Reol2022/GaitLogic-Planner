@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.10.2-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.10.3-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -43,6 +43,16 @@ GaitLogic Planner 不是一个简单的跑步打卡工具。它更关注训练�
 ```
 
 AI 生成内容仅作为训练计划草稿，不构成医疗建议、康复建议或专业教练处方。请结合自身恢复、伤病情况、天气、地形和实际训练反馈调整。
+
+### v0.10.3 Runner State
+
+v0.10.3 新增跑者当前状态、7/28 天训练指标、确定性推断、Evidence 与数据质量说明，并提供手动历史快照、趋势和详情。Garmin 同步在训练事实发生有效变化后，可通过独立事务创建非阻塞状态快照：
+
+```text
+Garmin 训练事实 -> Material Change -> Runner State -> 自动快照 -> 历史趋势 -> 可解释反馈
+```
+
+Runner State 不提供医疗诊断，不调用大语言模型计算状态，也不会自动生成或修改正式训练计划。
 
 | 你可能正在遇到的问题 | GaitLogic Planner 的处理方式 |
 | --- | --- |
