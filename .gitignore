@@ -138,3 +138,9 @@ AGENTS.md
 数据库设计.md
 BACKEND_LEARNING_GUIDE.md
 Excel字段映射.md
+
+# Binary images do not belong in the SQL directory
+sql/*.jpg
+sql/*.jpeg
+sql/*.png
+sql/*.webp
