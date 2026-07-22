@@ -28,6 +28,7 @@ from server.schemas.runner_state import (
 from server.services import training_cycle_lifecycle_service
 from server.services.training_load_service import EASY_TYPES, MODERATE_TYPES, _query_logs
 from server.services.weekly_review_stats_service import APP_TIMEZONE, COMPLETED_STATUSES, REST_STATUSES
+from server.common.exceptions import NotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -459,3 +460,15 @@ class RunnerStateService:
             snapshot.data_quality.data_quality_level.value,
         )
         return snapshot
+
+    def get_current_for_user_id(
+        self,
+        user_id: int,
+        *,
+        generated_at: datetime | None = None,
+    ) -> RunnerStateSnapshot:
+        """Read the current snapshot for a trusted, server-supplied user id."""
+        user = self.db.scalar(select(UserAccount).where(UserAccount.id == user_id))
+        if user is None:
+            raise NotFoundError("User not found.")
+        return self.get_current(user, generated_at=generated_at)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import and_, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from planner_core.database.models import PlannedWorkout, TrainingCycle, WorkoutLog
 from planner_core.enums import (
@@ -38,6 +38,18 @@ def create_draft(db: Session, payload: TrainingCycleCreate, user_id: int) -> Tra
 def get_active_cycle(db: Session, user_id: int) -> TrainingCycle | None:
     return db.scalar(
         select(TrainingCycle).where(
+            TrainingCycle.user_id == user_id,
+            TrainingCycle.status == TrainingCycleStatus.active,
+        )
+    )
+
+
+def get_active_cycle_with_blocks(db: Session, user_id: int) -> TrainingCycle | None:
+    """Load the one active cycle and its bounded structural children read-only."""
+    return db.scalar(
+        select(TrainingCycle)
+        .options(selectinload(TrainingCycle.blocks))
+        .where(
             TrainingCycle.user_id == user_id,
             TrainingCycle.status == TrainingCycleStatus.active,
         )

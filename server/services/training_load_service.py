@@ -8,12 +8,21 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from planner_core.database.models import DailyRecoveryCheckin, PlannedWorkout, WorkoutLog
-from planner_core.enums import WorkoutMainTypeNormalized, WorkoutStatusNormalized
+from planner_core.enums import (
+    PlannedWorkoutLifecycleStatus,
+    WorkoutMainTypeNormalized,
+    WorkoutStatusNormalized,
+)
 from planner_core.utils.excel_parse import normalize_workout_main_type
 from server.common.exceptions import BadRequestError
 from server.domain import readiness_thresholds as thresholds
 from server.domain.review_thresholds import HIGH_INTENSITY_TYPES, KEY_WORKOUT_TYPES
 from server.schemas.training_readiness import DailyTrainingLoadRead, TrainingLoadSummaryRead
+from server.schemas.training_read import (
+    RecentTrainingRead,
+    RecentTrainingSessionRead,
+    TrainingDataQualityRead,
+)
 from server.services.weekly_review_stats_service import COMPLETED_STATUSES, REST_STATUSES, local_today
 
 MAX_TREND_RANGE_DAYS = 120
@@ -77,6 +86,135 @@ def _query_logs(db: Session, user_id: int, start_date: date, end_date: date) -> 
             )
             .order_by(func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date), PlannedWorkout.sort_order, WorkoutLog.id)
         )
+    )
+
+
+def _safe_source(value: str | None) -> str:
+    normalized = (value or "manual").strip().lower()
+    if normalized.startswith("garmin"):
+        return "GARMIN"
+    if "import" in normalized:
+        return "IMPORT"
+    return "MANUAL"
+
+
+def _brief_review(value: str | None, max_chars: int = 240) -> str | None:
+    if not value:
+        return None
+    cleaned = " ".join(value.split())
+    return cleaned[:max_chars] or None
+
+
+def get_recent_training_read(
+    db: Session,
+    *,
+    user_id: int,
+    days: int,
+    limit: int,
+    as_of_date: date | None = None,
+) -> RecentTrainingRead:
+    """Return bounded, normalized training facts using the shared log query."""
+    end_date = as_of_date or local_today()
+    start_date = end_date - timedelta(days=days - 1)
+    rows = _query_logs(db, user_id, start_date, end_date)
+    sessions: list[RecentTrainingSessionRead] = []
+    distances: list[float] = []
+    completed_key_sessions = 0
+    for log, workout in reversed(rows):
+        workout_date = workout.workout_date if workout else log.activity_date
+        if workout_date is None:
+            continue
+        workout_type = (
+            workout.main_type_normalized.value
+            if workout is not None
+            else normalize_workout_main_type(log.workout_type).value
+        )
+        distance = float(log.actual_distance_km) if log.actual_distance_km is not None else None
+        if distance is not None:
+            distances.append(distance)
+        is_completed_key = (
+            log.status_normalized in COMPLETED_STATUSES and workout_type in KEY_WORKOUT_TYPES
+        )
+        completed_key_sessions += int(is_completed_key)
+        sessions.append(
+            RecentTrainingSessionRead(
+                date=workout_date,
+                training_type=workout_type,
+                planned_or_unplanned=("UNPLANNED" if log.is_unplanned or workout is None else "PLANNED"),
+                completion_status=log.status_normalized.value,
+                distance_km=round(distance, 2) if distance is not None else None,
+                duration_seconds=log.actual_duration_seconds,
+                average_pace_seconds_per_km=log.avg_pace_seconds_per_km,
+                average_heart_rate=log.avg_heart_rate,
+                rpe=log.rpe if log.rpe is not None and 0 <= log.rpe <= 10 else None,
+                source=_safe_source(log.source_type),
+                brief_review=_brief_review(log.review_note),
+                is_key_session=is_completed_key,
+            )
+        )
+    rest_days = int(
+        db.scalar(
+            select(func.count(func.distinct(PlannedWorkout.workout_date))).where(
+                PlannedWorkout.user_id == user_id,
+                PlannedWorkout.workout_date >= start_date,
+                PlannedWorkout.workout_date <= end_date,
+                PlannedWorkout.main_type_normalized
+                == WorkoutMainTypeNormalized.rest,
+                PlannedWorkout.lifecycle_status == PlannedWorkoutLifecycleStatus.planned,
+            )
+        )
+        or 0
+    )
+    return RecentTrainingRead(
+        as_of_date=end_date,
+        window_days=days,
+        items=sessions[:limit],
+        total_sessions=len(sessions),
+        total_distance_km=round(sum(distances), 2) if distances else None,
+        completed_key_sessions=completed_key_sessions,
+        rest_days=rest_days,
+    )
+
+
+def get_training_data_quality_read(
+    db: Session,
+    *,
+    user_id: int,
+    window_days: int,
+    as_of_date: date | None = None,
+) -> TrainingDataQualityRead:
+    """Describe field coverage; coverage is completeness, never risk probability."""
+    end_date = as_of_date or local_today()
+    start_date = end_date - timedelta(days=window_days - 1)
+    completed = [
+        log
+        for log, _ in _query_logs(db, user_id, start_date, end_date)
+        if log.status_normalized in COMPLETED_STATUSES
+    ]
+    total = len(completed)
+
+    def ratio(predicate) -> float:
+        return round(sum(1 for log in completed if predicate(log)) / total, 4) if total else 0.0
+
+    coverage = {
+        "distance": ratio(lambda log: log.actual_distance_km is not None),
+        "duration": ratio(lambda log: log.actual_duration_seconds is not None),
+        "rpe": ratio(lambda log: log.rpe is not None and 0 <= log.rpe <= 10),
+        "heart_rate": ratio(lambda log: log.avg_heart_rate is not None),
+    }
+    missing = [name for name, value in coverage.items() if value < 1.0]
+    source_mix: dict[str, int] = defaultdict(int)
+    for log in completed:
+        source_mix[_safe_source(log.source_type)] += 1
+    dated = [log.activity_date for log in completed if log.activity_date is not None]
+    return TrainingDataQualityRead(
+        as_of_date=end_date,
+        window_days=window_days,
+        valid_workout_count=total,
+        coverage=coverage,
+        missing_fields=missing,
+        source_mix=dict(sorted(source_mix.items())),
+        freshness_days=(end_date - max(dated)).days if dated else None,
     )
 
 

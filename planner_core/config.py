@@ -79,6 +79,36 @@ class Settings(BaseSettings):
         le=200,
         validation_alias="AGENT_MAX_CONTEXT_ITEMS",
     )
+    agent_max_context_chars: int = Field(
+        default=50000,
+        ge=5000,
+        le=50000,
+        validation_alias="AGENT_MAX_CONTEXT_CHARS",
+    )
+    agent_max_recent_training_items: int = Field(
+        default=20,
+        ge=1,
+        le=50,
+        validation_alias="AGENT_MAX_RECENT_TRAINING_ITEMS",
+    )
+    agent_max_history_items: int = Field(
+        default=7,
+        ge=1,
+        le=14,
+        validation_alias="AGENT_MAX_HISTORY_ITEMS",
+    )
+    agent_max_evidence_items: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        validation_alias="AGENT_MAX_EVIDENCE_ITEMS",
+    )
+    agent_max_rule_items: int = Field(
+        default=20,
+        ge=1,
+        le=50,
+        validation_alias="AGENT_MAX_RULE_ITEMS",
+    )
     agent_max_answer_length: int = Field(
         default=6000,
         ge=1,

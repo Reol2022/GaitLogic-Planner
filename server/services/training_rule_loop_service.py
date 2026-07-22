@@ -133,6 +133,25 @@ def evaluate_today(db: Session, user_id: int, target_date: date, *, force: bool 
     return response
 
 
+def evaluate_today_readonly(
+    db: Session,
+    user_id: int,
+    target_date: date,
+) -> RuleLoopEvaluationResponse:
+    """Evaluate today's existing facts without evaluations, hits, or drafts."""
+    facts = build_daily_facts(db, user_id, target_date)
+    evaluation, _ = training_rule_service.evaluate_standard_facts(
+        db,
+        user_id=user_id,
+        context_type="daily_adjustment",
+        context_id=target_date.isoformat(),
+        facts=facts,
+        persist=False,
+        public_only=True,
+    )
+    return _wrap(evaluation, facts)
+
+
 def review_workout_log(db: Session, user_id: int, workout_log_id: int, *, force: bool = False) -> RuleLoopEvaluationResponse:
     facts = build_workout_facts(db, user_id, workout_log_id)
     evaluation, _ = training_rule_service.evaluate_standard_facts(

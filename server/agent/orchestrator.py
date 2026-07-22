@@ -90,6 +90,11 @@ class GaitLogicCoachAgent:
             max_same_tool_calls=settings.agent_max_same_tool_calls,
             max_message_length=settings.agent_max_message_length,
             max_context_items=settings.agent_max_context_items,
+            max_context_chars=settings.agent_max_context_chars,
+            max_recent_training_items=settings.agent_max_recent_training_items,
+            max_history_items=settings.agent_max_history_items,
+            max_evidence_items=settings.agent_max_evidence_items,
+            max_rule_items=settings.agent_max_rule_items,
             max_answer_length=settings.agent_max_answer_length,
         )
 
@@ -241,7 +246,7 @@ class GaitLogicCoachAgent:
         trace.add_event(AgentTraceEventType.REQUEST_VALIDATED, AgentTraceStatus.SUCCEEDED)
 
         try:
-            context = self.context_builder.build(request, context_seed)
+            context = self.context_builder.build(request, context_seed, trace=trace)
         except Exception:
             trace.add_event(
                 AgentTraceEventType.CONTEXT_BUILT,
@@ -321,6 +326,11 @@ class GaitLogicCoachAgent:
                 AgentTraceStatus.STARTED,
                 tool_name=call.tool_name,
             )
+            trace.add_event(
+                AgentTraceEventType.MODEL_TOOL_STARTED,
+                AgentTraceStatus.STARTED,
+                tool_name=call.tool_name,
+            )
             result = self.registry.invoke(
                 call.tool_name,
                 call.arguments,
@@ -337,10 +347,21 @@ class GaitLogicCoachAgent:
                 safe_error_code=result.safe_error_code,
                 duration_ms=(perf_counter() - started) * 1000,
             )
+            trace.add_event(
+                AgentTraceEventType.MODEL_TOOL_COMPLETED,
+                AgentTraceStatus.SUCCEEDED
+                if result.status == AgentToolStatus.SUCCEEDED
+                else AgentTraceStatus.FAILED,
+                tool_name=call.tool_name,
+                safe_error_code=result.safe_error_code,
+            )
 
         try:
             context = AgentContext.model_validate(
-                {**context.model_dump(mode="python"), "tool_results": results}
+                {
+                    **context.model_dump(mode="python"),
+                    "tool_results": [*context.tool_results, *results],
+                }
             )
         except ValidationError:
             return self._finish(

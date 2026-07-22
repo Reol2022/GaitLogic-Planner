@@ -196,6 +196,7 @@ def evaluate_standard_facts(
     persist: bool = True,
     force: bool = False,
     source_version: str = SOURCE_VERSION,
+    public_only: bool = False,
 ) -> tuple[TrainingRuleEvaluateResponse, TrainingRuleEvaluation | None]:
     facts_digest = hash_facts(facts)
     if persist and not force:
@@ -218,17 +219,18 @@ def evaluate_standard_facts(
             final["evaluation_id"] = existing.id
             response = TrainingRuleEvaluateResponse.model_validate(final)
             return response, existing
-    mark_stale_for_context(
-        db,
-        user_id=user_id,
-        context_type=context_type,
-        context_id=context_id,
-        stale_reason="replaced_by_new_evaluation",
-    )
-    rules = [
-        _rule_model_to_definition(rule)
-        for rule in db.scalars(select(TrainingRule).where(TrainingRule.enabled.is_(True)))
-    ]
+    if persist:
+        mark_stale_for_context(
+            db,
+            user_id=user_id,
+            context_type=context_type,
+            context_id=context_id,
+            stale_reason="replaced_by_new_evaluation",
+        )
+    rule_stmt = select(TrainingRule).where(TrainingRule.enabled.is_(True))
+    if public_only:
+        rule_stmt = rule_stmt.where(TrainingRule.public.is_(True))
+    rules = [_rule_model_to_definition(rule) for rule in db.scalars(rule_stmt)]
     result = TrainingRuleEngine(ruleset_version=DEFAULT_RULESET_VERSION).evaluate(
         facts=facts,
         rules=rules,

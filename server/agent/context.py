@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
@@ -18,6 +18,9 @@ from server.agent.schemas import (
 
 DEFAULT_AGENT_TIMEZONE = "Asia/Shanghai"
 _JSON_MAPPING_ADAPTER = TypeAdapter(dict[str, JsonValue])
+
+if TYPE_CHECKING:
+    from server.agent.trace import AgentTrace
 
 
 class AgentContextBuilder:
@@ -53,9 +56,11 @@ class AgentContextBuilder:
         self,
         *,
         runner_state: BaseModel | Mapping[str, Any] | None = None,
+        runner_state_history: BaseModel | Mapping[str, Any] | None = None,
         recent_training: BaseModel | Mapping[str, Any] | None = None,
         today_workout: BaseModel | Mapping[str, Any] | None = None,
         current_cycle: BaseModel | Mapping[str, Any] | None = None,
+        today_evaluation: BaseModel | Mapping[str, Any] | None = None,
         applicable_rules: list[BaseModel | Mapping[str, Any]] | None = None,
         data_quality: BaseModel | Mapping[str, Any] | None = None,
         missing_reasons: Mapping[str, str] | None = None,
@@ -65,15 +70,24 @@ class AgentContextBuilder:
             raise ValueError("too many applicable rules")
         return AgentContextSeed(
             runner_state=self._safe_mapping(runner_state),
+            runner_state_history=self._safe_mapping(runner_state_history),
             recent_training=self._safe_mapping(recent_training),
             today_workout=self._safe_mapping(today_workout),
             current_cycle=self._safe_mapping(current_cycle),
+            today_evaluation=self._safe_mapping(today_evaluation),
             applicable_rules=rules,
             data_quality=self._safe_mapping(data_quality),
             missing_reasons=dict(missing_reasons or {}),
         )
 
-    def build(self, request: AgentRequest, seed: AgentContextSeed | None = None) -> AgentContext:
+    def build(
+        self,
+        request: AgentRequest,
+        seed: AgentContextSeed | None = None,
+        *,
+        trace: "AgentTrace | None" = None,
+    ) -> AgentContext:
+        del trace
         seed = seed or AgentContextSeed()
         if len(seed.applicable_rules) > self.limits.max_context_items:
             raise ValueError("too many applicable rules")
@@ -88,10 +102,13 @@ class AgentContextBuilder:
             timezone=self.timezone_name,
             conversation_context=request.conversation_context,
             runner_state=seed.runner_state,
+            runner_state_history=seed.runner_state_history,
             recent_training=seed.recent_training,
             today_workout=seed.today_workout,
             current_cycle=seed.current_cycle,
+            today_evaluation=seed.today_evaluation,
             applicable_rules=seed.applicable_rules,
             data_quality=seed.data_quality,
             missing_reasons=seed.missing_reasons,
+            limitations=seed.limitations,
         )

@@ -104,15 +104,18 @@ class AgentToolResult(AgentContractModel):
 
 class AgentContextSeed(AgentContractModel):
     runner_state: dict[str, JsonValue] | None = None
+    runner_state_history: dict[str, JsonValue] | None = None
     recent_training: dict[str, JsonValue] | None = None
     today_workout: dict[str, JsonValue] | None = None
     current_cycle: dict[str, JsonValue] | None = None
+    today_evaluation: dict[str, JsonValue] | None = None
     applicable_rules: list[dict[str, JsonValue]] = Field(
         default_factory=list,
         max_length=MAX_CONTEXT_ITEMS,
     )
     data_quality: dict[str, JsonValue] | None = None
     missing_reasons: dict[str, str] = Field(default_factory=dict, max_length=MAX_CONTEXT_ITEMS)
+    limitations: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
 
 
 class AgentContext(AgentContractModel):
@@ -126,9 +129,11 @@ class AgentContext(AgentContractModel):
         max_length=MAX_CONVERSATION_ITEMS,
     )
     runner_state: dict[str, JsonValue] | None = None
+    runner_state_history: dict[str, JsonValue] | None = None
     recent_training: dict[str, JsonValue] | None = None
     today_workout: dict[str, JsonValue] | None = None
     current_cycle: dict[str, JsonValue] | None = None
+    today_evaluation: dict[str, JsonValue] | None = None
     applicable_rules: list[dict[str, JsonValue]] = Field(
         default_factory=list,
         max_length=MAX_CONTEXT_ITEMS,
@@ -136,6 +141,7 @@ class AgentContext(AgentContractModel):
     data_quality: dict[str, JsonValue] | None = None
     tool_results: list[AgentToolResult] = Field(default_factory=list, max_length=MAX_CONTEXT_ITEMS)
     missing_reasons: dict[str, str] = Field(default_factory=dict, max_length=MAX_CONTEXT_ITEMS)
+    limitations: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
 
     @model_validator(mode="after")
     def validate_context_size(self) -> "AgentContext":
@@ -201,4 +207,13 @@ class AgentLimits(AgentContractModel):
     max_same_tool_calls: int = Field(default=2, ge=1, le=6)
     max_message_length: int = Field(default=MAX_MESSAGE_LENGTH, ge=1, le=12000)
     max_context_items: int = Field(default=MAX_CONTEXT_ITEMS, ge=1, le=200)
+    max_context_chars: int = Field(
+        default=MAX_CONTEXT_JSON_CHARS,
+        ge=5000,
+        le=MAX_CONTEXT_JSON_CHARS,
+    )
+    max_recent_training_items: int = Field(default=20, ge=1, le=50)
+    max_history_items: int = Field(default=7, ge=1, le=14)
+    max_evidence_items: int = Field(default=5, ge=1, le=20)
+    max_rule_items: int = Field(default=20, ge=1, le=50)
     max_answer_length: int = Field(default=6000, ge=1, le=12000)
