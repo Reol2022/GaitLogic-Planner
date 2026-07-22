@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from server.main import app, create_app
+from tests.openapi_assertions import get_openapi_routes
 
 
 def test_app_can_be_created() -> None:
@@ -43,11 +44,7 @@ def test_local_development_cors_preflight_allows_127_origin() -> None:
 
 
 def test_required_routes_are_registered() -> None:
-    routes = {
-        f"{','.join(sorted(route.methods or []))} {route.path}"
-        for route in app.routes
-        if getattr(route, "path", "").startswith("/api")
-    }
+    routes = get_openapi_routes(app)
     assert "GET /api/health" in routes
     assert "POST /api/auth/register" in routes
     assert "POST /api/auth/login" in routes

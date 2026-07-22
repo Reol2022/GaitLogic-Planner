@@ -1,15 +1,16 @@
 from fastapi.testclient import TestClient
 
 from server.main import app
+from tests.openapi_assertions import get_openapi_routes
 
 
 def test_weekly_review_routes_are_registered():
-    routes = {(route.path, ",".join(sorted(route.methods or []))) for route in app.routes}
-    assert any(path == "/api/weekly-reviews/summary" and "GET" in methods for path, methods in routes)
-    assert any(path == "/api/weekly-reviews/generate" and "POST" in methods for path, methods in routes)
-    assert any(path == "/api/weekly-reviews/{review_id}" and "GET" in methods for path, methods in routes)
-    assert any(path == "/api/plan-adjustment-drafts/{draft_id}/items/{item_id}" and "PATCH" in methods for path, methods in routes)
-    assert any(path == "/api/plan-adjustment-drafts/{draft_id}/apply" and "POST" in methods for path, methods in routes)
+    routes = get_openapi_routes(app)
+    assert "GET /api/weekly-reviews/summary" in routes
+    assert "POST /api/weekly-reviews/generate" in routes
+    assert "GET /api/weekly-reviews/{review_id}" in routes
+    assert "PATCH /api/plan-adjustment-drafts/{draft_id}/items/{item_id}" in routes
+    assert "POST /api/plan-adjustment-drafts/{draft_id}/apply" in routes
 
 
 def test_weekly_review_endpoints_require_login():

@@ -35,6 +35,7 @@ from server.services.runner_state_snapshot_serializer import (
     serialize_runner_state_snapshot,
 )
 from server.services.runner_state_snapshot_service import RunnerStateSnapshotService
+from tests.openapi_assertions import get_openapi_methods
 
 SHANGHAI = ZoneInfo("Asia/Shanghai")
 
@@ -546,12 +547,7 @@ def test_get_current_does_not_construct_snapshot_service(monkeypatch) -> None:
 
 
 def test_snapshot_routes_do_not_offer_update_or_delete_methods() -> None:
-    methods = {
-        method
-        for route in app.routes
-        if route.path.startswith("/api/runner-state/snapshots")
-        for method in route.methods
-    }
+    methods = get_openapi_methods(app, "/api/runner-state/snapshots")
     assert methods == {"GET", "POST"}
 
 
