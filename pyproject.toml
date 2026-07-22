@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "gaitlogic-planner"
 version = "0.10.2"
@@ -19,6 +23,36 @@ dependencies = [
     "cryptography>=42.0,<47.0",
     "uvicorn[standard]>=0.30,<1.0",
 ]
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["planner_core", "planner_core.*", "server", "server.*"]
+exclude = [
+    "config",
+    "config.*",
+    "docs",
+    "docs.*",
+    "gaitlogic-noomi",
+    "gaitlogic-noomi.*",
+    "knowledge",
+    "knowledge.*",
+    "md",
+    "md.*",
+    "scripts",
+    "scripts.*",
+    "sql",
+    "sql.*",
+    "templates",
+    "templates.*",
+    "tests",
+    "tests.*",
+    "web",
+    "web.*",
+]
+namespaces = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
