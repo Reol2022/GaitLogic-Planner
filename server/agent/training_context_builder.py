@@ -24,6 +24,7 @@ _PRELOADS: dict[AgentIntent, tuple[tuple[str, dict[str, int | str]], ...]] = {
         ("get_today_workout", {}),
         ("get_recent_training", {"days": 7, "limit": 20}),
         ("get_training_data_quality", {"window_days": 14}),
+        ("evaluate_today_workout", {}),
     ),
     AgentIntent.WEEKLY_REVIEW: (
         ("get_runner_state", {}),

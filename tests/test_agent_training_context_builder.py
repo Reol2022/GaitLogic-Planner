@@ -29,7 +29,8 @@ def completed_tools(trace: AgentTrace) -> list[str]:
 def test_today_preloads_minimum_tool_set() -> None:
     context, trace = build(AgentIntent.TODAY_RECOMMENDATION)
     assert completed_tools(trace) == [
-        "get_runner_state", "get_today_workout", "get_recent_training", "get_training_data_quality"
+        "get_runner_state", "get_today_workout", "get_recent_training",
+        "get_training_data_quality", "evaluate_today_workout",
     ]
     assert context.runner_state is not None
     assert context.today_workout is not None

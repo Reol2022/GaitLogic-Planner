@@ -153,6 +153,26 @@ class AgentContext(AgentContractModel):
         return self
 
 
+class AgentTodayRecommendation(AgentContractModel):
+    decision: Literal[
+        "PROCEED",
+        "PROCEED_WITH_CAUTION",
+        "CONSIDER_ADJUSTMENT",
+        "REST_OR_RECOVERY",
+        "UNKNOWN",
+    ]
+    planned_workout_status: Literal[
+        "PLANNED",
+        "REST_DAY",
+        "NO_PLAN",
+        "CYCLE_NOT_ACTIVE",
+        "UNKNOWN",
+    ]
+    headline: str = Field(min_length=1, max_length=300)
+    key_evidence: list[str] = Field(default_factory=list, max_length=10)
+    data_quality: str = Field(min_length=1, max_length=40)
+
+
 class AgentModelOutput(AgentContractModel):
     answer: str | None = Field(default=None, max_length=12000)
     summary: str | None = Field(default=None, max_length=1000)
@@ -165,6 +185,7 @@ class AgentModelOutput(AgentContractModel):
     warnings: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
     limitations: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
     used_tool_call_ids: list[UUID] = Field(default_factory=list, max_length=MAX_CONTEXT_ITEMS)
+    today_recommendation: AgentTodayRecommendation | None = None
 
     @model_validator(mode="after")
     def validate_tool_call_ids(self) -> "AgentModelOutput":
@@ -194,6 +215,7 @@ class AgentResponse(AgentContractModel):
     warnings: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
     limitations: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
     trace_id: UUID
+    today_recommendation: AgentTodayRecommendation | None = None
 
 
 class AgentValidationResult(AgentContractModel):

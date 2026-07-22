@@ -17,6 +17,10 @@ class AgentTraceEvent(AgentContractModel):
     status: AgentTraceStatus
     safe_error_code: AgentErrorCode | None = None
     duration_ms: float | None = Field(default=None, ge=0)
+    provider_alias: str | None = Field(default=None, max_length=40)
+    model_alias: str | None = Field(default=None, max_length=128)
+    prompt_tokens: int | None = Field(default=None, ge=0)
+    completion_tokens: int | None = Field(default=None, ge=0)
 
 
 class AgentTrace(AgentContractModel):
@@ -32,6 +36,10 @@ class AgentTrace(AgentContractModel):
         tool_name: str | None = None,
         safe_error_code: AgentErrorCode | None = None,
         duration_ms: float | None = None,
+        provider_alias: str | None = None,
+        model_alias: str | None = None,
+        prompt_tokens: int | None = None,
+        completion_tokens: int | None = None,
     ) -> None:
         self.events.append(
             AgentTraceEvent(
@@ -41,5 +49,9 @@ class AgentTrace(AgentContractModel):
                 status=status,
                 safe_error_code=safe_error_code,
                 duration_ms=duration_ms,
+                provider_alias=provider_alias,
+                model_alias=model_alias,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
             )
         )

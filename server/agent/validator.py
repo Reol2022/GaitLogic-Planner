@@ -14,6 +14,7 @@ from server.agent.schemas import (
     AgentRequest,
     AgentValidationResult,
 )
+from server.agent.today_recommendation import TodayRecommendationValidator
 
 _MEDICAL_DIAGNOSIS_PATTERNS = (
     r"(?:已经|就是|患有|得了).{0,12}(?:骨折|肌腱炎|心肌炎|疾病)",
@@ -51,6 +52,7 @@ class AgentResponseValidator:
 
     def __init__(self, limits: AgentLimits | None = None) -> None:
         self.limits = limits or AgentLimits()
+        self.today_validator = TodayRecommendationValidator()
 
     @staticmethod
     def _result(errors: list[AgentErrorCode]) -> AgentValidationResult:
@@ -139,5 +141,8 @@ class AgentResponseValidator:
                 errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
             if any(re.search(pattern, text, re.IGNORECASE) for pattern in _FALSE_TOOL_SUCCESS_PATTERNS):
                 errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+
+        if final and context.intent == AgentIntent.TODAY_RECOMMENDATION:
+            errors.extend(self.today_validator.validate(output, context))
 
         return self._result(errors)

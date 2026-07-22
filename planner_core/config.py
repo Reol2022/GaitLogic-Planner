@@ -115,6 +115,79 @@ class Settings(BaseSettings):
         le=12000,
         validation_alias="AGENT_MAX_ANSWER_LENGTH",
     )
+    coach_agent_enabled: bool = Field(
+        default=False,
+        validation_alias="COACH_AGENT_ENABLED",
+    )
+    coach_agent_provider: str = Field(
+        default="openai-compatible",
+        min_length=1,
+        max_length=40,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        validation_alias="COACH_AGENT_PROVIDER",
+    )
+    coach_agent_api_key: str | None = Field(
+        default=None,
+        validation_alias="COACH_AGENT_API_KEY",
+    )
+    coach_agent_base_url: str = Field(
+        default="https://api.example.com/v1",
+        max_length=2048,
+        validation_alias="COACH_AGENT_BASE_URL",
+    )
+    coach_agent_model: str = Field(
+        default="example-model",
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+        validation_alias="COACH_AGENT_MODEL",
+    )
+    coach_agent_connect_timeout_seconds: float = Field(
+        default=10,
+        gt=0,
+        le=60,
+        validation_alias="COACH_AGENT_CONNECT_TIMEOUT_SECONDS",
+    )
+    coach_agent_read_timeout_seconds: float = Field(
+        default=60,
+        gt=0,
+        le=180,
+        validation_alias="COACH_AGENT_READ_TIMEOUT_SECONDS",
+    )
+    coach_agent_total_timeout_seconds: float = Field(
+        default=90,
+        gt=0,
+        le=300,
+        validation_alias="COACH_AGENT_TOTAL_TIMEOUT_SECONDS",
+    )
+    coach_agent_max_retries: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        validation_alias="COACH_AGENT_MAX_RETRIES",
+    )
+    coach_agent_max_output_tokens: int = Field(
+        default=2000,
+        ge=256,
+        le=8000,
+        validation_alias="COACH_AGENT_MAX_OUTPUT_TOKENS",
+    )
+    coach_agent_daily_limit: int = Field(
+        default=30,
+        ge=1,
+        le=500,
+        validation_alias="COACH_AGENT_DAILY_LIMIT",
+    )
+    coach_agent_cooldown_seconds: int = Field(
+        default=3,
+        ge=0,
+        le=300,
+        validation_alias="COACH_AGENT_COOLDOWN_SECONDS",
+    )
+    coach_agent_allow_local_provider_in_development: bool = Field(
+        default=False,
+        validation_alias="COACH_AGENT_ALLOW_LOCAL_PROVIDER_IN_DEVELOPMENT",
+    )
     weekly_review_prompt_override: str | None = Field(
         default=None, validation_alias="WEEKLY_REVIEW_PROMPT_OVERRIDE"
     )
