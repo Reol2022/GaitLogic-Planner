@@ -130,6 +130,8 @@ class WorkoutLogMaterialChangeTracker:
 @dataclass(frozen=True)
 class GarminSyncRunOutcome:
     job_id: int
+    user_id: int
+    provider: str
     sync_run_id: str
     claimed: bool
     committed: bool
@@ -139,4 +141,3 @@ class GarminSyncRunOutcome:
     unchanged_activity_count: int = 0
     runner_state_affecting_change_count: int = 0
     warning_codes: tuple[str, ...] = field(default_factory=tuple)
-

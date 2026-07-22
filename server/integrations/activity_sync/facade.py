@@ -27,6 +27,9 @@ from server.schemas.garmin_sync import (
     GarminSyncRequest,
 )
 from server.services import garmin_sync_service
+from server.services.runner_state_snapshot_receipt_query_service import (
+    RunnerStateSnapshotReceiptQueryService,
+)
 
 
 class DataSyncFacade:
@@ -117,13 +120,20 @@ class DataSyncFacade:
         )
         if provider_key:
             stmt = stmt.where(ExternalSyncJob.provider == provider_key)
-        return [ExternalSyncJobRead.model_validate(job) for job in self.db.scalars(stmt).all()]
+        jobs = [ExternalSyncJobRead.model_validate(job) for job in self.db.scalars(stmt).all()]
+        return RunnerStateSnapshotReceiptQueryService(self.db).attach_to_jobs(
+            user_id=self.current_user.id,
+            jobs=jobs,
+        )
 
     def get_sync_job(self, job_id: int) -> ExternalSyncJobRead:
         job = self.db.scalar(select(ExternalSyncJob).where(ExternalSyncJob.id == job_id, ExternalSyncJob.user_id == self.current_user.id))
         if job is None:
             raise NotFoundError("同步任务不存在或不属于当前用户。")
-        return ExternalSyncJobRead.model_validate(job)
+        return RunnerStateSnapshotReceiptQueryService(self.db).attach_to_job(
+            user_id=self.current_user.id,
+            job=ExternalSyncJobRead.model_validate(job),
+        )
 
     def retry_sync_job(self, job_id: int) -> ExternalSyncJobRead:
         job = self.db.scalar(select(ExternalSyncJob).where(ExternalSyncJob.id == job_id, ExternalSyncJob.user_id == self.current_user.id))

@@ -43,6 +43,9 @@ from server.schemas.garmin_sync import (
     GarminSyncSettingsUpdate,
     GarminSyncRequest,
 )
+from server.services.runner_state_snapshot_receipt_query_service import (
+    RunnerStateSnapshotReceiptQueryService,
+)
 from server.services.training_cycle_lifecycle_service import resolve_cycle_for_date
 from server.services.token_encryption_service import decrypt_token_payload, encrypt_token_payload
 
@@ -61,6 +64,26 @@ NORMALIZATION_VERSION = "garmin-activity-v1"
 SEGMENTATION_VERSION = "garmin-segmentation-v1"
 CLASSIFICATION_VERSION = "garmin-segment-classification-v1"
 logger = logging.getLogger(__name__)
+
+
+def _job_read(db: Session, user_id: int, job: ExternalSyncJob) -> ExternalSyncJobRead:
+    read = ExternalSyncJobRead.model_validate(job)
+    return RunnerStateSnapshotReceiptQueryService(db).attach_to_job(
+        user_id=user_id,
+        job=read,
+    )
+
+
+def _job_reads(
+    db: Session,
+    user_id: int,
+    jobs: list[ExternalSyncJob],
+) -> list[ExternalSyncJobRead]:
+    reads = [ExternalSyncJobRead.model_validate(job) for job in jobs]
+    return RunnerStateSnapshotReceiptQueryService(db).attach_to_jobs(
+        user_id=user_id,
+        jobs=reads,
+    )
 
 
 def get_connection_status(db: Session, user_id: int) -> GarminConnectionStatus:
@@ -164,7 +187,7 @@ def enqueue_sync_job(
         .order_by(ExternalSyncJob.created_at.desc())
     )
     if existing_running is not None:
-        return ExternalSyncJobRead.model_validate(existing_running)
+        return _job_read(db, user_id, existing_running)
     start, end, mode = _resolve_sync_range(connection, payload)
     if idempotency_key:
         existing = db.scalar(
@@ -174,7 +197,7 @@ def enqueue_sync_job(
             )
         )
         if existing is not None:
-            return ExternalSyncJobRead.model_validate(existing)
+            return _job_read(db, user_id, existing)
     job = ExternalSyncJob(
         user_id=user_id,
         connection_id=connection.id,
@@ -189,7 +212,7 @@ def enqueue_sync_job(
     db.add(job)
     db.commit()
     db.refresh(job)
-    return ExternalSyncJobRead.model_validate(job)
+    return _job_read(db, user_id, job)
 
 
 def list_sync_jobs(db: Session, user_id: int, limit: int = 20) -> list[ExternalSyncJobRead]:
@@ -199,12 +222,12 @@ def list_sync_jobs(db: Session, user_id: int, limit: int = 20) -> list[ExternalS
         .order_by(ExternalSyncJob.created_at.desc())
         .limit(min(limit, 100))
     ).all()
-    return [ExternalSyncJobRead.model_validate(job) for job in jobs]
+    return _job_reads(db, user_id, list(jobs))
 
 
 def get_sync_job(db: Session, user_id: int, job_id: int) -> ExternalSyncJobRead:
     job = _get_user_job(db, user_id, job_id)
-    return ExternalSyncJobRead.model_validate(job)
+    return _job_read(db, user_id, job)
 
 
 def retry_sync_job(db: Session, user_id: int, job_id: int) -> ExternalSyncJobRead:
@@ -1325,6 +1348,8 @@ def _outcome_from_job(
 ) -> GarminSyncRunOutcome:
     return GarminSyncRunOutcome(
         job_id=int(job.id),
+        user_id=int(job.user_id),
+        provider=job.provider,
         sync_run_id=job.sync_run_id,
         claimed=claimed,
         committed=job.is_committed,

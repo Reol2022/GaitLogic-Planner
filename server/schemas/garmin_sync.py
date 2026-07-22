@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -52,6 +53,21 @@ class GarminSyncSettingsUpdate(BaseModel):
     auto_import_enabled: bool
 
 
+class RunnerStateSnapshotSyncStatus(str, Enum):
+    PROCESSING = "PROCESSING"
+    CREATED = "CREATED"
+    DUPLICATE_PAYLOAD = "DUPLICATE_PAYLOAD"
+    SKIPPED_NO_MATERIAL_CHANGE = "SKIPPED_NO_MATERIAL_CHANGE"
+    SKIPPED_NOT_COMMITTED = "SKIPPED_NOT_COMMITTED"
+    FAILED_NON_BLOCKING = "FAILED_NON_BLOCKING"
+
+
+class RunnerStateSnapshotSyncResultRead(BaseModel):
+    status: RunnerStateSnapshotSyncStatus
+    snapshot_id: int | None = None
+    error_code: str | None = None
+
+
 class ExternalSyncJobRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -83,6 +99,7 @@ class ExternalSyncJobRead(BaseModel):
     safe_error_message: str | None
     created_at: datetime
     updated_at: datetime
+    runner_state_snapshot: RunnerStateSnapshotSyncResultRead | None = None
 
 
 class ExternalActivityLapRead(BaseModel):
