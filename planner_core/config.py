@@ -49,6 +49,42 @@ class Settings(BaseSettings):
     )
     ai_plan_daily_limit: int = Field(default=3, validation_alias="AI_PLAN_DAILY_LIMIT")
     ai_plan_cooldown_seconds: int = Field(default=60, validation_alias="AI_PLAN_COOLDOWN_SECONDS")
+    agent_max_model_calls: int = Field(
+        default=2,
+        ge=1,
+        le=2,
+        validation_alias="AGENT_MAX_MODEL_CALLS",
+    )
+    agent_max_tool_calls: int = Field(
+        default=6,
+        ge=0,
+        le=20,
+        validation_alias="AGENT_MAX_TOOL_CALLS",
+    )
+    agent_max_same_tool_calls: int = Field(
+        default=2,
+        ge=1,
+        le=6,
+        validation_alias="AGENT_MAX_SAME_TOOL_CALLS",
+    )
+    agent_max_message_length: int = Field(
+        default=4000,
+        ge=1,
+        le=12000,
+        validation_alias="AGENT_MAX_MESSAGE_LENGTH",
+    )
+    agent_max_context_items: int = Field(
+        default=50,
+        ge=1,
+        le=200,
+        validation_alias="AGENT_MAX_CONTEXT_ITEMS",
+    )
+    agent_max_answer_length: int = Field(
+        default=6000,
+        ge=1,
+        le=12000,
+        validation_alias="AGENT_MAX_ANSWER_LENGTH",
+    )
     weekly_review_prompt_override: str | None = Field(
         default=None, validation_alias="WEEKLY_REVIEW_PROMPT_OVERRIDE"
     )

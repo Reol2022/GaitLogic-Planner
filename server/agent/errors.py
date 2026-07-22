@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+from enum import Enum
+
+
+class AgentErrorCode(str, Enum):
+    AGENT_INVALID_REQUEST = "AGENT_INVALID_REQUEST"
+    AGENT_UNKNOWN_INTENT = "AGENT_UNKNOWN_INTENT"
+    AGENT_TOOL_NOT_FOUND = "AGENT_TOOL_NOT_FOUND"
+    AGENT_TOOL_NOT_ALLOWED = "AGENT_TOOL_NOT_ALLOWED"
+    AGENT_TOOL_ARGUMENTS_INVALID = "AGENT_TOOL_ARGUMENTS_INVALID"
+    AGENT_TOOL_EXECUTION_FAILED = "AGENT_TOOL_EXECUTION_FAILED"
+    AGENT_MODEL_OUTPUT_INVALID = "AGENT_MODEL_OUTPUT_INVALID"
+    AGENT_MODEL_FAILED = "AGENT_MODEL_FAILED"
+    AGENT_VALIDATION_FAILED = "AGENT_VALIDATION_FAILED"
+    AGENT_CALL_LIMIT_EXCEEDED = "AGENT_CALL_LIMIT_EXCEEDED"
+    AGENT_INTERNAL_ERROR = "AGENT_INTERNAL_ERROR"
+
+
+class AgentFoundationError(Exception):
+    """Internal exception carrying only a stable, safe error code."""
+
+    def __init__(self, code: AgentErrorCode) -> None:
+        super().__init__(code.value)
+        self.code = code
+
+
+class AgentToolRegistrationError(AgentFoundationError):
+    pass
