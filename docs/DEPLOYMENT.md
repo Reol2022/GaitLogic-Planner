@@ -641,3 +641,31 @@ TRAINING_READINESS_ROLLOUT_MODE=allowlist
 * 为 demo 账号限制权限或定期重置数据；
 * DeepSeek / OpenAI-compatible API Key 仅保存在服务端；
 * 前端不要出现任何真实 API Key。
+
+---
+
+## 15. Coach Agent OpenAI-compatible Provider
+
+Coach Agent Provider 默认关闭。生产部署只在服务端配置以下变量，客户端不得提交或覆盖这些值：
+
+```env
+COACH_AGENT_ENABLED=false
+COACH_AGENT_PROVIDER=openai-compatible
+COACH_AGENT_API_KEY=
+COACH_AGENT_BASE_URL=https://api.example.com/v1
+COACH_AGENT_MODEL=example-model
+COACH_AGENT_THINKING_MODE=unset
+COACH_AGENT_CONNECT_TIMEOUT_SECONDS=10
+COACH_AGENT_READ_TIMEOUT_SECONDS=60
+COACH_AGENT_TOTAL_TIMEOUT_SECONDS=90
+COACH_AGENT_MAX_RETRIES=1
+COACH_AGENT_MAX_OUTPUT_TOKENS=2000
+```
+
+`COACH_AGENT_THINKING_MODE` 只允许：
+
+- `unset`：默认值，不附加 Provider 专用请求字段，保持通用 OpenAI-compatible 行为；
+- `disabled`：请求增加受控的 `thinking: {"type": "disabled"}`，用于 DeepSeek V4 非思考模式兼容；
+- `enabled`：配置值保留，但 v0.11.0 会在网络调用前安全拒绝。当前工具链不会读取或回传 `reasoning_content`，因此不支持 DeepSeek 思考模式的多轮工具调用。
+
+不提供任意 `extra_body` JSON 配置。生产环境禁止 localhost、私网和包含用户名或密码的 Provider URL；只有 development 环境可通过显式开关允许本地 Provider。API Key 不得进入前端、日志、截图或版本库。

@@ -73,7 +73,8 @@ def test_client_cannot_submit_internal_configuration() -> None:
         for field, value in (
             ("user_id", 99), ("request_id", str(uuid4())), ("model", "x"),
             ("provider", "x"), ("base_url", "http://127.0.0.1"),
-            ("api_key", "fictional"), ("system_prompt", "override"), ("tools", []),
+            ("api_key", "fictional"), ("thinking_mode", "disabled"),
+            ("system_prompt", "override"), ("tools", []),
         ):
             result = client.post("/api/coach/query", json={"message": "today", field: value})
             assert result.status_code == 400

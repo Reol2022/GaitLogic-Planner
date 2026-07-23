@@ -74,9 +74,17 @@ def context() -> AgentContext:
     )
 
 
-def response(*, content=None, tool_calls=None):
+def response(*, content=None, tool_calls=None, reasoning_content=None):
     return SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content=content, tool_calls=tool_calls or []))],
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(
+                    content=content,
+                    tool_calls=tool_calls or [],
+                    reasoning_content=reasoning_content,
+                )
+            )
+        ],
         usage=SimpleNamespace(prompt_tokens=120, completion_tokens=30, total_tokens=150),
     )
 
@@ -111,6 +119,68 @@ def test_valid_structured_output_and_json_schema_request() -> None:
     assert "tools" not in call
     assert "tool_choice" not in call
     assert gateway.last_usage.total_tokens == 150
+
+
+def test_thinking_mode_unset_preserves_generic_provider_request() -> None:
+    fake = FakeClient(
+        [response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "safe"}))]
+    )
+    run_gateway(fake, configured=settings(COACH_AGENT_THINKING_MODE="unset"))
+    assert "extra_body" not in fake.completions.calls[0]
+
+
+def test_thinking_mode_disabled_adds_only_controlled_extra_body() -> None:
+    fake = FakeClient(
+        [response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "safe"}))]
+    )
+    run_gateway(
+        fake,
+        configured=settings(
+            COACH_AGENT_THINKING_MODE="disabled",
+            COACH_AGENT_EXTRA_BODY='{"unsafe":true}',
+        ),
+    )
+    assert fake.completions.calls[0]["extra_body"] == {
+        "thinking": {"type": "disabled"}
+    }
+
+
+def test_thinking_mode_enabled_fails_closed_before_provider_call() -> None:
+    fake = FakeClient([])
+    with pytest.raises(AgentProviderError) as exc:
+        run_gateway(
+            fake,
+            configured=settings(COACH_AGENT_THINKING_MODE="enabled"),
+        )
+    assert exc.value.code == AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE
+    assert fake.completions.calls == []
+
+
+def test_reasoning_content_is_not_exposed_or_replayed_in_non_thinking_mode() -> None:
+    payload = {
+        "answer": "The final answer is safe.",
+        "intent": "EXPLAIN_RUNNER_STATE",
+        "risk_level": "UNKNOWN",
+    }
+    fake = FakeClient(
+        [
+            response(
+                content=json.dumps(payload),
+                reasoning_content="private chain of thought",
+            )
+        ]
+    )
+    _gateway, output, trace = run_gateway(
+        fake,
+        configured=settings(COACH_AGENT_THINKING_MODE="disabled"),
+    )
+    assert output.answer == "The final answer is safe."
+    assert "reasoning_content" not in output.model_dump(mode="json")
+    assert "private chain of thought" not in str(trace.model_dump(mode="json"))
+    assert "private chain of thought" not in json.dumps(
+        fake.completions.calls[0],
+        ensure_ascii=False,
+    )
 
 
 def test_native_single_and_multiple_tool_calls_are_structured() -> None:

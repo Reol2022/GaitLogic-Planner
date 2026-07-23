@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 from urllib.parse import quote_plus
 
 from pydantic import AliasChoices, Field
@@ -141,6 +142,10 @@ class Settings(BaseSettings):
         max_length=128,
         pattern=r"^[A-Za-z0-9][A-Za-z0-9._/-]*$",
         validation_alias="COACH_AGENT_MODEL",
+    )
+    coach_agent_thinking_mode: Literal["unset", "disabled", "enabled"] = Field(
+        default="unset",
+        validation_alias="COACH_AGENT_THINKING_MODE",
     )
     coach_agent_connect_timeout_seconds: float = Field(
         default=10,

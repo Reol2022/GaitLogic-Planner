@@ -144,6 +144,12 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         return AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE
 
     def _request(self, *, messages: list[dict[str, str]], tools: list[dict[str, Any]]) -> Any:
+        if self.settings.coach_agent_thinking_mode == "enabled":
+            # DeepSeek requires reasoning_content replay across thinking-mode
+            # tool-call sub-turns. v0.11.0 intentionally does not implement
+            # that chain, so fail closed instead of sending an unsafe partial
+            # thinking request.
+            raise AgentProviderError(AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE)
         request: dict[str, Any] = {
             "model": self.settings.coach_agent_model,
             "messages": messages,
@@ -158,6 +164,8 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
             "max_tokens": self.settings.coach_agent_max_output_tokens,
             "temperature": 0.2,
         }
+        if self.settings.coach_agent_thinking_mode == "disabled":
+            request["extra_body"] = {"thinking": {"type": "disabled"}}
         if tools:
             request["tools"] = tools
             request["tool_choice"] = "auto"

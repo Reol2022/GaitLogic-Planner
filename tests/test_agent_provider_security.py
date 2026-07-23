@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from planner_core.config import Settings
 from server.agent.providers.openai_compatible import OpenAICompatibleAgentGateway
@@ -61,3 +62,14 @@ def test_redirects_are_disabled_in_default_client_source() -> None:
     from server.agent.providers.openai_compatible import OpenAICompatibleAgentGateway
 
     assert "follow_redirects=False" in getsource(OpenAICompatibleAgentGateway._default_client)
+
+
+@pytest.mark.parametrize("mode", ["unset", "disabled", "enabled"])
+def test_thinking_mode_accepts_only_controlled_values(mode: str) -> None:
+    configured = Settings(_env_file=None, COACH_AGENT_THINKING_MODE=mode)
+    assert configured.coach_agent_thinking_mode == mode
+
+
+def test_arbitrary_thinking_mode_value_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, COACH_AGENT_THINKING_MODE='{"type":"disabled"}')
