@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from server.agent.enums import AgentIntent
-from server.agent.providers.schemas import ProviderAgentModelOutput
+from server.agent.providers.schemas import ProviderTodayModelOutput
 from server.agent.schemas import AgentContext, AgentRequest
 from server.agent.today_recommendation import (
     build_evidence_catalog,
@@ -41,14 +41,8 @@ def evidence_context(*, with_evidence: bool = True) -> AgentContext:
 def provider_payload(key_evidence_ids) -> dict:
     return {
         "answer": "Use the existing plan.",
-        "intent": "TODAY_RECOMMENDATION",
-        "today_recommendation": {
-            "decision": "PROCEED",
-            "planned_workout_status": "PLANNED",
-            "headline": "Proceed.",
-            "key_evidence_ids": key_evidence_ids,
-            "data_quality": "AVAILABLE",
-        },
+        "summary": "Use the plan.",
+        "key_evidence_ids": key_evidence_ids,
     }
 
 
@@ -110,15 +104,38 @@ def test_empty_references_are_allowed_only_without_canonical_evidence() -> None:
 )
 def test_provider_schema_rejects_invalid_evidence_ids(ids) -> None:
     with pytest.raises(ValidationError):
-        ProviderAgentModelOutput.model_validate(provider_payload(ids))
+        ProviderTodayModelOutput.model_validate(provider_payload(ids))
 
 
 def test_provider_schema_requires_ids_and_rejects_legacy_text() -> None:
     missing = provider_payload(["evidence_1"])
-    del missing["today_recommendation"]["key_evidence_ids"]
+    del missing["key_evidence_ids"]
     legacy = provider_payload(["evidence_1"])
-    legacy["today_recommendation"]["key_evidence"] = ["distance_7d_km"]
+    legacy["key_evidence"] = ["distance_7d_km"]
     with pytest.raises(ValidationError):
-        ProviderAgentModelOutput.model_validate(missing)
+        ProviderTodayModelOutput.model_validate(missing)
     with pytest.raises(ValidationError):
-        ProviderAgentModelOutput.model_validate(legacy)
+        ProviderTodayModelOutput.model_validate(legacy)
+
+
+@pytest.mark.parametrize(
+    "server_owned_field",
+    [
+        "intent",
+        "risk_level",
+        "decision",
+        "planned_workout_status",
+        "headline",
+        "data_quality",
+        "warnings",
+        "limitations",
+        "today_recommendation",
+    ],
+)
+def test_today_provider_schema_rejects_server_owned_facts(
+    server_owned_field: str,
+) -> None:
+    payload = provider_payload(["evidence_1"])
+    payload[server_owned_field] = "provider-must-not-own-this"
+    with pytest.raises(ValidationError):
+        ProviderTodayModelOutput.model_validate(payload)

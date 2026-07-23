@@ -4,8 +4,14 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from server.agent.enums import AgentRiskLevel
 from server.agent.errors import AgentErrorCode
-from server.agent.schemas import AgentContext, AgentModelOutput
+from server.agent.schemas import (
+    AgentContext,
+    AgentModelOutput,
+    AgentNotice,
+    AgentTodayRecommendation,
+)
 
 _FORBIDDEN_MEDICAL = re.compile(
     r"(?i)(diagnos(?:e|is)|you have (?:an? )?(?:injury|disease)|确诊|诊断为|患有)"
@@ -102,6 +108,156 @@ def materialize_evidence_references(
         raise ValueError("Evidence reference does not exist in this request")
     selected = set(evidence_ids)
     return [item.text for item in catalog if item.id in selected]
+
+
+@dataclass(frozen=True)
+class AuthoritativeTodayFacts:
+    risk_level: AgentRiskLevel
+    recommendation: AgentTodayRecommendation
+    warnings: list[AgentNotice]
+    limitations: list[AgentNotice]
+
+
+def _is_chinese(value: str) -> bool:
+    return any("\u4e00" <= character <= "\u9fff" for character in value)
+
+
+def _notices_from(value: Any, field: str) -> list[AgentNotice]:
+    if not isinstance(value, dict):
+        return []
+    notices = value.get(field, [])
+    if not isinstance(notices, list):
+        return []
+    return [
+        AgentNotice.model_validate(item)
+        for item in notices
+        if isinstance(item, dict)
+    ]
+
+
+def _unique_notices(values: list[AgentNotice]) -> list[AgentNotice]:
+    unique: list[AgentNotice] = []
+    seen: set[tuple[str, str]] = set()
+    for item in values:
+        key = (item.code, item.message)
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+    return unique[:20]
+
+
+def build_authoritative_today_facts(
+    context: AgentContext,
+    *,
+    user_message: str,
+    key_evidence: list[str] | None = None,
+) -> AuthoritativeTodayFacts:
+    """Build every deterministic TODAY field from validated server context."""
+
+    evaluation = context.today_evaluation or {}
+    decision = canonical_today_decision(evaluation)
+    planned_value = (context.today_workout or {}).get("workout_status")
+    planned_status = (
+        planned_value
+        if isinstance(planned_value, str)
+        and planned_value
+        in {"PLANNED", "REST_DAY", "NO_PLAN", "CYCLE_NOT_ACTIVE", "UNKNOWN"}
+        else "UNKNOWN"
+    )
+    risk_value = evaluation.get("risk_level")
+    risk = (
+        AgentRiskLevel(risk_value)
+        if isinstance(risk_value, str)
+        and risk_value in AgentRiskLevel._value2member_map_
+        else AgentRiskLevel.UNKNOWN
+    )
+    quality_value = (context.data_quality or {}).get("data_status")
+    quality = quality_value if isinstance(quality_value, str) and quality_value else "UNKNOWN"
+    chinese = _is_chinese(user_message)
+    headline_map = {
+        "PROCEED": "可以按原计划执行。" if chinese else "Proceed with the existing plan.",
+        "PROCEED_WITH_CAUTION": (
+            "建议谨慎执行原计划。"
+            if chinese
+            else "Proceed cautiously with the existing plan."
+        ),
+        "CONSIDER_ADJUSTMENT": (
+            "建议考虑调整，但系统没有修改计划。"
+            if chinese
+            else "Consider an adjustment; no plan was changed."
+        ),
+        "REST_OR_RECOVERY": (
+            "规则建议休息或恢复。"
+            if chinese
+            else "The rules recommend rest or recovery."
+        ),
+        "UNKNOWN": (
+            "数据不足，无法给出确定的今日建议。"
+            if chinese
+            else "Available data is insufficient for a definite recommendation."
+        ),
+    }
+    sources = (
+        context.today_evaluation,
+        context.data_quality,
+        context.today_workout,
+        context.recent_training,
+        context.runner_state,
+    )
+    warnings = _unique_notices(
+        [notice for source in sources for notice in _notices_from(source, "warnings")]
+    )
+    limitations = _unique_notices(
+        [
+            *context.limitations,
+            *[
+                notice
+                for source in sources
+                for notice in _notices_from(source, "limitations")
+            ],
+        ]
+    )
+    if context.missing_reasons:
+        limitations = _unique_notices(
+            [
+                *limitations,
+                AgentNotice(
+                    code="TODAY_CONTEXT_INCOMPLETE",
+                    message="One or more required TODAY data sources are unavailable.",
+                ),
+            ]
+        )
+    if decision == "UNKNOWN" and not limitations:
+        limitations = [
+            AgentNotice(
+                code="TODAY_DATA_INSUFFICIENT",
+                message="Available TODAY facts are insufficient for a deterministic decision.",
+            )
+        ]
+    if risk == AgentRiskLevel.HIGH and not warnings:
+        warnings = [
+            AgentNotice(
+                code="HIGH_RISK_REVIEW_REQUIRED",
+                message="Existing rules require manual review before training.",
+            )
+        ]
+    evidence = (
+        key_evidence
+        if key_evidence is not None
+        else contextual_evidence(context)[:5]
+    )
+    return AuthoritativeTodayFacts(
+        risk_level=risk,
+        recommendation=AgentTodayRecommendation(
+            decision=decision,
+            planned_workout_status=planned_status,
+            headline=headline_map[decision],
+            key_evidence=evidence,
+            data_quality=quality,
+        ),
+        warnings=warnings,
+        limitations=limitations,
+    )
 
 
 def _numbers(value: Any) -> set[float]:

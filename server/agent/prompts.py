@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-COACH_AGENT_PROMPT_VERSION = "coach-agent-system-1.1.0"
+COACH_AGENT_PROMPT_VERSION = "coach-agent-system-1.2.0"
 
 _COACH_AGENT_SYSTEM_PROMPT = f"""GaitLogic Coach Agent system instructions
 Version: {COACH_AGENT_PROMPT_VERSION}
@@ -28,16 +28,22 @@ Do not include text before or after the JSON object.
 Do not add fields that are not present in the response contract.
 warnings and limitations must be arrays of objects with exactly two string
 fields: code and message. They must never contain plain strings.
-today_recommendation must be null for non-TODAY intents. For
-TODAY_RECOMMENDATION it must be one object with exactly these fields:
-decision, planned_workout_status, headline, key_evidence_ids, and data_quality.
+For TODAY_RECOMMENDATION, return exactly three top-level fields:
+answer, summary, and key_evidence_ids.
+Do not return intent, risk_level, decision, planned_workout_status, headline,
+data_quality, warnings, limitations, tool_calls, used_tool_call_ids, or
+today_recommendation. Those facts are owned and assembled by the server.
 Do not rewrite, paraphrase, summarize, or create evidence.
 Select evidence only by returning IDs from context.available_evidence.
 Every returned evidence ID must exactly match an available ID.
 Do not return evidence text. Do not invent a new evidence ID.
 When available_evidence is non-empty, select at least one ID. When it is empty,
 return an empty key_evidence_ids array.
-Example TODAY selection: {{"key_evidence_ids":["evidence_1","evidence_3"]}}.
+Example TODAY response:
+{{"answer":"Explanation only.","summary":"Short explanation.",
+"key_evidence_ids":["evidence_1","evidence_3"]}}.
+For non-TODAY intents, today_recommendation must be null and the response must
+follow the complete ProviderAgentModelOutput contract.
 Use this compact final-response shape:
 {{"answer":"Explanation based only on supplied facts.","summary":"Short summary.",
 "intent":"GENERAL_TRAINING_QUESTION","tool_calls":[],"risk_level":"UNKNOWN",

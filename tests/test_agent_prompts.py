@@ -17,7 +17,9 @@ def test_prompt_is_versioned_and_contains_safety_authority_rules() -> None:
     assert "response format is json" in prompt
     assert "code and message" in prompt
     assert "They must never contain plain strings." in prompt
-    assert "decision, planned_workout_status, headline, key_evidence_ids, and data_quality" in prompt
+    assert "answer, summary, and key_evidence_ids" in prompt
+    assert "Those facts are owned and assembled by the server." in prompt
+    assert "Do not return intent, risk_level, decision, planned_workout_status" in prompt
     assert "Do not rewrite, paraphrase, summarize, or create evidence." in prompt
     assert "context.available_evidence" in prompt
     assert '"key_evidence_ids":["evidence_1","evidence_3"]' in prompt

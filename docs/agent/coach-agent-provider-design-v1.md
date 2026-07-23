@@ -32,13 +32,14 @@ v0.11.0-C 在 `AgentLLMGateway` 抽象后增加 OpenAI-compatible Chat Completio
 4. 将 Pydantic 工具输入 Schema 转为 strict function schema；
 5. 强制 object 顶层 `additionalProperties=false`；
 6. 为 TODAY 建立请求级 `available_evidence` Catalog；
-7. 使用 Provider 专用 `ProviderAgentModelOutput` JSON Schema 请求严格结构化结果。
+7. 按 Intent 选择严格 Provider Schema：TODAY 使用最小叙事 Schema，其他 Intent
+   使用 `ProviderAgentModelOutput`。
 
 Gateway 不向 Provider 暴露 Dependencies、Python 类型、Session、Garmin 原始 payload、完整历史日志或写工具。
 
 ## 受控响应格式
 
-`json_schema` 保持默认行为，发送严格的 Provider 内部输出 Schema。
+`json_schema` 保持默认行为，按 Intent 发送严格的 Provider 内部输出 Schema。
 `json_object` 只发送 `{"type": "json_object"}`，用于不支持最终 JSON Schema
 Response Format、但支持 JSON Output 的兼容端点。
 
@@ -46,8 +47,9 @@ Response Format、但支持 JSON Output 的兼容端点。
 
 ```text
 Provider content
-→ ProviderAgentModelOutput 严格 Pydantic 校验
+→ Intent 专用 Provider Schema 严格 Pydantic 校验
 → Evidence ID 严格校验与 Canonical materialization
+→ 服务端装配 TODAY 确定性训练事实
 → AgentModelOutput 严格 Pydantic 校验
 → Deterministic Validator
 → 成功响应或安全 Fallback
@@ -66,8 +68,21 @@ COACH_AGENT_RESPONSE_FORMAT_MODE=json_object
 
 ## Evidence Reference 协议
 
-Provider 内部 TODAY 输出使用 `key_evidence_ids`，公共 API 仍使用
-`key_evidence`。Gateway 根据 `contextual_evidence()` 的原始顺序生成：
+Provider 内部 TODAY 输出严格只有：
+
+```json
+{
+  "answer": "Explanation only.",
+  "summary": "Short explanation.",
+  "key_evidence_ids": ["evidence_1"]
+}
+```
+
+decision、planned workout status、risk level、data quality、headline、warnings、
+limitations 和 Canonical Evidence 都不属于模型输出。Gateway 使用服务端 Context
+装配这些字段，再生成公共 `AgentModelOutput`。公共 API 仍使用 `key_evidence`。
+
+Gateway 根据 `contextual_evidence()` 的原始顺序生成：
 
 ```json
 [
@@ -86,6 +101,10 @@ Catalog 中存在的 ID，不能返回 Evidence 文本。服务端拒绝未知�
 能力要求，不降低 Provider Pydantic Schema、Evidence 引用校验、公开
 `AgentModelOutput` 或 Deterministic Validator。旧的自由文本 `key_evidence`
 Provider 输出属于额外字段，会被严格拒绝并进入现有 Fallback。
+
+模型尝试返回任何服务端权威字段同样属于额外字段并被拒绝。系统不把对象转换为
+data quality 字符串，不接受 Union，不用 Prompt 修补事实类型。成功 Provider 路径
+与确定性 Fallback 共用 `build_authoritative_today_facts()`，避免形成两套规则。
 
 ## 响应与工具调用
 

@@ -86,14 +86,8 @@ def test_unknown_provider_evidence_id_degrades_without_public_id_leakage() -> No
     _engine, factory = make_database()
     payload = {
         "answer": "Use the existing plan.",
-        "intent": "TODAY_RECOMMENDATION",
-        "today_recommendation": {
-            "decision": "UNKNOWN",
-            "planned_workout_status": "NO_PLAN",
-            "headline": "Available data is limited.",
-            "key_evidence_ids": ["evidence_99"],
-            "data_quality": "UNKNOWN",
-        },
+        "summary": "Use the plan.",
+        "key_evidence_ids": ["evidence_99"],
     }
     fake = FakeClient([response(content=json.dumps(payload))])
     configured = Settings(

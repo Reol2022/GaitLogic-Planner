@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -22,24 +22,12 @@ class ProviderContractModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class ProviderAgentTodayRecommendation(ProviderContractModel):
-    decision: Literal[
-        "PROCEED",
-        "PROCEED_WITH_CAUTION",
-        "CONSIDER_ADJUSTMENT",
-        "REST_OR_RECOVERY",
-        "UNKNOWN",
-    ]
-    planned_workout_status: Literal[
-        "PLANNED",
-        "REST_DAY",
-        "NO_PLAN",
-        "CYCLE_NOT_ACTIVE",
-        "UNKNOWN",
-    ]
-    headline: str = Field(min_length=1, max_length=300)
+class ProviderTodayModelOutput(ProviderContractModel):
+    """TODAY narrative selection without server-owned training facts."""
+
+    answer: str = Field(min_length=1, max_length=12000)
+    summary: str = Field(min_length=1, max_length=1000)
     key_evidence_ids: list[str] = Field(max_length=10)
-    data_quality: str = Field(min_length=1, max_length=40)
 
     @field_validator("key_evidence_ids", mode="before")
     @classmethod
@@ -66,7 +54,7 @@ class ProviderAgentTodayRecommendation(ProviderContractModel):
 
 
 class ProviderAgentModelOutput(ProviderContractModel):
-    """Structured model response before canonical Evidence materialization."""
+    """Non-TODAY structured output; TODAY uses ProviderTodayModelOutput."""
 
     answer: str | None = Field(default=None, max_length=12000)
     summary: str | None = Field(default=None, max_length=1000)
@@ -79,7 +67,7 @@ class ProviderAgentModelOutput(ProviderContractModel):
     warnings: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
     limitations: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
     used_tool_call_ids: list[UUID] = Field(default_factory=list, max_length=MAX_CONTEXT_ITEMS)
-    today_recommendation: ProviderAgentTodayRecommendation | None = None
+    today_recommendation: None = None
 
     @model_validator(mode="after")
     def validate_tool_call_ids(self) -> "ProviderAgentModelOutput":

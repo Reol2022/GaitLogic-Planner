@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from server.agent.enums import AgentIntent, AgentRiskLevel, AgentTraceEventType, AgentTraceStatus
 from server.agent.schemas import AgentContext, AgentNotice, AgentTodayRecommendation
-from server.agent.today_recommendation import canonical_today_decision, contextual_evidence
+from server.agent.today_recommendation import build_authoritative_today_facts
 from server.agent.trace import AgentTrace
 
 
@@ -46,45 +46,22 @@ class DeterministicCoachFallback:
         )
         recommendation = None
         warnings: list[AgentNotice] = []
+        authoritative_limitations: list[AgentNotice] = []
         risk = AgentRiskLevel.UNKNOWN
 
         if intent == AgentIntent.TODAY_RECOMMENDATION:
-            evaluation = context.today_evaluation or {}
-            decision = canonical_today_decision(evaluation)
-            planned_status = str((context.today_workout or {}).get("workout_status") or "UNKNOWN")
-            risk_value = str(evaluation.get("risk_level") or "UNKNOWN")
-            risk = AgentRiskLevel(risk_value) if risk_value in AgentRiskLevel._value2member_map_ else AgentRiskLevel.UNKNOWN
-            headline_map = {
-                "PROCEED": "可以按原计划执行。" if chinese else "Proceed with the existing plan.",
-                "PROCEED_WITH_CAUTION": "建议谨慎执行原计划。" if chinese else "Proceed cautiously with the existing plan.",
-                "CONSIDER_ADJUSTMENT": "建议考虑调整，但系统没有修改计划。" if chinese else "Consider an adjustment; no plan was changed.",
-                "REST_OR_RECOVERY": "规则建议休息或恢复。" if chinese else "The rules recommend rest or recovery.",
-                "UNKNOWN": "数据不足，无法给出确定的今日建议。" if chinese else "Available data is insufficient for a definite recommendation.",
-            }
-            evidence = contextual_evidence(context)[:5]
-            quality = str((context.data_quality or {}).get("data_status") or "UNKNOWN")
-            recommendation = AgentTodayRecommendation(
-                decision=decision,
-                planned_workout_status=planned_status,
-                headline=headline_map[decision],
-                key_evidence=evidence,
-                data_quality=quality,
+            facts = build_authoritative_today_facts(
+                context,
+                user_message=message,
             )
-            if risk == AgentRiskLevel.HIGH:
-                warnings.append(
-                    AgentNotice(
-                        code="HIGH_RISK_REVIEW_REQUIRED",
-                        message=(
-                            "现有规则包含高关注提示，请先人工复核。"
-                            if chinese
-                            else "Existing rules contain a high-attention warning; review it manually first."
-                        ),
-                    )
-                )
+            recommendation = facts.recommendation
+            risk = facts.risk_level
+            warnings = facts.warnings
+            authoritative_limitations = facts.limitations
             answer = (
-                f"今日建议：{recommendation.headline} 依据：当前确定性规则结果为 {decision}。"
+                f"今日建议：{recommendation.headline} 依据：当前确定性规则结果为 {recommendation.decision}。"
                 if chinese
-                else f"Today's recommendation: {recommendation.headline} Deterministic rule result: {decision}."
+                else f"Today's recommendation: {recommendation.headline} Deterministic rule result: {recommendation.decision}."
             )
             summary = recommendation.headline
         elif intent == AgentIntent.EXPLAIN_RUNNER_STATE:
@@ -112,5 +89,5 @@ class DeterministicCoachFallback:
             risk_level=risk,
             today_recommendation=recommendation,
             warnings=warnings,
-            limitations=[limitation],
+            limitations=[*authoritative_limitations[:19], limitation],
         )

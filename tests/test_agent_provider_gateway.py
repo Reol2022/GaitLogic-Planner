@@ -15,7 +15,10 @@ from server.agent.providers.openai_compatible import (
     OpenAICompatibleAgentGateway,
     redact_provider_text,
 )
-from server.agent.providers.schemas import ProviderAgentModelOutput
+from server.agent.providers.schemas import (
+    ProviderAgentModelOutput,
+    ProviderTodayModelOutput,
+)
 from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import (
     AgentContext,
@@ -98,6 +101,18 @@ def today_context() -> AgentContext:
             "decision": "passed_with_notice",
             "risk_level": "MODERATE",
             "evidence": ["distance_7d_km"],
+            "warnings": [
+                {
+                    "code": "SERVER_REVIEW_NOTICE",
+                    "message": "Review deterministic facts.",
+                }
+            ],
+            "limitations": [
+                {
+                    "code": "SERVER_DATA_LIMIT",
+                    "message": "One deterministic field is limited.",
+                }
+            ],
             "rule_hits": [
                 {
                     "rule_code": "TODAY_PUBLIC_RULE",
@@ -187,8 +202,29 @@ def test_explicit_json_schema_preserves_exact_request_contract() -> None:
         == ProviderAgentModelOutput.model_json_schema()
     )
     schema_text = json.dumps(response_format["json_schema"]["schema"])
-    assert "key_evidence_ids" in schema_text
+    assert "key_evidence_ids" not in schema_text
     assert '"key_evidence"' not in schema_text
+
+
+def test_today_json_schema_contains_only_narrative_and_evidence_ids() -> None:
+    payload = {
+        "answer": "Use the existing plan cautiously.",
+        "summary": "Proceed cautiously.",
+        "key_evidence_ids": ["evidence_1"],
+    }
+    fake = FakeClient([response(content=json.dumps(payload))])
+    run_gateway(fake, agent_context=today_context())
+    response_format = fake.completions.calls[0]["response_format"]
+    assert response_format["json_schema"]["name"] == "provider_today_output"
+    assert (
+        response_format["json_schema"]["schema"]
+        == ProviderTodayModelOutput.model_json_schema()
+    )
+    assert set(response_format["json_schema"]["schema"]["properties"]) == {
+        "answer",
+        "summary",
+        "key_evidence_ids",
+    }
 
 
 def test_json_object_request_is_exact_and_ignores_unknown_provider_settings() -> None:
@@ -226,17 +262,8 @@ def test_json_object_request_is_exact_and_ignores_unknown_provider_settings() ->
 def test_today_evidence_ids_materialize_to_canonical_public_text() -> None:
     payload = {
         "answer": "Use the existing plan cautiously.",
-        "intent": "TODAY_RECOMMENDATION",
-        "risk_level": "MODERATE",
-        "warnings": [],
-        "limitations": [],
-        "today_recommendation": {
-            "decision": "PROCEED_WITH_CAUTION",
-            "planned_workout_status": "PLANNED",
-            "headline": "Proceed cautiously.",
-            "key_evidence_ids": ["evidence_3", "evidence_1"],
-            "data_quality": "AVAILABLE",
-        },
+        "summary": "Proceed cautiously.",
+        "key_evidence_ids": ["evidence_3", "evidence_1"],
     }
     fake = FakeClient([response(content=json.dumps(payload))])
     _gateway, output, _trace = run_gateway(
@@ -249,6 +276,12 @@ def test_today_evidence_ids_materialize_to_canonical_public_text() -> None:
         "distance_7d_km",
         "Existing rule evidence.",
     ]
+    assert output.today_recommendation.decision == "PROCEED_WITH_CAUTION"
+    assert output.today_recommendation.planned_workout_status == "PLANNED"
+    assert output.today_recommendation.data_quality == "AVAILABLE"
+    assert output.risk_level == AgentRiskLevel.MODERATE
+    assert [item.code for item in output.warnings] == ["SERVER_REVIEW_NOTICE"]
+    assert [item.code for item in output.limitations] == ["SERVER_DATA_LIMIT"]
     assert TodayRecommendationValidator().validate(output, today_context()) == []
     serialized = output.model_dump(mode="json")
     assert "key_evidence_ids" not in json.dumps(serialized)
@@ -261,7 +294,7 @@ def test_today_evidence_ids_materialize_to_canonical_public_text() -> None:
 
 
 @pytest.mark.parametrize(
-    "recommendation_update",
+    "payload_update",
     [
         {"key_evidence": ["distance_7d_km"]},
         {
@@ -274,28 +307,22 @@ def test_today_evidence_ids_materialize_to_canonical_public_text() -> None:
         {"key_evidence_ids": ["evidence_1", "evidence_1"]},
         {"key_evidence_ids": []},
         {"key_evidence_ids": [1]},
+        {"decision": "PROCEED_WITH_CAUTION", "key_evidence_ids": ["evidence_1"]},
+        {"data_quality": {"data_status": "AVAILABLE"}, "key_evidence_ids": ["evidence_1"]},
     ],
 )
 def test_invalid_today_evidence_protocol_is_rejected(
-    recommendation_update: dict,
+    payload_update: dict,
 ) -> None:
-    recommendation = {
-        "decision": "PROCEED_WITH_CAUTION",
-        "planned_workout_status": "PLANNED",
-        "headline": "Proceed cautiously.",
-        "data_quality": "AVAILABLE",
-        **recommendation_update,
+    payload = {
+        "answer": "Use the existing plan cautiously.",
+        "summary": "Proceed cautiously.",
+        **payload_update,
     }
     fake = FakeClient(
         [
             response(
-                content=json.dumps(
-                    {
-                        "answer": "Use the existing plan cautiously.",
-                        "intent": "TODAY_RECOMMENDATION",
-                        "today_recommendation": recommendation,
-                    }
-                )
+                content=json.dumps(payload)
             )
         ]
     )

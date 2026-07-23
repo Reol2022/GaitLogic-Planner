@@ -15,7 +15,11 @@ from server.agent.enums import AgentIntent, AgentRiskLevel, AgentTraceEventType,
 from server.agent.errors import AgentErrorCode
 from server.agent.gateway import AgentLLMGateway
 from server.agent.providers.errors import AgentProviderError
-from server.agent.providers.schemas import AgentProviderUsage, ProviderAgentModelOutput
+from server.agent.providers.schemas import (
+    AgentProviderUsage,
+    ProviderAgentModelOutput,
+    ProviderTodayModelOutput,
+)
 from server.agent.providers.security import validate_provider_base_url
 from server.agent.schemas import (
     AgentContext,
@@ -26,6 +30,7 @@ from server.agent.schemas import (
 from server.agent.trace import AgentTrace
 from server.agent.today_recommendation import (
     build_evidence_catalog,
+    build_authoritative_today_facts,
     materialize_evidence_references,
 )
 
@@ -155,19 +160,34 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
             return AgentErrorCode.AGENT_PROVIDER_RATE_LIMITED
         return AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE
 
-    def _response_format(self) -> dict[str, Any]:
+    def _response_format(self, intent: AgentIntent) -> dict[str, Any]:
         if self.settings.coach_agent_response_format_mode == "json_object":
             return {"type": "json_object"}
+        schema = (
+            ProviderTodayModelOutput
+            if intent == AgentIntent.TODAY_RECOMMENDATION
+            else ProviderAgentModelOutput
+        )
         return {
             "type": "json_schema",
             "json_schema": {
-                "name": "agent_model_output",
+                "name": (
+                    "provider_today_output"
+                    if intent == AgentIntent.TODAY_RECOMMENDATION
+                    else "agent_model_output"
+                ),
                 "strict": True,
-                "schema": ProviderAgentModelOutput.model_json_schema(),
+                "schema": schema.model_json_schema(),
             },
         }
 
-    def _request(self, *, messages: list[dict[str, str]], tools: list[dict[str, Any]]) -> Any:
+    def _request(
+        self,
+        *,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, Any]],
+        intent: AgentIntent,
+    ) -> Any:
         if self.settings.coach_agent_thinking_mode == "enabled":
             # DeepSeek requires reasoning_content replay across thinking-mode
             # tool-call sub-turns. v0.11.0 intentionally does not implement
@@ -177,7 +197,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         request: dict[str, Any] = {
             "model": self.settings.coach_agent_model,
             "messages": messages,
-            "response_format": self._response_format(),
+            "response_format": self._response_format(intent),
             "max_tokens": self.settings.coach_agent_max_output_tokens,
             "temperature": 0.2,
         }
@@ -199,6 +219,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         response: Any,
         intent: AgentIntent,
         context: AgentContext,
+        user_message: str,
     ) -> AgentModelOutput:
         if not getattr(response, "choices", None):
             raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
@@ -235,24 +256,30 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         if stripped.startswith("```"):
             raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
         try:
+            if intent == AgentIntent.TODAY_RECOMMENDATION:
+                provider_output = ProviderTodayModelOutput.model_validate_json(stripped)
+                evidence = materialize_evidence_references(
+                    provider_output.key_evidence_ids,
+                    context,
+                )
+                facts = build_authoritative_today_facts(
+                    context,
+                    user_message=user_message,
+                    key_evidence=evidence,
+                )
+                return AgentModelOutput(
+                    answer=provider_output.answer,
+                    summary=provider_output.summary,
+                    intent=AgentIntent.TODAY_RECOMMENDATION,
+                    risk_level=facts.risk_level,
+                    warnings=facts.warnings,
+                    limitations=facts.limitations,
+                    today_recommendation=facts.recommendation,
+                )
             provider_output = ProviderAgentModelOutput.model_validate_json(stripped)
-            payload = provider_output.model_dump(
-                mode="python",
-                exclude={"today_recommendation"},
+            return AgentModelOutput.model_validate(
+                provider_output.model_dump(mode="python")
             )
-            if provider_output.today_recommendation is not None:
-                recommendation = provider_output.today_recommendation
-                payload["today_recommendation"] = {
-                    "decision": recommendation.decision,
-                    "planned_workout_status": recommendation.planned_workout_status,
-                    "headline": recommendation.headline,
-                    "key_evidence": materialize_evidence_references(
-                        recommendation.key_evidence_ids,
-                        context,
-                    ),
-                    "data_quality": recommendation.data_quality,
-                }
-            return AgentModelOutput.model_validate(payload)
         except (ValidationError, ValueError) as exc:
             raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID) from exc
 
@@ -297,8 +324,17 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         attempts = self.settings.coach_agent_max_retries + 1
         for attempt in range(attempts):
             try:
-                response = self._request(messages=messages, tools=safe_tools)
-                output = self._parse_response(response, context.intent, context)
+                response = self._request(
+                    messages=messages,
+                    tools=safe_tools,
+                    intent=context.intent,
+                )
+                output = self._parse_response(
+                    response,
+                    context.intent,
+                    context,
+                    user_message,
+                )
                 usage = getattr(response, "usage", None)
                 duration = (perf_counter() - started) * 1000
                 self.last_usage = AgentProviderUsage(
