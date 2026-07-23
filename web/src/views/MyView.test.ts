@@ -4,8 +4,8 @@ import MyView from "./MyView.vue";
 
 vi.mock("@/api/dataSync", () => ({ listDataSyncProviders: vi.fn().mockRejectedValue(new Error("disabled")) }));
 
-describe("MyView runner-state entry", () => {
-  it("exposes the training-state page without changing bottom navigation", async () => {
+describe("MyView product entries", () => {
+  it("exposes training-state and AI Coach pages through the My hub", async () => {
     const wrapper = shallowMount(MyView, {
       global: {
         stubs: {
@@ -21,5 +21,8 @@ describe("MyView runner-state entry", () => {
     const runnerLink = wrapper.findAll("a").find((link) => link.text().includes("训练状态"));
     expect(runnerLink).toBeDefined();
     expect(runnerLink?.attributes("data-path")).toBe("/runner-state");
+    const coachLink = wrapper.findAll("a").find((link) => link.text().includes("AI 教练"));
+    expect(coachLink).toBeDefined();
+    expect(coachLink?.attributes("data-path")).toBe("/coach");
   });
 });

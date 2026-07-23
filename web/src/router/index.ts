@@ -49,6 +49,12 @@ const router = createRouter({
       meta: { title: "训练状态" },
     },
     {
+      path: "/coach",
+      name: "CoachAgent",
+      component: () => import("@/views/CoachAgentView.vue"),
+      meta: { title: "AI 教练" },
+    },
+    {
       path: "/today",
       name: "Today",
       component: () => import("@/views/TodayView.vue"),

@@ -44,6 +44,10 @@
           <el-icon><TrendCharts /></el-icon>
           <template #title>负荷与恢复</template>
         </el-menu-item>
+        <el-menu-item index="/coach">
+          <el-icon><ChatDotRound /></el-icon>
+          <template #title>AI 教练</template>
+        </el-menu-item>
 
         <div v-if="!sidebarCollapsed" class="menu-section">我的</div>
         <el-menu-item index="/todos">
@@ -186,6 +190,7 @@ import type { TabsPaneContext } from "element-plus";
 import {
   Bell,
   Calendar,
+  ChatDotRound,
   Connection,
   DataAnalysis,
   ArrowLeft,
