@@ -1,0 +1,16 @@
+schema_version: "1.0.0"
+categories:
+  - TRAINING_SYSTEM
+  - PERIODIZATION
+  - THRESHOLD
+  - INTERVAL
+  - LONG_RUN
+  - RECOVERY
+  - STRENGTH
+  - INJURY_PREVENTION
+  - LOAD_MANAGEMENT
+  - TAPER
+  - GENERAL
+notes:
+  - Taxonomy values mirror server.knowledge_retrieval.enums.KnowledgeCategory.
+  - This file is descriptive metadata and is not a free-form runtime rule source.

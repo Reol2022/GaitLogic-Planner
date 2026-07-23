@@ -1,0 +1,42 @@
+sources:
+  - source_id: gaitlogic-original-training-principles
+    title: GaitLogic Training Principles
+    source_type: ORIGINAL_CONTENT
+    authors:
+      - GaitLogic Project
+    publication_year: 2026
+    license_status: ORIGINAL
+    usage_policy: ORIGINAL_CONTENT
+    notes: Original public training-education material written for the GaitLogic corpus.
+
+  - source_id: daniels-running-formula-summary
+    title: Daniels' Running Formula
+    source_type: BOOK_SUMMARY
+    authors:
+      - Jack Daniels
+    edition: Fourth Edition
+    publication_year: 2022
+    publisher: Human Kinetics
+    license_status: SUMMARY_ONLY
+    usage_policy: SELF_WRITTEN_SUMMARY
+    notes: Bibliographic reference plus an independently written summary; no book text is stored.
+
+  - source_id: public-endurance-guidance-summary
+    title: Public Endurance Training Guidance — GaitLogic Summary
+    source_type: GUIDELINE_SUMMARY
+    authors:
+      - GaitLogic Project
+    publication_year: 2026
+    license_status: SUMMARY_ONLY
+    usage_policy: SELF_WRITTEN_SUMMARY
+    notes: A conservative synthesis of broadly published endurance-training principles.
+
+  - source_id: running-strength-consensus-summary
+    title: Running Strength and Injury Prevention — GaitLogic Consensus Summary
+    source_type: GUIDELINE_SUMMARY
+    authors:
+      - GaitLogic Project
+    publication_year: 2026
+    license_status: SUMMARY_ONLY
+    usage_policy: SELF_WRITTEN_SUMMARY
+    notes: An original summary of general strength and load-management consensus; not medical guidance.

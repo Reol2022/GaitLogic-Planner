@@ -1,0 +1,2387 @@
+{
+  "chunker_version": "heading-paragraph-v1",
+  "chunks": [
+    {
+      "category": "RECOVERY",
+      "char_count": 63,
+      "chunk_id": "high-fatigue-intensity-adjustment#applicable-scenarios#001",
+      "content": "## 适用场景\n\n适用于跑者同时出现主观疲劳偏高、近期训练完成质量下降或恢复信息不足，而当天原计划包含较高强度内容的解释场景。",
+      "content_sha256": "ec4eda7053ddca9cde9a5dee7df2f151591875e694bbaf2abdff0455631f8c8c",
+      "document_id": "high-fatigue-intensity-adjustment",
+      "estimated_token_count": 57,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/recovery/high-fatigue-intensity-adjustment.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 1,
+      "section": "适用场景",
+      "section_path": [
+        "适用场景"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "fatigue",
+        "intensity",
+        "recovery"
+      ],
+      "title": "高疲劳状态下的训练强度处理"
+    },
+    {
+      "category": "RECOVERY",
+      "char_count": 60,
+      "chunk_id": "high-fatigue-intensity-adjustment#cautions#005",
+      "content": "## 注意事项\n\n持续疼痛、明显不适或异常症状不属于普通训练建议范围，应停止训练并寻求合格专业人员帮助。本文不提供诊断。",
+      "content_sha256": "69a963a1fbc9b3aa49082d2ae94abf140f1733bbad1fc662a8c353494e889ed4",
+      "document_id": "high-fatigue-intensity-adjustment",
+      "estimated_token_count": 54,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/recovery/high-fatigue-intensity-adjustment.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 5,
+      "section": "注意事项",
+      "section_path": [
+        "注意事项"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "fatigue",
+        "intensity",
+        "recovery"
+      ],
+      "title": "高疲劳状态下的训练强度处理"
+    },
+    {
+      "category": "RECOVERY",
+      "char_count": 68,
+      "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+      "content": "## 核心原则\n\n训练刺激只有在能够恢复时才有价值。信息不足时应降低结论强度，优先保护训练连续性，而不是把完成单次高强度课当作唯一目标。",
+      "content_sha256": "e043b36a4f6ad414f98e01ded5052113748b9bd43309be66cc4b7a381e9b19a7",
+      "document_id": "high-fatigue-intensity-adjustment",
+      "estimated_token_count": 62,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/recovery/high-fatigue-intensity-adjustment.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 2,
+      "section": "核心原则",
+      "section_path": [
+        "核心原则"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "fatigue",
+        "intensity",
+        "recovery"
+      ],
+      "title": "高疲劳状态下的训练强度处理"
+    },
+    {
+      "category": "RECOVERY",
+      "char_count": 99,
+      "chunk_id": "high-fatigue-intensity-adjustment#decision-conditions#003",
+      "content": "## 判断条件\n\n- 先核对疲劳、腿部感受、睡眠和近期训练趋势是否可用。\n- 区分“数据缺失”和“数据正常”，缺失值不能自动视为无风险。\n- 结合产品确定性规则的结果，不用知识文档重新计算风险等级。",
+      "content_sha256": "a4457370b6ba905b835286df8273aa28f216d9db253aca576ae34c67db8f7980",
+      "document_id": "high-fatigue-intensity-adjustment",
+      "estimated_token_count": 81,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/recovery/high-fatigue-intensity-adjustment.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 3,
+      "section": "判断条件",
+      "section_path": [
+        "判断条件"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "fatigue",
+        "intensity",
+        "recovery"
+      ],
+      "title": "高疲劳状态下的训练强度处理"
+    },
+    {
+      "category": "RECOVERY",
+      "char_count": 62,
+      "chunk_id": "high-fatigue-intensity-adjustment#recommended-strategies#004",
+      "content": "## 推荐策略\n\n可以解释为缩短质量段、降低目标强度、改为轻松跑或安排恢复，但具体选择应由跑者结合确定性建议与现场感受确认。",
+      "content_sha256": "ab6b118d9f8db0405016f9bd23c39d6775d57a1634ded31308931f05d193913b",
+      "document_id": "high-fatigue-intensity-adjustment",
+      "estimated_token_count": 56,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/recovery/high-fatigue-intensity-adjustment.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 4,
+      "section": "推荐策略",
+      "section_path": [
+        "推荐策略"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "fatigue",
+        "intensity",
+        "recovery"
+      ],
+      "title": "高疲劳状态下的训练强度处理"
+    },
+    {
+      "category": "LOAD_MANAGEMENT",
+      "char_count": 51,
+      "chunk_id": "intensity-density-management#applicable-scenarios#001",
+      "content": "## 适用场景\n\n适用于一周内出现多次阈值、间歇或比赛强度训练，需要解释训练密度与恢复间隔关系的场景。",
+      "content_sha256": "969652fe09957899c8908945d0d61daa6462e9e146d707c5b3682e37932c8757",
+      "document_id": "intensity-density-management",
+      "estimated_token_count": 45,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BUILD",
+          "SPECIFIC",
+          "PEAK"
+        ],
+        "document_path": "documents/load_management/intensity-density-management.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 1,
+      "section": "适用场景",
+      "section_path": [
+        "适用场景"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "intensity",
+        "spacing",
+        "load-management"
+      ],
+      "title": "高强度训练密度管理"
+    },
+    {
+      "category": "LOAD_MANAGEMENT",
+      "char_count": 59,
+      "chunk_id": "intensity-density-management#cautions#005",
+      "content": "## 注意事项\n\n高强度数量只是压力信号之一，不能独立形成医学风险结论。分类缺失时应返回信息不足，而不是猜测训练内容。",
+      "content_sha256": "f27a1726d37dc5a76fcafabb92ad666b1bce14f3e1213f7287923c30d073b915",
+      "document_id": "intensity-density-management",
+      "estimated_token_count": 53,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BUILD",
+          "SPECIFIC",
+          "PEAK"
+        ],
+        "document_path": "documents/load_management/intensity-density-management.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 5,
+      "section": "注意事项",
+      "section_path": [
+        "注意事项"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "intensity",
+        "spacing",
+        "load-management"
+      ],
+      "title": "高强度训练密度管理"
+    },
+    {
+      "category": "LOAD_MANAGEMENT",
+      "char_count": 64,
+      "chunk_id": "intensity-density-management#core-principles#002",
+      "content": "## 核心原则\n\n高强度次数与高强度之间的恢复时间需要一起考虑。同一天两次训练不等于连续两个自然日，长距离也不应自动归为高强度。",
+      "content_sha256": "5efbb354b7b0ed2ce420035480ac6348a8300fc3b452df318f17342055b57d31",
+      "document_id": "intensity-density-management",
+      "estimated_token_count": 58,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BUILD",
+          "SPECIFIC",
+          "PEAK"
+        ],
+        "document_path": "documents/load_management/intensity-density-management.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 2,
+      "section": "核心原则",
+      "section_path": [
+        "核心原则"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "intensity",
+        "spacing",
+        "load-management"
+      ],
+      "title": "高强度训练密度管理"
+    },
+    {
+      "category": "LOAD_MANAGEMENT",
+      "char_count": 81,
+      "chunk_id": "intensity-density-management#decision-conditions#003",
+      "content": "## 判断条件\n\n- 使用产品已有的高强度类型分类，不以关键课类型替代。\n- 按自然日判断连续高强度日。\n- 复合训练无法拆分时按可靠主类型处理，并暴露数据限制。",
+      "content_sha256": "335ca0195698f1fcffdef56f8bcaecdb5bde09b1168c849c24c8641f6cafe2ee",
+      "document_id": "intensity-density-management",
+      "estimated_token_count": 68,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BUILD",
+          "SPECIFIC",
+          "PEAK"
+        ],
+        "document_path": "documents/load_management/intensity-density-management.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 3,
+      "section": "判断条件",
+      "section_path": [
+        "判断条件"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "intensity",
+        "spacing",
+        "load-management"
+      ],
+      "title": "高强度训练密度管理"
+    },
+    {
+      "category": "LOAD_MANAGEMENT",
+      "char_count": 61,
+      "chunk_id": "intensity-density-management#recommended-strategies#004",
+      "content": "## 推荐策略\n\n可通过拉开质量课间隔、减少其中一次强度或降低总重复量来控制密度。建议仅用于人工复核，不直接写回正式计划。",
+      "content_sha256": "173e33eaeae0b8acc4b7dd23fe7e57df7cf05bdf4087f04147713198d4f51837",
+      "document_id": "intensity-density-management",
+      "estimated_token_count": 55,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BUILD",
+          "SPECIFIC",
+          "PEAK"
+        ],
+        "document_path": "documents/load_management/intensity-density-management.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 4,
+      "section": "推荐策略",
+      "section_path": [
+        "推荐策略"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "intensity",
+        "spacing",
+        "load-management"
+      ],
+      "title": "高强度训练密度管理"
+    },
+    {
+      "category": "INTERVAL",
+      "char_count": 55,
+      "chunk_id": "interval-recovery-design#applicable-scenarios#001",
+      "content": "## 适用场景\n\n适用于解释间歇训练中为什么恢复长度会改变训练性质，以及如何在无法维持动作质量时进行保守调整。",
+      "content_sha256": "89df9cebd9ffab9400aea1dfac27c73d12d40edecf693b7e21021979078077da",
+      "document_id": "interval-recovery-design",
+      "estimated_token_count": 50,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BUILD",
+          "SPECIFIC",
+          "PEAK"
+        ],
+        "document_path": "documents/interval/interval-recovery-design.md",
+        "evidence_level": "SECONDARY",
+        "language": "zh-CN",
+        "source_type": "BOOK_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 1,
+      "section": "适用场景",
+      "section_path": [
+        "适用场景"
+      ],
+      "source_id": "daniels-running-formula-summary",
+      "tags": [
+        "interval",
+        "recovery",
+        "quality"
+      ],
+      "title": "间歇训练的组间恢复设计"
+    },
+    {
+      "category": "INTERVAL",
+      "char_count": 56,
+      "chunk_id": "interval-recovery-design#cautions#005",
+      "content": "## 注意事项\n\n恢复时间没有适用于所有训练的固定答案。极端不适或动作明显失控时，应停止本次质量训练并人工评估。",
+      "content_sha256": "8b9a7f7b7bbc2a0a6a3d6a3c6a488019911ebf1928882f80ab122229e7aaf6c9",
+      "document_id": "interval-recovery-design",
+      "estimated_token_count": 50,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BUILD",
+          "SPECIFIC",
+          "PEAK"
+        ],
+        "document_path": "documents/interval/interval-recovery-design.md",
+        "evidence_level": "SECONDARY",
+        "language": "zh-CN",
+        "source_type": "BOOK_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 5,
+      "section": "注意事项",
+      "section_path": [
+        "注意事项"
+      ],
+      "source_id": "daniels-running-formula-summary",
+      "tags": [
+        "interval",
+        "recovery",
+        "quality"
+      ],
+      "title": "间歇训练的组间恢复设计"
+    },
+    {
+      "category": "INTERVAL",
+      "char_count": 54,
+      "chunk_id": "interval-recovery-design#core-principles#002",
+      "content": "## 核心原则\n\n组间恢复不是无关紧要的空白。恢复方式和时长应服务于目标刺激，使后续重复仍能以可控动作完成。",
+      "content_sha256": "fa5536db38b6ea8e899f7f710f0afb223a0e845de601eaed11ffdbbfd9d1f545",
+      "document_id": "interval-recovery-design",
+      "estimated_token_count": 48,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BUILD",
+          "SPECIFIC",
+          "PEAK"
+        ],
+        "document_path": "documents/interval/interval-recovery-design.md",
+        "evidence_level": "SECONDARY",
+        "language": "zh-CN",
+        "source_type": "BOOK_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 2,
+      "section": "核心原则",
+      "section_path": [
+        "核心原则"
+      ],
+      "source_id": "daniels-running-formula-summary",
+      "tags": [
+        "interval",
+        "recovery",
+        "quality"
+      ],
+      "title": "间歇训练的组间恢复设计"
+    },
+    {
+      "category": "INTERVAL",
+      "char_count": 80,
+      "chunk_id": "interval-recovery-design#decision-conditions#003",
+      "content": "## 判断条件\n\n- 观察重复段的完成稳定性和动作质量。\n- 区分速度目标、总量目标与恢复目标。\n- 若近期疲劳或连续高强度信号存在，应先复核是否适合完成原课。",
+      "content_sha256": "e7c7a1ced7522b001b4d940944abbbe4f495f14d487890b367546f105d475775",
+      "document_id": "interval-recovery-design",
+      "estimated_token_count": 67,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BUILD",
+          "SPECIFIC",
+          "PEAK"
+        ],
+        "document_path": "documents/interval/interval-recovery-design.md",
+        "evidence_level": "SECONDARY",
+        "language": "zh-CN",
+        "source_type": "BOOK_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 3,
+      "section": "判断条件",
+      "section_path": [
+        "判断条件"
+      ],
+      "source_id": "daniels-running-formula-summary",
+      "tags": [
+        "interval",
+        "recovery",
+        "quality"
+      ],
+      "title": "间歇训练的组间恢复设计"
+    },
+    {
+      "category": "INTERVAL",
+      "char_count": 61,
+      "chunk_id": "interval-recovery-design#recommended-strategies#004",
+      "content": "## 推荐策略\n\n可以延长恢复、减少重复次数或降低目标强度，以保持训练意图。调整选择应写成建议，不应自动修改正式训练计划。",
+      "content_sha256": "a755ede041a1510ad8e1ae364e5a5686c5cb3e3021dbcafd9f3af9381680cddf",
+      "document_id": "interval-recovery-design",
+      "estimated_token_count": 54,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BUILD",
+          "SPECIFIC",
+          "PEAK"
+        ],
+        "document_path": "documents/interval/interval-recovery-design.md",
+        "evidence_level": "SECONDARY",
+        "language": "zh-CN",
+        "source_type": "BOOK_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 4,
+      "section": "推荐策略",
+      "section_path": [
+        "推荐策略"
+      ],
+      "source_id": "daniels-running-formula-summary",
+      "tags": [
+        "interval",
+        "recovery",
+        "quality"
+      ],
+      "title": "间歇训练的组间恢复设计"
+    },
+    {
+      "category": "LONG_RUN",
+      "char_count": 48,
+      "chunk_id": "long-run-placement#applicable-scenarios#001",
+      "content": "## 适用场景\n\n适用于安排每周长距离，并解释它与前后质量训练、补给练习和恢复日之间关系的场景。",
+      "content_sha256": "714b884a01a3b1db6a7fa7325214b0ea2d054e2bea4174dcb848cb47d3bea3cd",
+      "document_id": "long-run-placement",
+      "estimated_token_count": 42,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/long_run/long-run-placement.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 1,
+      "section": "适用场景",
+      "section_path": [
+        "适用场景"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "long-run",
+        "scheduling",
+        "recovery"
+      ],
+      "title": "长距离训练的安排与恢复"
+    },
+    {
+      "category": "LONG_RUN",
+      "char_count": 46,
+      "chunk_id": "long-run-placement#cautions#005",
+      "content": "## 注意事项\n\n补给、天气和路线会显著影响执行。本文不提供个人化补液、营养或医疗处置方案。",
+      "content_sha256": "7ebf41014e58def86cbb5521911f17d8106d929991b37b9910cdf724e4c95824",
+      "document_id": "long-run-placement",
+      "estimated_token_count": 40,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/long_run/long-run-placement.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 5,
+      "section": "注意事项",
+      "section_path": [
+        "注意事项"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "long-run",
+        "scheduling",
+        "recovery"
+      ],
+      "title": "长距离训练的安排与恢复"
+    },
+    {
+      "category": "LONG_RUN",
+      "char_count": 61,
+      "chunk_id": "long-run-placement#core-principles#002",
+      "content": "## 核心原则\n\n长距离的主要压力可以来自持续时间和总量，而不一定来自高强度。它是关键训练，但不能据此自动计入高强度次数。",
+      "content_sha256": "eaea32e91b23af5eb03918d01aae7f7e1f22526b7a9ea5837f6e6fc9b733c60c",
+      "document_id": "long-run-placement",
+      "estimated_token_count": 55,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/long_run/long-run-placement.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 2,
+      "section": "核心原则",
+      "section_path": [
+        "核心原则"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "long-run",
+        "scheduling",
+        "recovery"
+      ],
+      "title": "长距离训练的安排与恢复"
+    },
+    {
+      "category": "LONG_RUN",
+      "char_count": 78,
+      "chunk_id": "long-run-placement#decision-conditions#003",
+      "content": "## 判断条件\n\n- 检查此前训练是否已经累积较高总量或高强度密度。\n- 确认长距离的目标是轻松耐力、渐进还是专项内容。\n- 将距离缺失和真实零值分开处理。",
+      "content_sha256": "b7fefc176b6c09c637287d85a3f87c206486c5a67c1163acc2b0ad4d423a881f",
+      "document_id": "long-run-placement",
+      "estimated_token_count": 66,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/long_run/long-run-placement.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 3,
+      "section": "判断条件",
+      "section_path": [
+        "判断条件"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "long-run",
+        "scheduling",
+        "recovery"
+      ],
+      "title": "长距离训练的安排与恢复"
+    },
+    {
+      "category": "LONG_RUN",
+      "char_count": 63,
+      "chunk_id": "long-run-placement#recommended-strategies#004",
+      "content": "## 推荐策略\n\n在长距离前后安排更易恢复的训练；当恢复信息不足或近期跑量突增时，可缩短距离、取消专项段或改为易控制的耐力跑。",
+      "content_sha256": "179be3835a6dc747f2e6284530db6c02371a6b2e27113609a52540d309ec582b",
+      "document_id": "long-run-placement",
+      "estimated_token_count": 57,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/long_run/long-run-placement.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 4,
+      "section": "推荐策略",
+      "section_path": [
+        "推荐策略"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "long-run",
+        "scheduling",
+        "recovery"
+      ],
+      "title": "长距离训练的安排与恢复"
+    },
+    {
+      "category": "INJURY_PREVENTION",
+      "char_count": 53,
+      "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+      "content": "## 适用场景\n\n适用于训练对话中出现疼痛、异常疲劳或伤病担忧，需要明确系统能力边界和保守处置原则的场景。",
+      "content_sha256": "8ce22974edd3dfca3c337dd4e4c90b0bb335a8b234192a96893fbeb7c7fc57a8",
+      "document_id": "pain-risk-boundaries",
+      "estimated_token_count": 47,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC",
+          "PEAK",
+          "TAPER",
+          "RACE",
+          "RECOVERY"
+        ],
+        "document_path": "documents/injury_prevention/pain-risk-boundaries.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 1,
+      "section": "适用场景",
+      "section_path": [
+        "适用场景"
+      ],
+      "source_id": "running-strength-consensus-summary",
+      "tags": [
+        "pain",
+        "safety",
+        "limitations"
+      ],
+      "title": "疼痛与伤病风险提示边界"
+    },
+    {
+      "category": "INJURY_PREVENTION",
+      "char_count": 51,
+      "chunk_id": "pain-risk-boundaries#cautions#005",
+      "content": "## 注意事项\n\n本文仅定义产品安全沟通边界。它不能用于排除严重问题，也不能作为恢复训练或参赛的许可。",
+      "content_sha256": "65f1ef5db5129a60a0258491114dcb1905353b96e690dd24ecb9e5df8e6732a6",
+      "document_id": "pain-risk-boundaries",
+      "estimated_token_count": 45,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC",
+          "PEAK",
+          "TAPER",
+          "RACE",
+          "RECOVERY"
+        ],
+        "document_path": "documents/injury_prevention/pain-risk-boundaries.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 5,
+      "section": "注意事项",
+      "section_path": [
+        "注意事项"
+      ],
+      "source_id": "running-strength-consensus-summary",
+      "tags": [
+        "pain",
+        "safety",
+        "limitations"
+      ],
+      "title": "疼痛与伤病风险提示边界"
+    },
+    {
+      "category": "INJURY_PREVENTION",
+      "char_count": 65,
+      "chunk_id": "pain-risk-boundaries#core-principles#002",
+      "content": "## 核心原则\n\n训练系统可以提示停止、复核和收集信息，但不能根据日志给出医学诊断。缺少医学检查时，不应把风险提示包装成确定病名。",
+      "content_sha256": "c11576eda24ae39ef601d764004a0617d4109ed2d897627cda29335ddc6bed67",
+      "document_id": "pain-risk-boundaries",
+      "estimated_token_count": 58,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC",
+          "PEAK",
+          "TAPER",
+          "RACE",
+          "RECOVERY"
+        ],
+        "document_path": "documents/injury_prevention/pain-risk-boundaries.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 2,
+      "section": "核心原则",
+      "section_path": [
+        "核心原则"
+      ],
+      "source_id": "running-strength-consensus-summary",
+      "tags": [
+        "pain",
+        "safety",
+        "limitations"
+      ],
+      "title": "疼痛与伤病风险提示边界"
+    },
+    {
+      "category": "INJURY_PREVENTION",
+      "char_count": 87,
+      "chunk_id": "pain-risk-boundaries#decision-conditions#003",
+      "content": "## 判断条件\n\n- 区分普通训练吃力与持续、加重或影响动作的疼痛描述。\n- 检查信息是否来自用户明确输入，不从跑量单独推断伤病。\n- 缺少关键信息时输出限制和人工确认建议。",
+      "content_sha256": "62a8d701c42863d584c81917c7052737fc52c0127f539d0ed1bd4ee9332ab9d0",
+      "document_id": "pain-risk-boundaries",
+      "estimated_token_count": 74,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC",
+          "PEAK",
+          "TAPER",
+          "RACE",
+          "RECOVERY"
+        ],
+        "document_path": "documents/injury_prevention/pain-risk-boundaries.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 3,
+      "section": "判断条件",
+      "section_path": [
+        "判断条件"
+      ],
+      "source_id": "running-strength-consensus-summary",
+      "tags": [
+        "pain",
+        "safety",
+        "limitations"
+      ],
+      "title": "疼痛与伤病风险提示边界"
+    },
+    {
+      "category": "INJURY_PREVENTION",
+      "char_count": 64,
+      "chunk_id": "pain-risk-boundaries#recommended-strategies#004",
+      "content": "## 推荐策略\n\n当症状明显、持续或加重时，建议停止相关训练并寻求合格医疗或康复专业人员评估。系统不应自动生成“带伤训练”方案。",
+      "content_sha256": "f4e1b6381c53bd2829aaebf99bd8d5a6ded40d01ecc4015353ec8185fec9cb23",
+      "document_id": "pain-risk-boundaries",
+      "estimated_token_count": 56,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC",
+          "PEAK",
+          "TAPER",
+          "RACE",
+          "RECOVERY"
+        ],
+        "document_path": "documents/injury_prevention/pain-risk-boundaries.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 4,
+      "section": "推荐策略",
+      "section_path": [
+        "推荐策略"
+      ],
+      "source_id": "running-strength-consensus-summary",
+      "tags": [
+        "pain",
+        "safety",
+        "limitations"
+      ],
+      "title": "疼痛与伤病风险提示边界"
+    },
+    {
+      "category": "PERIODIZATION",
+      "char_count": 58,
+      "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+      "content": "## 适用场景\n\n适用于解释基础期、建设期、专项期、峰值期和减量期之间为何需要渐进转换，而不是突然替换全部训练内容。",
+      "content_sha256": "c2bd49616505045e0e0629f5703f113dd3cd749835351b0921c73056ed4beb50",
+      "document_id": "phase-transition-principles",
+      "estimated_token_count": 51,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC",
+          "PEAK",
+          "TAPER"
+        ],
+        "document_path": "documents/periodization/phase-transition-principles.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 1,
+      "section": "适用场景",
+      "section_path": [
+        "适用场景"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "periodization",
+        "phase",
+        "progression"
+      ],
+      "title": "训练阶段转换原则"
+    },
+    {
+      "category": "PERIODIZATION",
+      "char_count": 52,
+      "chunk_id": "phase-transition-principles#cautions#005",
+      "content": "## 注意事项\n\n不同周期长度会导致不同转换节奏。本文不推断竞技能力，也不自动创建、覆盖或调整训练计划。",
+      "content_sha256": "660555c0eee3c4ea9820efca470006b51e42b38d5319b91df7a722383ecfc13c",
+      "document_id": "phase-transition-principles",
+      "estimated_token_count": 46,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC",
+          "PEAK",
+          "TAPER"
+        ],
+        "document_path": "documents/periodization/phase-transition-principles.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 5,
+      "section": "注意事项",
+      "section_path": [
+        "注意事项"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "periodization",
+        "phase",
+        "progression"
+      ],
+      "title": "训练阶段转换原则"
+    },
+    {
+      "category": "PERIODIZATION",
+      "char_count": 65,
+      "chunk_id": "phase-transition-principles#core-principles#002",
+      "content": "## 核心原则\n\n阶段是训练重点的组织方式，不是对跑者能力的标签。阶段映射必须来自明确结构化字段，不能根据比赛日期或跑量自动猜测。",
+      "content_sha256": "f674460a6263f4672237b486029f4d95e598c42e3f23f3ecd7be4f34140b49b2",
+      "document_id": "phase-transition-principles",
+      "estimated_token_count": 59,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC",
+          "PEAK",
+          "TAPER"
+        ],
+        "document_path": "documents/periodization/phase-transition-principles.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 2,
+      "section": "核心原则",
+      "section_path": [
+        "核心原则"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "periodization",
+        "phase",
+        "progression"
+      ],
+      "title": "训练阶段转换原则"
+    },
+    {
+      "category": "PERIODIZATION",
+      "char_count": 71,
+      "chunk_id": "phase-transition-principles#decision-conditions#003",
+      "content": "## 判断条件\n\n- 确认训练周期是否存在明确阶段字段。\n- 核对当前阶段目标和上一阶段已完成内容。\n- 阶段字段缺失时保持 UNKNOWN。",
+      "content_sha256": "cdc8f656e8f193fa4aef3f0fa30981f720661b4f60e1e5e33299fca8eb007074",
+      "document_id": "phase-transition-principles",
+      "estimated_token_count": 53,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC",
+          "PEAK",
+          "TAPER"
+        ],
+        "document_path": "documents/periodization/phase-transition-principles.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 3,
+      "section": "判断条件",
+      "section_path": [
+        "判断条件"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "periodization",
+        "phase",
+        "progression"
+      ],
+      "title": "训练阶段转换原则"
+    },
+    {
+      "category": "PERIODIZATION",
+      "char_count": 61,
+      "chunk_id": "phase-transition-principles#recommended-strategies#004",
+      "content": "## 推荐策略\n\n转换时保留部分熟悉训练，逐步改变重点、专项性和恢复安排。说明应突出阶段目标，不把知识文档当作计划生成器。",
+      "content_sha256": "d5ca6101c803eb8361b4e0b6bd69d514dd8e64cef28759e04d9ff17dc53a3792",
+      "document_id": "phase-transition-principles",
+      "estimated_token_count": 54,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC",
+          "PEAK",
+          "TAPER"
+        ],
+        "document_path": "documents/periodization/phase-transition-principles.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 4,
+      "section": "推荐策略",
+      "section_path": [
+        "推荐策略"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "periodization",
+        "phase",
+        "progression"
+      ],
+      "title": "训练阶段转换原则"
+    },
+    {
+      "category": "TAPER",
+      "char_count": 48,
+      "chunk_id": "pre-race-taper-principles#applicable-scenarios#001",
+      "content": "## 适用场景\n\n适用于目标比赛临近，需要解释如何降低累积疲劳，同时保留跑步节奏和熟悉感的场景。",
+      "content_sha256": "e33056d41319b5ba341baf35cefc2b050858ec6db1c45be6292210d298a10113",
+      "document_id": "pre-race-taper-principles",
+      "estimated_token_count": 42,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "TAPER",
+          "RACE"
+        ],
+        "document_path": "documents/taper/pre-race-taper-principles.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 1,
+      "section": "适用场景",
+      "section_path": [
+        "适用场景"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "taper",
+        "race",
+        "recovery"
+      ],
+      "title": "比赛前减量原则"
+    },
+    {
+      "category": "TAPER",
+      "char_count": 55,
+      "chunk_id": "pre-race-taper-principles#cautions#005",
+      "content": "## 注意事项\n\n减量无法保证比赛表现，也不能解决急性伤病或疾病。比赛装备、补给和配速策略应在此前训练中验证。",
+      "content_sha256": "8eb20234ad9b5cdfca31366f9424f1b16c972f90e00df1b38f1cf85a1bd628ec",
+      "document_id": "pre-race-taper-principles",
+      "estimated_token_count": 49,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "TAPER",
+          "RACE"
+        ],
+        "document_path": "documents/taper/pre-race-taper-principles.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 5,
+      "section": "注意事项",
+      "section_path": [
+        "注意事项"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "taper",
+        "race",
+        "recovery"
+      ],
+      "title": "比赛前减量原则"
+    },
+    {
+      "category": "TAPER",
+      "char_count": 56,
+      "chunk_id": "pre-race-taper-principles#core-principles#002",
+      "content": "## 核心原则\n\n减量的重点是减少总体压力，不是临时补齐缺失训练。比赛前新增陌生刺激通常比保持熟悉结构更难控制。",
+      "content_sha256": "ef15009dcbd0423fab434bf5b1770496e4bb1c0d9f7a8e75ba99a929163b1f9d",
+      "document_id": "pre-race-taper-principles",
+      "estimated_token_count": 50,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "TAPER",
+          "RACE"
+        ],
+        "document_path": "documents/taper/pre-race-taper-principles.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 2,
+      "section": "核心原则",
+      "section_path": [
+        "核心原则"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "taper",
+        "race",
+        "recovery"
+      ],
+      "title": "比赛前减量原则"
+    },
+    {
+      "category": "TAPER",
+      "char_count": 82,
+      "chunk_id": "pre-race-taper-principles#decision-conditions#003",
+      "content": "## 判断条件\n\n- 只有明确的 TAPER 或 RACE 阶段才能据此解释。\n- 核对近期长距离、质量训练和恢复情况。\n- 训练数据不足时不虚构“已经恢复充分”。",
+      "content_sha256": "5b9d99ef2185fff8ebfb529b9735f528846f689ca3e9db30f62e901de26765c9",
+      "document_id": "pre-race-taper-principles",
+      "estimated_token_count": 59,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "TAPER",
+          "RACE"
+        ],
+        "document_path": "documents/taper/pre-race-taper-principles.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 3,
+      "section": "判断条件",
+      "section_path": [
+        "判断条件"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "taper",
+        "race",
+        "recovery"
+      ],
+      "title": "比赛前减量原则"
+    },
+    {
+      "category": "TAPER",
+      "char_count": 57,
+      "chunk_id": "pre-race-taper-principles#recommended-strategies#004",
+      "content": "## 推荐策略\n\n可以减少总量和单次训练长度，保留少量熟悉节奏，并增加恢复余量。具体幅度由既定计划和实际反应决定。",
+      "content_sha256": "78bcd31ceeebc5bb2faf86bd9e3a4e6ed71b8b69e40c239a746ecdb3faa1e9b5",
+      "document_id": "pre-race-taper-principles",
+      "estimated_token_count": 51,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "TAPER",
+          "RACE"
+        ],
+        "document_path": "documents/taper/pre-race-taper-principles.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 4,
+      "section": "推荐策略",
+      "section_path": [
+        "推荐策略"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "taper",
+        "race",
+        "recovery"
+      ],
+      "title": "比赛前减量原则"
+    },
+    {
+      "category": "LOAD_MANAGEMENT",
+      "char_count": 59,
+      "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+      "content": "## 适用场景\n\n适用于近期周跑量连续上升，需要解释为什么下一步不应机械继续增加，以及如何观察能否稳定吸收训练的场景。",
+      "content_sha256": "1ef860000ce6c53b78b1c695d608dd7cdd0ca3d72515da54cb3f80e1493324d7",
+      "document_id": "progressive-volume-adjustment",
+      "estimated_token_count": 53,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD"
+        ],
+        "document_path": "documents/load_management/progressive-volume-adjustment.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 1,
+      "section": "适用场景",
+      "section_path": [
+        "适用场景"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "volume",
+        "progression",
+        "recovery"
+      ],
+      "title": "连续增加跑量后的调整"
+    },
+    {
+      "category": "LOAD_MANAGEMENT",
+      "char_count": 60,
+      "chunk_id": "progressive-volume-adjustment#cautions#005",
+      "content": "## 注意事项\n\n跑量变化只说明距离维度，不能直接等同于综合负荷、竞技能力或伤病概率。出现异常不适时应采用更保守的处理。",
+      "content_sha256": "077a4181f9e37c5be65561955efcd7d44dd774ec77e27ccc47fb1f2a6ac030f4",
+      "document_id": "progressive-volume-adjustment",
+      "estimated_token_count": 54,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD"
+        ],
+        "document_path": "documents/load_management/progressive-volume-adjustment.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 5,
+      "section": "注意事项",
+      "section_path": [
+        "注意事项"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "volume",
+        "progression",
+        "recovery"
+      ],
+      "title": "连续增加跑量后的调整"
+    },
+    {
+      "category": "LOAD_MANAGEMENT",
+      "char_count": 59,
+      "chunk_id": "progressive-volume-adjustment#core-principles#002",
+      "content": "## 核心原则\n\n跑量进展应当留有稳定和恢复的阶段。单纯按固定百分比递增不能反映训练类型、地形、生活压力和个体训练史。",
+      "content_sha256": "49945e7575b99e3bcf0bf0a8ef8cd57d710ab408d653d1083102c253882609d6",
+      "document_id": "progressive-volume-adjustment",
+      "estimated_token_count": 53,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD"
+        ],
+        "document_path": "documents/load_management/progressive-volume-adjustment.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 2,
+      "section": "核心原则",
+      "section_path": [
+        "核心原则"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "volume",
+        "progression",
+        "recovery"
+      ],
+      "title": "连续增加跑量后的调整"
+    },
+    {
+      "category": "LOAD_MANAGEMENT",
+      "char_count": 92,
+      "chunk_id": "progressive-volume-adjustment#decision-conditions#003",
+      "content": "## 判断条件\n\n- 比较独立的近期窗口与此前基线，不用重叠窗口制造趋势。\n- 同时查看训练次数、质量课密度、完成率和数据完整度。\n- 跑量基线接近零或训练记录不足时，不输出确定趋势。",
+      "content_sha256": "3e0fc12e8c5686325973bc040652c391b48b8f4c0822ab10aa7fef9fbaaf8b88",
+      "document_id": "progressive-volume-adjustment",
+      "estimated_token_count": 77,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD"
+        ],
+        "document_path": "documents/load_management/progressive-volume-adjustment.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 3,
+      "section": "判断条件",
+      "section_path": [
+        "判断条件"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "volume",
+        "progression",
+        "recovery"
+      ],
+      "title": "连续增加跑量后的调整"
+    },
+    {
+      "category": "LOAD_MANAGEMENT",
+      "char_count": 66,
+      "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+      "content": "## 推荐策略\n\n在连续增长后可以先维持、轻度回撤或安排恢复周，再根据完成质量继续。解释应表达选择条件，不把某个比例描述为普适阈值。",
+      "content_sha256": "2df932545c139f1b828b125f659985570d2a4ac589fbfc8847802d76da68ea96",
+      "document_id": "progressive-volume-adjustment",
+      "estimated_token_count": 59,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD"
+        ],
+        "document_path": "documents/load_management/progressive-volume-adjustment.md",
+        "evidence_level": "INTERNAL",
+        "language": "zh-CN",
+        "source_type": "ORIGINAL_CONTENT",
+        "status": "ACTIVE"
+      },
+      "ordinal": 4,
+      "section": "推荐策略",
+      "section_path": [
+        "推荐策略"
+      ],
+      "source_id": "gaitlogic-original-training-principles",
+      "tags": [
+        "volume",
+        "progression",
+        "recovery"
+      ],
+      "title": "连续增加跑量后的调整"
+    },
+    {
+      "category": "RECOVERY",
+      "char_count": 52,
+      "chunk_id": "recovery-week-principles#applicable-scenarios#001",
+      "content": "## 适用场景\n\n适用于连续若干周训练后需要吸收负荷、日常压力增加，或完成质量开始下降的阶段性安排说明。",
+      "content_sha256": "7c18d66fafa31ada6b5671b44f75e3c79a43ed285b98ace5ad89394de5e5c240",
+      "document_id": "recovery-week-principles",
+      "estimated_token_count": 46,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/recovery/recovery-week-principles.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 1,
+      "section": "适用场景",
+      "section_path": [
+        "适用场景"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "recovery-week",
+        "adaptation",
+        "consistency"
+      ],
+      "title": "恢复周的安排原则"
+    },
+    {
+      "category": "RECOVERY",
+      "char_count": 57,
+      "chunk_id": "recovery-week-principles#cautions#005",
+      "content": "## 注意事项\n\n恢复安排因训练史和目标阶段而异。恢复周不能掩盖持续疼痛、疾病或长期恢复不良等需要独立处理的问题。",
+      "content_sha256": "fbfd5fc6407fd76dd0f2683ebe35df265b67700381cb69ef944f83d83a117eab",
+      "document_id": "recovery-week-principles",
+      "estimated_token_count": 51,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/recovery/recovery-week-principles.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 5,
+      "section": "注意事项",
+      "section_path": [
+        "注意事项"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "recovery-week",
+        "adaptation",
+        "consistency"
+      ],
+      "title": "恢复周的安排原则"
+    },
+    {
+      "category": "RECOVERY",
+      "char_count": 63,
+      "chunk_id": "recovery-week-principles#core-principles#002",
+      "content": "## 核心原则\n\n恢复周不是完全停训的同义词，而是主动降低总体训练压力，让适应过程有空间发生，同时保留适量、易控制的跑步节奏。",
+      "content_sha256": "ed1416e79e2120f3ed92f3451fb7865c13506f12e84de4e3cbab2b243536e5c1",
+      "document_id": "recovery-week-principles",
+      "estimated_token_count": 56,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/recovery/recovery-week-principles.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 2,
+      "section": "核心原则",
+      "section_path": [
+        "核心原则"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "recovery-week",
+        "adaptation",
+        "consistency"
+      ],
+      "title": "恢复周的安排原则"
+    },
+    {
+      "category": "RECOVERY",
+      "char_count": 91,
+      "chunk_id": "recovery-week-principles#decision-conditions#003",
+      "content": "## 判断条件\n\n- 回看多周训练量、完成情况和主观感受，而不是只看单日表现。\n- 判断工作、睡眠和旅行等训练外压力是否上升。\n- 若资料不完整，应明确限制，不凭空给出精确减量幅度。",
+      "content_sha256": "3af13a6381d371c7680e328a63a17c3c71bc216d8b4ea6526b9cf0598e000544",
+      "document_id": "recovery-week-principles",
+      "estimated_token_count": 76,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/recovery/recovery-week-principles.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 3,
+      "section": "判断条件",
+      "section_path": [
+        "判断条件"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "recovery-week",
+        "adaptation",
+        "consistency"
+      ],
+      "title": "恢复周的安排原则"
+    },
+    {
+      "category": "RECOVERY",
+      "char_count": 65,
+      "chunk_id": "recovery-week-principles#recommended-strategies#004",
+      "content": "## 推荐策略\n\n通常可减少训练总量、缩短长距离或减少高强度重复次数，并保留轻松训练和基础活动。恢复周之后再根据实际反应恢复推进。",
+      "content_sha256": "ffa51abe57bd0df7d392e8243dd430b380652634839abd0db193d98a2d1537a5",
+      "document_id": "recovery-week-principles",
+      "estimated_token_count": 59,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/recovery/recovery-week-principles.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 4,
+      "section": "推荐策略",
+      "section_path": [
+        "推荐策略"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "recovery-week",
+        "adaptation",
+        "consistency"
+      ],
+      "title": "恢复周的安排原则"
+    },
+    {
+      "category": "STRENGTH",
+      "char_count": 49,
+      "chunk_id": "running-strength-basics#applicable-scenarios#001",
+      "content": "## 适用场景\n\n适用于跑者希望把基础力量训练加入跑步周期，并避免它与关键跑步训练相互干扰的场景。",
+      "content_sha256": "21caa2abe25267c945e9584985344718fb5aa545bd9cb869e674ac202c2e7346",
+      "document_id": "running-strength-basics",
+      "estimated_token_count": 44,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/strength/running-strength-basics.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 1,
+      "section": "适用场景",
+      "section_path": [
+        "适用场景"
+      ],
+      "source_id": "running-strength-consensus-summary",
+      "tags": [
+        "strength",
+        "scheduling",
+        "adaptation"
+      ],
+      "title": "跑者力量训练基础安排"
+    },
+    {
+      "category": "STRENGTH",
+      "char_count": 50,
+      "chunk_id": "running-strength-basics#cautions#005",
+      "content": "## 注意事项\n\n有疼痛、术后状态或明确功能限制时，应寻求合格专业人员指导。本文不提供具体治疗动作。",
+      "content_sha256": "a08a02ba7ba0e9932c5ef804304abf3be047bb840a72910b196517e03bc2b6ba",
+      "document_id": "running-strength-basics",
+      "estimated_token_count": 44,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/strength/running-strength-basics.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 5,
+      "section": "注意事项",
+      "section_path": [
+        "注意事项"
+      ],
+      "source_id": "running-strength-consensus-summary",
+      "tags": [
+        "strength",
+        "scheduling",
+        "adaptation"
+      ],
+      "title": "跑者力量训练基础安排"
+    },
+    {
+      "category": "STRENGTH",
+      "char_count": 65,
+      "chunk_id": "running-strength-basics#core-principles#002",
+      "content": "## 核心原则\n\n力量训练应从可控动作和可恢复剂量开始，长期一致性比偶尔的大剂量刺激更重要。它是跑步训练的补充，不是疼痛治疗方案。",
+      "content_sha256": "fb5edb0407d7dad685e3951a4734266f911ee69398a30236d455b17af2f3c371",
+      "document_id": "running-strength-basics",
+      "estimated_token_count": 59,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/strength/running-strength-basics.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 2,
+      "section": "核心原则",
+      "section_path": [
+        "核心原则"
+      ],
+      "source_id": "running-strength-consensus-summary",
+      "tags": [
+        "strength",
+        "scheduling",
+        "adaptation"
+      ],
+      "title": "跑者力量训练基础安排"
+    },
+    {
+      "category": "STRENGTH",
+      "char_count": 77,
+      "chunk_id": "running-strength-basics#decision-conditions#003",
+      "content": "## 判断条件\n\n- 核对既往力量训练经验和动作熟悉度。\n- 避免在关键跑步训练前安排明显增加肌肉酸痛的新刺激。\n- 数据不足时不判断动作缺陷或身体弱点。",
+      "content_sha256": "a59b77b2619f57821aaa9d6e7b3e659c6b38d8887cb78a9d357d26cfdb92fcbc",
+      "document_id": "running-strength-basics",
+      "estimated_token_count": 65,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/strength/running-strength-basics.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 3,
+      "section": "判断条件",
+      "section_path": [
+        "判断条件"
+      ],
+      "source_id": "running-strength-consensus-summary",
+      "tags": [
+        "strength",
+        "scheduling",
+        "adaptation"
+      ],
+      "title": "跑者力量训练基础安排"
+    },
+    {
+      "category": "STRENGTH",
+      "char_count": 63,
+      "chunk_id": "running-strength-basics#recommended-strategies#004",
+      "content": "## 推荐策略\n\n优先选择少量基础动作、稳定技术和渐进负荷，并在训练周中为恢复留出空间。比赛临近时应降低陌生和高酸痛风险内容。",
+      "content_sha256": "a61f0bb60f3ced1b791d2872dc5b296e14f1efc1add694a8d5073dd4e8e25851",
+      "document_id": "running-strength-basics",
+      "estimated_token_count": 57,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/strength/running-strength-basics.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 4,
+      "section": "推荐策略",
+      "section_path": [
+        "推荐策略"
+      ],
+      "source_id": "running-strength-consensus-summary",
+      "tags": [
+        "strength",
+        "scheduling",
+        "adaptation"
+      ],
+      "title": "跑者力量训练基础安排"
+    },
+    {
+      "category": "THRESHOLD",
+      "char_count": 53,
+      "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+      "content": "## 适用场景\n\n适用于解释阈值训练不应只看配速，以及在天气、坡度或疲劳变化时如何综合观察训练是否仍可控。",
+      "content_sha256": "eb599def4b251e65ff2a93fe4184361113d3ff4bfa09c8ab9dc142ef4d242c31",
+      "document_id": "threshold-control-signals",
+      "estimated_token_count": 47,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/threshold/threshold-control-signals.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 1,
+      "section": "适用场景",
+      "section_path": [
+        "适用场景"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "threshold",
+        "rpe",
+        "pacing"
+      ],
+      "title": "阈值训练中的强度控制信号"
+    },
+    {
+      "category": "THRESHOLD",
+      "char_count": 54,
+      "chunk_id": "threshold-control-signals#cautions#005",
+      "content": "## 注意事项\n\n本文不定义个人阈值，也不替代实验室或现场测评。异常胸痛、眩晕等症状不属于训练强度微调范围。",
+      "content_sha256": "27bf4493ee9a4ee8b321d0b227e86ed35c17f83523b52aff4e5947509fde198a",
+      "document_id": "threshold-control-signals",
+      "estimated_token_count": 48,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/threshold/threshold-control-signals.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 5,
+      "section": "注意事项",
+      "section_path": [
+        "注意事项"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "threshold",
+        "rpe",
+        "pacing"
+      ],
+      "title": "阈值训练中的强度控制信号"
+    },
+    {
+      "category": "THRESHOLD",
+      "char_count": 58,
+      "chunk_id": "threshold-control-signals#core-principles#002",
+      "content": "## 核心原则\n\n配速、主观强度、呼吸和动作稳定性是互补信号。任何单一信号缺失或异常，都不应被另一个信号无条件覆盖。",
+      "content_sha256": "4c5f6f79b5198640071eec3f1fb6739f81254e83dfff106412ea479978c5e72c",
+      "document_id": "threshold-control-signals",
+      "estimated_token_count": 51,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/threshold/threshold-control-signals.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 2,
+      "section": "核心原则",
+      "section_path": [
+        "核心原则"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "threshold",
+        "rpe",
+        "pacing"
+      ],
+      "title": "阈值训练中的强度控制信号"
+    },
+    {
+      "category": "THRESHOLD",
+      "char_count": 81,
+      "chunk_id": "threshold-control-signals#decision-conditions#003",
+      "content": "## 判断条件\n\n- 只统计有效范围内的 RPE，不用零代表缺失。\n- 心率覆盖不足时明确说明。\n- 对照训练目标和分段稳定性，不把最后一段加速视为整课强度证据。",
+      "content_sha256": "c35ce74e26ddcb2a2318cd78f76bd74b7aa16de4df88253fd3663b2427474619",
+      "document_id": "threshold-control-signals",
+      "estimated_token_count": 66,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/threshold/threshold-control-signals.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 3,
+      "section": "判断条件",
+      "section_path": [
+        "判断条件"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "threshold",
+        "rpe",
+        "pacing"
+      ],
+      "title": "阈值训练中的强度控制信号"
+    },
+    {
+      "category": "THRESHOLD",
+      "char_count": 59,
+      "chunk_id": "threshold-control-signals#recommended-strategies#004",
+      "content": "## 推荐策略\n\n当环境导致配速失真时，可优先保持可控体感和动作质量；若强度持续超出目标，应缩短训练或转为较轻松内容。",
+      "content_sha256": "086d1c3c267182f46ddadf44cf2742b2f868347236cdd437040a9766f2a4ac2f",
+      "document_id": "threshold-control-signals",
+      "estimated_token_count": 53,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/threshold/threshold-control-signals.md",
+        "evidence_level": "EXPERT_CONSENSUS",
+        "language": "zh-CN",
+        "source_type": "GUIDELINE_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 4,
+      "section": "推荐策略",
+      "section_path": [
+        "推荐策略"
+      ],
+      "source_id": "public-endurance-guidance-summary",
+      "tags": [
+        "threshold",
+        "rpe",
+        "pacing"
+      ],
+      "title": "阈值训练中的强度控制信号"
+    },
+    {
+      "category": "THRESHOLD",
+      "char_count": 50,
+      "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+      "content": "## 适用场景\n\n适用于需要把阈值训练放入一周计划，并说明它与长距离、间歇及恢复训练如何错开的场景。",
+      "content_sha256": "5b13f376758fc993808a95b593986acabae1324742dd3b142996f2ca3efb0709",
+      "document_id": "threshold-session-placement",
+      "estimated_token_count": 44,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/threshold/threshold-session-placement.md",
+        "evidence_level": "SECONDARY",
+        "language": "zh-CN",
+        "source_type": "BOOK_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 1,
+      "section": "适用场景",
+      "section_path": [
+        "适用场景"
+      ],
+      "source_id": "daniels-running-formula-summary",
+      "tags": [
+        "threshold",
+        "scheduling",
+        "recovery"
+      ],
+      "title": "阈值训练的周内安排"
+    },
+    {
+      "category": "THRESHOLD",
+      "char_count": 59,
+      "chunk_id": "threshold-session-placement#cautions#005",
+      "content": "## 注意事项\n\n阈值配速应来自已有配速规则或测评，不由本文推导。高温、坡度和疲劳会改变体感，不能只依赖单一即时配速。",
+      "content_sha256": "834e49f992956eb4af713afc103fba80cd96ebecab7bdecb08a8a9102fe7b720",
+      "document_id": "threshold-session-placement",
+      "estimated_token_count": 52,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/threshold/threshold-session-placement.md",
+        "evidence_level": "SECONDARY",
+        "language": "zh-CN",
+        "source_type": "BOOK_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 5,
+      "section": "注意事项",
+      "section_path": [
+        "注意事项"
+      ],
+      "source_id": "daniels-running-formula-summary",
+      "tags": [
+        "threshold",
+        "scheduling",
+        "recovery"
+      ],
+      "title": "阈值训练的周内安排"
+    },
+    {
+      "category": "THRESHOLD",
+      "char_count": 59,
+      "chunk_id": "threshold-session-placement#core-principles#002",
+      "content": "## 核心原则\n\n阈值训练应形成可控且连续的刺激，不以每次跑到力竭为目标。安排位置要为前后训练留出足够恢复和执行质量。",
+      "content_sha256": "2d9e677b0f62ffad7dffca2df4a7b6cf06012b67cdcebd1a821e90182d204846",
+      "document_id": "threshold-session-placement",
+      "estimated_token_count": 53,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/threshold/threshold-session-placement.md",
+        "evidence_level": "SECONDARY",
+        "language": "zh-CN",
+        "source_type": "BOOK_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 2,
+      "section": "核心原则",
+      "section_path": [
+        "核心原则"
+      ],
+      "source_id": "daniels-running-formula-summary",
+      "tags": [
+        "threshold",
+        "scheduling",
+        "recovery"
+      ],
+      "title": "阈值训练的周内安排"
+    },
+    {
+      "category": "THRESHOLD",
+      "char_count": 77,
+      "chunk_id": "threshold-session-placement#decision-conditions#003",
+      "content": "## 判断条件\n\n- 检查前一日是否有高强度或高总量训练。\n- 检查后一项关键课是否过近。\n- 根据当前阶段、近期完成质量和数据质量决定是否保留完整训练。",
+      "content_sha256": "d68cddc5c76c66a87c472b2ea4202468a95eb59bb2efa26024ad811e13735da2",
+      "document_id": "threshold-session-placement",
+      "estimated_token_count": 65,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/threshold/threshold-session-placement.md",
+        "evidence_level": "SECONDARY",
+        "language": "zh-CN",
+        "source_type": "BOOK_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 3,
+      "section": "判断条件",
+      "section_path": [
+        "判断条件"
+      ],
+      "source_id": "daniels-running-formula-summary",
+      "tags": [
+        "threshold",
+        "scheduling",
+        "recovery"
+      ],
+      "title": "阈值训练的周内安排"
+    },
+    {
+      "category": "THRESHOLD",
+      "char_count": 63,
+      "chunk_id": "threshold-session-placement#recommended-strategies#004",
+      "content": "## 推荐策略\n\n可安排为连续段或可控的分段训练；当周还有间歇或比赛时，应避免把多个重点课机械挤在一起，并优先保证主目标训练。",
+      "content_sha256": "e3bc8143bfc4e5977d80c2c49cdf0ea7c116166fa2808d14e5de954bf65f4e38",
+      "document_id": "threshold-session-placement",
+      "estimated_token_count": 57,
+      "knowledge_version": "1.0.0",
+      "metadata": {
+        "applicable_phases": [
+          "BASE",
+          "BUILD",
+          "SPECIFIC"
+        ],
+        "document_path": "documents/threshold/threshold-session-placement.md",
+        "evidence_level": "SECONDARY",
+        "language": "zh-CN",
+        "source_type": "BOOK_SUMMARY",
+        "status": "ACTIVE"
+      },
+      "ordinal": 4,
+      "section": "推荐策略",
+      "section_path": [
+        "推荐策略"
+      ],
+      "source_id": "daniels-running-formula-summary",
+      "tags": [
+        "threshold",
+        "scheduling",
+        "recovery"
+      ],
+      "title": "阈值训练的周内安排"
+    }
+  ],
+  "corpus_version": "training-knowledge-1",
+  "documents": [
+    {
+      "category": "RECOVERY",
+      "chunk_ids": [
+        "high-fatigue-intensity-adjustment#applicable-scenarios#001",
+        "high-fatigue-intensity-adjustment#cautions#005",
+        "high-fatigue-intensity-adjustment#core-principles#002",
+        "high-fatigue-intensity-adjustment#decision-conditions#003",
+        "high-fatigue-intensity-adjustment#recommended-strategies#004"
+      ],
+      "document_id": "high-fatigue-intensity-adjustment",
+      "file_sha256": "68d9405b292883a491a20a8ff69aebd912cc7c6b46d84ce0819db385644d90f4",
+      "knowledge_version": "1.0.0",
+      "relative_path": "documents/recovery/high-fatigue-intensity-adjustment.md",
+      "source_id": "gaitlogic-original-training-principles",
+      "status": "ACTIVE",
+      "tags": [
+        "fatigue",
+        "intensity",
+        "recovery"
+      ],
+      "title": "高疲劳状态下的训练强度处理"
+    },
+    {
+      "category": "LOAD_MANAGEMENT",
+      "chunk_ids": [
+        "intensity-density-management#applicable-scenarios#001",
+        "intensity-density-management#cautions#005",
+        "intensity-density-management#core-principles#002",
+        "intensity-density-management#decision-conditions#003",
+        "intensity-density-management#recommended-strategies#004"
+      ],
+      "document_id": "intensity-density-management",
+      "file_sha256": "bad9a791ca151bea490551b761a43c2127f03a81284ee959523a4c381d5f605a",
+      "knowledge_version": "1.0.0",
+      "relative_path": "documents/load_management/intensity-density-management.md",
+      "source_id": "gaitlogic-original-training-principles",
+      "status": "ACTIVE",
+      "tags": [
+        "intensity",
+        "spacing",
+        "load-management"
+      ],
+      "title": "高强度训练密度管理"
+    },
+    {
+      "category": "INTERVAL",
+      "chunk_ids": [
+        "interval-recovery-design#applicable-scenarios#001",
+        "interval-recovery-design#cautions#005",
+        "interval-recovery-design#core-principles#002",
+        "interval-recovery-design#decision-conditions#003",
+        "interval-recovery-design#recommended-strategies#004"
+      ],
+      "document_id": "interval-recovery-design",
+      "file_sha256": "33540d532d10b9f8029bae4ba8f8e9eb4c80da8aa2d93fef5312204f35f971cb",
+      "knowledge_version": "1.0.0",
+      "relative_path": "documents/interval/interval-recovery-design.md",
+      "source_id": "daniels-running-formula-summary",
+      "status": "ACTIVE",
+      "tags": [
+        "interval",
+        "recovery",
+        "quality"
+      ],
+      "title": "间歇训练的组间恢复设计"
+    },
+    {
+      "category": "LONG_RUN",
+      "chunk_ids": [
+        "long-run-placement#applicable-scenarios#001",
+        "long-run-placement#cautions#005",
+        "long-run-placement#core-principles#002",
+        "long-run-placement#decision-conditions#003",
+        "long-run-placement#recommended-strategies#004"
+      ],
+      "document_id": "long-run-placement",
+      "file_sha256": "9fad77fb8405dedb437d042f5d8888e0b1a38da6b99fa9a097650efdabe7f638",
+      "knowledge_version": "1.0.0",
+      "relative_path": "documents/long_run/long-run-placement.md",
+      "source_id": "public-endurance-guidance-summary",
+      "status": "ACTIVE",
+      "tags": [
+        "long-run",
+        "scheduling",
+        "recovery"
+      ],
+      "title": "长距离训练的安排与恢复"
+    },
+    {
+      "category": "INJURY_PREVENTION",
+      "chunk_ids": [
+        "pain-risk-boundaries#applicable-scenarios#001",
+        "pain-risk-boundaries#cautions#005",
+        "pain-risk-boundaries#core-principles#002",
+        "pain-risk-boundaries#decision-conditions#003",
+        "pain-risk-boundaries#recommended-strategies#004"
+      ],
+      "document_id": "pain-risk-boundaries",
+      "file_sha256": "c519c18c2a99d33d3b88de783e0ec2a1872b4eaae147e94adaadb3337ef79bae",
+      "knowledge_version": "1.0.0",
+      "relative_path": "documents/injury_prevention/pain-risk-boundaries.md",
+      "source_id": "running-strength-consensus-summary",
+      "status": "ACTIVE",
+      "tags": [
+        "pain",
+        "safety",
+        "limitations"
+      ],
+      "title": "疼痛与伤病风险提示边界"
+    },
+    {
+      "category": "PERIODIZATION",
+      "chunk_ids": [
+        "phase-transition-principles#applicable-scenarios#001",
+        "phase-transition-principles#cautions#005",
+        "phase-transition-principles#core-principles#002",
+        "phase-transition-principles#decision-conditions#003",
+        "phase-transition-principles#recommended-strategies#004"
+      ],
+      "document_id": "phase-transition-principles",
+      "file_sha256": "06b214638e17b77a25a51594416216e10cb1b3ec3700e746c98e5655c822f35b",
+      "knowledge_version": "1.0.0",
+      "relative_path": "documents/periodization/phase-transition-principles.md",
+      "source_id": "gaitlogic-original-training-principles",
+      "status": "ACTIVE",
+      "tags": [
+        "periodization",
+        "phase",
+        "progression"
+      ],
+      "title": "训练阶段转换原则"
+    },
+    {
+      "category": "TAPER",
+      "chunk_ids": [
+        "pre-race-taper-principles#applicable-scenarios#001",
+        "pre-race-taper-principles#cautions#005",
+        "pre-race-taper-principles#core-principles#002",
+        "pre-race-taper-principles#decision-conditions#003",
+        "pre-race-taper-principles#recommended-strategies#004"
+      ],
+      "document_id": "pre-race-taper-principles",
+      "file_sha256": "57d84e2f1f07c3eb40cff0c9f1045df9a0218988bf67022783528ce7331404d4",
+      "knowledge_version": "1.0.0",
+      "relative_path": "documents/taper/pre-race-taper-principles.md",
+      "source_id": "public-endurance-guidance-summary",
+      "status": "ACTIVE",
+      "tags": [
+        "taper",
+        "race",
+        "recovery"
+      ],
+      "title": "比赛前减量原则"
+    },
+    {
+      "category": "LOAD_MANAGEMENT",
+      "chunk_ids": [
+        "progressive-volume-adjustment#applicable-scenarios#001",
+        "progressive-volume-adjustment#cautions#005",
+        "progressive-volume-adjustment#core-principles#002",
+        "progressive-volume-adjustment#decision-conditions#003",
+        "progressive-volume-adjustment#recommended-strategies#004"
+      ],
+      "document_id": "progressive-volume-adjustment",
+      "file_sha256": "c2398d0ab6cc0af2e79117c3a3ff5cc0ac559a9551c2946b4341f64eee0042e8",
+      "knowledge_version": "1.0.0",
+      "relative_path": "documents/load_management/progressive-volume-adjustment.md",
+      "source_id": "gaitlogic-original-training-principles",
+      "status": "ACTIVE",
+      "tags": [
+        "volume",
+        "progression",
+        "recovery"
+      ],
+      "title": "连续增加跑量后的调整"
+    },
+    {
+      "category": "RECOVERY",
+      "chunk_ids": [
+        "recovery-week-principles#applicable-scenarios#001",
+        "recovery-week-principles#cautions#005",
+        "recovery-week-principles#core-principles#002",
+        "recovery-week-principles#decision-conditions#003",
+        "recovery-week-principles#recommended-strategies#004"
+      ],
+      "document_id": "recovery-week-principles",
+      "file_sha256": "478a7665716119571d4bbc93a1103e69bf7bdab6e444683ff4b0e8f2ac8464dd",
+      "knowledge_version": "1.0.0",
+      "relative_path": "documents/recovery/recovery-week-principles.md",
+      "source_id": "public-endurance-guidance-summary",
+      "status": "ACTIVE",
+      "tags": [
+        "recovery-week",
+        "adaptation",
+        "consistency"
+      ],
+      "title": "恢复周的安排原则"
+    },
+    {
+      "category": "STRENGTH",
+      "chunk_ids": [
+        "running-strength-basics#applicable-scenarios#001",
+        "running-strength-basics#cautions#005",
+        "running-strength-basics#core-principles#002",
+        "running-strength-basics#decision-conditions#003",
+        "running-strength-basics#recommended-strategies#004"
+      ],
+      "document_id": "running-strength-basics",
+      "file_sha256": "26f27e4591168b72dbfcfef27994b41d9e39eb426a0a416475e58a81556f30fd",
+      "knowledge_version": "1.0.0",
+      "relative_path": "documents/strength/running-strength-basics.md",
+      "source_id": "running-strength-consensus-summary",
+      "status": "ACTIVE",
+      "tags": [
+        "strength",
+        "scheduling",
+        "adaptation"
+      ],
+      "title": "跑者力量训练基础安排"
+    },
+    {
+      "category": "THRESHOLD",
+      "chunk_ids": [
+        "threshold-control-signals#applicable-scenarios#001",
+        "threshold-control-signals#cautions#005",
+        "threshold-control-signals#core-principles#002",
+        "threshold-control-signals#decision-conditions#003",
+        "threshold-control-signals#recommended-strategies#004"
+      ],
+      "document_id": "threshold-control-signals",
+      "file_sha256": "90195a5309148360facf9436093603062776a10b1a5e8dafdc60892da5d51f8c",
+      "knowledge_version": "1.0.0",
+      "relative_path": "documents/threshold/threshold-control-signals.md",
+      "source_id": "public-endurance-guidance-summary",
+      "status": "ACTIVE",
+      "tags": [
+        "threshold",
+        "rpe",
+        "pacing"
+      ],
+      "title": "阈值训练中的强度控制信号"
+    },
+    {
+      "category": "THRESHOLD",
+      "chunk_ids": [
+        "threshold-session-placement#applicable-scenarios#001",
+        "threshold-session-placement#cautions#005",
+        "threshold-session-placement#core-principles#002",
+        "threshold-session-placement#decision-conditions#003",
+        "threshold-session-placement#recommended-strategies#004"
+      ],
+      "document_id": "threshold-session-placement",
+      "file_sha256": "37a927c08426eaa0449fb34d4e88270e656100d18c26a893eb3afa78bd2cae21",
+      "knowledge_version": "1.0.0",
+      "relative_path": "documents/threshold/threshold-session-placement.md",
+      "source_id": "daniels-running-formula-summary",
+      "status": "ACTIVE",
+      "tags": [
+        "threshold",
+        "scheduling",
+        "recovery"
+      ],
+      "title": "阈值训练的周内安排"
+    }
+  ],
+  "generated_at": "2026-07-23T09:40:29.869382Z",
+  "generator_version": "knowledge-corpus-generator-1.0.0",
+  "root_hash": "58bae62329a833c7a2a2a79dc12d31ac8c1b8052144597c839700e4b18894a7b",
+  "schema_version": "1.0.0",
+  "sources": [
+    {
+      "record_sha256": "e647cfd1a89d5ca64ef73d48470c93d06e32edafadb06098664f9f76929797e1",
+      "relative_path": "sources/training-sources.yaml",
+      "source_id": "daniels-running-formula-summary",
+      "source_type": "BOOK_SUMMARY",
+      "title": "Daniels' Running Formula"
+    },
+    {
+      "record_sha256": "f57f0bc79c8adb97114cd6ae46fc76cb5c1692f4b9720bb1e1f965c32903b8e1",
+      "relative_path": "sources/training-sources.yaml",
+      "source_id": "gaitlogic-original-training-principles",
+      "source_type": "ORIGINAL_CONTENT",
+      "title": "GaitLogic Training Principles"
+    },
+    {
+      "record_sha256": "5f479e8b530b50e430107508d8df4385b19c747e529d548321c12fd15b07e953",
+      "relative_path": "sources/training-sources.yaml",
+      "source_id": "public-endurance-guidance-summary",
+      "source_type": "GUIDELINE_SUMMARY",
+      "title": "Public Endurance Training Guidance — GaitLogic Summary"
+    },
+    {
+      "record_sha256": "ead63244e6d413502723b707d16110cf979e1da5a779ee5e55ce969d8e8dec02",
+      "relative_path": "sources/training-sources.yaml",
+      "source_id": "running-strength-consensus-summary",
+      "source_type": "GUIDELINE_SUMMARY",
+      "title": "Running Strength and Injury Prevention — GaitLogic Consensus Summary"
+    }
+  ],
+  "statistics": {
+    "categories": {
+      "INJURY_PREVENTION": 1,
+      "INTERVAL": 1,
+      "LOAD_MANAGEMENT": 2,
+      "LONG_RUN": 1,
+      "PERIODIZATION": 1,
+      "RECOVERY": 2,
+      "STRENGTH": 1,
+      "TAPER": 1,
+      "THRESHOLD": 2
+    },
+    "chunk_count": 60,
+    "document_count": 12,
+    "estimated_token_count": 3301,
+    "source_count": 4,
+    "statuses": {
+      "ACTIVE": 12
+    },
+    "total_char_count": 3776
+  }
+}
