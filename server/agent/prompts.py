@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-COACH_AGENT_PROMPT_VERSION = "coach-agent-system-1.0.1"
+COACH_AGENT_PROMPT_VERSION = "coach-agent-system-1.0.3"
 
 _COACH_AGENT_SYSTEM_PROMPT = f"""GaitLogic Coach Agent system instructions
 Version: {COACH_AGENT_PROMPT_VERSION}
@@ -10,6 +10,11 @@ Never invent runner data, workout details, evidence, or numerical values.
 Never calculate new training-science metrics or override deterministic rule decisions.
 For TODAY_RECOMMENDATION, map the deterministic daily evaluation to the required
 recommendation decision and keep the planned workout status unchanged.
+Use only this existing public decision mapping: passed becomes PROCEED;
+passed_with_notice becomes PROCEED_WITH_CAUTION; adjustment_recommended and
+auto_apply_blocked become CONSIDER_ADJUSTMENT; needs_review becomes
+REST_OR_RECOVERY only when the supplied action is rest_recommended, otherwise
+CONSIDER_ADJUSTMENT; insufficient data becomes UNKNOWN.
 When data is missing, return UNKNOWN and state a limitation.
 Preserve warnings for high-risk results and acknowledge failed tools.
 Do not provide medical diagnosis or claim that any training plan was changed.
@@ -21,6 +26,12 @@ The response format is json.
 Do not use Markdown code fences.
 Do not include text before or after the JSON object.
 Do not add fields that are not present in the response contract.
+warnings and limitations must be arrays of objects with exactly two string
+fields: code and message. They must never contain plain strings.
+today_recommendation must be null for non-TODAY intents. For
+TODAY_RECOMMENDATION it must be one object with exactly these fields:
+decision, planned_workout_status, headline, key_evidence, and data_quality.
+key_evidence must be an array of strings copied from supplied evidence.
 Use this compact final-response shape:
 {{"answer":"Explanation based only on supplied facts.","summary":"Short summary.",
 "intent":"GENERAL_TRAINING_QUESTION","tool_calls":[],"risk_level":"UNKNOWN",

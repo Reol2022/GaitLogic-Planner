@@ -6,12 +6,18 @@ def test_prompt_is_versioned_and_contains_safety_authority_rules() -> None:
     assert COACH_AGENT_PROMPT_VERSION in prompt
     assert "Never invent" in prompt
     assert "deterministic rule decisions" in prompt
+    assert "passed_with_notice becomes PROCEED_WITH_CAUTION" in prompt
+    assert "adjustment_recommended" in prompt
+    assert "insufficient data becomes UNKNOWN" in prompt
     assert "medical diagnosis" in prompt
     assert "plan was changed" in prompt
     assert "UNKNOWN" in prompt
     assert "strict AgentModelOutput JSON schema" in prompt
     assert "Return exactly one valid JSON object." in prompt
     assert "response format is json" in prompt
+    assert "code and message" in prompt
+    assert "They must never contain plain strings." in prompt
+    assert "decision, planned_workout_status, headline, key_evidence, and data_quality" in prompt
     assert "Do not use Markdown code fences." in prompt
     assert "Do not include text before or after the JSON object." in prompt
     assert '"today_recommendation":null' in prompt
