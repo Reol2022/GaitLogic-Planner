@@ -684,3 +684,36 @@ COACH_AGENT_RESPONSE_FORMAT_MODE=json_object
 系统不会根据 Base URL 或模型名自动探测模式，也不会在 HTTP 400 后自动切换响应格式。配置错误会进入安全降级；当前版本不支持完整的 DeepSeek thinking 工具链。
 
 不提供任意 `extra_body` JSON 配置。生产环境禁止 localhost、私网和包含用户名或密码的 Provider URL；只有 development 环境可通过显式开关允许本地 Provider。API Key 不得进入前端、日志、截图或版本库。
+
+---
+
+## 16. v0.11.0 Coach Agent 发布检查
+
+v0.11.0 没有新增数据库模型或迁移。升级前仍应先完成 v0.10.3 的 Runner State 与 Garmin 自动快照迁移链，并备份目标数据库。
+
+发布前至少验证：
+
+```bash
+.venv/bin/python -m compileall planner_core server scripts tests
+.venv/bin/python -m pytest -q
+.venv/bin/python scripts/evaluate_coach_agent.py
+
+cd web
+npm ci
+npm run typecheck
+npm run test
+npm run build
+```
+
+数据库回归应在与目标环境隔离的 MySQL 5.7 和 MySQL 8 实例上分别执行。测试账号只需随机测试数据库的创建和删除权限；不得连接生产数据库，不得复用生产账号或数据。测试完成后确认所有随机测试数据库已删除。
+
+Provider 上线顺序：
+
+1. 保持 `COACH_AGENT_ENABLED=false`，验证应用导入、OpenAPI、前端页面和确定性 Fallback；
+2. 在隔离环境配置服务端 Provider，使用完全虚构数据执行 TODAY、EXPLAIN 和 GENERAL Smoke；
+3. 确认日志和报告不包含 API Key、完整 Prompt、Context、Tool Result、Provider 原始回答或 `reasoning_content`；
+4. DeepSeek V4 非思考模式显式设置 `COACH_AGENT_THINKING_MODE=disabled`；仅在端点不支持最终 JSON Schema Response Format 时设置 `COACH_AGENT_RESPONSE_FORMAT_MODE=json_object`；
+5. 确认 TODAY 的 decision、计划状态、风险、数据质量、warnings、limitations 与 canonical Evidence 均由服务端装配；
+6. 小范围开启 Provider；出现 Provider 异常时应返回 `DEGRADED`，不得改变训练计划或其他训练数据。
+
+当前版本不支持 RAG、Weekly Review Agent、写工具、长期记忆、Streaming、多 Agent 或 DeepSeek thinking 工具链。Coach Agent 只提供非医疗的只读训练参考；Quota 当前为进程内限制。

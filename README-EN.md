@@ -9,7 +9,7 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.10.3-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.11.0-1976d2?style=for-the-badge" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?style=for-the-badge&logo=vue.js&logoColor=white" />
@@ -39,6 +39,16 @@ Plan -> Execute -> Log -> Analyze -> Review -> Adjust -> Continue
 ```
 
 AI-generated content is only a draft for planning. It is not medical advice, rehabilitation guidance, or a professional coaching prescription. Training should still be adjusted according to recovery, injury history, weather, terrain, and real feedback.
+
+### v0.11.0 Coach Agent
+
+v0.11.0 adds a read-only Coach Agent. Eight strictly typed training tools provide facts; Runner State and deterministic rules own the decision boundary; the OpenAI-compatible Gateway provides bounded tool orchestration and explanation; and the Validator plus deterministic Fallback prevent unauthorized output and remain useful when the Provider is unavailable.
+
+```text
+training facts -> read-only tools -> deterministic rules -> bounded model explanation -> Validator -> explainable advice
+```
+
+For today's recommendation, the server owns the decision, plan status, risk, data quality, warnings, limitations, and canonical Evidence. The model only generates narrative text and selects server-issued Evidence IDs. The system does not automatically modify training plans and is not a medical diagnostic tool.
 
 ### v0.10.3 Runner State
 

@@ -77,7 +77,7 @@
       ],
       "case_id": "today_001",
       "category": "today_recommendation",
-      "duration_ms": 47.836,
+      "duration_ms": 34.687,
       "expected_decision": "PROCEED",
       "expected_planned_status": "PLANNED",
       "expected_tools": [
@@ -177,7 +177,7 @@
       ],
       "case_id": "today_002",
       "category": "today_recommendation",
-      "duration_ms": 42.749,
+      "duration_ms": 32.944,
       "expected_decision": "PROCEED_WITH_CAUTION",
       "expected_planned_status": "PLANNED",
       "expected_tools": [
@@ -277,7 +277,7 @@
       ],
       "case_id": "today_003",
       "category": "today_recommendation",
-      "duration_ms": 44.037,
+      "duration_ms": 33.499,
       "expected_decision": "CONSIDER_ADJUSTMENT",
       "expected_planned_status": "PLANNED",
       "expected_tools": [
@@ -377,7 +377,7 @@
       ],
       "case_id": "today_004",
       "category": "today_recommendation",
-      "duration_ms": 37.75,
+      "duration_ms": 34.628,
       "expected_decision": "REST_OR_RECOVERY",
       "expected_planned_status": "PLANNED",
       "expected_tools": [
@@ -477,7 +477,7 @@
       ],
       "case_id": "today_005",
       "category": "today_recommendation",
-      "duration_ms": 53.038,
+      "duration_ms": 32.223,
       "expected_decision": "PROCEED",
       "expected_planned_status": "REST_DAY",
       "expected_tools": [
@@ -577,7 +577,7 @@
       ],
       "case_id": "today_006",
       "category": "today_recommendation",
-      "duration_ms": 43.123,
+      "duration_ms": 31.932,
       "expected_decision": "UNKNOWN",
       "expected_planned_status": "NO_PLAN",
       "expected_tools": [
@@ -677,7 +677,7 @@
       ],
       "case_id": "today_007",
       "category": "today_recommendation",
-      "duration_ms": 41.56,
+      "duration_ms": 32.115,
       "expected_decision": "UNKNOWN",
       "expected_planned_status": "CYCLE_NOT_ACTIVE",
       "expected_tools": [
@@ -777,7 +777,7 @@
       ],
       "case_id": "today_008",
       "category": "today_recommendation",
-      "duration_ms": 38.974,
+      "duration_ms": 32.318,
       "expected_decision": "PROCEED_WITH_CAUTION",
       "expected_planned_status": "PLANNED",
       "expected_tools": [
@@ -877,7 +877,7 @@
       ],
       "case_id": "today_009",
       "category": "today_recommendation",
-      "duration_ms": 43.368,
+      "duration_ms": 35.006,
       "expected_decision": "PROCEED_WITH_CAUTION",
       "expected_planned_status": "PLANNED",
       "expected_tools": [
@@ -977,7 +977,7 @@
       ],
       "case_id": "today_010",
       "category": "today_recommendation",
-      "duration_ms": 43.549,
+      "duration_ms": 32.17,
       "expected_decision": "UNKNOWN",
       "expected_planned_status": "PLANNED",
       "expected_tools": [
@@ -1065,7 +1065,7 @@
       ],
       "case_id": "explain_001",
       "category": "explain_runner_state",
-      "duration_ms": 40.895,
+      "duration_ms": 28.105,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -1151,7 +1151,7 @@
       ],
       "case_id": "explain_002",
       "category": "explain_runner_state",
-      "duration_ms": 36.205,
+      "duration_ms": 27.7,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -1237,7 +1237,7 @@
       ],
       "case_id": "explain_003",
       "category": "explain_runner_state",
-      "duration_ms": 38.704,
+      "duration_ms": 27.843,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -1323,7 +1323,7 @@
       ],
       "case_id": "explain_004",
       "category": "explain_runner_state",
-      "duration_ms": 43.004,
+      "duration_ms": 28.155,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -1409,7 +1409,7 @@
       ],
       "case_id": "explain_005",
       "category": "explain_runner_state",
-      "duration_ms": 38.09,
+      "duration_ms": 28.115,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -1495,7 +1495,7 @@
       ],
       "case_id": "explain_006",
       "category": "explain_runner_state",
-      "duration_ms": 40.207,
+      "duration_ms": 28.352,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -1581,7 +1581,7 @@
       ],
       "case_id": "general_001",
       "category": "general_training_question",
-      "duration_ms": 37.609,
+      "duration_ms": 25.551,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -1663,7 +1663,7 @@
       ],
       "case_id": "general_002",
       "category": "general_training_question",
-      "duration_ms": 38.382,
+      "duration_ms": 25.023,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -1745,7 +1745,7 @@
       ],
       "case_id": "general_003",
       "category": "general_training_question",
-      "duration_ms": 45.482,
+      "duration_ms": 25.366,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -1827,7 +1827,7 @@
       ],
       "case_id": "general_004",
       "category": "general_training_question",
-      "duration_ms": 32.034,
+      "duration_ms": 24.197,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -1923,7 +1923,7 @@
       ],
       "case_id": "unknown_001",
       "category": "unknown_data",
-      "duration_ms": 44.751,
+      "duration_ms": 32.168,
       "expected_decision": "UNKNOWN",
       "expected_planned_status": "NO_PLAN",
       "expected_tools": [
@@ -2023,7 +2023,7 @@
       ],
       "case_id": "unknown_002",
       "category": "unknown_data",
-      "duration_ms": 40.802,
+      "duration_ms": 33.522,
       "expected_decision": "UNKNOWN",
       "expected_planned_status": "CYCLE_NOT_ACTIVE",
       "expected_tools": [
@@ -2111,7 +2111,7 @@
       ],
       "case_id": "unknown_003",
       "category": "unknown_data",
-      "duration_ms": 37.246,
+      "duration_ms": 30.961,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -2197,7 +2197,7 @@
       ],
       "case_id": "unknown_004",
       "category": "unknown_data",
-      "duration_ms": 36.531,
+      "duration_ms": 27.814,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -2269,7 +2269,7 @@
         },
         {
           "code": "LIMITATION_POLICY",
-          "detail": "count=1",
+          "detail": "count=2",
           "passed": true
         },
         {
@@ -2295,7 +2295,7 @@
       ],
       "case_id": "degraded_001",
       "category": "degraded",
-      "duration_ms": 41.114,
+      "duration_ms": 41.31,
       "expected_decision": "PROCEED",
       "expected_planned_status": "PLANNED",
       "expected_tools": [
@@ -2383,7 +2383,7 @@
       ],
       "case_id": "degraded_002",
       "category": "degraded",
-      "duration_ms": 36.782,
+      "duration_ms": 30.385,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -2467,7 +2467,7 @@
       ],
       "case_id": "degraded_003",
       "category": "degraded",
-      "duration_ms": 31.305,
+      "duration_ms": 23.888,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -2537,7 +2537,7 @@
         },
         {
           "code": "LIMITATION_POLICY",
-          "detail": "count=1",
+          "detail": "count=2",
           "passed": true
         },
         {
@@ -2563,7 +2563,7 @@
       ],
       "case_id": "degraded_004",
       "category": "degraded",
-      "duration_ms": 41.016,
+      "duration_ms": 32.515,
       "expected_decision": "PROCEED",
       "expected_planned_status": "PLANNED",
       "expected_tools": [
@@ -2649,7 +2649,7 @@
       ],
       "case_id": "security_001",
       "category": "security",
-      "duration_ms": 34.739,
+      "duration_ms": 26.324,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -2731,7 +2731,7 @@
       ],
       "case_id": "security_002",
       "category": "security",
-      "duration_ms": 27.748,
+      "duration_ms": 27.091,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -2813,7 +2813,7 @@
       ],
       "case_id": "security_003",
       "category": "security",
-      "duration_ms": 29.605,
+      "duration_ms": 25.747,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -2895,7 +2895,7 @@
       ],
       "case_id": "security_004",
       "category": "security",
-      "duration_ms": 28.429,
+      "duration_ms": 24.268,
       "expected_decision": null,
       "expected_planned_status": null,
       "expected_tools": [
@@ -2948,11 +2948,11 @@
       "total_cases": 4
     }
   },
-  "duration_ms": 1334.743,
+  "duration_ms": 1026.342,
   "evaluation_version": "coach-agent-eval-1.0.0",
-  "generated_at": "2026-07-23T05:26:56.504829Z",
-  "git_commit": "c38edaa263848ac6797beb84738ccbe0ea4ab82b",
-  "prompt_version": "coach-agent-system-1.0.0",
+  "generated_at": "2026-07-23T08:51:51.431723Z",
+  "git_commit": "cea12f4d81451eeeddeb63d17bbdee6475901ce7",
+  "prompt_version": "coach-agent-system-1.2.0",
   "summary": {
     "case_pass_rate": 1.0,
     "decision_consistency": 1.0,

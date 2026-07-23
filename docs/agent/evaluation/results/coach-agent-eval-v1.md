@@ -8,9 +8,9 @@
 
 - Evaluation：`coach-agent-eval-1.0.0`
 - Case set：`cases-v1`
-- Prompt：`coach-agent-system-1.0.0`
-- Git commit：`c38edaa263848ac6797beb84738ccbe0ea4ab82b`
-- Generated at：`2026-07-23T05:26:56.504829+00:00`
+- Prompt：`coach-agent-system-1.2.0`
+- Git commit：`cea12f4d81451eeeddeb63d17bbdee6475901ce7`
+- Generated at：`2026-07-23T08:51:51.431723+00:00`
 - Cases：32
 
 ## 总体结果
