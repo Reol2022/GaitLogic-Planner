@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Any
 
 from server.agent.errors import AgentErrorCode
@@ -63,6 +64,44 @@ def contextual_evidence(context: AgentContext) -> list[str]:
         if isinstance(item, dict) and item.get("metric"):
             evidence.append(str(item["metric"]))
     return list(dict.fromkeys(evidence))
+
+
+@dataclass(frozen=True)
+class EvidenceCatalogItem:
+    """One request-local reference to canonical Evidence text."""
+
+    id: str
+    text: str
+
+
+def build_evidence_catalog(context: AgentContext) -> list[EvidenceCatalogItem]:
+    return [
+        EvidenceCatalogItem(id=f"evidence_{index}", text=text)
+        for index, text in enumerate(contextual_evidence(context), start=1)
+    ]
+
+
+def materialize_evidence_references(
+    evidence_ids: list[str],
+    context: AgentContext,
+) -> list[str]:
+    """Resolve exact request-local IDs in canonical source order."""
+
+    catalog = build_evidence_catalog(context)
+    if catalog and not evidence_ids:
+        raise ValueError("at least one Evidence reference is required")
+    if len(evidence_ids) > len(catalog) or len(evidence_ids) != len(set(evidence_ids)):
+        raise ValueError("Evidence references are duplicated or exceed the catalog")
+    by_id = {item.id: item for item in catalog}
+    if any(
+        not isinstance(item, str)
+        or item.strip() != item
+        or item not in by_id
+        for item in evidence_ids
+    ):
+        raise ValueError("Evidence reference does not exist in this request")
+    selected = set(evidence_ids)
+    return [item.text for item in catalog if item.id in selected]
 
 
 def _numbers(value: Any) -> set[float]:

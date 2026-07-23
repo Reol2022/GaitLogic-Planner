@@ -22,6 +22,28 @@
 - `key_evidence`
 - `data_quality`
 
+这是公共 Coach API 的稳定结构。Provider 内部不直接生成
+`key_evidence` 文本，而是从本次请求的 `available_evidence` Catalog 中选择
+`key_evidence_ids`。这些 ID 采用 `evidence_1...n`，只在单次请求中有效，不包含
+用户 ID、数据库 ID、路径或 Evidence 原文，也不会进入 OpenAPI 或前端响应。
+
+内部数据流为：
+
+```text
+Canonical Evidence
+→ 请求级 Evidence Catalog
+→ Provider 选择严格 ID
+→ 服务端校验 ID
+→ 按 Canonical 原始顺序还原文本
+→ Deterministic Validator
+→ 公共 key_evidence
+```
+
+模型不能改写、概括或创造 Evidence。未知 ID、大小写变化、前后空白、重复 ID、
+数字索引、Evidence 原文冒充 ID，以及在存在 Canonical Evidence 时返回空选择，
+都会触发安全降级。系统不使用模糊匹配、编辑距离、Embedding、第二个 LLM 或
+自动文本替换。
+
 规则评估的既有内部 decision 被确定性映射为：`PROCEED`、`PROCEED_WITH_CAUTION`、`CONSIDER_ADJUSTMENT`、`REST_OR_RECOVERY` 或 `UNKNOWN`。`planned_workout_status` 必须与今日课表工具返回的 `PLANNED`、`REST_DAY`、`NO_PLAN`、`CYCLE_NOT_ACTIVE` 或 `UNKNOWN` 完全一致。
 
 ## 确定性 Validator
@@ -37,10 +59,13 @@
 - REST/RECOVERY 不推荐高强度；
 - 无计划或休息日不编造距离、时长或训练课；
 - 具体数值必须已经存在于 Context；
-- Evidence 必须来自规则命中或 Runner State Evidence；
+- Materialized Evidence 必须逐字来自规则命中或 Runner State Evidence；
 - 不包含医疗诊断、绝对安全承诺或“已经修改计划”的声明。
 
 任一关键检查失败，模型结果不直接返回用户，进入确定性降级。
+
+Fallback 不依赖 Provider Evidence ID，继续直接从确定性 Context 取得 Canonical
+Evidence，因此 Provider 引用失败不会污染降级结果。
 
 ## Deterministic Fallback
 

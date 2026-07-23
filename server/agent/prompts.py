@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-COACH_AGENT_PROMPT_VERSION = "coach-agent-system-1.0.3"
+COACH_AGENT_PROMPT_VERSION = "coach-agent-system-1.1.0"
 
 _COACH_AGENT_SYSTEM_PROMPT = f"""GaitLogic Coach Agent system instructions
 Version: {COACH_AGENT_PROMPT_VERSION}
@@ -30,8 +30,14 @@ warnings and limitations must be arrays of objects with exactly two string
 fields: code and message. They must never contain plain strings.
 today_recommendation must be null for non-TODAY intents. For
 TODAY_RECOMMENDATION it must be one object with exactly these fields:
-decision, planned_workout_status, headline, key_evidence, and data_quality.
-key_evidence must be an array of strings copied from supplied evidence.
+decision, planned_workout_status, headline, key_evidence_ids, and data_quality.
+Do not rewrite, paraphrase, summarize, or create evidence.
+Select evidence only by returning IDs from context.available_evidence.
+Every returned evidence ID must exactly match an available ID.
+Do not return evidence text. Do not invent a new evidence ID.
+When available_evidence is non-empty, select at least one ID. When it is empty,
+return an empty key_evidence_ids array.
+Example TODAY selection: {{"key_evidence_ids":["evidence_1","evidence_3"]}}.
 Use this compact final-response shape:
 {{"answer":"Explanation based only on supplied facts.","summary":"Short summary.",
 "intent":"GENERAL_TRAINING_QUESTION","tool_calls":[],"risk_level":"UNKNOWN",

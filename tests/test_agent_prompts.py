@@ -17,7 +17,11 @@ def test_prompt_is_versioned_and_contains_safety_authority_rules() -> None:
     assert "response format is json" in prompt
     assert "code and message" in prompt
     assert "They must never contain plain strings." in prompt
-    assert "decision, planned_workout_status, headline, key_evidence, and data_quality" in prompt
+    assert "decision, planned_workout_status, headline, key_evidence_ids, and data_quality" in prompt
+    assert "Do not rewrite, paraphrase, summarize, or create evidence." in prompt
+    assert "context.available_evidence" in prompt
+    assert '"key_evidence_ids":["evidence_1","evidence_3"]' in prompt
+    assert "Do not return evidence text." in prompt
     assert "Do not use Markdown code fences." in prompt
     assert "Do not include text before or after the JSON object." in prompt
     assert '"today_recommendation":null' in prompt

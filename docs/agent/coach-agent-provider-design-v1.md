@@ -31,13 +31,14 @@ v0.11.0-C 在 `AgentLLMGateway` 抽象后增加 OpenAI-compatible Chat Completio
 3. 对文本中的邮箱和中国大陆手机号进行替换；
 4. 将 Pydantic 工具输入 Schema 转为 strict function schema；
 5. 强制 object 顶层 `additionalProperties=false`；
-6. 使用 `AgentModelOutput` 的 JSON Schema 请求严格结构化结果。
+6. 为 TODAY 建立请求级 `available_evidence` Catalog；
+7. 使用 Provider 专用 `ProviderAgentModelOutput` JSON Schema 请求严格结构化结果。
 
 Gateway 不向 Provider 暴露 Dependencies、Python 类型、Session、Garmin 原始 payload、完整历史日志或写工具。
 
 ## 受控响应格式
 
-`json_schema` 保持默认行为，发送现有严格 `AgentModelOutput` JSON Schema。
+`json_schema` 保持默认行为，发送严格的 Provider 内部输出 Schema。
 `json_object` 只发送 `{"type": "json_object"}`，用于不支持最终 JSON Schema
 Response Format、但支持 JSON Output 的兼容端点。
 
@@ -45,7 +46,8 @@ Response Format、但支持 JSON Output 的兼容端点。
 
 ```text
 Provider content
-→ 原始 JSON 解析
+→ ProviderAgentModelOutput 严格 Pydantic 校验
+→ Evidence ID 严格校验与 Canonical materialization
 → AgentModelOutput 严格 Pydantic 校验
 → Deterministic Validator
 → 成功响应或安全 Fallback
@@ -61,6 +63,29 @@ COACH_AGENT_RESPONSE_FORMAT_MODE=json_object
 ```
 
 这是显式部署配置，不会按 Provider 品牌、Base URL 或模型名推断。当前版本不读取或回传 `reasoning_content`，不支持完整思考模式工具链。
+
+## Evidence Reference 协议
+
+Provider 内部 TODAY 输出使用 `key_evidence_ids`，公共 API 仍使用
+`key_evidence`。Gateway 根据 `contextual_evidence()` 的原始顺序生成：
+
+```json
+[
+  {"id": "evidence_1", "text": "Canonical Evidence A"},
+  {"id": "evidence_2", "text": "Canonical Evidence B"}
+]
+```
+
+ID 仅在当前请求中有效，不持久化、不进入 Trace、不返回客户端。模型只能选择
+Catalog 中存在的 ID，不能返回 Evidence 文本。服务端拒绝未知、重复、空白、
+大小写变化和超量引用，并按 Canonical 原始顺序还原最终 `key_evidence`，而不是
+信任模型的措辞或排序。存在 Canonical Evidence 时空选择也会失败；只有 Catalog
+为空时允许空数组。
+
+该协议同时用于 `json_schema` 与 `json_object`。后者只降低 Provider 端响应格式
+能力要求，不降低 Provider Pydantic Schema、Evidence 引用校验、公开
+`AgentModelOutput` 或 Deterministic Validator。旧的自由文本 `key_evidence`
+Provider 输出属于额外字段，会被严格拒绝并进入现有 Fallback。
 
 ## 响应与工具调用
 

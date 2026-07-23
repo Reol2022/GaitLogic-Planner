@@ -31,6 +31,11 @@ def test_fallback_restates_caution_without_modifying_plan() -> None:
         context=context(),
     )
     assert result.today_recommendation.decision == "PROCEED_WITH_CAUTION"
+    assert result.today_recommendation.key_evidence == [
+        "existing_metric",
+        "FICTIONAL_RULE",
+        "Existing evidence.",
+    ]
     assert "没有修改" not in result.answer
     assert result.limitations[0].code == "MODEL_EXPLANATION_UNAVAILABLE"
 

@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy import event, func, select
 
 from planner_core.config import Settings
@@ -10,11 +12,13 @@ from planner_core.database.models import (
     WorkoutLog,
 )
 from server.agent.enums import AgentIntent
+from server.agent.providers.openai_compatible import OpenAICompatibleAgentGateway
 from server.schemas.coach_agent import CoachQueryRequest
 from server.services.coach_agent_query_service import CoachAgentQueryService
 from server.services.coach_agent_usage_service import CoachAgentRateLimiter
 from tests.agent_tool_fakes import NOW
 from tests.test_agent_training_integration import make_database
+from tests.test_agent_provider_gateway import FakeClient, response
 
 
 def disabled_settings() -> Settings:
@@ -76,3 +80,49 @@ def test_public_response_and_provider_path_do_not_expose_identity_or_training_pa
     serialized = result.model_dump_json().lower()
     for forbidden in ("user_id", "email", "phone", "garmin", "snapshot_payload", "system prompt"):
         assert forbidden not in serialized
+
+
+def test_unknown_provider_evidence_id_degrades_without_public_id_leakage() -> None:
+    _engine, factory = make_database()
+    payload = {
+        "answer": "Use the existing plan.",
+        "intent": "TODAY_RECOMMENDATION",
+        "today_recommendation": {
+            "decision": "UNKNOWN",
+            "planned_workout_status": "NO_PLAN",
+            "headline": "Available data is limited.",
+            "key_evidence_ids": ["evidence_99"],
+            "data_quality": "UNKNOWN",
+        },
+    }
+    fake = FakeClient([response(content=json.dumps(payload))])
+    configured = Settings(
+        _env_file=None,
+        coach_agent_enabled=True,
+        coach_agent_api_key="fictional-key",
+        coach_agent_base_url="https://api.example.test/v1",
+        coach_agent_model="fictional-model",
+        coach_agent_cooldown_seconds=0,
+    )
+    gateway = OpenAICompatibleAgentGateway(
+        configured,
+        client_factory=lambda _settings, _url: fake,
+    )
+    with factory() as db:
+        result = CoachAgentQueryService(
+            db,
+            settings=configured,
+            gateway=gateway,
+            rate_limiter=CoachAgentRateLimiter(daily_limit=10, cooldown_seconds=0),
+            clock=lambda: NOW,
+        ).query(
+            user_id=903,
+            payload=CoachQueryRequest(
+                message="Give a fictional recommendation.",
+                intent=AgentIntent.TODAY_RECOMMENDATION,
+            ),
+        )
+    assert result.status == "DEGRADED"
+    serialized = result.model_dump_json()
+    assert "evidence_99" not in serialized
+    assert "key_evidence_ids" not in serialized

@@ -15,7 +15,7 @@ from server.agent.enums import AgentIntent, AgentRiskLevel, AgentTraceEventType,
 from server.agent.errors import AgentErrorCode
 from server.agent.gateway import AgentLLMGateway
 from server.agent.providers.errors import AgentProviderError
-from server.agent.providers.schemas import AgentProviderUsage
+from server.agent.providers.schemas import AgentProviderUsage, ProviderAgentModelOutput
 from server.agent.providers.security import validate_provider_base_url
 from server.agent.schemas import (
     AgentContext,
@@ -24,6 +24,10 @@ from server.agent.schemas import (
     AgentToolInvocation,
 )
 from server.agent.trace import AgentTrace
+from server.agent.today_recommendation import (
+    build_evidence_catalog,
+    materialize_evidence_references,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +65,14 @@ def provider_context_payload(context: AgentContext) -> dict[str, Any]:
         }
         for item in context.tool_results
     ]
+    payload["available_evidence"] = (
+        [
+            {"id": item.id, "text": item.text}
+            for item in build_evidence_catalog(context)
+        ]
+        if context.intent == AgentIntent.TODAY_RECOMMENDATION
+        else []
+    )
     return _redact_tree(payload)
 
 
@@ -151,7 +163,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
             "json_schema": {
                 "name": "agent_model_output",
                 "strict": True,
-                "schema": AgentModelOutput.model_json_schema(),
+                "schema": ProviderAgentModelOutput.model_json_schema(),
             },
         }
 
@@ -183,7 +195,11 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                 close()
 
     @staticmethod
-    def _parse_response(response: Any, intent: AgentIntent) -> AgentModelOutput:
+    def _parse_response(
+        response: Any,
+        intent: AgentIntent,
+        context: AgentContext,
+    ) -> AgentModelOutput:
         if not getattr(response, "choices", None):
             raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
         choice = response.choices[0]
@@ -219,7 +235,24 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         if stripped.startswith("```"):
             raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
         try:
-            return AgentModelOutput.model_validate_json(stripped)
+            provider_output = ProviderAgentModelOutput.model_validate_json(stripped)
+            payload = provider_output.model_dump(
+                mode="python",
+                exclude={"today_recommendation"},
+            )
+            if provider_output.today_recommendation is not None:
+                recommendation = provider_output.today_recommendation
+                payload["today_recommendation"] = {
+                    "decision": recommendation.decision,
+                    "planned_workout_status": recommendation.planned_workout_status,
+                    "headline": recommendation.headline,
+                    "key_evidence": materialize_evidence_references(
+                        recommendation.key_evidence_ids,
+                        context,
+                    ),
+                    "data_quality": recommendation.data_quality,
+                }
+            return AgentModelOutput.model_validate(payload)
         except (ValidationError, ValueError) as exc:
             raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID) from exc
 
@@ -265,7 +298,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         for attempt in range(attempts):
             try:
                 response = self._request(messages=messages, tools=safe_tools)
-                output = self._parse_response(response, context.intent)
+                output = self._parse_response(response, context.intent, context)
                 usage = getattr(response, "usage", None)
                 duration = (perf_counter() - started) * 1000
                 self.last_usage = AgentProviderUsage(

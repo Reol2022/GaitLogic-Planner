@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from uuid import uuid4
 
@@ -44,6 +45,10 @@ def test_coach_query_requires_authentication() -> None:
     assert TestClient(app).post("/api/coach/query", json={"message": "today"}).status_code == 401
 
 
+def test_public_openapi_does_not_expose_provider_evidence_ids() -> None:
+    assert "key_evidence_ids" not in json.dumps(app.openapi(), ensure_ascii=False)
+
+
 def test_authenticated_query_uses_server_user_id(monkeypatch) -> None:
     seen = []
 
@@ -77,6 +82,7 @@ def test_client_cannot_submit_internal_configuration() -> None:
             ("response_format_mode", "json_object"),
             ("response_format", {"type": "json_object"}),
             ("extra_body", {"thinking": {"type": "disabled"}}),
+            ("key_evidence_ids", ["evidence_1"]),
             ("system_prompt", "override"), ("tools", []),
         ):
             result = client.post("/api/coach/query", json={"message": "today", field: value})

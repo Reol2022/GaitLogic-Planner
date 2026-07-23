@@ -1,6 +1,94 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, Literal
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from server.agent.enums import AgentIntent, AgentRiskLevel
+from server.agent.schemas import (
+    AgentNotice,
+    AgentToolInvocation,
+    MAX_CONTEXT_ITEMS,
+    MAX_MODEL_TOOL_CALLS,
+    MAX_NOTICES,
+)
+
+
+class ProviderContractModel(BaseModel):
+    """Strict provider-only contract that is never exposed through OpenAPI."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ProviderAgentTodayRecommendation(ProviderContractModel):
+    decision: Literal[
+        "PROCEED",
+        "PROCEED_WITH_CAUTION",
+        "CONSIDER_ADJUSTMENT",
+        "REST_OR_RECOVERY",
+        "UNKNOWN",
+    ]
+    planned_workout_status: Literal[
+        "PLANNED",
+        "REST_DAY",
+        "NO_PLAN",
+        "CYCLE_NOT_ACTIVE",
+        "UNKNOWN",
+    ]
+    headline: str = Field(min_length=1, max_length=300)
+    key_evidence_ids: list[str] = Field(max_length=10)
+    data_quality: str = Field(min_length=1, max_length=40)
+
+    @field_validator("key_evidence_ids", mode="before")
+    @classmethod
+    def validate_evidence_id_types(cls, value: Any) -> Any:
+        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+            raise ValueError("key_evidence_ids must contain only strings")
+        return value
+
+    @field_validator("key_evidence_ids")
+    @classmethod
+    def validate_evidence_ids(cls, value: list[str]) -> list[str]:
+        if any(
+            not item
+            or item.strip() != item
+            or not item.startswith("evidence_")
+            or not item.removeprefix("evidence_").isdigit()
+            or item.removeprefix("evidence_").startswith("0")
+            for item in value
+        ):
+            raise ValueError("key_evidence_ids contains an invalid request-local ID")
+        if len(value) != len(set(value)):
+            raise ValueError("key_evidence_ids must be unique")
+        return value
+
+
+class ProviderAgentModelOutput(ProviderContractModel):
+    """Structured model response before canonical Evidence materialization."""
+
+    answer: str | None = Field(default=None, max_length=12000)
+    summary: str | None = Field(default=None, max_length=1000)
+    intent: AgentIntent
+    tool_calls: list[AgentToolInvocation] = Field(
+        default_factory=list,
+        max_length=MAX_MODEL_TOOL_CALLS,
+    )
+    risk_level: AgentRiskLevel = AgentRiskLevel.UNKNOWN
+    warnings: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
+    limitations: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
+    used_tool_call_ids: list[UUID] = Field(default_factory=list, max_length=MAX_CONTEXT_ITEMS)
+    today_recommendation: ProviderAgentTodayRecommendation | None = None
+
+    @model_validator(mode="after")
+    def validate_tool_call_ids(self) -> "ProviderAgentModelOutput":
+        ids = [item.tool_call_id for item in self.tool_calls]
+        if len(ids) != len(set(ids)):
+            raise ValueError("tool_call_id must be unique")
+        if len(self.used_tool_call_ids) != len(set(self.used_tool_call_ids)):
+            raise ValueError("used_tool_call_ids must be unique")
+        return self
 
 
 @dataclass(frozen=True)

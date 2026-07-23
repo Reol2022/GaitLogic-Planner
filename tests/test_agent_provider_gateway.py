@@ -15,6 +15,7 @@ from server.agent.providers.openai_compatible import (
     OpenAICompatibleAgentGateway,
     redact_provider_text,
 )
+from server.agent.providers.schemas import ProviderAgentModelOutput
 from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import (
     AgentContext,
@@ -23,6 +24,7 @@ from server.agent.schemas import (
     AgentToolDefinition,
 )
 from server.agent.tool import AgentTool
+from server.agent.today_recommendation import TodayRecommendationValidator
 from server.agent.trace import AgentTrace
 from tests.agent_tool_fakes import NOW
 
@@ -83,6 +85,30 @@ def context() -> AgentContext:
     )
 
 
+def today_context() -> AgentContext:
+    return AgentContext(
+        request_id="8c785ddb-a652-4fe4-a048-88350c183cc7",
+        user_id=1001,
+        intent=AgentIntent.TODAY_RECOMMENDATION,
+        current_time=NOW,
+        timezone="Asia/Shanghai",
+        today_workout={"workout_status": "PLANNED"},
+        today_evaluation={
+            "data_status": "AVAILABLE",
+            "decision": "passed_with_notice",
+            "risk_level": "MODERATE",
+            "evidence": ["distance_7d_km"],
+            "rule_hits": [
+                {
+                    "rule_code": "TODAY_PUBLIC_RULE",
+                    "explanation": "Existing rule evidence.",
+                }
+            ],
+        },
+        data_quality={"data_status": "AVAILABLE"},
+    )
+
+
 def response(
     *,
     content=None,
@@ -105,15 +131,22 @@ def response(
     )
 
 
-def run_gateway(fake: FakeClient, *, configured: Settings | None = None, tools=None):
+def run_gateway(
+    fake: FakeClient,
+    *,
+    configured: Settings | None = None,
+    tools=None,
+    agent_context: AgentContext | None = None,
+):
+    active_context = agent_context or context()
     gateway = OpenAICompatibleAgentGateway(
         configured or settings(), client_factory=lambda _settings, _url: fake
     )
-    trace = AgentTrace(request_id=context().request_id)
+    trace = AgentTrace(request_id=active_context.request_id)
     output = gateway.generate(
         system_instructions="safe fixed prompt",
         user_message="Explain fictional state",
-        context=context(),
+        context=active_context,
         tools=tools or [],
         trace=trace,
     )
@@ -149,7 +182,13 @@ def test_explicit_json_schema_preserves_exact_request_contract() -> None:
     assert response_format["type"] == "json_schema"
     assert response_format["json_schema"]["name"] == "agent_model_output"
     assert response_format["json_schema"]["strict"] is True
-    assert response_format["json_schema"]["schema"] == AgentModelOutput.model_json_schema()
+    assert (
+        response_format["json_schema"]["schema"]
+        == ProviderAgentModelOutput.model_json_schema()
+    )
+    schema_text = json.dumps(response_format["json_schema"]["schema"])
+    assert "key_evidence_ids" in schema_text
+    assert '"key_evidence"' not in schema_text
 
 
 def test_json_object_request_is_exact_and_ignores_unknown_provider_settings() -> None:
@@ -182,6 +221,88 @@ def test_json_object_request_is_exact_and_ignores_unknown_provider_settings() ->
     assert "json_schema" not in json.dumps(
         [event.model_dump(mode="json") for event in provider_events]
     )
+
+
+def test_today_evidence_ids_materialize_to_canonical_public_text() -> None:
+    payload = {
+        "answer": "Use the existing plan cautiously.",
+        "intent": "TODAY_RECOMMENDATION",
+        "risk_level": "MODERATE",
+        "warnings": [],
+        "limitations": [],
+        "today_recommendation": {
+            "decision": "PROCEED_WITH_CAUTION",
+            "planned_workout_status": "PLANNED",
+            "headline": "Proceed cautiously.",
+            "key_evidence_ids": ["evidence_3", "evidence_1"],
+            "data_quality": "AVAILABLE",
+        },
+    }
+    fake = FakeClient([response(content=json.dumps(payload))])
+    _gateway, output, _trace = run_gateway(
+        fake,
+        configured=settings(COACH_AGENT_RESPONSE_FORMAT_MODE="json_object"),
+        agent_context=today_context(),
+    )
+    assert output.today_recommendation is not None
+    assert output.today_recommendation.key_evidence == [
+        "distance_7d_km",
+        "Existing rule evidence.",
+    ]
+    assert TodayRecommendationValidator().validate(output, today_context()) == []
+    serialized = output.model_dump(mode="json")
+    assert "key_evidence_ids" not in json.dumps(serialized)
+    provider_payload = json.loads(fake.completions.calls[0]["messages"][1]["content"])
+    assert provider_payload["context"]["available_evidence"] == [
+        {"id": "evidence_1", "text": "distance_7d_km"},
+        {"id": "evidence_2", "text": "TODAY_PUBLIC_RULE"},
+        {"id": "evidence_3", "text": "Existing rule evidence."},
+    ]
+
+
+@pytest.mark.parametrize(
+    "recommendation_update",
+    [
+        {"key_evidence": ["distance_7d_km"]},
+        {
+            "key_evidence": ["distance_7d_km"],
+            "key_evidence_ids": ["evidence_1"],
+        },
+        {"key_evidence_ids": ["evidence_99"]},
+        {"key_evidence_ids": ["Evidence_1"]},
+        {"key_evidence_ids": [" evidence_1"]},
+        {"key_evidence_ids": ["evidence_1", "evidence_1"]},
+        {"key_evidence_ids": []},
+        {"key_evidence_ids": [1]},
+    ],
+)
+def test_invalid_today_evidence_protocol_is_rejected(
+    recommendation_update: dict,
+) -> None:
+    recommendation = {
+        "decision": "PROCEED_WITH_CAUTION",
+        "planned_workout_status": "PLANNED",
+        "headline": "Proceed cautiously.",
+        "data_quality": "AVAILABLE",
+        **recommendation_update,
+    }
+    fake = FakeClient(
+        [
+            response(
+                content=json.dumps(
+                    {
+                        "answer": "Use the existing plan cautiously.",
+                        "intent": "TODAY_RECOMMENDATION",
+                        "today_recommendation": recommendation,
+                    }
+                )
+            )
+        ]
+    )
+    with pytest.raises(AgentProviderError) as exc:
+        run_gateway(fake, agent_context=today_context())
+    assert exc.value.code == AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID
+    assert len(fake.completions.calls) == 1
 
 
 def test_thinking_mode_unset_preserves_generic_provider_request() -> None:
