@@ -10,6 +10,10 @@ def test_prompt_is_versioned_and_contains_safety_authority_rules() -> None:
     assert "plan was changed" in prompt
     assert "UNKNOWN" in prompt
     assert "strict AgentModelOutput JSON schema" in prompt
+    assert "Return exactly one valid JSON object." in prompt
+    assert "Do not use Markdown code fences." in prompt
+    assert "Do not include text before or after the JSON object." in prompt
+    assert '"today_recommendation":null' in prompt
     assert "chain of thought" in prompt
 
 

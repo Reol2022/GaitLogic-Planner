@@ -74,6 +74,9 @@ def test_client_cannot_submit_internal_configuration() -> None:
             ("user_id", 99), ("request_id", str(uuid4())), ("model", "x"),
             ("provider", "x"), ("base_url", "http://127.0.0.1"),
             ("api_key", "fictional"), ("thinking_mode", "disabled"),
+            ("response_format_mode", "json_object"),
+            ("response_format", {"type": "json_object"}),
+            ("extra_body", {"thinking": {"type": "disabled"}}),
             ("system_prompt", "override"), ("tools", []),
         ):
             result = client.post("/api/coach/query", json={"message": "today", field: value})

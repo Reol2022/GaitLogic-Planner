@@ -655,6 +655,7 @@ COACH_AGENT_API_KEY=
 COACH_AGENT_BASE_URL=https://api.example.com/v1
 COACH_AGENT_MODEL=example-model
 COACH_AGENT_THINKING_MODE=unset
+COACH_AGENT_RESPONSE_FORMAT_MODE=json_schema
 COACH_AGENT_CONNECT_TIMEOUT_SECONDS=10
 COACH_AGENT_READ_TIMEOUT_SECONDS=60
 COACH_AGENT_TOTAL_TIMEOUT_SECONDS=90
@@ -667,5 +668,19 @@ COACH_AGENT_MAX_OUTPUT_TOKENS=2000
 - `unset`：默认值，不附加 Provider 专用请求字段，保持通用 OpenAI-compatible 行为；
 - `disabled`：请求增加受控的 `thinking: {"type": "disabled"}`，用于 DeepSeek V4 非思考模式兼容；
 - `enabled`：配置值保留，但 v0.11.0 会在网络调用前安全拒绝。当前工具链不会读取或回传 `reasoning_content`，因此不支持 DeepSeek 思考模式的多轮工具调用。
+
+`COACH_AGENT_RESPONSE_FORMAT_MODE` 只允许：
+
+- `json_schema`：默认值，向支持 JSON Schema Response Format 的端点发送现有严格 `AgentModelOutput` Schema；
+- `json_object`：用于不支持最终 JSON Schema Response Format、但支持 JSON Output 的兼容端点。Provider 只保证返回 JSON，服务端仍会执行严格 Pydantic Schema 校验和 Deterministic Validator。
+
+DeepSeek-compatible 的非思考模式部署可显式配置：
+
+```env
+COACH_AGENT_THINKING_MODE=disabled
+COACH_AGENT_RESPONSE_FORMAT_MODE=json_object
+```
+
+系统不会根据 Base URL 或模型名自动探测模式，也不会在 HTTP 400 后自动切换响应格式。配置错误会进入安全降级；当前版本不支持完整的 DeepSeek thinking 工具链。
 
 不提供任意 `extra_body` JSON 配置。生产环境禁止 localhost、私网和包含用户名或密码的 Provider URL；只有 development 环境可通过显式开关允许本地 Provider。API Key 不得进入前端、日志、截图或版本库。

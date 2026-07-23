@@ -147,6 +147,10 @@ class Settings(BaseSettings):
         default="unset",
         validation_alias="COACH_AGENT_THINKING_MODE",
     )
+    coach_agent_response_format_mode: Literal["json_schema", "json_object"] = Field(
+        default="json_schema",
+        validation_alias="COACH_AGENT_RESPONSE_FORMAT_MODE",
+    )
     coach_agent_connect_timeout_seconds: float = Field(
         default=10,
         gt=0,

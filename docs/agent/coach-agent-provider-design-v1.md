@@ -13,6 +13,8 @@ v0.11.0-C 在 `AgentLLMGateway` 抽象后增加 OpenAI-compatible Chat Completio
 - `COACH_AGENT_API_KEY`：只允许服务端环境提供，仓库默认留空；
 - `COACH_AGENT_BASE_URL`：受控 Provider 地址；
 - `COACH_AGENT_MODEL`：受控模型名；
+- `COACH_AGENT_THINKING_MODE`：仅允许 `unset`、`disabled`、`enabled`；
+- `COACH_AGENT_RESPONSE_FORMAT_MODE`：仅允许 `json_schema`、`json_object`，默认 `json_schema`；
 - `COACH_AGENT_CONNECT_TIMEOUT_SECONDS`、`COACH_AGENT_READ_TIMEOUT_SECONDS`、`COACH_AGENT_TOTAL_TIMEOUT_SECONDS`；
 - `COACH_AGENT_MAX_RETRIES`：范围 0–1；
 - `COACH_AGENT_MAX_OUTPUT_TOKENS`；
@@ -32,6 +34,33 @@ v0.11.0-C 在 `AgentLLMGateway` 抽象后增加 OpenAI-compatible Chat Completio
 6. 使用 `AgentModelOutput` 的 JSON Schema 请求严格结构化结果。
 
 Gateway 不向 Provider 暴露 Dependencies、Python 类型、Session、Garmin 原始 payload、完整历史日志或写工具。
+
+## 受控响应格式
+
+`json_schema` 保持默认行为，发送现有严格 `AgentModelOutput` JSON Schema。
+`json_object` 只发送 `{"type": "json_object"}`，用于不支持最终 JSON Schema
+Response Format、但支持 JSON Output 的兼容端点。
+
+两种模式使用同一条安全响应链：
+
+```text
+Provider content
+→ 原始 JSON 解析
+→ AgentModelOutput 严格 Pydantic 校验
+→ Deterministic Validator
+→ 成功响应或安全 Fallback
+```
+
+`json_object` 不允许额外字段、未知枚举、缺失必需字段、Markdown 围栏、自然语言前后缀或截断 JSON。系统不修补模型 JSON，不调用第二个模型修复，不自动从一种响应格式重试为另一种格式，也不允许客户端覆盖响应格式。
+
+DeepSeek-compatible 非思考模式的推荐组合是：
+
+```env
+COACH_AGENT_THINKING_MODE=disabled
+COACH_AGENT_RESPONSE_FORMAT_MODE=json_object
+```
+
+这是显式部署配置，不会按 Provider 品牌、Base URL 或模型名推断。当前版本不读取或回传 `reasoning_content`，不支持完整思考模式工具链。
 
 ## 响应与工具调用
 
@@ -55,7 +84,7 @@ Base URL 必须使用 HTTP/HTTPS，且不能包含账号密码或 fragment。生
 
 ## Trace
 
-Provider Trace 仅新增 `PROVIDER_CALL_STARTED`、`PROVIDER_CALL_COMPLETED`、`PROVIDER_CALL_FAILED`。事件可含 provider/model alias、耗时、Token 数和安全错误码；公共 API 只返回 `trace_id`，不返回事件列表。
+Provider Trace 仅新增 `PROVIDER_CALL_STARTED`、`PROVIDER_CALL_COMPLETED`、`PROVIDER_CALL_FAILED`。事件可含 provider/model alias、受控响应格式模式名称、耗时、Token 数和安全错误码，不记录响应 Schema 或正文；公共 API 只返回 `trace_id`，不返回事件列表。
 
 ## 当前限制
 

@@ -73,3 +73,19 @@ def test_thinking_mode_accepts_only_controlled_values(mode: str) -> None:
 def test_arbitrary_thinking_mode_value_is_rejected() -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, COACH_AGENT_THINKING_MODE='{"type":"disabled"}')
+
+
+def test_response_format_mode_defaults_to_json_schema() -> None:
+    assert Settings(_env_file=None).coach_agent_response_format_mode == "json_schema"
+
+
+@pytest.mark.parametrize("mode", ["json_schema", "json_object"])
+def test_response_format_mode_accepts_only_controlled_values(mode: str) -> None:
+    configured = Settings(_env_file=None, COACH_AGENT_RESPONSE_FORMAT_MODE=mode)
+    assert configured.coach_agent_response_format_mode == mode
+
+
+@pytest.mark.parametrize("mode", ["auto", "text", "JSON_OBJECT", " json_object", ""])
+def test_arbitrary_response_format_mode_is_rejected(mode: str) -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, COACH_AGENT_RESPONSE_FORMAT_MODE=mode)

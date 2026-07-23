@@ -4,16 +4,25 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from pydantic import BaseModel
 
 from planner_core.config import Settings
-from server.agent.enums import AgentIntent, AgentRiskLevel
+from server.agent.enums import AgentIntent, AgentRiskLevel, AgentRunStatus, AgentToolStatus
 from server.agent.errors import AgentErrorCode
+from server.agent.orchestrator import GaitLogicCoachAgent
 from server.agent.providers.errors import AgentProviderError
 from server.agent.providers.openai_compatible import (
     OpenAICompatibleAgentGateway,
     redact_provider_text,
 )
-from server.agent.schemas import AgentContext, AgentToolDefinition
+from server.agent.registry import AgentToolRegistry
+from server.agent.schemas import (
+    AgentContext,
+    AgentModelOutput,
+    AgentRequest,
+    AgentToolDefinition,
+)
+from server.agent.tool import AgentTool
 from server.agent.trace import AgentTrace
 from tests.agent_tool_fakes import NOW
 
@@ -74,10 +83,17 @@ def context() -> AgentContext:
     )
 
 
-def response(*, content=None, tool_calls=None, reasoning_content=None):
+def response(
+    *,
+    content=None,
+    tool_calls=None,
+    reasoning_content=None,
+    finish_reason="stop",
+):
     return SimpleNamespace(
         choices=[
             SimpleNamespace(
+                finish_reason=finish_reason,
                 message=SimpleNamespace(
                     content=content,
                     tool_calls=tool_calls or [],
@@ -121,6 +137,53 @@ def test_valid_structured_output_and_json_schema_request() -> None:
     assert gateway.last_usage.total_tokens == 150
 
 
+def test_explicit_json_schema_preserves_exact_request_contract() -> None:
+    fake = FakeClient(
+        [response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "safe"}))]
+    )
+    run_gateway(
+        fake,
+        configured=settings(COACH_AGENT_RESPONSE_FORMAT_MODE="json_schema"),
+    )
+    response_format = fake.completions.calls[0]["response_format"]
+    assert response_format["type"] == "json_schema"
+    assert response_format["json_schema"]["name"] == "agent_model_output"
+    assert response_format["json_schema"]["strict"] is True
+    assert response_format["json_schema"]["schema"] == AgentModelOutput.model_json_schema()
+
+
+def test_json_object_request_is_exact_and_ignores_unknown_provider_settings() -> None:
+    fake = FakeClient(
+        [response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "safe"}))]
+    )
+    _gateway, _output, trace = run_gateway(
+        fake,
+        configured=settings(
+            COACH_AGENT_RESPONSE_FORMAT_MODE="json_object",
+            COACH_AGENT_RESPONSE_FORMAT='{"type":"text"}',
+            COACH_AGENT_EXTRA_BODY='{"unsafe":true}',
+        ),
+    )
+    call = fake.completions.calls[0]
+    assert call["response_format"] == {"type": "json_object"}
+    assert "extra_body" not in call
+    assert set(call) == {
+        "model",
+        "messages",
+        "response_format",
+        "max_tokens",
+        "temperature",
+    }
+    provider_events = [
+        event for event in trace.events if event.provider_alias is not None
+    ]
+    assert provider_events
+    assert all(event.response_format_mode == "json_object" for event in provider_events)
+    assert "json_schema" not in json.dumps(
+        [event.model_dump(mode="json") for event in provider_events]
+    )
+
+
 def test_thinking_mode_unset_preserves_generic_provider_request() -> None:
     fake = FakeClient(
         [response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "safe"}))]
@@ -143,6 +206,22 @@ def test_thinking_mode_disabled_adds_only_controlled_extra_body() -> None:
     assert fake.completions.calls[0]["extra_body"] == {
         "thinking": {"type": "disabled"}
     }
+
+
+def test_json_object_and_thinking_disabled_are_combined_without_other_fields() -> None:
+    fake = FakeClient(
+        [response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "safe"}))]
+    )
+    run_gateway(
+        fake,
+        configured=settings(
+            COACH_AGENT_RESPONSE_FORMAT_MODE="json_object",
+            COACH_AGENT_THINKING_MODE="disabled",
+        ),
+    )
+    call = fake.completions.calls[0]
+    assert call["response_format"] == {"type": "json_object"}
+    assert call["extra_body"] == {"thinking": {"type": "disabled"}}
 
 
 def test_thinking_mode_enabled_fails_closed_before_provider_call() -> None:
@@ -211,10 +290,33 @@ def test_invalid_native_tool_calls_are_model_output_errors(native) -> None:
 
 @pytest.mark.parametrize(
     "content",
-    ["not json", "```json\n{}\n```", '{"intent":"INVALID","answer":"x"}', '{"intent":"EXPLAIN_RUNNER_STATE","answer":"x","extra":1}'],
+    [
+        "",
+        "not json",
+        "```json\n{}\n```",
+        '{"intent":"EXPLAIN_RUNNER_STATE"',
+        '{"answer":"missing required intent"}',
+        '{"intent":"INVALID","answer":"x"}',
+        '{"intent":"EXPLAIN_RUNNER_STATE","answer":"x","extra":1}',
+    ],
 )
 def test_invalid_output_is_rejected_without_retry(content: str) -> None:
     fake = FakeClient([response(content=content)])
+    with pytest.raises(AgentProviderError) as exc:
+        run_gateway(fake)
+    assert exc.value.code == AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID
+    assert len(fake.completions.calls) == 1
+
+
+def test_length_finish_reason_is_rejected_without_parsing_or_retry() -> None:
+    fake = FakeClient(
+        [
+            response(
+                content='{"intent":"EXPLAIN_RUNNER_STATE","answer":"truncated"}',
+                finish_reason="length",
+            )
+        ]
+    )
     with pytest.raises(AgentProviderError) as exc:
         run_gateway(fake)
     assert exc.value.code == AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID
@@ -247,6 +349,18 @@ def test_authentication_failure_is_not_retried() -> None:
         run_gateway(fake)
     assert exc.value.code == AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE
     assert len(fake.completions.calls) == 1
+
+
+def test_bad_request_does_not_retry_or_switch_response_format() -> None:
+    fake = FakeClient([ProviderFailure(400)])
+    with pytest.raises(AgentProviderError) as exc:
+        run_gateway(
+            fake,
+            configured=settings(COACH_AGENT_RESPONSE_FORMAT_MODE="json_object"),
+        )
+    assert exc.value.code == AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE
+    assert len(fake.completions.calls) == 1
+    assert fake.completions.calls[0]["response_format"] == {"type": "json_object"}
 
 
 def test_overlong_output_is_rejected_without_retry() -> None:
@@ -317,3 +431,79 @@ def test_disabled_and_unconfigured_provider_do_not_call_client() -> None:
             run_gateway(fake, configured=configured)
         assert exc.value.code == code
     assert fake.completions.calls == []
+
+
+class MetricInput(BaseModel):
+    value: int
+
+
+class MetricOutput(BaseModel):
+    doubled: int
+
+
+class MetricTool(AgentTool):
+    name = "read_metric"
+    description = "Read one fictional metric."
+    input_model = MetricInput
+    output_model = MetricOutput
+    allowed_intents = (AgentIntent.EXPLAIN_RUNNER_STATE,)
+
+    def execute(self, arguments: MetricInput, _context: AgentContext) -> MetricOutput:
+        return MetricOutput(doubled=arguments.value * 2)
+
+
+def test_json_object_tool_call_then_final_response_uses_same_safe_contract() -> None:
+    native_call = SimpleNamespace(
+        function=SimpleNamespace(name="read_metric", arguments='{"value":4}')
+    )
+    fake = FakeClient(
+        [
+            response(tool_calls=[native_call]),
+            response(
+                content=json.dumps(
+                    {
+                        "answer": "The fictional doubled metric is 8.",
+                        "intent": "EXPLAIN_RUNNER_STATE",
+                        "risk_level": "UNKNOWN",
+                    }
+                )
+            ),
+        ]
+    )
+    configured = settings(
+        COACH_AGENT_RESPONSE_FORMAT_MODE="json_object",
+        COACH_AGENT_THINKING_MODE="disabled",
+    )
+    gateway = OpenAICompatibleAgentGateway(
+        configured,
+        client_factory=lambda _settings, _url: fake,
+    )
+    registry = AgentToolRegistry()
+    registry.register(MetricTool())
+    agent = GaitLogicCoachAgent(gateway=gateway, registry=registry)
+
+    result = agent.run(
+        AgentRequest(
+            user_id=1001,
+            message="Explain one fictional metric.",
+            intent=AgentIntent.EXPLAIN_RUNNER_STATE,
+        )
+    )
+
+    assert result.status == AgentRunStatus.SUCCEEDED
+    assert result.tool_calls[0].status == AgentToolStatus.SUCCEEDED
+    assert len(fake.completions.calls) == 2
+    assert all(
+        call["response_format"] == {"type": "json_object"}
+        and call["extra_body"] == {"thinking": {"type": "disabled"}}
+        for call in fake.completions.calls
+    )
+    assert [
+        [message["role"] for message in call["messages"]]
+        for call in fake.completions.calls
+    ] == [["system", "user"], ["system", "user"]]
+    assert '"doubled":8' in fake.completions.calls[1]["messages"][1]["content"]
+    assert all(
+        "reasoning_content" not in json.dumps(call, ensure_ascii=False)
+        for call in fake.completions.calls
+    )

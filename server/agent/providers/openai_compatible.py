@@ -143,6 +143,18 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
             return AgentErrorCode.AGENT_PROVIDER_RATE_LIMITED
         return AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE
 
+    def _response_format(self) -> dict[str, Any]:
+        if self.settings.coach_agent_response_format_mode == "json_object":
+            return {"type": "json_object"}
+        return {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "agent_model_output",
+                "strict": True,
+                "schema": AgentModelOutput.model_json_schema(),
+            },
+        }
+
     def _request(self, *, messages: list[dict[str, str]], tools: list[dict[str, Any]]) -> Any:
         if self.settings.coach_agent_thinking_mode == "enabled":
             # DeepSeek requires reasoning_content replay across thinking-mode
@@ -153,14 +165,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         request: dict[str, Any] = {
             "model": self.settings.coach_agent_model,
             "messages": messages,
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "agent_model_output",
-                    "strict": True,
-                    "schema": AgentModelOutput.model_json_schema(),
-                },
-            },
+            "response_format": self._response_format(),
             "max_tokens": self.settings.coach_agent_max_output_tokens,
             "temperature": 0.2,
         }
@@ -181,7 +186,10 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
     def _parse_response(response: Any, intent: AgentIntent) -> AgentModelOutput:
         if not getattr(response, "choices", None):
             raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
-        message = response.choices[0].message
+        choice = response.choices[0]
+        if getattr(choice, "finish_reason", None) == "length":
+            raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
+        message = choice.message
         native_calls = getattr(message, "tool_calls", None) or []
         if native_calls:
             try:
@@ -251,6 +259,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
             AgentTraceStatus.STARTED,
             provider_alias=self.settings.coach_agent_provider,
             model_alias=self.settings.coach_agent_model,
+            response_format_mode=self.settings.coach_agent_response_format_mode,
         )
         attempts = self.settings.coach_agent_max_retries + 1
         for attempt in range(attempts):
@@ -272,6 +281,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     duration_ms=duration,
                     provider_alias=self.settings.coach_agent_provider,
                     model_alias=self.settings.coach_agent_model,
+                    response_format_mode=self.settings.coach_agent_response_format_mode,
                     prompt_tokens=self.last_usage.prompt_tokens,
                     completion_tokens=self.last_usage.completion_tokens,
                 )
@@ -289,6 +299,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     duration_ms=duration,
                     provider_alias=self.settings.coach_agent_provider,
                     model_alias=self.settings.coach_agent_model,
+                    response_format_mode=self.settings.coach_agent_response_format_mode,
                     safe_error_code=exc.code,
                 )
                 raise
@@ -308,6 +319,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     duration_ms=duration,
                     provider_alias=self.settings.coach_agent_provider,
                     model_alias=self.settings.coach_agent_model,
+                    response_format_mode=self.settings.coach_agent_response_format_mode,
                     safe_error_code=code,
                 )
                 logger.warning(
