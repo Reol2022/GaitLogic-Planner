@@ -54,6 +54,104 @@ Garmin 训练事实 -> Material Change -> Runner State -> 自动快照 -> 历史
 
 Runner State 不提供医疗诊断，不调用大语言模型计算状态，也不会自动生成或修改正式训练计划。
 
+### Runner State
+
+Runner State 根据近期训练事实、数据质量和规则证据形成可解释的当前状态，并保留历史快照和趋势。
+
+![Runner State 当前状态](docs/assets/runner-state/runner-state1.png)
+
+![Runner State 历史趋势](docs/assets/runner-state/runner-state2.png)
+
+### Training Readiness
+
+Training Readiness 用于展示当前训练准备情况、关键依据和限制，不用于医疗诊断。
+
+![Training Readiness 概览](docs/assets/training-readiness/training-readiness1.png)
+
+![Training Readiness 详情](docs/assets/training-readiness/training-readiness2.png)
+
+## GaitLogic Coach Agent
+
+Coach Agent 把结构化训练事实、确定性规则和受限模型解释组合成一个只读训练建议界面：
+
+```text
+结构化训练数据负责事实
+→ Runner State 与规则引擎负责决策边界
+→ LLM 负责受限工具编排和解释
+→ Validator 阻止越权或覆盖规则的输出
+→ Fallback 保证模型不可用时仍可返回确定性建议
+```
+
+它不是普通聊天接口：LLM 不直接访问数据库，用户身份由服务端认证上下文注入，Tool 输入输出经过 Pydantic Schema 校验，今日建议的 Decision 来自确定性规则，而且模型不能修改正式计划。
+
+### AI 教练 Agent
+
+GaitLogic Coach Agent 将结构化训练事实、确定性训练规则和大语言模型解释能力组合起来。规则和 Runner State 负责结论边界，模型只负责工具编排和自然语言解释。
+
+![AI 教练页面](docs/assets/coach-agent/coach-overview.png)
+
+![今日训练建议](docs/assets/coach-agent/coach-today-recommendation.png)
+
+### Agent 能力
+
+当前注册八个只读工具：
+
+- `get_runner_state`
+- `get_runner_state_history`
+- `get_recent_training`
+- `get_today_workout`
+- `get_current_training_cycle`
+- `get_training_rules`
+- `evaluate_today_workout`
+- `get_training_data_quality`
+
+```mermaid
+flowchart TD
+    UI[Vue Coach UI] --> API[POST /api/coach/query]
+    API --> QS[CoachAgentQueryService]
+    QS --> AGENT[GaitLogicCoachAgent]
+    AGENT --> CTX[Context Builder]
+    AGENT --> REG[Read-only Tool Registry]
+    AGENT --> LLM[OpenAI-compatible Gateway]
+    CTX --> REG
+    REG --> SERVICES[Training Services]
+    SERVICES --> RULES[Runner State and Rule Engine]
+    SERVICES --> DB[(MySQL)]
+    LLM --> VAL[Deterministic Validator]
+    VAL -->|accepted| QS
+    VAL -->|rejected or unavailable| FALLBACK[Deterministic Fallback]
+    FALLBACK --> QS
+    QS --> UI
+```
+
+完整架构说明见 [Coach Agent Architecture v1](docs/agent/coach-agent-architecture-v1.md)。
+
+### Evaluation
+
+Coach Agent Evaluation v1 使用 32 条固定日期、完全虚构的案例验证工具召回、Decision/Plan 一致性、Warning/Limitation 保留、Fallback 和越权声明。它默认使用 Mock Gateway，不读取 API Key，不访问网络或生产数据库，也不使用第二个 LLM 当裁判。
+
+真实运行结果见 [Coach Agent Evaluation v1 Results](docs/agent/evaluation/results/coach-agent-eval-v1.md)；复现命令：
+
+```powershell
+python scripts/evaluate_coach_agent.py
+```
+
+### Coach Quick Start
+
+```powershell
+# 后端
+python -m uvicorn server.main:app --reload
+
+# 前端
+cd web
+npm ci
+npm run dev
+```
+
+`.env.example` 中 Coach Provider 默认关闭且 Key 为空。此时 `/coach` 使用确定性 Fallback 展示可用的只读建议；安全 Demo 流程见 [Coach Agent Demo v1](docs/agent/coach-agent-demo-v1.md)。
+
+当前没有 RAG、Weekly Review Agent、写工具、长期记忆、Streaming 或多 Agent；Quota 暂为进程内限制。
+
 | 你可能正在遇到的问题 | GaitLogic Planner 的处理方式 |
 | --- | --- |
 | 训练计划在 Excel，执行记录在手表，复盘在聊天记录里 | 用训练周期、训练块、每日计划、日志和统计把数据收束到一个系统 |

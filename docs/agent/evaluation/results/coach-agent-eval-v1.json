@@ -1,0 +1,2972 @@
+{
+  "case_set_version": "cases-v1",
+  "cases": [
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "PROCEED",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "PLANNED",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=PROCEED; expected=PROCEED",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=PLANNED; expected=PLANNED",
+          "passed": true
+        }
+      ],
+      "case_id": "today_001",
+      "category": "today_recommendation",
+      "duration_ms": 47.836,
+      "expected_decision": "PROCEED",
+      "expected_planned_status": "PLANNED",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "PROCEED_WITH_CAUTION",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "PLANNED",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=['HIGH_RISK_REVIEW_REQUIRED']",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=PROCEED_WITH_CAUTION; expected=PROCEED_WITH_CAUTION",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=PLANNED; expected=PLANNED",
+          "passed": true
+        }
+      ],
+      "case_id": "today_002",
+      "category": "today_recommendation",
+      "duration_ms": 42.749,
+      "expected_decision": "PROCEED_WITH_CAUTION",
+      "expected_planned_status": "PLANNED",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": true
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "CONSIDER_ADJUSTMENT",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "PLANNED",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=CONSIDER_ADJUSTMENT; expected=CONSIDER_ADJUSTMENT",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=PLANNED; expected=PLANNED",
+          "passed": true
+        }
+      ],
+      "case_id": "today_003",
+      "category": "today_recommendation",
+      "duration_ms": 44.037,
+      "expected_decision": "CONSIDER_ADJUSTMENT",
+      "expected_planned_status": "PLANNED",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "REST_OR_RECOVERY",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "PLANNED",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=['HIGH_RISK_REVIEW_REQUIRED']",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=REST_OR_RECOVERY; expected=REST_OR_RECOVERY",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=PLANNED; expected=PLANNED",
+          "passed": true
+        }
+      ],
+      "case_id": "today_004",
+      "category": "today_recommendation",
+      "duration_ms": 37.75,
+      "expected_decision": "REST_OR_RECOVERY",
+      "expected_planned_status": "PLANNED",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": true
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "PROCEED",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "REST_DAY",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=PROCEED; expected=PROCEED",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=REST_DAY; expected=REST_DAY",
+          "passed": true
+        }
+      ],
+      "case_id": "today_005",
+      "category": "today_recommendation",
+      "duration_ms": 53.038,
+      "expected_decision": "PROCEED",
+      "expected_planned_status": "REST_DAY",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "UNKNOWN",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "NO_PLAN",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=1",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=UNKNOWN; expected=UNKNOWN",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=NO_PLAN; expected=NO_PLAN",
+          "passed": true
+        }
+      ],
+      "case_id": "today_006",
+      "category": "today_recommendation",
+      "duration_ms": 43.123,
+      "expected_decision": "UNKNOWN",
+      "expected_planned_status": "NO_PLAN",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": true,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "UNKNOWN",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "CYCLE_NOT_ACTIVE",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=1",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=UNKNOWN; expected=UNKNOWN",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=CYCLE_NOT_ACTIVE; expected=CYCLE_NOT_ACTIVE",
+          "passed": true
+        }
+      ],
+      "case_id": "today_007",
+      "category": "today_recommendation",
+      "duration_ms": 41.56,
+      "expected_decision": "UNKNOWN",
+      "expected_planned_status": "CYCLE_NOT_ACTIVE",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": true,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "PROCEED_WITH_CAUTION",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "PLANNED",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=PROCEED_WITH_CAUTION; expected=PROCEED_WITH_CAUTION",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=PLANNED; expected=PLANNED",
+          "passed": true
+        }
+      ],
+      "case_id": "today_008",
+      "category": "today_recommendation",
+      "duration_ms": 38.974,
+      "expected_decision": "PROCEED_WITH_CAUTION",
+      "expected_planned_status": "PLANNED",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "PROCEED_WITH_CAUTION",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "PLANNED",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=PROCEED_WITH_CAUTION; expected=PROCEED_WITH_CAUTION",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=PLANNED; expected=PLANNED",
+          "passed": true
+        }
+      ],
+      "case_id": "today_009",
+      "category": "today_recommendation",
+      "duration_ms": 43.368,
+      "expected_decision": "PROCEED_WITH_CAUTION",
+      "expected_planned_status": "PLANNED",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "UNKNOWN",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "PLANNED",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=1",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=UNKNOWN; expected=UNKNOWN",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=PLANNED; expected=PLANNED",
+          "passed": true
+        }
+      ],
+      "case_id": "today_010",
+      "category": "today_recommendation",
+      "duration_ms": 43.549,
+      "expected_decision": "UNKNOWN",
+      "expected_planned_status": "PLANNED",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": true,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "actual_decision": null,
+      "actual_intent": "EXPLAIN_RUNNER_STATE",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=EXPLAIN_RUNNER_STATE; expected=EXPLAIN_RUNNER_STATE",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_runner_state_history', 'get_training_data_quality']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "explain_001",
+      "category": "explain_runner_state",
+      "duration_ms": 40.895,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "EXPLAIN_RUNNER_STATE",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 3,
+      "required_tool_total": 3,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "actual_decision": null,
+      "actual_intent": "EXPLAIN_RUNNER_STATE",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=EXPLAIN_RUNNER_STATE; expected=EXPLAIN_RUNNER_STATE",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_runner_state_history', 'get_training_data_quality']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "explain_002",
+      "category": "explain_runner_state",
+      "duration_ms": 36.205,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "EXPLAIN_RUNNER_STATE",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 3,
+      "required_tool_total": 3,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "actual_decision": null,
+      "actual_intent": "EXPLAIN_RUNNER_STATE",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=EXPLAIN_RUNNER_STATE; expected=EXPLAIN_RUNNER_STATE",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_runner_state_history', 'get_training_data_quality']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "explain_003",
+      "category": "explain_runner_state",
+      "duration_ms": 38.704,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "EXPLAIN_RUNNER_STATE",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 3,
+      "required_tool_total": 3,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "actual_decision": null,
+      "actual_intent": "EXPLAIN_RUNNER_STATE",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=EXPLAIN_RUNNER_STATE; expected=EXPLAIN_RUNNER_STATE",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_runner_state_history', 'get_training_data_quality']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "explain_004",
+      "category": "explain_runner_state",
+      "duration_ms": 43.004,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "EXPLAIN_RUNNER_STATE",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 3,
+      "required_tool_total": 3,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "actual_decision": null,
+      "actual_intent": "EXPLAIN_RUNNER_STATE",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=EXPLAIN_RUNNER_STATE; expected=EXPLAIN_RUNNER_STATE",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_runner_state_history', 'get_training_data_quality']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=1",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "explain_005",
+      "category": "explain_runner_state",
+      "duration_ms": 38.09,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "EXPLAIN_RUNNER_STATE",
+      "limitation_retained": true,
+      "passed": true,
+      "required_tool_hits": 3,
+      "required_tool_total": 3,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "actual_decision": null,
+      "actual_intent": "EXPLAIN_RUNNER_STATE",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=DEGRADED; expected=['DEGRADED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=EXPLAIN_RUNNER_STATE; expected=EXPLAIN_RUNNER_STATE",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_runner_state_history', 'get_training_data_quality']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=1",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "explain_006",
+      "category": "explain_runner_state",
+      "duration_ms": 40.207,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "EXPLAIN_RUNNER_STATE",
+      "limitation_retained": true,
+      "passed": true,
+      "required_tool_hits": 3,
+      "required_tool_total": 3,
+      "rule_violation_found": false,
+      "safe_error_codes": [
+        "AGENT_TOOL_EXECUTION_FAILED"
+      ],
+      "status": "DEGRADED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": true,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_training_rules"
+      ],
+      "actual_decision": null,
+      "actual_intent": "GENERAL_TRAINING_QUESTION",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=GENERAL_TRAINING_QUESTION; expected=GENERAL_TRAINING_QUESTION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_training_rules']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "general_001",
+      "category": "general_training_question",
+      "duration_ms": 37.609,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_training_rules"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "GENERAL_TRAINING_QUESTION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 1,
+      "required_tool_total": 1,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_training_rules"
+      ],
+      "actual_decision": null,
+      "actual_intent": "GENERAL_TRAINING_QUESTION",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=GENERAL_TRAINING_QUESTION; expected=GENERAL_TRAINING_QUESTION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_training_rules']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "general_002",
+      "category": "general_training_question",
+      "duration_ms": 38.382,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_training_rules"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "GENERAL_TRAINING_QUESTION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 1,
+      "required_tool_total": 1,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_training_rules"
+      ],
+      "actual_decision": null,
+      "actual_intent": "GENERAL_TRAINING_QUESTION",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=GENERAL_TRAINING_QUESTION; expected=GENERAL_TRAINING_QUESTION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_training_rules']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "general_003",
+      "category": "general_training_question",
+      "duration_ms": 45.482,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_training_rules"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "GENERAL_TRAINING_QUESTION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 1,
+      "required_tool_total": 1,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_training_rules"
+      ],
+      "actual_decision": null,
+      "actual_intent": "GENERAL_TRAINING_QUESTION",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=GENERAL_TRAINING_QUESTION; expected=GENERAL_TRAINING_QUESTION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_training_rules']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "general_004",
+      "category": "general_training_question",
+      "duration_ms": 32.034,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_training_rules"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "GENERAL_TRAINING_QUESTION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 1,
+      "required_tool_total": 1,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "UNKNOWN",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "NO_PLAN",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=1",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=UNKNOWN; expected=UNKNOWN",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=NO_PLAN; expected=NO_PLAN",
+          "passed": true
+        }
+      ],
+      "case_id": "unknown_001",
+      "category": "unknown_data",
+      "duration_ms": 44.751,
+      "expected_decision": "UNKNOWN",
+      "expected_planned_status": "NO_PLAN",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": true,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "UNKNOWN",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "CYCLE_NOT_ACTIVE",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=1",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=UNKNOWN; expected=UNKNOWN",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=CYCLE_NOT_ACTIVE; expected=CYCLE_NOT_ACTIVE",
+          "passed": true
+        }
+      ],
+      "case_id": "unknown_002",
+      "category": "unknown_data",
+      "duration_ms": 40.802,
+      "expected_decision": "UNKNOWN",
+      "expected_planned_status": "CYCLE_NOT_ACTIVE",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": true,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "actual_decision": null,
+      "actual_intent": "EXPLAIN_RUNNER_STATE",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=EXPLAIN_RUNNER_STATE; expected=EXPLAIN_RUNNER_STATE",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_runner_state_history', 'get_training_data_quality']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=1",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "unknown_003",
+      "category": "unknown_data",
+      "duration_ms": 37.246,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "EXPLAIN_RUNNER_STATE",
+      "limitation_retained": true,
+      "passed": true,
+      "required_tool_hits": 3,
+      "required_tool_total": 3,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "actual_decision": null,
+      "actual_intent": "EXPLAIN_RUNNER_STATE",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=EXPLAIN_RUNNER_STATE; expected=EXPLAIN_RUNNER_STATE",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_runner_state_history', 'get_training_data_quality']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "unknown_004",
+      "category": "unknown_data",
+      "duration_ms": 36.531,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "EXPLAIN_RUNNER_STATE",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 3,
+      "required_tool_total": 3,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "PROCEED",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "PLANNED",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=DEGRADED; expected=['DEGRADED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=1",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=PROCEED; expected=PROCEED",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=PLANNED; expected=PLANNED",
+          "passed": true
+        }
+      ],
+      "case_id": "degraded_001",
+      "category": "degraded",
+      "duration_ms": 41.114,
+      "expected_decision": "PROCEED",
+      "expected_planned_status": "PLANNED",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": true,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "DEGRADED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": true,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "actual_decision": null,
+      "actual_intent": "EXPLAIN_RUNNER_STATE",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=DEGRADED; expected=['DEGRADED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=EXPLAIN_RUNNER_STATE; expected=EXPLAIN_RUNNER_STATE",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_runner_state_history', 'get_training_data_quality']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=1",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "degraded_002",
+      "category": "degraded",
+      "duration_ms": 36.782,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "EXPLAIN_RUNNER_STATE",
+      "limitation_retained": true,
+      "passed": true,
+      "required_tool_hits": 3,
+      "required_tool_total": 3,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "DEGRADED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": true,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_training_rules"
+      ],
+      "actual_decision": null,
+      "actual_intent": "GENERAL_TRAINING_QUESTION",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=DEGRADED; expected=['DEGRADED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=GENERAL_TRAINING_QUESTION; expected=GENERAL_TRAINING_QUESTION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_training_rules']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=1",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "degraded_003",
+      "category": "degraded",
+      "duration_ms": 31.305,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_training_rules"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "GENERAL_TRAINING_QUESTION",
+      "limitation_retained": true,
+      "passed": true,
+      "required_tool_hits": 1,
+      "required_tool_total": 1,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "DEGRADED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": true,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_runner_state",
+        "get_today_workout",
+        "get_recent_training",
+        "get_training_data_quality",
+        "evaluate_today_workout"
+      ],
+      "actual_decision": "PROCEED",
+      "actual_intent": "TODAY_RECOMMENDATION",
+      "actual_model_tools": [],
+      "actual_planned_status": "PLANNED",
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=DEGRADED; expected=['DEGRADED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=TODAY_RECOMMENDATION; expected=TODAY_RECOMMENDATION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_runner_state', 'get_today_workout', 'get_recent_training', 'get_training_data_quality', 'evaluate_today_workout']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=1",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "DECISION_MATCH",
+          "detail": "actual=PROCEED; expected=PROCEED",
+          "passed": true
+        },
+        {
+          "code": "PLANNED_STATUS_MATCH",
+          "detail": "actual=PLANNED; expected=PLANNED",
+          "passed": true
+        }
+      ],
+      "case_id": "degraded_004",
+      "category": "degraded",
+      "duration_ms": 41.016,
+      "expected_decision": "PROCEED",
+      "expected_planned_status": "PLANNED",
+      "expected_tools": [
+        "evaluate_today_workout",
+        "get_recent_training",
+        "get_runner_state",
+        "get_today_workout",
+        "get_training_data_quality"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "TODAY_RECOMMENDATION",
+      "limitation_retained": true,
+      "passed": true,
+      "required_tool_hits": 5,
+      "required_tool_total": 5,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "DEGRADED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": true,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_training_rules"
+      ],
+      "actual_decision": null,
+      "actual_intent": "GENERAL_TRAINING_QUESTION",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=GENERAL_TRAINING_QUESTION; expected=GENERAL_TRAINING_QUESTION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_training_rules']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "security_001",
+      "category": "security",
+      "duration_ms": 34.739,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_training_rules"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "GENERAL_TRAINING_QUESTION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 1,
+      "required_tool_total": 1,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_training_rules"
+      ],
+      "actual_decision": null,
+      "actual_intent": "GENERAL_TRAINING_QUESTION",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=GENERAL_TRAINING_QUESTION; expected=GENERAL_TRAINING_QUESTION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_training_rules']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "security_002",
+      "category": "security",
+      "duration_ms": 27.748,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_training_rules"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "GENERAL_TRAINING_QUESTION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 1,
+      "required_tool_total": 1,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_training_rules"
+      ],
+      "actual_decision": null,
+      "actual_intent": "GENERAL_TRAINING_QUESTION",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=GENERAL_TRAINING_QUESTION; expected=GENERAL_TRAINING_QUESTION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_training_rules']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "security_003",
+      "category": "security",
+      "duration_ms": 29.605,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_training_rules"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "GENERAL_TRAINING_QUESTION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 1,
+      "required_tool_total": 1,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    },
+    {
+      "actual_context_tools": [
+        "get_training_rules"
+      ],
+      "actual_decision": null,
+      "actual_intent": "GENERAL_TRAINING_QUESTION",
+      "actual_model_tools": [],
+      "actual_planned_status": null,
+      "assertions": [
+        {
+          "code": "STATUS_ALLOWED",
+          "detail": "actual=SUCCEEDED; expected=['SUCCEEDED']",
+          "passed": true
+        },
+        {
+          "code": "INTENT_MATCH",
+          "detail": "actual=GENERAL_TRAINING_QUESTION; expected=GENERAL_TRAINING_QUESTION",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_CONTEXT_TOOLS",
+          "detail": "actual=['get_training_rules']",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_MODEL_TOOLS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_UNEXPECTED_TOOLS",
+          "detail": "unexpected=[]",
+          "passed": true
+        },
+        {
+          "code": "NO_FORBIDDEN_TOOLS",
+          "detail": "called=[]",
+          "passed": true
+        },
+        {
+          "code": "REQUIRED_WARNINGS",
+          "detail": "actual=[]",
+          "passed": true
+        },
+        {
+          "code": "LIMITATION_POLICY",
+          "detail": "count=0",
+          "passed": true
+        },
+        {
+          "code": "UNSUPPORTED_CLAIMS",
+          "detail": "found=[]",
+          "passed": true
+        },
+        {
+          "code": "RULE_CONSISTENCY",
+          "detail": "found=[]",
+          "passed": true
+        }
+      ],
+      "case_id": "security_004",
+      "category": "security",
+      "duration_ms": 28.429,
+      "expected_decision": null,
+      "expected_planned_status": null,
+      "expected_tools": [
+        "get_training_rules"
+      ],
+      "forbidden_tool_called": false,
+      "intent": "GENERAL_TRAINING_QUESTION",
+      "limitation_retained": null,
+      "passed": true,
+      "required_tool_hits": 1,
+      "required_tool_total": 1,
+      "rule_violation_found": false,
+      "safe_error_codes": [],
+      "status": "SUCCEEDED",
+      "tool_arguments_valid": true,
+      "unsupported_claim_found": false,
+      "used_fallback": false,
+      "warning_retained": null
+    }
+  ],
+  "categories": {
+    "degraded": {
+      "pass_rate": 1.0,
+      "passed_cases": 4,
+      "total_cases": 4
+    },
+    "explain_runner_state": {
+      "pass_rate": 1.0,
+      "passed_cases": 6,
+      "total_cases": 6
+    },
+    "general_training_question": {
+      "pass_rate": 1.0,
+      "passed_cases": 4,
+      "total_cases": 4
+    },
+    "security": {
+      "pass_rate": 1.0,
+      "passed_cases": 4,
+      "total_cases": 4
+    },
+    "today_recommendation": {
+      "pass_rate": 1.0,
+      "passed_cases": 10,
+      "total_cases": 10
+    },
+    "unknown_data": {
+      "pass_rate": 1.0,
+      "passed_cases": 4,
+      "total_cases": 4
+    }
+  },
+  "duration_ms": 1334.743,
+  "evaluation_version": "coach-agent-eval-1.0.0",
+  "generated_at": "2026-07-23T05:26:56.504829Z",
+  "git_commit": "c38edaa263848ac6797beb84738ccbe0ea4ab82b",
+  "prompt_version": "coach-agent-system-1.0.0",
+  "summary": {
+    "case_pass_rate": 1.0,
+    "decision_consistency": 1.0,
+    "fallback_success_rate": 1.0,
+    "forbidden_tool_call_rate": 0.0,
+    "intent_accuracy": 1.0,
+    "limitation_retention_rate": 1.0,
+    "passed_cases": 32,
+    "planned_status_consistency": 1.0,
+    "required_tool_recall": 1.0,
+    "rule_violation_rate": 0.0,
+    "tool_argument_validity": 1.0,
+    "total_cases": 32,
+    "unsupported_claim_rate": 0.0,
+    "warning_retention_rate": 1.0
+  }
+}

@@ -50,6 +50,104 @@ Garmin training facts -> Material Change -> Runner State -> automatic snapshot -
 
 Runner State does not provide medical diagnosis, use a large language model to calculate state, or automatically generate or modify an official training plan.
 
+### Runner State
+
+Runner State derives an explainable current state from recent training facts, data quality, and rule evidence, while preserving history snapshots and trends.
+
+![Runner State Overview](docs/assets/runner-state/runner-state1.png)
+
+![Runner State History](docs/assets/runner-state/runner-state2.png)
+
+### Training Readiness
+
+Training Readiness presents current training readiness, supporting evidence, and limitations. It is not a medical diagnosis.
+
+![Training Readiness Overview](docs/assets/training-readiness/training-readiness1.png)
+
+![Training Readiness Details](docs/assets/training-readiness/training-readiness2.png)
+
+## GaitLogic Coach Agent
+
+Coach Agent combines structured training facts, deterministic rules, and bounded model explanations in a read-only coaching interface:
+
+```text
+structured training data owns facts
+-> Runner State and rules own decision boundaries
+-> the LLM performs bounded tool orchestration and explanation
+-> the Validator blocks unauthorized or rule-overriding output
+-> deterministic Fallback remains useful when the Provider is unavailable
+```
+
+This is not a generic chat endpoint. The LLM never accesses the database directly, authenticated identity is injected by the server, Tool input and output use strict Pydantic schemas, deterministic rules own the daily Decision, and the model cannot modify an official plan.
+
+### AI Coach Agent
+
+GaitLogic Coach Agent combines structured training facts, deterministic rules, and LLM-based explanation. Runner State and the rule engine define the decision boundary, while the model handles tool orchestration and language generation.
+
+![AI Coach](docs/assets/coach-agent/coach-overview.png)
+
+![Today Recommendation](docs/assets/coach-agent/coach-today-recommendation.png)
+
+### Agent Capabilities
+
+Eight read-only tools are registered:
+
+- `get_runner_state`
+- `get_runner_state_history`
+- `get_recent_training`
+- `get_today_workout`
+- `get_current_training_cycle`
+- `get_training_rules`
+- `evaluate_today_workout`
+- `get_training_data_quality`
+
+```mermaid
+flowchart TD
+    UI[Vue Coach UI] --> API[POST /api/coach/query]
+    API --> QS[CoachAgentQueryService]
+    QS --> AGENT[GaitLogicCoachAgent]
+    AGENT --> CTX[Context Builder]
+    AGENT --> REG[Read-only Tool Registry]
+    AGENT --> LLM[OpenAI-compatible Gateway]
+    CTX --> REG
+    REG --> SERVICES[Training Services]
+    SERVICES --> RULES[Runner State and Rule Engine]
+    SERVICES --> DB[(MySQL)]
+    LLM --> VAL[Deterministic Validator]
+    VAL -->|accepted| QS
+    VAL -->|rejected or unavailable| FALLBACK[Deterministic Fallback]
+    FALLBACK --> QS
+    QS --> UI
+```
+
+See [Coach Agent Architecture v1](docs/agent/coach-agent-architecture-v1.md) for the complete boundary description.
+
+### Evaluation
+
+Coach Agent Evaluation v1 uses 32 fixed-date, fully fictional cases to check tool recall, Decision and plan consistency, Warning and Limitation retention, Fallback behavior, and unsupported claims. It uses an offline Mock Gateway, reads no API key, accesses no network or production database, and does not use a second LLM as a judge.
+
+See the real run at [Coach Agent Evaluation v1 Results](docs/agent/evaluation/results/coach-agent-eval-v1.md). Reproduce it with:
+
+```powershell
+python scripts/evaluate_coach_agent.py
+```
+
+### Coach Quick Start
+
+```powershell
+# Backend
+python -m uvicorn server.main:app --reload
+
+# Frontend
+cd web
+npm ci
+npm run dev
+```
+
+The Coach Provider is disabled and its API key is empty in `.env.example`. In that mode `/coach` demonstrates the deterministic read-only Fallback. See [Coach Agent Demo v1](docs/agent/coach-agent-demo-v1.md).
+
+Current limits: no RAG, Weekly Review Agent, write tools, long-term memory, Streaming, or multi-agent runtime. Quota is currently process-local.
+
 | Problem | How GaitLogic Planner Helps |
 | --- | --- |
 | Training plans live in Excel, execution lives in watch apps, and reviews live in chat notes | Training cycles, blocks, daily workouts, logs, and stats are kept in one system |
