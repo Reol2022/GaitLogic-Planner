@@ -80,6 +80,7 @@ web/logs/
 
 # Derived local knowledge indexes and vectors
 var/knowledge_indexes/
+var/evaluations/
 
 # IDE and OS files
 .idea/
