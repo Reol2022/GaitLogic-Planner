@@ -42,6 +42,7 @@ class _ProviderEmbeddingItem(StrictModel):
 
 class _ProviderUsage(StrictModel):
     prompt_tokens: int = Field(ge=0)
+    completion_tokens: int | None = Field(default=None, ge=0)
     total_tokens: int = Field(ge=0)
 
 

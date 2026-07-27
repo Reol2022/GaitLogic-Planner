@@ -175,6 +175,42 @@ def test_openai_provider_preserves_order_and_normalizes() -> None:
     assert client.closed is True
 
 
+def test_openai_provider_accepts_typed_completion_token_usage() -> None:
+    payload = provider_payload([[1, 0, 0]])
+    payload["usage"]["completion_tokens"] = 0
+    provider = OpenAICompatibleEmbeddingProvider(
+        enabled_settings(),
+        client_factory=lambda settings: FakeClient([FakeResponse(200, payload)]),
+    )
+
+    result = provider.embed_query("test")
+
+    assert result.usage.prompt_tokens == 3
+    assert result.usage.total_tokens == 3
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("completion_tokens", -1),
+        ("provider_specific_tokens", 0),
+    ],
+)
+def test_openai_provider_rejects_invalid_or_unknown_usage_fields(
+    field: str,
+    value: int,
+) -> None:
+    payload = provider_payload([[1, 0, 0]])
+    payload["usage"][field] = value
+    provider = OpenAICompatibleEmbeddingProvider(
+        enabled_settings(),
+        client_factory=lambda settings: FakeClient([FakeResponse(200, payload)]),
+    )
+
+    with pytest.raises(KnowledgeEmbeddingProviderError, match="invalid response"):
+        provider.embed_query("test")
+
+
 @pytest.mark.parametrize("status", [429, 500, 503])
 def test_retryable_status_retries_once(status: int) -> None:
     client = FakeClient(
