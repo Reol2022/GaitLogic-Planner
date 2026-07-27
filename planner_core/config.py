@@ -197,6 +197,66 @@ class Settings(BaseSettings):
         default=False,
         validation_alias="COACH_AGENT_ALLOW_LOCAL_PROVIDER_IN_DEVELOPMENT",
     )
+    knowledge_embedding_enabled: bool = Field(
+        default=False,
+        validation_alias="KNOWLEDGE_EMBEDDING_ENABLED",
+    )
+    knowledge_embedding_provider: Literal["openai_compatible"] = Field(
+        default="openai_compatible",
+        validation_alias="KNOWLEDGE_EMBEDDING_PROVIDER",
+    )
+    knowledge_embedding_api_key: str | None = Field(
+        default=None,
+        validation_alias="KNOWLEDGE_EMBEDDING_API_KEY",
+    )
+    knowledge_embedding_base_url: str = Field(
+        default="https://api.example.com/v1",
+        max_length=2048,
+        validation_alias="KNOWLEDGE_EMBEDDING_BASE_URL",
+    )
+    knowledge_embedding_model: str = Field(
+        default="example-embedding-model",
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+        validation_alias="KNOWLEDGE_EMBEDDING_MODEL",
+    )
+    knowledge_embedding_dimensions: int | None = Field(
+        default=None,
+        ge=1,
+        le=65536,
+        validation_alias="KNOWLEDGE_EMBEDDING_DIMENSIONS",
+    )
+    knowledge_embedding_batch_size: int = Field(
+        default=32,
+        ge=1,
+        le=128,
+        validation_alias="KNOWLEDGE_EMBEDDING_BATCH_SIZE",
+    )
+    knowledge_embedding_connect_timeout_seconds: float = Field(
+        default=5,
+        gt=0,
+        le=60,
+        validation_alias="KNOWLEDGE_EMBEDDING_CONNECT_TIMEOUT_SECONDS",
+    )
+    knowledge_embedding_read_timeout_seconds: float = Field(
+        default=30,
+        gt=0,
+        le=180,
+        validation_alias="KNOWLEDGE_EMBEDDING_READ_TIMEOUT_SECONDS",
+    )
+    knowledge_embedding_total_timeout_seconds: float = Field(
+        default=60,
+        gt=0,
+        le=300,
+        validation_alias="KNOWLEDGE_EMBEDDING_TOTAL_TIMEOUT_SECONDS",
+    )
+    knowledge_embedding_allow_local_provider_in_development: bool = Field(
+        default=False,
+        validation_alias=(
+            "KNOWLEDGE_EMBEDDING_ALLOW_LOCAL_PROVIDER_IN_DEVELOPMENT"
+        ),
+    )
     weekly_review_prompt_override: str | None = Field(
         default=None, validation_alias="WEEKLY_REVIEW_PROMPT_OVERRIDE"
     )

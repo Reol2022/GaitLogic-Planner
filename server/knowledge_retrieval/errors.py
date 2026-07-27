@@ -23,3 +23,27 @@ class KnowledgeBuildError(KnowledgeCorpusError):
 
 class KnowledgeNotFoundError(KnowledgeCorpusError):
     """A requested document or chunk does not exist."""
+
+
+class KnowledgeEmbeddingError(KnowledgeCorpusError):
+    """Embedding input, configuration, or provider output is invalid."""
+
+
+class KnowledgeEmbeddingConfigurationError(KnowledgeEmbeddingError):
+    """Embedding configuration is disabled or unsafe."""
+
+
+class KnowledgeEmbeddingProviderError(KnowledgeEmbeddingError):
+    """The embedding provider failed with a safe public error."""
+
+
+class KnowledgeVectorStoreError(KnowledgeCorpusError):
+    """A derived vector store is invalid or unavailable."""
+
+
+class KnowledgeIndexError(KnowledgeCorpusError):
+    """A derived knowledge index cannot be built or validated."""
+
+
+class KnowledgeRetrievalError(KnowledgeCorpusError):
+    """A retrieval request or index binding is invalid."""

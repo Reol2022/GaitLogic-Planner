@@ -78,6 +78,9 @@ logs/
 server/logs/
 web/logs/
 
+# Derived local knowledge indexes and vectors
+var/knowledge_indexes/
+
 # IDE and OS files
 .idea/
 .vscode/
