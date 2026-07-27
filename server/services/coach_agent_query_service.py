@@ -18,9 +18,15 @@ from server.agent.providers.schemas import AgentProviderUsage
 from server.agent.schemas import AgentLimits, AgentNotice, AgentRequest
 from server.agent.tools.dependencies import CoachAgentToolDependencies
 from server.agent.tools.factory import build_coach_agent_tool_registry
+from server.agent.tools.knowledge_tools import build_configured_knowledge_tool
 from server.agent.training_context_builder import AgentTrainingContextBuilder
 from server.agent.trace import AgentTrace
-from server.schemas.coach_agent import CoachQueryRequest, CoachQueryResponse, CoachToolCallRead
+from server.schemas.coach_agent import (
+    CoachKnowledgeReferenceRead,
+    CoachQueryRequest,
+    CoachQueryResponse,
+    CoachToolCallRead,
+)
 from server.services.coach_agent_usage_service import (
     CoachAgentRateLimiter,
     CoachAgentUsageRecorder,
@@ -148,7 +154,11 @@ class CoachAgentQueryService:
         self.rate_limiter.check_and_consume(user_id)
         limits = self._limits()
         dependencies = CoachAgentToolDependencies.from_session(self.db)
-        registry = build_coach_agent_tool_registry(dependencies, limits=limits)
+        registry = build_coach_agent_tool_registry(
+            dependencies,
+            limits=limits,
+            knowledge_tool=build_configured_knowledge_tool(self.settings),
+        )
         context_builder = AgentTrainingContextBuilder(registry=registry, limits=limits)
         gateway, initial_provider_status = self._gateway()
         agent = GaitLogicCoachAgent(
@@ -190,6 +200,10 @@ class CoachAgentQueryService:
             )
             for item in agent_response.tool_calls
         ]
+        knowledge_references = [
+            CoachKnowledgeReferenceRead.model_validate(item.model_dump(mode="python"))
+            for item in agent_response.knowledge_references
+        ]
         context_has_tool_failure = context is not None and any(
             item.status != AgentToolStatus.SUCCEEDED for item in context.tool_results
         )
@@ -206,6 +220,7 @@ class CoachAgentQueryService:
                 tool_calls=tool_calls,
                 warnings=agent_response.warnings,
                 limitations=agent_response.limitations,
+                knowledge_references=knowledge_references,
                 provider_status=provider_status,
                 generated_at=self.clock(),
             )

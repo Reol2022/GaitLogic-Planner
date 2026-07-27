@@ -14,6 +14,7 @@ from planner_core.config import Settings
 from server.agent.enums import AgentIntent, AgentRiskLevel, AgentTraceEventType, AgentTraceStatus
 from server.agent.errors import AgentErrorCode
 from server.agent.gateway import AgentLLMGateway
+from server.agent.knowledge_references import build_knowledge_reference_catalog
 from server.agent.providers.errors import AgentProviderError
 from server.agent.providers.schemas import (
     AgentProviderUsage,
@@ -78,6 +79,19 @@ def provider_context_payload(context: AgentContext) -> dict[str, Any]:
         if context.intent == AgentIntent.TODAY_RECOMMENDATION
         else []
     )
+    knowledge_catalog = build_knowledge_reference_catalog(context)
+    payload["available_knowledge_references"] = [
+        {
+            "id": reference_id,
+            "title": item.title,
+            "section": item.section,
+            "excerpt": item.excerpt,
+            "category": item.category.value,
+            "evidence_level": item.evidence_level.value,
+            "limitations": item.limitations,
+        }
+        for reference_id, item in knowledge_catalog.items.items()
+    ]
     return _redact_tree(payload)
 
 
@@ -274,6 +288,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     risk_level=facts.risk_level,
                     warnings=facts.warnings,
                     limitations=facts.limitations,
+                    knowledge_reference_ids=provider_output.knowledge_reference_ids,
                     today_recommendation=facts.recommendation,
                 )
             provider_output = ProviderAgentModelOutput.model_validate_json(stripped)

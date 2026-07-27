@@ -13,6 +13,7 @@ from server.agent.schemas import (
     AgentContractModel,
     AgentConversationMessage,
     AgentNotice,
+    AgentKnowledgeReference,
     AgentTodayRecommendation,
     MAX_CONVERSATION_ITEMS,
     MAX_CONVERSATION_CHARS,
@@ -44,6 +45,10 @@ class CoachToolCallRead(AgentContractModel):
     safe_error_code: AgentErrorCode | None = None
 
 
+class CoachKnowledgeReferenceRead(AgentKnowledgeReference):
+    pass
+
+
 class CoachQueryResponse(AgentContractModel):
     request_id: UUID
     trace_id: UUID
@@ -56,6 +61,10 @@ class CoachQueryResponse(AgentContractModel):
     tool_calls: list[CoachToolCallRead] = Field(default_factory=list, max_length=50)
     warnings: list[AgentNotice] = Field(default_factory=list, max_length=20)
     limitations: list[AgentNotice] = Field(default_factory=list, max_length=20)
+    knowledge_references: list[CoachKnowledgeReferenceRead] = Field(
+        default_factory=list,
+        max_length=6,
+    )
     provider_status: Literal[
         "SUCCEEDED",
         "DISABLED",

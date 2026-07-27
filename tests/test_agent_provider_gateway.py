@@ -224,6 +224,7 @@ def test_today_json_schema_contains_only_narrative_and_evidence_ids() -> None:
         "answer",
         "summary",
         "key_evidence_ids",
+        "knowledge_reference_ids",
     }
 
 

@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from server.agent.enums import AgentIntent, AgentRiskLevel, AgentTraceEventType, AgentTraceStatus
+from server.agent.enums import (
+    AgentIntent,
+    AgentRiskLevel,
+    AgentToolStatus,
+    AgentTraceEventType,
+    AgentTraceStatus,
+)
+from server.agent.knowledge_references import KNOWLEDGE_TOOL_NAME
 from server.agent.schemas import AgentContext, AgentNotice, AgentTodayRecommendation
 from server.agent.today_recommendation import build_authoritative_today_facts
 from server.agent.trace import AgentTrace
@@ -83,11 +90,29 @@ class DeterministicCoachFallback:
 
         if trace is not None:
             trace.add_event(AgentTraceEventType.FALLBACK_COMPLETED, AgentTraceStatus.SUCCEEDED)
+        knowledge_failed = any(
+            result.tool_name == KNOWLEDGE_TOOL_NAME
+            and result.status != AgentToolStatus.SUCCEEDED
+            for result in context.tool_results
+        )
+        fallback_limitations = [*authoritative_limitations[:19], limitation]
+        if knowledge_failed:
+            fallback_limitations = [
+                *fallback_limitations[:19],
+                AgentNotice(
+                    code="KNOWLEDGE_RETRIEVAL_UNAVAILABLE",
+                    message=(
+                        "训练知识检索暂不可用；当前回答未使用知识库引用。"
+                        if chinese
+                        else "Training knowledge retrieval is unavailable; no knowledge reference was used."
+                    ),
+                ),
+            ]
         return DeterministicFallbackResult(
             answer=answer,
             summary=summary,
             risk_level=risk,
             today_recommendation=recommendation,
             warnings=warnings,
-            limitations=[*authoritative_limitations[:19], limitation],
+            limitations=fallback_limitations,
         )

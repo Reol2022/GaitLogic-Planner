@@ -6,6 +6,10 @@ from pydantic import ValidationError
 
 from server.agent.enums import AgentIntent, AgentRiskLevel, AgentToolStatus
 from server.agent.errors import AgentErrorCode
+from server.agent.knowledge_references import (
+    KNOWLEDGE_TOOL_NAME,
+    build_knowledge_reference_catalog,
+)
 from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import (
     AgentContext,
@@ -45,6 +49,50 @@ _FALSE_TOOL_SUCCESS_PATTERNS = (
     r"all tools succeeded",
 )
 _LOW_DATA_QUALITY_VALUES = {"LOW", "INSUFFICIENT", "UNKNOWN"}
+_KNOWLEDGE_CLAIM_PATTERNS = (
+    r"根据(?:训练)?知识库",
+    r"基于(?:训练)?知识库",
+    r"知识库(?:显示|指出|建议)",
+    r"according to (?:the )?(?:training )?knowledge base",
+    r"retrieved knowledge (?:shows|indicates|suggests)",
+)
+_FABRICATED_SOURCE_PATTERNS = (
+    r"https?://",
+    r"\bdoi\s*:",
+    r"(?:研究|论文|书籍|指南)(?:表明|指出|证明)",
+    r"according to .{0,80}(?:study|paper|book|guideline)",
+)
+_GENERAL_PERSONAL_FACT_PATTERNS = (
+    r"(?:你|您的)(?:当前|最近).{0,30}(?:状态|跑量|训练|心率|配速|疲劳)",
+    r"your (?:current|recent).{0,30}(?:state|mileage|training|heart rate|pace|fatigue)",
+)
+_NUMBER_WITH_TRAINING_UNIT = re.compile(
+    r"(?i)(\d+(?:\.\d+)?)\s*(km|kilometers?|minutes?|min|公里|分钟)"
+)
+
+
+def _numbers(value: object) -> set[float]:
+    found: set[float] = set()
+    if isinstance(value, bool):
+        return found
+    if isinstance(value, (int, float)):
+        found.add(round(float(value), 4))
+    elif isinstance(value, list):
+        for item in value:
+            found.update(_numbers(item))
+    elif isinstance(value, dict):
+        for item in value.values():
+            found.update(_numbers(item))
+    return found
+
+
+def _contains_canonical_excerpt(text: str, excerpts: list[str]) -> bool:
+    compact_text = re.sub(r"\s+", "", text)
+    for excerpt in excerpts:
+        compact_excerpt = re.sub(r"\s+", "", excerpt)
+        if compact_excerpt and compact_excerpt in compact_text:
+            return True
+    return False
 
 
 class AgentResponseValidator:
@@ -83,6 +131,14 @@ class AgentResponseValidator:
         if output.answer is not None and len(output.answer) > self.limits.max_answer_length:
             errors.append(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
         if len(output.tool_calls) > self.limits.max_tool_calls:
+            errors.append(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED)
+        if (
+            sum(
+                invocation.tool_name == KNOWLEDGE_TOOL_NAME
+                for invocation in output.tool_calls
+            )
+            > 1
+        ):
             errors.append(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED)
         if final and output.tool_calls:
             errors.append(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED)
@@ -140,6 +196,68 @@ class AgentResponseValidator:
             if not output.warnings and not output.limitations:
                 errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
             if any(re.search(pattern, text, re.IGNORECASE) for pattern in _FALSE_TOOL_SUCCESS_PATTERNS):
+                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+
+        try:
+            knowledge_catalog = build_knowledge_reference_catalog(context)
+        except ValueError:
+            knowledge_catalog = None
+            errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+        if knowledge_catalog is not None:
+            references = output.knowledge_reference_ids
+            if any(item not in knowledge_catalog.items for item in references):
+                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+            knowledge_claimed = any(
+                re.search(pattern, text, re.IGNORECASE)
+                for pattern in _KNOWLEDGE_CLAIM_PATTERNS
+            )
+            if knowledge_claimed and not references:
+                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+            if references and (
+                not knowledge_catalog.attempted
+                or knowledge_catalog.failed
+                or knowledge_catalog.empty
+            ):
+                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+            if final and context.intent == AgentIntent.GENERAL_TRAINING_QUESTION:
+                if knowledge_catalog.items and not references:
+                    errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                if (
+                    (knowledge_catalog.failed or knowledge_catalog.empty)
+                    and not output.limitations
+                ):
+                    errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+            if _contains_canonical_excerpt(
+                text,
+                [item.excerpt for item in knowledge_catalog.items.values()],
+            ):
+                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+            lowered_text = text.lower()
+            if any(
+                item.source_title.lower() in lowered_text
+                for item in knowledge_catalog.items.values()
+            ):
+                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+
+        if any(
+            re.search(pattern, text, re.IGNORECASE)
+            for pattern in _FABRICATED_SOURCE_PATTERNS
+        ):
+            errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+
+        if final and context.intent == AgentIntent.EXPLAIN_RUNNER_STATE:
+            allowed_numbers = _numbers(context.model_dump(mode="json"))
+            if any(
+                round(float(match.group(1)), 4) not in allowed_numbers
+                for match in _NUMBER_WITH_TRAINING_UNIT.finditer(text)
+            ):
+                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+
+        if final and context.intent == AgentIntent.GENERAL_TRAINING_QUESTION:
+            if any(
+                re.search(pattern, text, re.IGNORECASE)
+                for pattern in _GENERAL_PERSONAL_FACT_PATTERNS
+            ):
                 errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
 
         if final and context.intent == AgentIntent.TODAY_RECOMMENDATION:

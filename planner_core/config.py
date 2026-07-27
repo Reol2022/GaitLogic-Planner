@@ -257,6 +257,22 @@ class Settings(BaseSettings):
             "KNOWLEDGE_EMBEDDING_ALLOW_LOCAL_PROVIDER_IN_DEVELOPMENT"
         ),
     )
+    coach_agent_knowledge_retrieval_enabled: bool = Field(
+        default=False,
+        validation_alias="COACH_AGENT_KNOWLEDGE_RETRIEVAL_ENABLED",
+    )
+    coach_agent_knowledge_index_id: str = Field(
+        default="",
+        max_length=80,
+        pattern=r"^(?:|knowledge-[0-9a-f]{24})$",
+        validation_alias="COACH_AGENT_KNOWLEDGE_INDEX_ID",
+    )
+    coach_agent_knowledge_top_k: int = Field(
+        default=4,
+        ge=1,
+        le=6,
+        validation_alias="COACH_AGENT_KNOWLEDGE_TOP_K",
+    )
     weekly_review_prompt_override: str | None = Field(
         default=None, validation_alias="WEEKLY_REVIEW_PROMPT_OVERRIDE"
     )

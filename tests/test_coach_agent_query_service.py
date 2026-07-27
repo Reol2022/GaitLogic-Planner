@@ -8,7 +8,13 @@ from planner_core.config import Settings
 from planner_core.enums import WorkoutMainTypeNormalized
 from server.agent.enums import AgentIntent, AgentRiskLevel
 from server.agent.gateway import MockAgentLLMGateway
-from server.agent.schemas import AgentModelOutput, AgentNotice, AgentTodayRecommendation
+from server.agent.schemas import (
+    AgentModelOutput,
+    AgentNotice,
+    AgentTodayRecommendation,
+    AgentToolInvocation,
+)
+from server.agent.tools.knowledge_tools import RetrieveTrainingKnowledgeTool
 from server.agent.tools.dependencies import CoachAgentToolDependencies
 from server.schemas.coach_agent import CoachQueryRequest
 from server.services.coach_agent_query_service import CoachAgentQueryService
@@ -162,6 +168,54 @@ def test_tool_failure_degrades_instead_of_claiming_complete_data(monkeypatch) ->
     )
     assert result.status == "DEGRADED"
     assert result.limitations
+
+
+def test_knowledge_failure_preserves_deterministic_today_result(monkeypatch) -> None:
+    class ExplodingRetriever:
+        def retrieve(self, _request):
+            raise RuntimeError("private index failure")
+
+    knowledge_tool = RetrieveTrainingKnowledgeTool(lambda: ExplodingRetriever())
+    monkeypatch.setattr(
+        "server.services.coach_agent_query_service.build_configured_knowledge_tool",
+        lambda _settings: knowledge_tool,
+    )
+    call = AgentToolInvocation(
+        tool_name="retrieve_training_knowledge",
+        arguments={"query": "疲劳时如何理解训练安排？"},
+    )
+    gateway = MockAgentLLMGateway(
+        [
+            AgentModelOutput(
+                intent=AgentIntent.TODAY_RECOMMENDATION,
+                tool_calls=[call],
+            ),
+            model_output(),
+        ]
+    )
+    result = service(
+        monkeypatch,
+        gateway=gateway,
+        configured=settings(
+            COACH_AGENT_KNOWLEDGE_RETRIEVAL_ENABLED=True,
+            COACH_AGENT_KNOWLEDGE_INDEX_ID="knowledge-1234567890abcdef12345678",
+        ),
+    ).query(
+        user_id=1310,
+        payload=CoachQueryRequest(
+            message="今天怎么训练？",
+            intent=AgentIntent.TODAY_RECOMMENDATION,
+        ),
+    )
+    assert result.status == "DEGRADED"
+    assert result.today_recommendation is not None
+    assert result.today_recommendation.decision == "PROCEED"
+    assert result.knowledge_references == []
+    assert "private index failure" not in result.model_dump_json()
+    assert any(
+        item.code == "KNOWLEDGE_RETRIEVAL_UNAVAILABLE"
+        for item in result.limitations
+    )
 
 
 def test_usage_recorder_receives_only_safe_operational_fields(monkeypatch) -> None:

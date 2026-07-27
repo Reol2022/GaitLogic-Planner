@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import AgentLimits
+from server.agent.tool import AgentTool
 from server.agent.tools.dependencies import CoachAgentToolDependencies
 from server.agent.tools.planning_tools import (
     GetCurrentTrainingCycleTool,
@@ -29,14 +30,16 @@ COACH_AGENT_TOOL_NAMES = frozenset(
         "get_training_data_quality",
     }
 )
+COACH_AGENT_KNOWLEDGE_TOOL_NAME = "retrieve_training_knowledge"
 
 
 def build_coach_agent_tool_registry(
     dependencies: CoachAgentToolDependencies,
     *,
     limits: AgentLimits | None = None,
+    knowledge_tool: AgentTool | None = None,
 ) -> AgentToolRegistry:
-    """Build one request-scoped registry containing exactly eight read-only tools."""
+    """Build one request-scoped registry with bounded read-only tools."""
     bounded = limits or AgentLimits()
     registry = AgentToolRegistry()
     for tool in (
@@ -50,7 +53,16 @@ def build_coach_agent_tool_registry(
         GetTrainingDataQualityTool(dependencies),
     ):
         registry.register(tool)
+    if knowledge_tool is not None:
+        if knowledge_tool.name != COACH_AGENT_KNOWLEDGE_TOOL_NAME:
+            raise RuntimeError("Unexpected Coach knowledge tool.")
+        registry.register(knowledge_tool)
     actual = {definition.name for definition in registry.list_tools()}
-    if actual != COACH_AGENT_TOOL_NAMES:
+    expected = (
+        COACH_AGENT_TOOL_NAMES | {COACH_AGENT_KNOWLEDGE_TOOL_NAME}
+        if knowledge_tool is not None
+        else COACH_AGENT_TOOL_NAMES
+    )
+    if actual != expected:
         raise RuntimeError("Coach Agent production tool registry is incomplete or unsafe.")
     return registry

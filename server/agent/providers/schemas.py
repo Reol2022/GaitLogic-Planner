@@ -28,6 +28,7 @@ class ProviderTodayModelOutput(ProviderContractModel):
     answer: str = Field(min_length=1, max_length=12000)
     summary: str = Field(min_length=1, max_length=1000)
     key_evidence_ids: list[str] = Field(max_length=10)
+    knowledge_reference_ids: list[str] = Field(default_factory=list, max_length=6)
 
     @field_validator("key_evidence_ids", mode="before")
     @classmethod
@@ -52,6 +53,29 @@ class ProviderTodayModelOutput(ProviderContractModel):
             raise ValueError("key_evidence_ids must be unique")
         return value
 
+    @field_validator("knowledge_reference_ids", mode="before")
+    @classmethod
+    def validate_knowledge_id_types(cls, value: Any) -> Any:
+        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+            raise ValueError("knowledge_reference_ids must contain only strings")
+        return value
+
+    @field_validator("knowledge_reference_ids")
+    @classmethod
+    def validate_knowledge_ids(cls, value: list[str]) -> list[str]:
+        if any(
+            not item
+            or item.strip() != item
+            or not item.startswith("knowledge_")
+            or not item.removeprefix("knowledge_").isdigit()
+            or item.removeprefix("knowledge_").startswith("0")
+            for item in value
+        ):
+            raise ValueError("knowledge_reference_ids contains an invalid request-local ID")
+        if len(value) != len(set(value)):
+            raise ValueError("knowledge_reference_ids must be unique")
+        return value
+
 
 class ProviderAgentModelOutput(ProviderContractModel):
     """Non-TODAY structured output; TODAY uses ProviderTodayModelOutput."""
@@ -67,7 +91,15 @@ class ProviderAgentModelOutput(ProviderContractModel):
     warnings: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
     limitations: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
     used_tool_call_ids: list[UUID] = Field(default_factory=list, max_length=MAX_CONTEXT_ITEMS)
+    knowledge_reference_ids: list[str] = Field(default_factory=list, max_length=6)
     today_recommendation: None = None
+
+    @field_validator("knowledge_reference_ids", mode="before")
+    @classmethod
+    def validate_knowledge_id_types(cls, value: Any) -> Any:
+        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+            raise ValueError("knowledge_reference_ids must contain only strings")
+        return value
 
     @model_validator(mode="after")
     def validate_tool_call_ids(self) -> "ProviderAgentModelOutput":
@@ -76,6 +108,17 @@ class ProviderAgentModelOutput(ProviderContractModel):
             raise ValueError("tool_call_id must be unique")
         if len(self.used_tool_call_ids) != len(set(self.used_tool_call_ids)):
             raise ValueError("used_tool_call_ids must be unique")
+        if len(self.knowledge_reference_ids) != len(set(self.knowledge_reference_ids)):
+            raise ValueError("knowledge_reference_ids must be unique")
+        if any(
+            not item
+            or item.strip() != item
+            or not item.startswith("knowledge_")
+            or not item.removeprefix("knowledge_").isdigit()
+            or item.removeprefix("knowledge_").startswith("0")
+            for item in self.knowledge_reference_ids
+        ):
+            raise ValueError("knowledge_reference_ids contains an invalid request-local ID")
         return self
 
 

@@ -173,6 +173,18 @@ class AgentTodayRecommendation(AgentContractModel):
     data_quality: str = Field(min_length=1, max_length=40)
 
 
+class AgentKnowledgeReference(AgentContractModel):
+    document_id: str = Field(min_length=1, max_length=160)
+    title: str = Field(min_length=1, max_length=200)
+    section: str = Field(min_length=1, max_length=200)
+    source_id: str = Field(min_length=1, max_length=160)
+    source_title: str = Field(min_length=1, max_length=300)
+    knowledge_version: str = Field(min_length=1, max_length=80)
+    evidence_level: str = Field(min_length=1, max_length=40)
+    excerpt: str = Field(min_length=1, max_length=600)
+    limitations: list[str] = Field(default_factory=list, max_length=20)
+
+
 class AgentModelOutput(AgentContractModel):
     answer: str | None = Field(default=None, max_length=12000)
     summary: str | None = Field(default=None, max_length=1000)
@@ -185,6 +197,7 @@ class AgentModelOutput(AgentContractModel):
     warnings: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
     limitations: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
     used_tool_call_ids: list[UUID] = Field(default_factory=list, max_length=MAX_CONTEXT_ITEMS)
+    knowledge_reference_ids: list[str] = Field(default_factory=list, max_length=6)
     today_recommendation: AgentTodayRecommendation | None = None
 
     @model_validator(mode="after")
@@ -194,6 +207,17 @@ class AgentModelOutput(AgentContractModel):
             raise ValueError("tool_call_id must be unique")
         if len(self.used_tool_call_ids) != len(set(self.used_tool_call_ids)):
             raise ValueError("used_tool_call_ids must be unique")
+        if len(self.knowledge_reference_ids) != len(set(self.knowledge_reference_ids)):
+            raise ValueError("knowledge_reference_ids must be unique")
+        if any(
+            not item
+            or item.strip() != item
+            or not item.startswith("knowledge_")
+            or not item.removeprefix("knowledge_").isdigit()
+            or item.removeprefix("knowledge_").startswith("0")
+            for item in self.knowledge_reference_ids
+        ):
+            raise ValueError("knowledge_reference_ids contains an invalid request-local ID")
         return self
 
 
@@ -214,6 +238,10 @@ class AgentResponse(AgentContractModel):
     tool_calls: list[AgentToolCallSummary] = Field(default_factory=list, max_length=MAX_CONTEXT_ITEMS)
     warnings: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
     limitations: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
+    knowledge_references: list[AgentKnowledgeReference] = Field(
+        default_factory=list,
+        max_length=6,
+    )
     trace_id: UUID
     today_recommendation: AgentTodayRecommendation | None = None
 

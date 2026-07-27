@@ -74,7 +74,8 @@ Provider 内部 TODAY 输出严格只有：
 {
   "answer": "Explanation only.",
   "summary": "Short explanation.",
-  "key_evidence_ids": ["evidence_1"]
+  "key_evidence_ids": ["evidence_1"],
+  "knowledge_reference_ids": []
 }
 ```
 
@@ -101,6 +102,20 @@ Catalog 中存在的 ID，不能返回 Evidence 文本。服务端拒绝未知�
 能力要求，不降低 Provider Pydantic Schema、Evidence 引用校验、公开
 `AgentModelOutput` 或 Deterministic Validator。旧的自由文本 `key_evidence`
 Provider 输出属于额外字段，会被严格拒绝并进入现有 Fallback。
+
+## Training Knowledge Reference
+
+启用 `retrieve_training_knowledge` 后，Provider 可以从当前请求的
+`available_knowledge_references` 选择 `knowledge_n`，但不能返回 excerpt、Source
+Title、URL 或文档正文。内部 Provider Schema 使用
+`knowledge_reference_ids`，公共 API 则由服务端从 Canonical Tool Result 还原
+`knowledge_references`；内部 ID、score、向量和路径均不公开。
+
+`evidence_n` 与 `knowledge_n` 分别代表用户训练事实和通用训练知识。TODAY 中知识
+只能解释确定性结果，不能改变 decision、risk、planned status、data quality、
+warnings、limitations 或 Canonical Evidence。GENERAL 成功获得非空知识结果时必须
+选择至少一个引用；Index 不可用或空结果时必须保留 limitation，不能声称使用了
+知识库。完整协议见 `docs/rag/training-knowledge-reference-protocol-v1.md`。
 
 模型尝试返回任何服务端权威字段同样属于额外字段并被拒绝。系统不把对象转换为
 data quality 字符串，不接受 Union，不用 Prompt 修补事实类型。成功 Provider 路径

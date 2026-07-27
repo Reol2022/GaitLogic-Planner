@@ -18,6 +18,7 @@ from server.agent.enums import (
 )
 from server.agent.errors import AgentErrorCode
 from server.agent.gateway import AgentLLMGateway
+from server.agent.knowledge_references import materialize_knowledge_references
 from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import (
     AgentContext,
@@ -122,6 +123,18 @@ class GaitLogicCoachAgent:
         errors: list[AgentErrorCode] | None = None,
     ) -> AgentResponse:
         errors = list(dict.fromkeys(errors or []))
+        knowledge_references = []
+        if output is not None and context is not None:
+            try:
+                knowledge_references = materialize_knowledge_references(
+                    output.knowledge_reference_ids,
+                    context,
+                )
+            except ValueError:
+                status = AgentRunStatus.VALIDATION_FAILED
+                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                output = None
+                knowledge_references = []
         trace_status = (
             AgentTraceStatus.SUCCEEDED
             if status == AgentRunStatus.SUCCEEDED
@@ -159,6 +172,7 @@ class GaitLogicCoachAgent:
             tool_calls=self._summaries(context),
             warnings=list(output.warnings) if output else [],
             limitations=limitations,
+            knowledge_references=knowledge_references,
             trace_id=trace.trace_id,
             today_recommendation=output.today_recommendation if output else None,
         )
