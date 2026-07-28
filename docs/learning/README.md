@@ -10,10 +10,9 @@
 
 | 标记 | 含义 | 当前示例 |
 | --- | --- | --- |
+| 发布候选 | 已完成代码、验证和版本更新，尚未合并与打 Tag | v0.12.0 Training Knowledge RAG |
 | 已发布 | 已进入正式发布版本与远端 `master` | v0.11.0 Coach Agent |
-| 已提交、尚未发布 | 有独立提交，但尚未形成正式版本 | v0.12.0-A Training Knowledge Corpus |
-| 工作区开发中 | 本地已有改动，但尚未提交，不可写成稳定交付 | v0.12.0-B Embedding、Vector Store、Retriever |
-| 规划中 | 只存在设计或 Roadmap，不可描述为已实现 | v0.12.0-C Agent Tool Integration、RAG Evaluation |
+| 规划中 | 只存在设计或 Roadmap，不可描述为已实现 | Weekly Review Agent、写工具与长期记忆 |
 | 部署建议 | 仓库中有说明或脚本，但未证明线上实际采用 | Nginx、Supervisor/Systemd 部署方案 |
 
 ## 当前文档地图
@@ -50,14 +49,14 @@
 
 - 当前工作树：`E:\我的项目\Gaitlogic-planner-rag-v0120`。
 - 当前分支：`feat/training-knowledge-rag-v0.12.0`。
-- 当前 HEAD：`53266aa`，提交信息为 `feat: add training knowledge corpus foundation`。
-- 正式版本仍为 `v0.11.0`；版本声明位于 `pyproject.toml`、`server/main.py`、`web/package.json`。
-- 当前工作区含 v0.12.0-B 未提交改动，学习文档不会将其写成正式发布能力。
+- E3 基线 HEAD：`dd4b586`，E1 与 E2 均已有独立提交。
+- v0.12.0 已进入 Release Candidate：版本声明位于 `pyproject.toml`、`server/main.py`、`web/package.json`。
+- Corpus、Embedding、Exact Cosine Index、Retriever、Coach Knowledge Tool、Canonical Reference、前端引用、公开 Evaluation、Readiness 和真实 Provider Smoke 已形成完整产品链路；正式发布仍需 release commit、合并与 Tag。
 
 ## 推荐学习顺序
 
 1. 先讲清“计划 → 执行 → 日志 → 复盘 → 调整”的训练闭环。
 2. 跟踪一次 `POST /api/coach/query`，理解事实、规则、模型、Validator 与 Fallback 的边界。
 3. 跟踪一次 Garmin 同步任务，理解事务、幂等、Material Change 和自动快照隔离。
-4. 阅读 RAG A/B 文档，区分 Corpus、Embedding、Vector Store、Retriever 与 Agent 接入。
+4. 阅读 RAG A～E 文档，区分 Corpus、Embedding、Vector Store、Retriever、Agent 接入、可信引用、Evaluation 与部署验证。
 5. 最后使用简历事实表和面试题反向检验是否真正理解。

@@ -9,7 +9,7 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.11.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.12.0-1976d2?style=for-the-badge" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?style=for-the-badge&logo=vue.js&logoColor=white" />
@@ -98,15 +98,24 @@ GaitLogic Coach Agent combines structured training facts, deterministic rules, a
 
 ![Today Recommendation](docs/assets/coach-agent/coach-today-recommendation.png)
 
-### v0.12.0 Training Knowledge RAG (in development)
+### v0.12.0 Training Knowledge RAG and Trusted References
 
 Coach Agent retrieves versioned training knowledge through the read-only `retrieve_training_knowledge` tool. The model selects only request-scoped Reference IDs; the server validates and materializes the title, source, version, evidence level, and excerpt. Knowledge explains a result but never participates in or overrides the deterministic TODAY Decision.
+
+```text
+structured business tools -> runner facts
+deterministic rule engine -> decision boundary
+Training Knowledge RAG -> professional knowledge and explanations
+LLM -> bounded tool orchestration and language
+Canonical Reference -> server-materialized trusted sources
+Validator / Fallback -> policy enforcement and safe degradation
+```
 
 ![Knowledge references for a general question](docs/assets/coach-agent/coach-rag-general.png)
 
 ![Knowledge references for a today recommendation](docs/assets/coach-agent/coach-rag-today.png)
 
-See [Training Knowledge Reference UI v1](docs/rag/training-knowledge-reference-ui-v1.md) for the presentation and security boundaries. Private retrieval-label confirmation and human blind review are incomplete, so the formal version remains `0.11.0`.
+v0.12.0 is released as an invite-only Alpha. See [Training Knowledge Reference UI v1](docs/rag/training-knowledge-reference-ui-v1.md) for presentation and security boundaries, and [v0.12.0 Release Notes](docs/releases/v0.12.0-release-notes.md) for upgrade and rollback. Private retrieval-label confirmation and human blind review remain incomplete; they do not block the public product capability and must not be described as a completed competition gate.
 
 ### Agent Capabilities
 
@@ -132,9 +141,15 @@ flowchart TD
     AGENT --> LLM[OpenAI-compatible Gateway]
     CTX --> REG
     REG --> SERVICES[Training Services]
+    REG --> KTOOL[Training Knowledge Tool]
+    KTOOL --> RETRIEVER[Retriever]
+    RETRIEVER --> INDEX[(Versioned Vector Index)]
+    INDEX --> CORPUS[Versioned Corpus]
     SERVICES --> RULES[Runner State and Rule Engine]
     SERVICES --> DB[(MySQL)]
     LLM --> VAL[Deterministic Validator]
+    RETRIEVER --> REF[Canonical Reference Materializer]
+    REF --> VAL
     VAL -->|accepted| QS
     VAL -->|rejected or unavailable| FALLBACK[Deterministic Fallback]
     FALLBACK --> QS
@@ -178,7 +193,7 @@ python scripts/smoke_coach_rag.py
 
 Readiness performs no network request and prints no credential. Smoke uses immutable fictional read-only fixtures and does not retain raw Provider answers. See [v0.12.0 Alpha Onboarding](docs/alpha/gaitlogic-v0120-alpha-onboarding.md) and the [Incident Runbook](docs/alpha/gaitlogic-v0120-alpha-incident-runbook.md).
 
-Current limits: no Weekly Review Agent, write tools, long-term memory, Streaming, or multi-agent runtime. Quota is currently process-local. Training Knowledge RAG is under development on the v0.12.0 branch; private retrieval-label confirmation and human blind review remain incomplete.
+Current limits: no Hybrid Retrieval, Reranker, Weekly Review Agent, write tools, long-term memory, Streaming, or multi-agent runtime. Quota is process-local, the corpus is intentionally limited, and Providers can fail transiently; deterministic advice remains available through safe degradation. This feature is not medical diagnosis. Private retrieval-label confirmation and human blind review remain incomplete.
 
 | Problem | How GaitLogic Planner Helps |
 | --- | --- |

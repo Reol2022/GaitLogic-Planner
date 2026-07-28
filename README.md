@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.11.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.12.0-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -102,15 +102,24 @@ GaitLogic Coach Agent 将结构化训练事实、确定性训练规则和大语�
 
 ![今日训练建议](docs/assets/coach-agent/coach-today-recommendation.png)
 
-### v0.12.0 训练知识 RAG（开发中）
+### v0.12.0 训练知识 RAG 与可信引用
 
 Coach Agent 通过只读 `retrieve_training_knowledge` 工具检索版本化训练知识。模型只选择本次请求内的临时 Reference ID，服务端负责校验并物化标题、来源、版本、证据等级和摘录，避免模型伪造来源。知识用于解释，不参与或覆盖 TODAY 的确定性 Decision。
+
+```text
+结构化业务工具 → 用户训练事实
+确定性规则引擎 → 训练决策边界
+训练知识 RAG → 专业知识与解释依据
+LLM → 受限工具编排与自然语言
+Canonical Reference → 服务端还原可信引用
+Validator / Fallback → 越权拦截与安全降级
+```
 
 ![训练知识引用：一般问题](docs/assets/coach-agent/coach-rag-general.png)
 
 ![训练知识引用：今日建议](docs/assets/coach-agent/coach-rag-today.png)
 
-界面、状态和安全边界见 [Training Knowledge Reference UI v1](docs/rag/training-knowledge-reference-ui-v1.md)。私有 Retrieval 标签确认和人工盲评尚未完成，因此当前仍保持 `0.11.0` 正式版本号。
+v0.12.0 当前按邀请制 Alpha 发布。界面、状态和安全边界见 [Training Knowledge Reference UI v1](docs/rag/training-knowledge-reference-ui-v1.md)，升级与回滚见 [v0.12.0 Release Notes](docs/releases/v0.12.0-release-notes.md)。私有 Retrieval 标签确认和人工盲评尚未完成，不影响产品公开能力，但不得表述为竞赛总门禁已通过。
 
 ### Agent 能力
 
@@ -136,9 +145,15 @@ flowchart TD
     AGENT --> LLM[OpenAI-compatible Gateway]
     CTX --> REG
     REG --> SERVICES[Training Services]
+    REG --> KTOOL[Training Knowledge Tool]
+    KTOOL --> RETRIEVER[Retriever]
+    RETRIEVER --> INDEX[(Versioned Vector Index)]
+    INDEX --> CORPUS[Versioned Corpus]
     SERVICES --> RULES[Runner State and Rule Engine]
     SERVICES --> DB[(MySQL)]
     LLM --> VAL[Deterministic Validator]
+    RETRIEVER --> REF[Canonical Reference Materializer]
+    REF --> VAL
     VAL -->|accepted| QS
     VAL -->|rejected or unavailable| FALLBACK[Deterministic Fallback]
     FALLBACK --> QS
@@ -182,7 +197,7 @@ python scripts/smoke_coach_rag.py
 
 Readiness 不访问网络且不输出凭据；Smoke 使用固定虚构只读 Fixture，不保存 Provider 原始回答。Alpha 使用、隐私与故障处理见 [v0.12.0 Alpha Onboarding](docs/alpha/gaitlogic-v0120-alpha-onboarding.md) 和 [Incident Runbook](docs/alpha/gaitlogic-v0120-alpha-incident-runbook.md)。
 
-当前没有 Weekly Review Agent、写工具、长期记忆、Streaming 或多 Agent；Quota 暂为进程内限制。训练知识 RAG 正在 v0.12.0 分支开发，私有检索标签确认和人工盲评尚未完成。
+当前没有 Hybrid Retrieval、Reranker、Weekly Review Agent、写工具、长期记忆、Streaming 或多 Agent；Quota 暂为进程内限制。训练知识库规模有限，Provider 可能短暂失败，系统会保留确定性建议并安全降级。本功能不构成医疗诊断；私有检索标签确认和人工盲评仍在完善。
 
 | 你可能正在遇到的问题 | GaitLogic Planner 的处理方式 |
 | --- | --- |

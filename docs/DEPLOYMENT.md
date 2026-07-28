@@ -716,13 +716,13 @@ Provider 上线顺序：
 5. 确认 TODAY 的 decision、计划状态、风险、数据质量、warnings、limitations 与 canonical Evidence 均由服务端装配；
 6. 小范围开启 Provider；出现 Provider 异常时应返回 `DEGRADED`，不得改变训练计划或其他训练数据。
 
-当前版本不支持 RAG、Weekly Review Agent、写工具、长期记忆、Streaming、多 Agent 或 DeepSeek thinking 工具链。Coach Agent 只提供非医疗的只读训练参考；Quota 当前为进程内限制。
+v0.11.0 不支持 RAG、Weekly Review Agent、写工具、长期记忆、Streaming、多 Agent 或 DeepSeek thinking 工具链。Coach Agent 只提供非医疗的只读训练参考；Quota 当前为进程内限制。
 
 ---
 
-## 17. v0.12.0 Training Knowledge RAG Alpha
+## 17. v0.12.0 Training Knowledge RAG
 
-v0.12.0-E2 没有数据库迁移。生产仍使用 Nginx 托管前端静态文件，并将 `/api/` 转发至由 Gunicorn、Uvicorn Worker 和 Supervisor 托管的 FastAPI 进程；仓库没有正式 Docker Compose 部署。
+v0.12.0 没有数据库迁移。生产仍使用 Nginx 托管前端静态文件，并将 `/api/` 转发至由 Gunicorn、Uvicorn Worker 和 Supervisor 托管的 FastAPI 进程；仓库没有正式 Docker Compose 部署。默认保持知识检索关闭，只有真实索引构建、校验和 Readiness 全部通过后才启用。
 
 ### 服务端配置
 
@@ -741,7 +741,7 @@ KNOWLEDGE_EMBEDDING_READ_TIMEOUT_SECONDS=30
 KNOWLEDGE_EMBEDDING_TOTAL_TIMEOUT_SECONDS=60
 
 COACH_AGENT_KNOWLEDGE_RETRIEVAL_ENABLED=true
-COACH_AGENT_KNOWLEDGE_INDEX_ID=knowledge-000000000000000000000000
+COACH_AGENT_KNOWLEDGE_INDEX_ID=
 COACH_AGENT_KNOWLEDGE_TOP_K=4
 KNOWLEDGE_INDEX_RUNTIME_DIRECTORY=var/knowledge_indexes
 KNOWLEDGE_INDEX_MAX_AGE_DAYS=30
@@ -794,6 +794,6 @@ Readiness 不访问网络，只输出布尔状态、非敏感模式名和稳定�
 
 1. 回滚后端和前端发布目录；
 2. 恢复上一有效 `COACH_AGENT_KNOWLEDGE_INDEX_ID`；
-3. 若索引异常，先设置 `COACH_AGENT_KNOWLEDGE_RETRIEVAL_ENABLED=false`，保留 v0.11.0 Coach；
+3. 若索引异常，先设置 `COACH_AGENT_KNOWLEDGE_RETRIEVAL_ENABLED=false`，保留不依赖知识检索的 Coach 能力；
 4. 若 Chat Provider 异常，设置 `COACH_AGENT_ENABLED=false`，使用确定性降级；
 5. 本版本没有数据库迁移，不执行数据库 downgrade。
