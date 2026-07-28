@@ -120,6 +120,11 @@ class OpenAICompatibleEmbeddingProvider:
             ),
         )
 
+    def _discard_client(self) -> None:
+        if self._client is not None and hasattr(self._client, "close"):
+            self._client.close()
+        self._client = None
+
     def _request(self, texts: list[str]) -> tuple[list[list[float]], EmbeddingUsage]:
         payload: dict[str, Any] = {
             "model": self.model_name,
@@ -142,6 +147,7 @@ class OpenAICompatibleEmbeddingProvider:
                 )
             except Exception as exc:
                 if attempt == 0 and self._retryable_exception(exc):
+                    self._discard_client()
                     continue
                 raise KnowledgeEmbeddingProviderError(
                     "Embedding provider is unavailable."
@@ -234,6 +240,4 @@ class OpenAICompatibleEmbeddingProvider:
         )
 
     def close(self) -> None:
-        if self._client is not None and hasattr(self._client, "close"):
-            self._client.close()
-        self._client = None
+        self._discard_client()

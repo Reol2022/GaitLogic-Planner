@@ -245,18 +245,31 @@ def test_timeout_retries_once() -> None:
 
 def test_transport_connection_error_retries_once() -> None:
     request = httpx.Request("POST", "https://api.example.test/v1/embeddings")
-    client = FakeClient(
-        [
-            httpx.ConnectError("connection failed", request=request),
-            FakeResponse(200, provider_payload([[1, 0, 0]])),
-        ]
+    failed_client = FakeClient(
+        [httpx.ConnectError("connection failed", request=request)]
     )
+    recovered_client = FakeClient(
+        [FakeResponse(200, provider_payload([[1, 0, 0]]))]
+    )
+    clients = [failed_client, recovered_client]
+    factory_calls = 0
+
+    def factory(settings: Settings) -> FakeClient:
+        nonlocal factory_calls
+        del settings
+        client = clients[factory_calls]
+        factory_calls += 1
+        return client
+
     provider = OpenAICompatibleEmbeddingProvider(
         enabled_settings(),
-        client_factory=lambda settings: client,
+        client_factory=factory,
     )
     provider.embed_query("test")
-    assert len(client.calls) == 2
+    assert factory_calls == 2
+    assert failed_client.closed is True
+    assert len(failed_client.calls) == 1
+    assert len(recovered_client.calls) == 1
 
 
 @pytest.mark.parametrize("status", [400, 401, 403])
