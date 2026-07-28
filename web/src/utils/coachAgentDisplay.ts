@@ -1,5 +1,7 @@
 import type {
   CoachAgentIntent,
+  CoachKnowledgeEvidenceLevel,
+  CoachKnowledgeStatus,
   CoachPlannedWorkoutStatus,
   CoachProviderStatus,
   CoachQueryStatus,
@@ -66,6 +68,43 @@ export const coachToolStatusDisplay: Record<CoachToolStatus, CoachDisplayValue> 
   INVALID_ARGUMENTS: { label: "参数无效", tone: "attention" },
 };
 
+export const coachKnowledgeEvidenceDisplay: Record<
+  CoachKnowledgeEvidenceLevel,
+  string
+> = {
+  PRIMARY: "一手来源",
+  SECONDARY: "二手资料",
+  EXPERT_CONSENSUS: "专家共识",
+  INTERNAL: "系统内部说明",
+  UNKNOWN: "证据等级未知",
+};
+
+export const coachKnowledgeStatusDisplay: Record<
+  CoachKnowledgeStatus,
+  CoachDisplayValue & { description: string }
+> = {
+  USED: {
+    label: "已使用训练知识",
+    description: "本次解释引用了经过服务端校验的训练知识。",
+    tone: "positive",
+  },
+  EMPTY: {
+    label: "未找到直接依据",
+    description: "当前知识库未找到与问题直接匹配的公开训练知识。",
+    tone: "neutral",
+  },
+  UNAVAILABLE: {
+    label: "训练知识暂时不可用",
+    description: "训练事实和确定性规则仍然有效，本次回答未使用知识库引用。",
+    tone: "notice",
+  },
+  DISABLED: {
+    label: "训练知识功能未启用",
+    description: "本次回答仅使用当前已启用的训练事实、规则或安全降级能力。",
+    tone: "neutral",
+  },
+};
+
 const TOOL_NAMES: Record<string, string> = {
   get_runner_state: "当前跑者状态",
   get_runner_state_history: "状态历史",
@@ -75,6 +114,7 @@ const TOOL_NAMES: Record<string, string> = {
   get_training_rules: "训练规则",
   evaluate_today_workout: "今日训练评估",
   get_training_data_quality: "训练数据质量",
+  retrieve_training_knowledge: "训练知识库",
 };
 
 export function coachToolName(toolName: string): string {

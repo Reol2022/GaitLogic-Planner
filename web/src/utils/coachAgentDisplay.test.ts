@@ -40,7 +40,7 @@ describe("coach display mappings", () => {
     expect(coachDecisionDisplay.CONSIDER_ADJUSTMENT.label).not.toContain("已调整");
   });
 
-  it("maps all eight known tools and safely hides unknown raw names", () => {
+  it("maps all nine known tools and safely hides unknown raw names", () => {
     const expected = {
       get_runner_state: "当前跑者状态",
       get_runner_state_history: "状态历史",
@@ -50,6 +50,7 @@ describe("coach display mappings", () => {
       get_training_rules: "训练规则",
       evaluate_today_workout: "今日训练评估",
       get_training_data_quality: "训练数据质量",
+      retrieve_training_knowledge: "训练知识库",
     };
     for (const [name, label] of Object.entries(expected)) expect(coachToolName(name)).toBe(label);
     expect(coachToolName("private_internal_tool")).toBe("其他安全数据来源");

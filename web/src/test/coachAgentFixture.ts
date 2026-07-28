@@ -24,6 +24,7 @@ export function createCoachResponse(
     ],
     warnings: [],
     limitations: [],
+    knowledge_references: [],
     provider_status: "SUCCEEDED",
     generated_at: "2026-07-23T09:00:00+08:00",
     ...overrides,

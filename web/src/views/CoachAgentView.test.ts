@@ -35,6 +35,14 @@ const stubs = {
     props: ["status", "answer", "summary", "generatedAt", "providerStatus"],
     template: "<div class='answer-stub'>AI 解释 {{ status }} {{ answer }}</div>",
   },
+  CoachKnowledgeStatus: {
+    props: ["status"],
+    template: "<div v-if='status' class='knowledge-status-stub'>知识状态 {{ status }}</div>",
+  },
+  CoachKnowledgeReferences: {
+    props: ["references"],
+    template: "<div v-if='references.length' class='references-stub'>训练知识依据 {{ references.length }}</div>",
+  },
   CoachToolSummary: {
     props: ["tools"],
     template: "<div class='tools-stub'>本次参考的数据 {{ tools.length }}</div>",
@@ -73,8 +81,21 @@ describe("CoachAgentView", () => {
     expect(wrapper.find(".send-button").attributes("disabled")).toBeDefined();
   });
 
-  it("sends one bounded request and renders authority before AI explanation", async () => {
-    queryCoach.mockResolvedValue(createCoachResponse());
+  it("renders authority, explanation, references, notices, then tool summary", async () => {
+    queryCoach.mockResolvedValue(createCoachResponse({
+      knowledge_references: [{
+        document_id: "public-doc",
+        title: "虚构知识",
+        section: "公开章节",
+        source_id: "public-source",
+        source_title: "公开来源",
+        knowledge_version: "corpus-v1",
+        evidence_level: "EXPERT_CONSENSUS",
+        excerpt: "虚构摘录",
+        limitations: [],
+      }],
+      warnings: [{ code: "FICTIONAL_WARNING", message: "虚构提醒" }],
+    }));
     const wrapper = mountPage();
     await wrapper.find(".send-button").trigger("click");
     await flushPromises();
@@ -86,7 +107,22 @@ describe("CoachAgentView", () => {
     expect(JSON.stringify(payload)).not.toMatch(/user_id|provider|model|base_url|api_key|tools/);
     const html = wrapper.html();
     expect(html.indexOf("recommendation-stub")).toBeLessThan(html.indexOf("answer-stub"));
+    expect(html.indexOf("answer-stub")).toBeLessThan(html.indexOf("references-stub"));
+    expect(html.indexOf("references-stub")).toBeLessThan(html.indexOf("notices-stub"));
+    expect(html.indexOf("notices-stub")).toBeLessThan(html.indexOf("tools-stub"));
     expect(wrapper.text()).toContain("SUCCEEDED");
+  });
+
+  it("keeps old responses without knowledge_references compatible", async () => {
+    const response = createCoachResponse();
+    delete response.knowledge_references;
+    queryCoach.mockResolvedValue(response);
+    const wrapper = mountPage();
+    await wrapper.find(".send-button").trigger("click");
+    await flushPromises();
+    expect(wrapper.find(".knowledge-status-stub").exists()).toBe(false);
+    expect(wrapper.find(".references-stub").exists()).toBe(false);
+    expect(wrapper.find(".answer-stub").exists()).toBe(true);
   });
 
   it("prevents duplicate submissions while a request is pending", async () => {

@@ -10,6 +10,7 @@
         <span>只读建议</span>
         <span>规则约束</span>
         <span>不会自动改课表</span>
+        <span v-if="demoScenario">虚构 Demo 数据</span>
       </div>
       <p>建议仅供训练决策参考，不用于医疗诊断，也不会自动修改训练计划。</p>
     </section>
@@ -26,6 +27,7 @@
           type="button"
           class="intent-card"
           :class="{ active: selectedIntent === item.intent }"
+          :disabled="Boolean(demoScenario)"
           :aria-pressed="selectedIntent === item.intent"
           @click="selectIntent(item.intent)"
         >
@@ -88,17 +90,21 @@
           :recommendation="turn.response.today_recommendation"
           :risk-level="turn.response.risk_level"
         />
-        <CoachSafetyNotices
-          :warnings="turn.response.warnings"
-          :limitations="turn.response.limitations"
-          :risk-level="turn.response.risk_level"
-        />
         <CoachAnswerCard
           :status="turn.response.status"
           :answer="turn.response.answer"
           :summary="turn.response.summary"
           :generated-at="turn.response.generated_at"
           :provider-status="turn.response.provider_status"
+        />
+        <CoachKnowledgeStatus :status="resolveCoachKnowledgeStatus(turn.response)" />
+        <CoachKnowledgeReferences
+          :references="turn.response.knowledge_references ?? []"
+        />
+        <CoachSafetyNotices
+          :warnings="turn.response.warnings"
+          :limitations="turn.response.limitations"
+          :risk-level="turn.response.risk_level"
         />
         <CoachToolSummary :tools="turn.response.tool_calls" />
       </article>
@@ -117,10 +123,18 @@ import { computed, onBeforeUnmount, ref } from "vue";
 import { ChatDotRound, DataAnalysis, Timer } from "@element-plus/icons-vue";
 import { getCoachAgentErrorMessage, queryCoach } from "@/api/coachAgent";
 import CoachAnswerCard from "@/components/coach/CoachAnswerCard.vue";
+import CoachKnowledgeReferences from "@/components/coach/CoachKnowledgeReferences.vue";
+import CoachKnowledgeStatus from "@/components/coach/CoachKnowledgeStatus.vue";
 import CoachSafetyNotices from "@/components/coach/CoachSafetyNotices.vue";
 import CoachTodayRecommendationCard from "@/components/coach/CoachTodayRecommendationCard.vue";
 import CoachToolSummary from "@/components/coach/CoachToolSummary.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import {
+  coachRagDemoFixtures,
+  coachRagDemoQuestions,
+  createCoachRagDemoResponse,
+  getCoachRagDemoScenario,
+} from "@/demo/coachRagDemo";
 import type { CoachAgentIntent } from "@/types/coachAgent";
 import {
   appendCoachTurn,
@@ -128,6 +142,7 @@ import {
   type CoachConversationTurn,
 } from "@/utils/coachAgentConversation";
 import { coachIntentDisplay } from "@/utils/coachAgentDisplay";
+import { resolveCoachKnowledgeStatus } from "@/utils/coachKnowledgeDisplay";
 
 const MAX_MESSAGE_LENGTH = 4000;
 const DEFAULT_QUESTIONS: Record<CoachAgentIntent, string> = {
@@ -157,8 +172,18 @@ const quickIntents = [
   },
 ];
 
-const selectedIntent = ref<CoachAgentIntent>("TODAY_RECOMMENDATION");
-const message = ref(DEFAULT_QUESTIONS.TODAY_RECOMMENDATION);
+const demoScenario = import.meta.env.DEV
+  ? getCoachRagDemoScenario(window.location.search)
+  : null;
+const demoResponse = demoScenario ? coachRagDemoFixtures[demoScenario] : null;
+const selectedIntent = ref<CoachAgentIntent>(
+  demoResponse?.intent ?? "TODAY_RECOMMENDATION",
+);
+const message = ref(
+  demoScenario
+    ? coachRagDemoQuestions[demoScenario]
+    : DEFAULT_QUESTIONS.TODAY_RECOMMENDATION,
+);
 const turns = ref<CoachConversationTurn[]>([]);
 const loading = ref(false);
 const errorMessage = ref("");
@@ -195,11 +220,13 @@ async function submitQuery() {
   errorMessage.value = "";
   controller = new AbortController();
   try {
-    const response = await queryCoach({
-      message: question,
-      intent: selectedIntent.value,
-      conversation_context: context.messages,
-    }, controller.signal);
+    const response = demoScenario
+      ? createCoachRagDemoResponse(demoScenario)
+      : await queryCoach({
+        message: question,
+        intent: selectedIntent.value,
+        conversation_context: context.messages,
+      }, controller.signal);
     if (!active) return;
     const appended = appendCoachTurn(turns.value, {
       id: response.request_id,
@@ -235,6 +262,7 @@ onBeforeUnmount(() => {
 .intent-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
 .intent-card { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; min-width: 0; padding: 15px; text-align: left; border: 1px solid #d8e2ec; border-radius: 8px; color: #26354a; background: #fbfcfd; cursor: pointer; }
 .intent-card:hover, .intent-card.active { border-color: #5c8fbd; background: #f2f7fc; }
+.intent-card:disabled { cursor: default; opacity: .72; }
 .intent-card:focus-visible { outline: 3px solid rgba(25, 118, 210, .3); outline-offset: 2px; }
 .intent-card .el-icon { grid-row: 1 / 3; color: #1976d2; font-size: 24px; }
 .intent-card strong, .intent-card span { min-width: 0; overflow-wrap: anywhere; }

@@ -102,9 +102,19 @@ GaitLogic Coach Agent 将结构化训练事实、确定性训练规则和大语�
 
 ![今日训练建议](docs/assets/coach-agent/coach-today-recommendation.png)
 
+### v0.12.0 训练知识 RAG（开发中）
+
+Coach Agent 通过只读 `retrieve_training_knowledge` 工具检索版本化训练知识。模型只选择本次请求内的临时 Reference ID，服务端负责校验并物化标题、来源、版本、证据等级和摘录，避免模型伪造来源。知识用于解释，不参与或覆盖 TODAY 的确定性 Decision。
+
+![训练知识引用：一般问题](docs/assets/coach-agent/coach-rag-general.png)
+
+![训练知识引用：今日建议](docs/assets/coach-agent/coach-rag-today.png)
+
+界面、状态和安全边界见 [Training Knowledge Reference UI v1](docs/rag/training-knowledge-reference-ui-v1.md)。私有 Retrieval 标签确认和人工盲评尚未完成，因此当前仍保持 `0.11.0` 正式版本号。
+
 ### Agent 能力
 
-当前注册八个只读工具：
+当前注册八个训练事实工具和一个训练知识检索工具：
 
 - `get_runner_state`
 - `get_runner_state_history`
@@ -114,6 +124,7 @@ GaitLogic Coach Agent 将结构化训练事实、确定性训练规则和大语�
 - `get_training_rules`
 - `evaluate_today_workout`
 - `get_training_data_quality`
+- `retrieve_training_knowledge`
 
 ```mermaid
 flowchart TD
@@ -160,7 +171,7 @@ npm run dev
 
 `.env.example` 中 Coach Provider 默认关闭且 Key 为空。此时 `/coach` 使用确定性 Fallback 展示可用的只读建议；安全 Demo 流程见 [Coach Agent Demo v1](docs/agent/coach-agent-demo-v1.md)。
 
-当前没有 RAG、Weekly Review Agent、写工具、长期记忆、Streaming 或多 Agent；Quota 暂为进程内限制。
+当前没有 Weekly Review Agent、写工具、长期记忆、Streaming 或多 Agent；Quota 暂为进程内限制。训练知识 RAG 正在 v0.12.0 分支开发，私有检索标签确认和人工盲评尚未完成。
 
 | 你可能正在遇到的问题 | GaitLogic Planner 的处理方式 |
 | --- | --- |

@@ -40,6 +40,19 @@ export type CoachToolStatus =
   | "NOT_ALLOWED"
   | "INVALID_ARGUMENTS";
 
+export type CoachKnowledgeEvidenceLevel =
+  | "PRIMARY"
+  | "SECONDARY"
+  | "EXPERT_CONSENSUS"
+  | "INTERNAL"
+  | "UNKNOWN";
+
+export type CoachKnowledgeStatus =
+  | "USED"
+  | "EMPTY"
+  | "UNAVAILABLE"
+  | "DISABLED";
+
 export type CoachConversationRole = "user" | "assistant";
 
 export interface CoachConversationMessage {
@@ -72,6 +85,18 @@ export interface CoachToolCallSummary {
   safe_error_code?: string | null;
 }
 
+export interface CoachKnowledgeReference {
+  document_id: string;
+  title: string;
+  section: string;
+  source_id: string;
+  source_title: string;
+  knowledge_version: string;
+  evidence_level: CoachKnowledgeEvidenceLevel;
+  excerpt: string;
+  limitations: string[];
+}
+
 export interface CoachQueryResponse {
   request_id: string;
   trace_id: string;
@@ -84,6 +109,12 @@ export interface CoachQueryResponse {
   tool_calls: CoachToolCallSummary[];
   warnings: CoachNotice[];
   limitations: CoachNotice[];
+  /**
+   * Optional for compatibility with responses produced before v0.12.0.
+   * The server only returns materialized public references, never internal
+   * reference IDs, chunk IDs, paths, scores, or vectors.
+   */
+  knowledge_references?: CoachKnowledgeReference[];
   provider_status: CoachProviderStatus;
   generated_at: string;
 }

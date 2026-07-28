@@ -98,9 +98,19 @@ GaitLogic Coach Agent combines structured training facts, deterministic rules, a
 
 ![Today Recommendation](docs/assets/coach-agent/coach-today-recommendation.png)
 
+### v0.12.0 Training Knowledge RAG (in development)
+
+Coach Agent retrieves versioned training knowledge through the read-only `retrieve_training_knowledge` tool. The model selects only request-scoped Reference IDs; the server validates and materializes the title, source, version, evidence level, and excerpt. Knowledge explains a result but never participates in or overrides the deterministic TODAY Decision.
+
+![Knowledge references for a general question](docs/assets/coach-agent/coach-rag-general.png)
+
+![Knowledge references for a today recommendation](docs/assets/coach-agent/coach-rag-today.png)
+
+See [Training Knowledge Reference UI v1](docs/rag/training-knowledge-reference-ui-v1.md) for the presentation and security boundaries. Private retrieval-label confirmation and human blind review are incomplete, so the formal version remains `0.11.0`.
+
 ### Agent Capabilities
 
-Eight read-only tools are registered:
+Eight training-fact tools and one training-knowledge retrieval tool are registered:
 
 - `get_runner_state`
 - `get_runner_state_history`
@@ -110,6 +120,7 @@ Eight read-only tools are registered:
 - `get_training_rules`
 - `evaluate_today_workout`
 - `get_training_data_quality`
+- `retrieve_training_knowledge`
 
 ```mermaid
 flowchart TD
@@ -156,7 +167,7 @@ npm run dev
 
 The Coach Provider is disabled and its API key is empty in `.env.example`. In that mode `/coach` demonstrates the deterministic read-only Fallback. See [Coach Agent Demo v1](docs/agent/coach-agent-demo-v1.md).
 
-Current limits: no RAG, Weekly Review Agent, write tools, long-term memory, Streaming, or multi-agent runtime. Quota is currently process-local.
+Current limits: no Weekly Review Agent, write tools, long-term memory, Streaming, or multi-agent runtime. Quota is currently process-local. Training Knowledge RAG is under development on the v0.12.0 branch; private retrieval-label confirmation and human blind review remain incomplete.
 
 | Problem | How GaitLogic Planner Helps |
 | --- | --- |
