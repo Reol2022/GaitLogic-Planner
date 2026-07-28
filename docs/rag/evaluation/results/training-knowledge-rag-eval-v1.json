@@ -11,7 +11,7 @@
         "evaluate_today_workout",
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.091,
+      "duration_ms": 0.013,
       "flags": [],
       "intent": "TODAY_RECOMMENDATION",
       "metrics": {
@@ -51,7 +51,7 @@
         "evaluate_today_workout",
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.029,
+      "duration_ms": 0.005,
       "flags": [],
       "intent": "TODAY_RECOMMENDATION",
       "metrics": {
@@ -91,7 +91,7 @@
         "evaluate_today_workout",
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.004,
+      "duration_ms": 0.003,
       "flags": [],
       "intent": "TODAY_RECOMMENDATION",
       "metrics": {
@@ -129,7 +129,7 @@
         "get_today_workout",
         "evaluate_today_workout"
       ],
-      "duration_ms": 0.004,
+      "duration_ms": 0.003,
       "flags": [],
       "intent": "TODAY_RECOMMENDATION",
       "metrics": {
@@ -166,7 +166,7 @@
         "get_today_workout",
         "evaluate_today_workout"
       ],
-      "duration_ms": 0.007,
+      "duration_ms": 0.002,
       "flags": [],
       "intent": "TODAY_RECOMMENDATION",
       "metrics": {
@@ -203,7 +203,7 @@
         "get_training_data_quality",
         "evaluate_today_workout"
       ],
-      "duration_ms": 0.004,
+      "duration_ms": 0.002,
       "flags": [],
       "intent": "TODAY_RECOMMENDATION",
       "metrics": {
@@ -281,7 +281,7 @@
         "evaluate_today_workout",
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.004,
+      "duration_ms": 0.003,
       "flags": [],
       "intent": "TODAY_RECOMMENDATION",
       "metrics": {
@@ -321,7 +321,7 @@
         "evaluate_today_workout",
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.009,
+      "duration_ms": 0.022,
       "flags": [],
       "intent": "TODAY_RECOMMENDATION",
       "metrics": {
@@ -361,7 +361,7 @@
         "evaluate_today_workout",
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.006,
+      "duration_ms": 0.003,
       "flags": [],
       "intent": "TODAY_RECOMMENDATION",
       "metrics": {
@@ -400,7 +400,7 @@
         "get_today_workout",
         "evaluate_today_workout"
       ],
-      "duration_ms": 0.011,
+      "duration_ms": 0.002,
       "flags": [],
       "intent": "TODAY_RECOMMENDATION",
       "metrics": {
@@ -438,7 +438,7 @@
         "evaluate_today_workout",
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.004,
+      "duration_ms": 0.002,
       "flags": [],
       "intent": "TODAY_RECOMMENDATION",
       "metrics": {
@@ -476,7 +476,7 @@
         "get_runner_state",
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.007,
+      "duration_ms": 0.003,
       "flags": [],
       "intent": "EXPLAIN_RUNNER_STATE",
       "metrics": {
@@ -515,7 +515,7 @@
         "get_recent_training",
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.006,
+      "duration_ms": 0.003,
       "flags": [],
       "intent": "EXPLAIN_RUNNER_STATE",
       "metrics": {
@@ -554,7 +554,7 @@
         "get_training_rules",
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.005,
+      "duration_ms": 0.003,
       "flags": [],
       "intent": "EXPLAIN_RUNNER_STATE",
       "metrics": {
@@ -593,7 +593,7 @@
         "get_recent_training",
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.13,
+      "duration_ms": 0.002,
       "flags": [],
       "intent": "EXPLAIN_RUNNER_STATE",
       "metrics": {
@@ -780,7 +780,7 @@
         "get_runner_state",
         "get_training_data_quality"
       ],
-      "duration_ms": 0.004,
+      "duration_ms": 0.002,
       "flags": [],
       "intent": "EXPLAIN_RUNNER_STATE",
       "metrics": {
@@ -816,7 +816,7 @@
         "get_runner_state",
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.005,
+      "duration_ms": 0.003,
       "flags": [],
       "intent": "EXPLAIN_RUNNER_STATE",
       "metrics": {
@@ -853,7 +853,7 @@
       "context_tools": [
         "get_runner_state"
       ],
-      "duration_ms": 0.003,
+      "duration_ms": 0.002,
       "flags": [],
       "intent": "EXPLAIN_RUNNER_STATE",
       "metrics": {
@@ -1036,7 +1036,7 @@
       "context_tools": [
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.003,
+      "duration_ms": 0.004,
       "flags": [],
       "intent": "GENERAL_TRAINING_QUESTION",
       "metrics": {
@@ -1147,7 +1147,7 @@
       "context_tools": [
         "retrieve_training_knowledge"
       ],
-      "duration_ms": 0.003,
+      "duration_ms": 0.002,
       "flags": [],
       "intent": "GENERAL_TRAINING_QUESTION",
       "metrics": {
@@ -1318,7 +1318,7 @@
       "context_tools": [
         "get_training_rules"
       ],
-      "duration_ms": 0.002,
+      "duration_ms": 0.013,
       "flags": [],
       "intent": "GENERAL_TRAINING_QUESTION",
       "metrics": {
@@ -1351,12 +1351,12 @@
   ],
   "category_metrics": {},
   "corpus_root_hash": "58bae62329a833c7a2a2a79dc12d31ac8c1b8052144597c839700e4b18894a7b",
-  "dataset_sha256": "86bca75c05dbb84caf46dbbe036d7c6a9a104705654ad8a3126f52b6cd43bc46",
+  "dataset_sha256": "a00fb766e1fb446055f5150e4b251792112a3b7ea3c5aafdf635557cd5b0a1f7",
   "dataset_version": "rag-answer-cases-v1",
   "evaluation_kind": "rag",
   "evaluation_version": "training-knowledge-eval-1.0.0",
   "failure_case_ids": [],
-  "generated_at": "2026-07-27T10:37:05.966997+00:00",
+  "generated_at": "2026-07-28T03:51:53.564396+00:00",
   "index_id": null,
   "limitations": [
     "The public RAG evaluation uses fixed fictional contexts and stores no raw answer, prompt, context, tool result, or reasoning content."
@@ -1386,5 +1386,5 @@
   "provider": "fake",
   "raw_answers_saved": false,
   "real_provider": false,
-  "result_hash": "d02e5f6b217487cc571bdb7fb3b771e8885976469c1df8072e84deaf353fcde4"
+  "result_hash": "d0557fa09d241b8bfb30cb21dae9cb6417d277ef3b51902f03824a934e1330ce"
 }

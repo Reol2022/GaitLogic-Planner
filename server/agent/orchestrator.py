@@ -18,7 +18,10 @@ from server.agent.enums import (
 )
 from server.agent.errors import AgentErrorCode
 from server.agent.gateway import AgentLLMGateway
-from server.agent.knowledge_references import materialize_knowledge_references
+from server.agent.knowledge_references import (
+    KNOWLEDGE_TOOL_NAME,
+    materialize_knowledge_references,
+)
 from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import (
     AgentContext,
@@ -186,12 +189,22 @@ class GaitLogicCoachAgent:
     ) -> AgentModelOutput:
         started = perf_counter()
         trace.add_event(AgentTraceEventType.MODEL_CALL, AgentTraceStatus.STARTED)
+        tools = self.registry.list_tools(request.intent)
+        if any(
+            result.tool_name == KNOWLEDGE_TOOL_NAME
+            for result in context.tool_results
+        ):
+            tools = [
+                definition
+                for definition in tools
+                if definition.name != KNOWLEDGE_TOOL_NAME
+            ]
         try:
             output = self.gateway.generate(
                 system_instructions=build_coach_agent_system_prompt(),
                 user_message=request.message,
                 context=context,
-                tools=self.registry.list_tools(request.intent),
+                tools=tools,
                 trace=trace,
             )
         except Exception:

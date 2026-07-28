@@ -6,9 +6,14 @@ import pytest
 from pydantic import ValidationError
 
 from planner_core.config import Settings
-from server.agent.enums import AgentIntent, AgentToolStatus
+from server.agent.enums import AgentIntent, AgentToolStatus, AgentTraceEventType
+from server.agent.gateway import MockAgentLLMGateway
+from server.agent.orchestrator import GaitLogicCoachAgent
 from server.agent.registry import AgentToolRegistry
-from server.agent.schemas import AgentContext
+from server.agent.schemas import AgentContext, AgentModelOutput, AgentRequest
+from server.agent.training_context_builder import AgentTrainingContextBuilder
+from server.agent.trace import AgentTrace
+from server.agent.tools.factory import build_coach_agent_tool_registry
 from server.agent.tools.knowledge_tools import (
     RetrieveTrainingKnowledgeInput,
     RetrieveTrainingKnowledgeTool,
@@ -25,7 +30,7 @@ from server.knowledge_retrieval.retrieval_schemas import (
     KnowledgeRetrievalResponse,
     KnowledgeRetrievalResult,
 )
-from tests.agent_tool_fakes import NOW
+from tests.agent_tool_fakes import FakeDependencies, NOW
 from tests.knowledge_index_helpers import build_test_index
 
 
@@ -205,6 +210,106 @@ def test_tool_integrates_with_deterministic_index_without_network_or_database(
     assert [item.knowledge_reference_id for item in result.results] == [
         f"knowledge_{index}" for index in range(1, len(result.results) + 1)
     ]
+
+
+@pytest.mark.parametrize(
+    "intent",
+    [
+        AgentIntent.TODAY_RECOMMENDATION,
+        AgentIntent.EXPLAIN_RUNNER_STATE,
+        AgentIntent.GENERAL_TRAINING_QUESTION,
+    ],
+)
+def test_context_builder_preloads_registered_knowledge_once_with_request_message(
+    intent: AgentIntent,
+) -> None:
+    retriever = FakeRetriever()
+    registry = AgentToolRegistry()
+    registry.register(tool(retriever))
+    builder = AgentTrainingContextBuilder(registry=registry, clock=lambda: NOW)
+    request = AgentRequest(
+        user_id=4101,
+        message="如何根据疲劳状态安排今天的训练？",
+        intent=intent,
+    )
+    trace = AgentTrace(request_id=request.request_id)
+
+    built = builder.build(request, trace=trace)
+
+    assert len(retriever.requests) == 1
+    assert retriever.requests[0].query == request.message
+    knowledge_results = [
+        result
+        for result in built.tool_results
+        if result.tool_name == "retrieve_training_knowledge"
+    ]
+    assert len(knowledge_results) == 1
+    assert knowledge_results[0].status == AgentToolStatus.SUCCEEDED
+    assert [
+        event.tool_name
+        for event in trace.events
+        if (
+            event.event_type == AgentTraceEventType.CONTEXT_TOOL_COMPLETED
+            and event.tool_name == "retrieve_training_knowledge"
+        )
+    ] == ["retrieve_training_knowledge"]
+
+
+def test_context_builder_does_not_attempt_unregistered_knowledge_tool() -> None:
+    registry = build_coach_agent_tool_registry(FakeDependencies())
+    builder = AgentTrainingContextBuilder(registry=registry, clock=lambda: NOW)
+    request = AgentRequest(
+        user_id=4101,
+        message="如何安排今天的训练？",
+        intent=AgentIntent.GENERAL_TRAINING_QUESTION,
+    )
+    trace = AgentTrace(request_id=request.request_id)
+
+    built = builder.build(request, trace=trace)
+
+    assert all(
+        result.tool_name != "retrieve_training_knowledge"
+        for result in built.tool_results
+    )
+    assert all(
+        event.tool_name != "retrieve_training_knowledge"
+        for event in trace.events
+    )
+
+
+def test_preloaded_knowledge_is_not_exposed_for_a_duplicate_model_tool_call() -> None:
+    retriever = FakeRetriever()
+    registry = build_coach_agent_tool_registry(
+        FakeDependencies(),
+        knowledge_tool=tool(retriever),
+    )
+    gateway = MockAgentLLMGateway(
+        AgentModelOutput(
+            intent=AgentIntent.GENERAL_TRAINING_QUESTION,
+            answer="基于虚构知识资料的训练说明。",
+            knowledge_reference_ids=["knowledge_1"],
+        )
+    )
+    agent = GaitLogicCoachAgent(
+        gateway=gateway,
+        registry=registry,
+        context_builder=AgentTrainingContextBuilder(
+            registry=registry,
+            clock=lambda: NOW,
+        ),
+    )
+
+    response = agent.run(
+        AgentRequest(
+            user_id=4101,
+            message="如何根据疲劳状态安排训练？",
+            intent=AgentIntent.GENERAL_TRAINING_QUESTION,
+        )
+    )
+
+    assert len(retriever.requests) == 1
+    assert "retrieve_training_knowledge" not in gateway.exposed_tool_names[0]
+    assert len(response.knowledge_references) == 1
 
 
 def test_missing_index_fails_through_safe_registry_boundary(tmp_path) -> None:

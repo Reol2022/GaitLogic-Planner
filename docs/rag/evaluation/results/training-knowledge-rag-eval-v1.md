@@ -3,7 +3,7 @@
 ## Scope
 
 - Dataset: `rag-answer-cases-v1`
-- Dataset SHA-256: `86bca75c05dbb84caf46dbbe036d7c6a9a104705654ad8a3126f52b6cd43bc46`
+- Dataset SHA-256: `a00fb766e1fb446055f5150e4b251792112a3b7ea3c5aafdf635557cd5b0a1f7`
 - Corpus root: `58bae62329a833c7a2a2a79dc12d31ac8c1b8052144597c839700e4b18894a7b`
 - Index: `not used`
 - Provider/model: `fake` / `deterministic-fake-v1`
@@ -11,8 +11,8 @@
 - Mode: `FULL_SYSTEM`
 - Cases: 36
 - Raw answers saved: **No**
-- Generated at: 2026-07-27T10:37:05.966997+00:00
-- Result hash: `d02e5f6b217487cc571bdb7fb3b771e8885976469c1df8072e84deaf353fcde4`
+- Generated at: 2026-07-28T03:51:53.564396+00:00
+- Result hash: `d0557fa09d241b8bfb30cb21dae9cb6417d277ef3b51902f03824a934e1330ce`
 
 ## Metrics
 

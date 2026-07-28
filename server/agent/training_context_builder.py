@@ -14,6 +14,7 @@ from server.agent.enums import (
     AgentTraceEventType,
     AgentTraceStatus,
 )
+from server.agent.knowledge_references import KNOWLEDGE_TOOL_NAME
 from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import AgentContext, AgentContextSeed, AgentNotice, AgentRequest
 from server.agent.trace import AgentTrace
@@ -54,6 +55,14 @@ _FIELD_BY_TOOL = {
     "get_training_data_quality": "data_quality",
 }
 
+_KNOWLEDGE_PRELOAD_INTENTS = frozenset(
+    {
+        AgentIntent.TODAY_RECOMMENDATION,
+        AgentIntent.EXPLAIN_RUNNER_STATE,
+        AgentIntent.GENERAL_TRAINING_QUESTION,
+    }
+)
+
 
 class AgentTrainingContextBuilder(AgentContextBuilder):
     """Build intent-aware context exclusively through the registered tool boundary."""
@@ -73,8 +82,17 @@ class AgentTrainingContextBuilder(AgentContextBuilder):
         results = list(context.tool_results)
         values = context.model_dump(mode="python")
         missing = dict(context.missing_reasons)
-        preload_limit = min(self.limits.max_tool_calls, len(_PRELOADS[request.intent]))
-        for name, arguments in _PRELOADS[request.intent][:preload_limit]:
+        preloads = list(_PRELOADS[request.intent])
+        available_tools = {
+            definition.name for definition in self.registry.list_tools(request.intent)
+        }
+        if (
+            request.intent in _KNOWLEDGE_PRELOAD_INTENTS
+            and KNOWLEDGE_TOOL_NAME in available_tools
+        ):
+            preloads.append((KNOWLEDGE_TOOL_NAME, {"query": request.message}))
+        preload_limit = min(self.limits.max_tool_calls, len(preloads))
+        for name, arguments in preloads[:preload_limit]:
             started = perf_counter()
             if trace is not None:
                 trace.add_event(

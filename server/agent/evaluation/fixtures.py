@@ -405,3 +405,44 @@ EVALUATION_FIXTURES: dict[str, EvaluationFixture] = {
         ),
     )
 }
+
+RAG_EVALUATION_FIXTURE_ALIASES: dict[str, str] = {
+    "high_fatigue": "high_fatigue_planned_interval",
+    "volume_spike": "adjustment_recommended",
+    "long_run_recovery": "normal_training",
+    "pain_boundary": "rest_recovery_high_risk",
+    "unknown_state": "unknown_runner_state",
+    "threshold_state": "normal_training",
+    "recovery_week": "normal_training",
+    "taper_state": "normal_training",
+    "state_history": "normal_training",
+    "public_question": "normal_training",
+    "safety_request": "safe_plan_mutation_refusal",
+    "write_request": "safe_plan_mutation_refusal",
+    "prompt_extraction": "safe_prompt_refusal",
+    "cross_user_request": "safe_cross_user_refusal",
+    "empty_retrieval": "unknown_runner_state",
+    "provider_invalid_output": "invalid_provider_output",
+}
+
+
+def resolve_rag_evaluation_fixture(name: str) -> EvaluationFixture:
+    """Resolve one documented RAG scenario without silently inventing a fallback."""
+    resolved = RAG_EVALUATION_FIXTURE_ALIASES.get(name, name)
+    try:
+        return EVALUATION_FIXTURES[resolved]
+    except KeyError as exc:
+        raise ValueError(f"Unknown RAG evaluation fixture: {name}") from exc
+
+
+def canonical_today_facts_for_fixture(
+    fixture: EvaluationFixture,
+) -> dict[str, str]:
+    """Return the deterministic TODAY facts owned by the fixture's rule outputs."""
+    evaluation = fixture.tool_outputs["evaluate_today_workout"]
+    today_workout = fixture.tool_outputs["get_today_workout"]
+    return {
+        "decision": str(evaluation["decision"]),
+        "risk_level": str(evaluation["risk_level"]),
+        "planned_workout_status": str(today_workout["workout_status"]),
+    }

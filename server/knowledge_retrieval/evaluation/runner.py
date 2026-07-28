@@ -261,11 +261,16 @@ class TrainingKnowledgeEvaluationRunner:
         Raw model text remains process-local and is deliberately reduced to
         deterministic flags before constructing the public report.
         """
-        from server.agent.enums import AgentRunStatus, AgentTraceEventType
+        from server.agent.enums import (
+            AgentRunStatus,
+            AgentTraceEventType,
+            AgentTraceStatus,
+        )
         from server.agent.evaluation.fixtures import (
-            EVALUATION_FIXTURES,
             EVALUATION_NOW,
             build_evaluation_registry,
+            canonical_today_facts_for_fixture,
+            resolve_rag_evaluation_fixture,
         )
         from server.agent.orchestrator import GaitLogicCoachAgent
         from server.agent.providers.openai_compatible import (
@@ -275,24 +280,6 @@ class TrainingKnowledgeEvaluationRunner:
         from server.agent.tools.knowledge_tools import build_configured_knowledge_tool
         from server.agent.training_context_builder import AgentTrainingContextBuilder
 
-        aliases = {
-            "high_fatigue": "high_fatigue_planned_interval",
-            "volume_spike": "adjustment_recommended",
-            "long_run_recovery": "normal_training",
-            "pain_boundary": "rest_recovery_high_risk",
-            "unknown_state": "unknown_runner_state",
-            "threshold_state": "normal_training",
-            "recovery_week": "normal_training",
-            "taper_state": "normal_training",
-            "state_history": "normal_training",
-            "public_question": "normal_training",
-            "safety_request": "safe_plan_mutation_refusal",
-            "write_request": "safe_plan_mutation_refusal",
-            "prompt_extraction": "safe_prompt_refusal",
-            "cross_user_request": "safe_cross_user_refusal",
-            "empty_retrieval": "unknown_runner_state",
-            "provider_invalid_output": "invalid_provider_output",
-        }
         dataset = load_rag_dataset(dataset_path)
         corpus = load_manifest(self.corpus_manifest_path)
         chunks_by_document: dict[str, list[str]] = {}
@@ -305,11 +292,16 @@ class TrainingKnowledgeEvaluationRunner:
         metric_values: list[dict[str, float]] = []
         for case in dataset.cases:
             started = perf_counter()
-            fixture_name = aliases.get(case.fictional_context, case.fictional_context)
-            fixture = EVALUATION_FIXTURES.get(
-                fixture_name,
-                EVALUATION_FIXTURES["normal_training"],
-            )
+            fixture = resolve_rag_evaluation_fixture(case.fictional_context)
+            if (
+                case.canonical_today_facts
+                and case.canonical_today_facts
+                != canonical_today_facts_for_fixture(fixture)
+            ):
+                raise ValueError(
+                    f"RAG case {case.case_id} canonical TODAY facts do not match "
+                    "the deterministic fixture"
+                )
             registry = build_evaluation_registry(fixture)
             knowledge_tool = (
                 build_configured_knowledge_tool(settings)
@@ -353,6 +345,17 @@ class TrainingKnowledgeEvaluationRunner:
                 and item.tool_name
             ]
             actual_tools = set(context_tools) | set(model_tools)
+            knowledge_tool_succeeded = any(
+                item.event_type == AgentTraceEventType.CONTEXT_TOOL_COMPLETED
+                and item.tool_name == "retrieve_training_knowledge"
+                and item.status == AgentTraceStatus.SUCCEEDED
+                for item in events
+            ) or any(
+                item.event_type == AgentTraceEventType.MODEL_TOOL_COMPLETED
+                and item.tool_name == "retrieve_training_knowledge"
+                and item.status == AgentTraceStatus.SUCCEEDED
+                for item in events
+            )
             references = list(response.knowledge_references)
             reference_documents = [item.document_id for item in references]
             known_references = [
@@ -434,8 +437,7 @@ class TrainingKnowledgeEvaluationRunner:
                 "required_tool_recall": round(required_tool_recall, 6),
                 "forbidden_tool_call_rate": 0.0,
                 "knowledge_tool_success_rate": float(
-                    "retrieve_training_knowledge" in actual_tools
-                    and bool(references)
+                    knowledge_tool_succeeded
                 ),
                 "citation_requirement_satisfaction": float(citation_satisfied),
                 "citation_precision": round(citation_precision, 6),
