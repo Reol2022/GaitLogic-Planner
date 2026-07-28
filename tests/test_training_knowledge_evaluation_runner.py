@@ -11,6 +11,7 @@ from server.agent.evaluation.fixtures import (
 from server.knowledge_retrieval.embeddings.deterministic import (
     DeterministicEmbeddingProvider,
 )
+from server.knowledge_retrieval.errors import KnowledgeEmbeddingProviderError
 from server.knowledge_retrieval.evaluation.datasets import load_rag_dataset
 from server.knowledge_retrieval.evaluation.runner import (
     TrainingKnowledgeEvaluationRunner,
@@ -19,6 +20,35 @@ from server.knowledge_retrieval.evaluation.schemas import EvaluationMode
 
 
 ROOT = Path.cwd()
+
+
+class OneQueryFailureProvider:
+    provider_name = "deterministic_test"
+    model_name = "sha256-lexical-v1"
+    dimensions = 64
+    normalized = True
+    max_batch_size = 64
+
+    def __init__(self) -> None:
+        self.delegate = DeterministicEmbeddingProvider(
+            dimensions=64,
+            environment="test",
+        )
+        self.query_count = 0
+        self.closed = False
+
+    def embed_documents(self, texts: list[str]):
+        return self.delegate.embed_documents(texts)
+
+    def embed_query(self, text: str):
+        self.query_count += 1
+        if self.query_count == 1:
+            raise KnowledgeEmbeddingProviderError("fictional transient failure")
+        return self.delegate.embed_query(text)
+
+    def close(self) -> None:
+        self.closed = True
+        self.delegate.close()
 
 
 def test_retrieval_runner_is_deterministic_except_runtime_metadata() -> None:
@@ -43,6 +73,32 @@ def test_retrieval_runner_is_deterministic_except_runtime_metadata() -> None:
     assert first.result_hash == second.result_hash
     assert first.metrics == second.metrics
     assert not first.raw_answers_saved
+
+
+def test_retrieval_runner_records_one_provider_failure_and_continues() -> None:
+    providers: list[OneQueryFailureProvider] = []
+
+    def factory() -> OneQueryFailureProvider:
+        provider = OneQueryFailureProvider()
+        providers.append(provider)
+        return provider
+
+    report = TrainingKnowledgeEvaluationRunner(repository_root=ROOT).run_retrieval(
+        dataset_path=ROOT / "docs/rag/evaluation/cases/retrieval-eval-v1.json",
+        provider_factory=factory,
+        provider_name="deterministic_test",
+        model_name="deterministic-sha256-v1",
+        mode=EvaluationMode.DENSE_WITH_METADATA,
+    )
+
+    assert len(providers) == 1
+    assert providers[0].closed is True
+    assert report.case_count == len(report.cases)
+    assert report.metrics["provider_success_rate"] < 1.0
+    assert sum(
+        "PROVIDER_FAILURE" in case.failure_codes
+        for case in report.cases
+    ) == 1
 
 
 def test_rag_runner_stores_only_safe_summary_fields() -> None:

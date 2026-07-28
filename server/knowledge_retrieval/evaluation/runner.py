@@ -8,6 +8,7 @@ from time import perf_counter
 from typing import Callable
 
 from server.knowledge_retrieval.embeddings.base import EmbeddingProvider
+from server.knowledge_retrieval.errors import KnowledgeEmbeddingProviderError
 from server.knowledge_retrieval.evaluation.ablations import ABLATIONS
 from server.knowledge_retrieval.evaluation.datasets import (
     load_rag_dataset,
@@ -95,46 +96,65 @@ class TrainingKnowledgeEvaluationRunner:
         results: list[RetrievalCaseResult] = []
         aggregate_input: list[tuple[object, dict[str, float]]] = []
         resolved_index = index_id
+        provider: EmbeddingProvider | None = None
         if mode not in {EvaluationMode.LEXICAL_ONLY, EvaluationMode.NO_RETRIEVAL}:
             resolved_index = resolved_index or self.index_service.latest_index_id()
+            if provider_factory is None:
+                raise ValueError("dense evaluation requires an embedding provider")
+            provider = provider_factory()
         for case in dataset.cases:
             started = perf_counter()
+            provider_failed = False
             if mode in {EvaluationMode.NO_RETRIEVAL, EvaluationMode.NO_RAG}:
                 ranked: list[RankedItem] = []
             elif mode == EvaluationMode.LEXICAL_ONLY:
                 ranked = lexical.search(case)
             else:
-                if provider_factory is None:
-                    raise ValueError("dense evaluation requires an embedding provider")
-                provider = provider_factory()
+                if provider is None:
+                    raise RuntimeError("dense evaluation provider was not initialized")
                 retriever = TrainingKnowledgeRetriever(
                     index_service=self.index_service,
                     provider=provider,
                     index_id=resolved_index,
                 )
-                response = retriever.retrieve(
-                    KnowledgeRetrievalRequest(
-                        query=case.query,
-                        top_k=4,
-                        categories=(
-                            case.filters.categories
-                            if ABLATIONS[mode].uses_metadata
-                            else []
-                        ),
-                        tags=case.filters.tags if ABLATIONS[mode].uses_metadata else [],
-                        language=case.language if ABLATIONS[mode].uses_metadata else None,
+                try:
+                    response = retriever.retrieve(
+                        KnowledgeRetrievalRequest(
+                            query=case.query,
+                            top_k=4,
+                            categories=(
+                                case.filters.categories
+                                if ABLATIONS[mode].uses_metadata
+                                else []
+                            ),
+                            tags=(
+                                case.filters.tags
+                                if ABLATIONS[mode].uses_metadata
+                                else []
+                            ),
+                            language=(
+                                case.language
+                                if ABLATIONS[mode].uses_metadata
+                                else None
+                            ),
+                        )
                     )
-                )
-                ranked = [
-                    RankedItem(
-                        rank=item.rank,
-                        chunk_id=item.chunk_id,
-                        document_id=item.document_id,
-                        score=item.score,
-                    )
-                    for item in response.results
-                ]
+                    ranked = [
+                        RankedItem(
+                            rank=item.rank,
+                            chunk_id=item.chunk_id,
+                            document_id=item.document_id,
+                            score=item.score,
+                        )
+                        for item in response.results
+                    ]
+                except KnowledgeEmbeddingProviderError:
+                    ranked = []
+                    provider_failed = True
             metrics, failures = evaluate_retrieval_case(case, ranked)
+            metrics["provider_success_rate"] = float(not provider_failed)
+            if provider_failed:
+                failures.append("PROVIDER_FAILURE")
             aggregate_input.append((case, metrics))
             results.append(
                 RetrievalCaseResult(
@@ -148,6 +168,8 @@ class TrainingKnowledgeEvaluationRunner:
                     duration_ms=round((perf_counter() - started) * 1000, 3),
                 )
             )
+        if provider is not None:
+            provider.close()
         report = TrainingKnowledgeEvaluationReport(
             evaluation_kind="retrieval",
             dataset_version=dataset.dataset_version,
