@@ -267,6 +267,18 @@ class Settings(BaseSettings):
         pattern=r"^(?:|knowledge-[0-9a-f]{24})$",
         validation_alias="COACH_AGENT_KNOWLEDGE_INDEX_ID",
     )
+    knowledge_index_runtime_directory: str = Field(
+        default="var/knowledge_indexes",
+        min_length=1,
+        max_length=240,
+        validation_alias="KNOWLEDGE_INDEX_RUNTIME_DIRECTORY",
+    )
+    knowledge_index_max_age_days: int = Field(
+        default=30,
+        ge=1,
+        le=365,
+        validation_alias="KNOWLEDGE_INDEX_MAX_AGE_DAYS",
+    )
     coach_agent_knowledge_top_k: int = Field(
         default=4,
         ge=1,

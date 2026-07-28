@@ -167,6 +167,17 @@ npm run dev
 
 The Coach Provider is disabled and its API key is empty in `.env.example`. In that mode `/coach` demonstrates the deterministic read-only Fallback. See [Coach Agent Demo v1](docs/agent/coach-agent-demo-v1.md).
 
+Before deploying Training Knowledge RAG, run the offline deployment checks:
+
+```powershell
+python scripts/knowledge_corpus.py validate
+python scripts/knowledge_index.py validate --index-id <configured-index-id>
+python scripts/check_coach_rag_readiness.py --require-enabled
+python scripts/smoke_coach_rag.py
+```
+
+Readiness performs no network request and prints no credential. Smoke uses immutable fictional read-only fixtures and does not retain raw Provider answers. See [v0.12.0 Alpha Onboarding](docs/alpha/gaitlogic-v0120-alpha-onboarding.md) and the [Incident Runbook](docs/alpha/gaitlogic-v0120-alpha-incident-runbook.md).
+
 Current limits: no Weekly Review Agent, write tools, long-term memory, Streaming, or multi-agent runtime. Quota is currently process-local. Training Knowledge RAG is under development on the v0.12.0 branch; private retrieval-label confirmation and human blind review remain incomplete.
 
 | Problem | How GaitLogic Planner Helps |

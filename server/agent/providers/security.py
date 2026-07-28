@@ -43,6 +43,8 @@ def validate_provider_base_url(
         )
     if blocked and not allow_local_development:
         raise ValueError("Provider base URL host is not allowed.")
-    if parsed.fragment:
-        raise ValueError("Provider base URL must not contain a fragment.")
+    if parsed.query or parsed.fragment:
+        raise ValueError(
+            "Provider base URL must not contain a query or fragment."
+        )
     return base_url.rstrip("/")

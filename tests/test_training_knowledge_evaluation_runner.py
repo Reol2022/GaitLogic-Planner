@@ -17,6 +17,7 @@ from server.knowledge_retrieval.evaluation.runner import (
     TrainingKnowledgeEvaluationRunner,
 )
 from server.knowledge_retrieval.evaluation.schemas import EvaluationMode
+from tests.knowledge_index_helpers import build_test_index
 
 
 ROOT = Path.cwd()
@@ -51,8 +52,11 @@ class OneQueryFailureProvider:
         self.delegate.close()
 
 
-def test_retrieval_runner_is_deterministic_except_runtime_metadata() -> None:
-    runner = TrainingKnowledgeEvaluationRunner(repository_root=ROOT)
+def test_retrieval_runner_is_deterministic_except_runtime_metadata(
+    tmp_path: Path,
+) -> None:
+    _service, index_id = build_test_index(tmp_path, dimensions=64)
+    runner = TrainingKnowledgeEvaluationRunner(repository_root=tmp_path)
     factory = lambda: DeterministicEmbeddingProvider(
         dimensions=64, environment="test"
     )
@@ -62,6 +66,7 @@ def test_retrieval_runner_is_deterministic_except_runtime_metadata() -> None:
         provider_name="deterministic_test",
         model_name="deterministic-sha256-v1",
         mode=EvaluationMode.DENSE_WITH_METADATA,
+        index_id=index_id,
     )
     second = runner.run_retrieval(
         dataset_path=ROOT / "docs/rag/evaluation/cases/retrieval-eval-v1.json",
@@ -69,13 +74,17 @@ def test_retrieval_runner_is_deterministic_except_runtime_metadata() -> None:
         provider_name="deterministic_test",
         model_name="deterministic-sha256-v1",
         mode=EvaluationMode.DENSE_WITH_METADATA,
+        index_id=index_id,
     )
     assert first.result_hash == second.result_hash
     assert first.metrics == second.metrics
     assert not first.raw_answers_saved
 
 
-def test_retrieval_runner_records_one_provider_failure_and_continues() -> None:
+def test_retrieval_runner_records_one_provider_failure_and_continues(
+    tmp_path: Path,
+) -> None:
+    _service, index_id = build_test_index(tmp_path, dimensions=64)
     providers: list[OneQueryFailureProvider] = []
 
     def factory() -> OneQueryFailureProvider:
@@ -83,12 +92,13 @@ def test_retrieval_runner_records_one_provider_failure_and_continues() -> None:
         providers.append(provider)
         return provider
 
-    report = TrainingKnowledgeEvaluationRunner(repository_root=ROOT).run_retrieval(
+    report = TrainingKnowledgeEvaluationRunner(repository_root=tmp_path).run_retrieval(
         dataset_path=ROOT / "docs/rag/evaluation/cases/retrieval-eval-v1.json",
         provider_factory=factory,
         provider_name="deterministic_test",
         model_name="deterministic-sha256-v1",
         mode=EvaluationMode.DENSE_WITH_METADATA,
+        index_id=index_id,
     )
 
     assert len(providers) == 1

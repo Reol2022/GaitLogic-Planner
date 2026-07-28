@@ -717,3 +717,83 @@ Provider 上线顺序：
 6. 小范围开启 Provider；出现 Provider 异常时应返回 `DEGRADED`，不得改变训练计划或其他训练数据。
 
 当前版本不支持 RAG、Weekly Review Agent、写工具、长期记忆、Streaming、多 Agent 或 DeepSeek thinking 工具链。Coach Agent 只提供非医疗的只读训练参考；Quota 当前为进程内限制。
+
+---
+
+## 17. v0.12.0 Training Knowledge RAG Alpha
+
+v0.12.0-E2 没有数据库迁移。生产仍使用 Nginx 托管前端静态文件，并将 `/api/` 转发至由 Gunicorn、Uvicorn Worker 和 Supervisor 托管的 FastAPI 进程；仓库没有正式 Docker Compose 部署。
+
+### 服务端配置
+
+除第 15 节的 Chat Provider 配置外，按部署环境配置：
+
+```env
+KNOWLEDGE_EMBEDDING_ENABLED=true
+KNOWLEDGE_EMBEDDING_PROVIDER=openai_compatible
+KNOWLEDGE_EMBEDDING_API_KEY=
+KNOWLEDGE_EMBEDDING_BASE_URL=https://embedding.example.com/v1
+KNOWLEDGE_EMBEDDING_MODEL=example-embedding-model
+KNOWLEDGE_EMBEDDING_DIMENSIONS=1536
+KNOWLEDGE_EMBEDDING_BATCH_SIZE=32
+KNOWLEDGE_EMBEDDING_CONNECT_TIMEOUT_SECONDS=5
+KNOWLEDGE_EMBEDDING_READ_TIMEOUT_SECONDS=30
+KNOWLEDGE_EMBEDDING_TOTAL_TIMEOUT_SECONDS=60
+
+COACH_AGENT_KNOWLEDGE_RETRIEVAL_ENABLED=true
+COACH_AGENT_KNOWLEDGE_INDEX_ID=knowledge-000000000000000000000000
+COACH_AGENT_KNOWLEDGE_TOP_K=4
+KNOWLEDGE_INDEX_RUNTIME_DIRECTORY=var/knowledge_indexes
+KNOWLEDGE_INDEX_MAX_AGE_DAYS=30
+```
+
+示例值不可直接用于生产。API Key 只能放在服务端安全配置中。Provider URL 不得包含账号、密码、查询参数或 fragment，也不得指向 localhost、私网或云元数据地址；development 的本地例外必须显式开启。
+
+### 部署顺序
+
+```text
+部署代码
+→ 安装 Python / Node 依赖
+→ validate corpus
+→ 部署并 validate 指定 index
+→ Readiness check
+→ 确认本版本无数据库迁移
+→ 构建并启动后端和前端
+→ health / OpenAPI check
+→ 使用虚构数据执行 real-provider smoke
+→ 切换流量
+```
+
+命令：
+
+```bash
+.venv/bin/python scripts/knowledge_corpus.py validate
+.venv/bin/python scripts/knowledge_index.py validate \
+  --index-id "$COACH_AGENT_KNOWLEDGE_INDEX_ID"
+.venv/bin/python scripts/check_coach_rag_readiness.py --require-enabled
+.venv/bin/python scripts/smoke_coach_rag.py
+```
+
+Readiness 不访问网络，只输出布尔状态、非敏感模式名和稳定错误码。Smoke 使用固定虚构只读 Fixture，不连接数据库，不保存 Provider 原始回答、Prompt、Context、Tool Result、知识摘录或 `reasoning_content`。MySQL 5.7/8 兼容性由独立隔离测试矩阵验证。
+
+### Nginx 与运行目录
+
+- `/api/coach/query` 继续由 `/api/` 代理到 `127.0.0.1:8000`；
+- Coach POST 的代理读取超时应不短于 `COACH_AGENT_TOTAL_TIMEOUT_SECONDS`，但不得无限延长；
+- 限制请求体大小，例如 `client_max_body_size 1m`；
+- 对 Coach POST 使用 `proxy_no_cache 1` 和 `proxy_cache_bypass 1`；
+- 不得将 `.env`、`knowledge/manifests/`、`var/knowledge_indexes/` 或向量文件置于 Web Root；
+- `var/knowledge_indexes/` 只允许后端运行用户读取，Web 服务不得修改 Corpus 源文件；
+- 每次部署显式绑定版本化 Index ID，不在请求期自动构建索引。
+
+### 日志
+
+允许记录 request ID、Intent、最终状态、Provider 状态、工具名、工具结果数量、知识引用数量、验证码、延迟和用量。禁止记录用户问题、训练正文、知识摘录、完整回答、Prompt、Context、向量、API Key、数据库 URL、Provider 原始响应或 `reasoning_content`。
+
+### 回滚
+
+1. 回滚后端和前端发布目录；
+2. 恢复上一有效 `COACH_AGENT_KNOWLEDGE_INDEX_ID`；
+3. 若索引异常，先设置 `COACH_AGENT_KNOWLEDGE_RETRIEVAL_ENABLED=false`，保留 v0.11.0 Coach；
+4. 若 Chat Provider 异常，设置 `COACH_AGENT_ENABLED=false`，使用确定性降级；
+5. 本版本没有数据库迁移，不执行数据库 downgrade。

@@ -42,6 +42,10 @@ def _relative_path(value: str) -> Path:
     return path
 
 
+def _configured_index_root() -> Path:
+    return _relative_path(get_settings().knowledge_index_runtime_directory)
+
+
 def _common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--corpus-manifest",
@@ -51,7 +55,7 @@ def _common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--index-dir",
         type=_relative_path,
-        default=DEFAULT_INDEX_ROOT,
+        default=_configured_index_root(),
     )
     parser.add_argument("--json", action="store_true", dest="json_output")
 

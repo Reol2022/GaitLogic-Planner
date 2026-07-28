@@ -59,11 +59,26 @@ class FakeDependencies:
         self.seen_user_ids.append(user_id)
         return SimpleNamespace(items=self.history_items[:limit])
 
-    def recent_training(self, user_id: int, days: int, limit: int):
+    def recent_training(
+        self,
+        user_id: int,
+        days: int,
+        limit: int,
+        *,
+        as_of_date=None,
+    ):
+        del as_of_date
         self.seen_user_ids.append(user_id)
         return self.recent.model_copy(update={"window_days": days, "items": self.recent.items[:limit]})
 
-    def training_data_quality(self, user_id: int, window_days: int):
+    def training_data_quality(
+        self,
+        user_id: int,
+        window_days: int,
+        *,
+        as_of_date=None,
+    ):
+        del as_of_date
         self.seen_user_ids.append(user_id)
         return self.quality.model_copy(update={"window_days": window_days})
 

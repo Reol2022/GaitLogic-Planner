@@ -40,8 +40,18 @@ class GetRecentTrainingTool(AgentTool):
 
     def execute(self, arguments: RecentTrainingInput, context: AgentContext) -> RecentTrainingOutput:
         limit = min(arguments.limit, self.item_limit)
-        recent = self.dependencies.recent_training(context.user_id, arguments.days, limit)
-        quality = self.dependencies.training_data_quality(context.user_id, arguments.days)
+        as_of_date = context.current_time.date()
+        recent = self.dependencies.recent_training(
+            context.user_id,
+            arguments.days,
+            limit,
+            as_of_date=as_of_date,
+        )
+        quality = self.dependencies.training_data_quality(
+            context.user_id,
+            arguments.days,
+            as_of_date=as_of_date,
+        )
         if not recent.items:
             data_status = TrainingDataStatus.NOT_FOUND
         elif quality.missing_fields:
@@ -94,7 +104,11 @@ class GetTrainingDataQualityTool(AgentTool):
     def execute(
         self, arguments: TrainingDataQualityInput, context: AgentContext
     ) -> TrainingDataQualityOutput:
-        quality = self.dependencies.training_data_quality(context.user_id, arguments.window_days)
+        quality = self.dependencies.training_data_quality(
+            context.user_id,
+            arguments.window_days,
+            as_of_date=context.current_time.date(),
+        )
         if quality.valid_workout_count == 0:
             status = TrainingDataStatus.UNKNOWN
             freshness = "NO_TRAINING_DATA"

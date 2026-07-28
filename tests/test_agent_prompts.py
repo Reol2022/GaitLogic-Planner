@@ -28,6 +28,8 @@ def test_prompt_is_versioned_and_contains_safety_authority_rules() -> None:
     assert "Do not return evidence text." in prompt
     assert "Do not use Markdown code fences." in prompt
     assert "Do not include text before or after the JSON object." in prompt
+    assert '"knowledge_reference_ids":["knowledge_1"]' in prompt
+    assert "perform this final contract check" in prompt
     assert '"today_recommendation":null' in prompt
     assert "chain of thought" in prompt
 

@@ -30,6 +30,18 @@ def test_public_https_url_is_allowed() -> None:
     assert validate_provider_base_url("https://api.example.com/v1") == "https://api.example.com/v1"
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://api.example.com/v1?token=secret",
+        "https://api.example.com/v1#fragment",
+    ],
+)
+def test_provider_url_rejects_query_and_fragment(url: str) -> None:
+    with pytest.raises(ValueError, match="query or fragment"):
+        validate_provider_base_url(url)
+
+
 def test_local_url_requires_explicit_development_override() -> None:
     assert validate_provider_base_url(
         "http://127.0.0.1:8765/v1", allow_local_development=True

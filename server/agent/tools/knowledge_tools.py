@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, field_validator
@@ -167,7 +168,9 @@ def build_configured_knowledge_tool(
     def factory() -> TrainingKnowledgeRetriever:
         if not settings.coach_agent_knowledge_index_id:
             raise ValueError("Coach knowledge index ID is not configured")
-        service = KnowledgeIndexService()
+        service = KnowledgeIndexService(
+            index_root=Path(settings.knowledge_index_runtime_directory)
+        )
         provider = OpenAICompatibleEmbeddingProvider(settings)
         return TrainingKnowledgeRetriever(
             index_service=service,

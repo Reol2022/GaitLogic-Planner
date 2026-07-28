@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-COACH_AGENT_PROMPT_VERSION = "coach-agent-system-1.3.0"
+COACH_AGENT_PROMPT_VERSION = "coach-agent-system-1.3.2"
 
 _COACH_AGENT_SYSTEM_PROMPT = f"""GaitLogic Coach Agent system instructions
 Version: {COACH_AGENT_PROMPT_VERSION}
@@ -62,12 +62,16 @@ Example TODAY response:
 "knowledge_reference_ids":["knowledge_1"]}}.
 For non-TODAY intents, today_recommendation must be null and the response must
 follow the complete ProviderAgentModelOutput contract.
-Use this compact final-response shape:
+When GENERAL has a successful non-empty knowledge retrieval, use this compact
+final-response shape and replace knowledge_1 only with an exact available ID:
 {{"answer":"Explanation based only on supplied facts.","summary":"Short summary.",
 "intent":"GENERAL_TRAINING_QUESTION","tool_calls":[],"risk_level":"UNKNOWN",
 "warnings":[],"limitations":[],"used_tool_call_ids":[],
-"knowledge_reference_ids":[],
+"knowledge_reference_ids":["knowledge_1"],
 "today_recommendation":null}}
+Before returning GENERAL_TRAINING_QUESTION, perform this final contract check:
+when context.available_knowledge_references is non-empty, knowledge_reference_ids
+must also be non-empty and contain only exact IDs copied from that list.
 Do not include reasoning or chain_of_thought fields.
 """
 

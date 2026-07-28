@@ -40,14 +40,34 @@ class CoachAgentToolDependencies:
     def runner_state_history(self, user_id: int, limit: int):
         return self.snapshot_service.list_snapshots(user_id=user_id, limit=limit, offset=0)
 
-    def recent_training(self, user_id: int, days: int, limit: int):
+    def recent_training(
+        self,
+        user_id: int,
+        days: int,
+        limit: int,
+        *,
+        as_of_date: date | None = None,
+    ):
         return training_load_service.get_recent_training_read(
-            self.db, user_id=user_id, days=days, limit=limit
+            self.db,
+            user_id=user_id,
+            days=days,
+            limit=limit,
+            as_of_date=as_of_date,
         )
 
-    def training_data_quality(self, user_id: int, window_days: int):
+    def training_data_quality(
+        self,
+        user_id: int,
+        window_days: int,
+        *,
+        as_of_date: date | None = None,
+    ):
         return training_load_service.get_training_data_quality_read(
-            self.db, user_id=user_id, window_days=window_days
+            self.db,
+            user_id=user_id,
+            window_days=window_days,
+            as_of_date=as_of_date,
         )
 
     def today_workouts(self, user_id: int):

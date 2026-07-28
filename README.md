@@ -171,6 +171,17 @@ npm run dev
 
 `.env.example` 中 Coach Provider 默认关闭且 Key 为空。此时 `/coach` 使用确定性 Fallback 展示可用的只读建议；安全 Demo 流程见 [Coach Agent Demo v1](docs/agent/coach-agent-demo-v1.md)。
 
+部署 Training Knowledge RAG 前先执行离线校验：
+
+```powershell
+python scripts/knowledge_corpus.py validate
+python scripts/knowledge_index.py validate --index-id <configured-index-id>
+python scripts/check_coach_rag_readiness.py --require-enabled
+python scripts/smoke_coach_rag.py
+```
+
+Readiness 不访问网络且不输出凭据；Smoke 使用固定虚构只读 Fixture，不保存 Provider 原始回答。Alpha 使用、隐私与故障处理见 [v0.12.0 Alpha Onboarding](docs/alpha/gaitlogic-v0120-alpha-onboarding.md) 和 [Incident Runbook](docs/alpha/gaitlogic-v0120-alpha-incident-runbook.md)。
+
 当前没有 Weekly Review Agent、写工具、长期记忆、Streaming 或多 Agent；Quota 暂为进程内限制。训练知识 RAG 正在 v0.12.0 分支开发，私有检索标签确认和人工盲评尚未完成。
 
 | 你可能正在遇到的问题 | GaitLogic Planner 的处理方式 |
