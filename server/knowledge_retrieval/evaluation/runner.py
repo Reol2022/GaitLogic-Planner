@@ -263,6 +263,7 @@ class TrainingKnowledgeEvaluationRunner:
         """
         from server.agent.enums import (
             AgentRunStatus,
+            AgentToolStatus,
             AgentTraceEventType,
             AgentTraceStatus,
         )
@@ -271,6 +272,9 @@ class TrainingKnowledgeEvaluationRunner:
             build_evaluation_registry,
             canonical_today_facts_for_fixture,
             resolve_rag_evaluation_fixture,
+        )
+        from server.agent.evaluation.runner import (
+            materialize_evaluation_fallback_response,
         )
         from server.agent.orchestrator import GaitLogicCoachAgent
         from server.agent.providers.openai_compatible import (
@@ -331,6 +335,20 @@ class TrainingKnowledgeEvaluationRunner:
                 response = agent.run(request)
             finally:
                 gateway.close()
+            context = agent.last_context
+            has_tool_failure = context is not None and any(
+                result.status != AgentToolStatus.SUCCEEDED
+                for result in context.tool_results
+            )
+            if context is not None and (
+                response.status != AgentRunStatus.SUCCEEDED or has_tool_failure
+            ):
+                response = materialize_evaluation_fallback_response(
+                    request=request,
+                    response=response,
+                    context=context,
+                    agent=agent,
+                )
             events = agent.last_trace.events if agent.last_trace else []
             context_tools = [
                 item.tool_name
@@ -419,7 +437,10 @@ class TrainingKnowledgeEvaluationRunner:
             )
             public_status = (
                 "SUCCEEDED"
-                if response.status == AgentRunStatus.SUCCEEDED
+                if (
+                    response.status == AgentRunStatus.SUCCEEDED
+                    and not has_tool_failure
+                )
                 else "DEGRADED"
             )
             provider_success = response.status == AgentRunStatus.SUCCEEDED

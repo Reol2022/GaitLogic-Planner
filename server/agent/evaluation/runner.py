@@ -151,7 +151,7 @@ def _git_commit() -> str:
         return "unknown"
 
 
-def _fallback_response(
+def materialize_evaluation_fallback_response(
     *,
     request: AgentRequest,
     response: AgentResponse,
@@ -211,7 +211,7 @@ class CoachAgentEvaluationRunner:
             response.status != AgentRunStatus.SUCCEEDED or has_tool_failure
         )
         if used_fallback and context is not None:
-            response = _fallback_response(
+            response = materialize_evaluation_fallback_response(
                 request=request,
                 response=response,
                 context=context,
