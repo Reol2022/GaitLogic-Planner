@@ -243,6 +243,22 @@ def test_timeout_retries_once() -> None:
     assert len(client.calls) == 2
 
 
+def test_transport_connection_error_retries_once() -> None:
+    request = httpx.Request("POST", "https://api.example.test/v1/embeddings")
+    client = FakeClient(
+        [
+            httpx.ConnectError("connection failed", request=request),
+            FakeResponse(200, provider_payload([[1, 0, 0]])),
+        ]
+    )
+    provider = OpenAICompatibleEmbeddingProvider(
+        enabled_settings(),
+        client_factory=lambda settings: client,
+    )
+    provider.embed_query("test")
+    assert len(client.calls) == 2
+
+
 @pytest.mark.parametrize("status", [400, 401, 403])
 def test_non_retryable_status_is_not_retried(status: int) -> None:
     client = FakeClient([FakeResponse(status)])

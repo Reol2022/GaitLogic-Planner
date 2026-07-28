@@ -54,7 +54,7 @@ KNOWLEDGE_EMBEDDING_*_TIMEOUT_SECONDS
 - 本地地址仅在 development 且显式开启时允许；
 - `httpx` 禁止跟随重定向；
 - timeout 受控；
-- timeout、429 和 5xx 最多重试一次；
+- transport/connection error、timeout、429 和 5xx 最多重试一次；
 - 400、401、403 不重试；
 - 不记录 Key、输入全文或完整向量。
 

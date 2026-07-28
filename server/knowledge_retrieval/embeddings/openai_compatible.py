@@ -115,7 +115,7 @@ class OpenAICompatibleEmbeddingProvider:
         return isinstance(
             exc,
             (
-                httpx.TimeoutException,
+                httpx.TransportError,
                 TimeoutError,
             ),
         )
