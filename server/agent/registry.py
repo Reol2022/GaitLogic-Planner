@@ -9,6 +9,7 @@ from server.agent.enums import AgentIntent, AgentToolStatus
 from server.agent.errors import AgentErrorCode, AgentToolRegistrationError
 from server.agent.schemas import AgentContext, AgentNotice, AgentToolDefinition, AgentToolResult
 from server.agent.tool import AgentTool
+from server.observability.tracing import active_trace_handle, active_tracer
 
 
 class AgentToolRegistry:
@@ -50,6 +51,44 @@ class AgentToolRegistry:
         )
 
     def invoke(
+        self,
+        name: str,
+        arguments: dict,
+        context: AgentContext,
+        *,
+        tool_call_id: UUID | None = None,
+    ) -> AgentToolResult:
+        tracer = active_tracer()
+        handle = active_trace_handle()
+        if tracer is not None and handle is not None:
+            with tracer.span(
+                handle,
+                component="tool",
+                operation="invoke",
+                metadata={"tool_name": name, "operation_type": "agent_tool"},
+            ) as span:
+                result = self._invoke(name, arguments, context, tool_call_id=tool_call_id)
+                span.add_metadata(
+                    status=result.status.value,
+                    error_code=(
+                        result.safe_error_code.value
+                        if result.safe_error_code is not None
+                        else None
+                    ),
+                )
+                if result.status != AgentToolStatus.SUCCEEDED:
+                    span.set_status(
+                        "FAILED",
+                        error_code=(
+                            result.safe_error_code.value
+                            if result.safe_error_code is not None
+                            else "AGENT_TOOL_EXECUTION_FAILED"
+                        ),
+                    )
+                return result
+        return self._invoke(name, arguments, context, tool_call_id=tool_call_id)
+
+    def _invoke(
         self,
         name: str,
         arguments: dict,

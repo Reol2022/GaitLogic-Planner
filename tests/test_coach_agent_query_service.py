@@ -18,6 +18,7 @@ from server.agent.tools.knowledge_tools import RetrieveTrainingKnowledgeTool
 from server.agent.tools.dependencies import CoachAgentToolDependencies
 from server.schemas.coach_agent import CoachQueryRequest
 from server.services.coach_agent_query_service import CoachAgentQueryService
+from server.observability.tracing import InMemoryTraceSink, SafeTracer
 from server.services.coach_agent_usage_service import CoachAgentRateLimiter
 from server.common.exceptions import TooManyRequestsError
 from tests.agent_tool_fakes import FakeDependencies, NOW
@@ -80,7 +81,7 @@ def model_output() -> AgentModelOutput:
     )
 
 
-def service(monkeypatch, *, gateway=None, configured=None, deps=None, recorder=None):
+def service(monkeypatch, *, gateway=None, configured=None, deps=None, recorder=None, tracer=None):
     dependencies = deps or configured_dependencies()
     monkeypatch.setattr(
         CoachAgentToolDependencies,
@@ -94,6 +95,7 @@ def service(monkeypatch, *, gateway=None, configured=None, deps=None, recorder=N
         rate_limiter=CoachAgentRateLimiter(daily_limit=30, cooldown_seconds=0),
         usage_recorder=recorder,
         clock=lambda: NOW,
+        tracer=tracer,
     )
 
 
@@ -132,6 +134,35 @@ def test_provider_failure_and_disabled_provider_use_deterministic_fallback(monke
     )
     assert disabled.status == "DEGRADED"
     assert disabled.provider_status == "DISABLED"
+
+
+def test_query_trace_contains_request_tool_provider_and_fallback_without_content(monkeypatch) -> None:
+    sink = InMemoryTraceSink()
+    result = service(
+        monkeypatch,
+        gateway=MockAgentLLMGateway(
+            model_output(), error=RuntimeError("private provider body")
+        ),
+        tracer=SafeTracer(sink),
+    ).query(
+        user_id=1399,
+        payload=CoachQueryRequest(
+            message="private fictional request body",
+            intent=AgentIntent.TODAY_RECOMMENDATION,
+        ),
+    )
+    assert result.status == "DEGRADED"
+    root = next(item for item in sink.spans if item.component == "coach_api")
+    assert root.parent_span_id is None
+    assert any(item.component == "tool" for item in sink.spans)
+    assert any(item.component == "provider" and item.status == "FAILED" for item in sink.spans)
+    fallback = next(item for item in sink.spans if item.component == "fallback")
+    assert fallback.fallback is True
+    assert fallback.metadata["fallback_reason"] == "AGENT_RESPONSE_UNAVAILABLE"
+    rendered = str([(item.metadata, item.error_code) for item in sink.spans])
+    assert "private fictional request body" not in rendered
+    assert "private provider body" not in rendered
+    assert "1399" not in rendered
 
 
 def test_unsupported_weekly_intent_loads_no_dependencies_or_model(monkeypatch) -> None:

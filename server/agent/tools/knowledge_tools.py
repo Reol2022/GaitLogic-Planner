@@ -24,6 +24,7 @@ from server.knowledge_retrieval.retrieval_schemas import (
 )
 from server.knowledge_retrieval.retriever import TrainingKnowledgeRetriever
 from server.knowledge_retrieval.schemas import ID_PATTERN
+from server.observability.tracing import active_trace_handle, active_tracer
 
 
 class RetrieveTrainingKnowledgeInput(AgentContractModel):
@@ -122,41 +123,60 @@ class RetrieveTrainingKnowledgeTool(AgentTool):
         context: AgentContext,
     ) -> RetrieveTrainingKnowledgeOutput:
         del context
-        retriever = self.retriever_factory()
-        response = retriever.retrieve(
-            KnowledgeRetrievalRequest(
-                query=arguments.query,
-                top_k=min(arguments.top_k, self.maximum_top_k),
-                categories=arguments.categories,
-                tags=arguments.tags,
-                language=arguments.language,
+        tracer = active_tracer()
+        handle = active_trace_handle()
+
+        def retrieve() -> RetrieveTrainingKnowledgeOutput:
+            retriever = self.retriever_factory()
+            response = retriever.retrieve(
+                KnowledgeRetrievalRequest(
+                    query=arguments.query,
+                    top_k=min(arguments.top_k, self.maximum_top_k),
+                    categories=arguments.categories,
+                    tags=arguments.tags,
+                    language=arguments.language,
+                )
             )
-        )
-        results = [
-            KnowledgeToolResultItem(
-                knowledge_reference_id=f"knowledge_{rank}",
-                chunk_id=item.chunk_id,
-                document_id=item.document_id,
-                title=item.title,
-                section=item.section,
-                excerpt=item.excerpt,
-                category=item.category,
-                source_id=item.source_id,
-                source_title=item.source_title,
-                knowledge_version=item.knowledge_version,
-                evidence_level=item.evidence_level,
-                score=item.score,
-                limitations=item.limitations,
+            results = [
+                KnowledgeToolResultItem(
+                    knowledge_reference_id=f"knowledge_{rank}",
+                    chunk_id=item.chunk_id,
+                    document_id=item.document_id,
+                    title=item.title,
+                    section=item.section,
+                    excerpt=item.excerpt,
+                    category=item.category,
+                    source_id=item.source_id,
+                    source_title=item.source_title,
+                    knowledge_version=item.knowledge_version,
+                    evidence_level=item.evidence_level,
+                    score=item.score,
+                    limitations=item.limitations,
+                )
+                for rank, item in enumerate(response.results, start=1)
+            ]
+            return RetrieveTrainingKnowledgeOutput(
+                query_status="SUCCEEDED" if results else "EMPTY",
+                index_id=response.index_id,
+                corpus_root_hash=response.corpus_root_hash,
+                results=results,
+                limitations=response.limitations,
             )
-            for rank, item in enumerate(response.results, start=1)
-        ]
-        return RetrieveTrainingKnowledgeOutput(
-            query_status="SUCCEEDED" if results else "EMPTY",
-            index_id=response.index_id,
-            corpus_root_hash=response.corpus_root_hash,
-            results=results,
-            limitations=response.limitations,
-        )
+
+        if tracer is None or handle is None:
+            return retrieve()
+        with tracer.span(
+            handle,
+            component="knowledge",
+            operation="retrieve",
+            metadata={"knowledge_retrieval_status": "STARTED"},
+        ) as span:
+            output = retrieve()
+            span.add_metadata(
+                knowledge_retrieval_status=output.query_status,
+                retrieval_result_count=len(output.results),
+            )
+            return output
 
 
 def build_configured_knowledge_tool(

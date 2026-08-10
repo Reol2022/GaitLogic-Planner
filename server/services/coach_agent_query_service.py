@@ -32,6 +32,7 @@ from server.services.coach_agent_usage_service import (
     CoachAgentUsageRecorder,
 )
 from server.services.weekly_review_stats_service import APP_TIMEZONE
+from server.observability.tracing import NOOP_TRACER, SafeTracer, active_trace_handle
 
 _PUBLIC_INTENTS = {
     AgentIntent.TODAY_RECOMMENDATION,
@@ -71,6 +72,7 @@ class CoachAgentQueryService:
         rate_limiter: CoachAgentRateLimiter | None = None,
         usage_recorder: CoachAgentUsageRecorder | None = None,
         clock=None,
+        tracer: SafeTracer | None = None,
     ) -> None:
         self.db = db
         self.settings = settings or get_settings()
@@ -81,6 +83,7 @@ class CoachAgentQueryService:
         )
         self.usage_recorder = usage_recorder or CoachAgentUsageRecorder()
         self.clock = clock or (lambda: datetime.now(APP_TIMEZONE))
+        self.tracer = tracer or NOOP_TRACER
 
     @staticmethod
     def _infer_intent(message: str) -> AgentIntent:
@@ -141,7 +144,33 @@ class CoachAgentQueryService:
         )
 
     def query(self, *, user_id: int, payload: CoachQueryRequest) -> CoachQueryResponse:
+        # Only the declared intent reaches the trace boundary.  The message,
+        # authenticated user, context and response remain in business memory.
         intent = payload.intent or self._infer_intent(payload.message)
+        handle = self.tracer.start_trace()
+        with self.tracer.span(
+            handle,
+            component="coach_api",
+            operation="query",
+            metadata={"intent": intent.value},
+            root=True,
+        ) as span:
+            response = self._query(user_id=user_id, payload=payload, intent=intent)
+            if response.status != "SUCCEEDED":
+                error_code = response.limitations[0].code if response.limitations else "COACH_RESPONSE_DEGRADED"
+                span.set_status(
+                    "REJECTED" if response.status == "REJECTED" else "FAILED",
+                    error_code=error_code,
+                )
+            return response
+
+    def _query(
+        self,
+        *,
+        user_id: int,
+        payload: CoachQueryRequest,
+        intent: AgentIntent,
+    ) -> CoachQueryResponse:
         request = AgentRequest.for_authenticated_user(
             user_id=user_id,
             message=payload.message,
@@ -166,6 +195,7 @@ class CoachAgentQueryService:
             registry=registry,
             context_builder=context_builder,
             limits=limits,
+            tracer=self.tracer,
         )
         try:
             agent_response = agent.run(request)
@@ -243,12 +273,28 @@ class CoachAgentQueryService:
                 generated_at=self.clock(),
             )
 
-        fallback = DeterministicCoachFallback().build(
-            intent=intent,
-            message=payload.message,
-            context=context,
-            trace=agent.last_trace,
-        )
+        handle = active_trace_handle()
+        if handle is None:
+            fallback = DeterministicCoachFallback().build(
+                intent=intent,
+                message=payload.message,
+                context=context,
+                trace=agent.last_trace,
+            )
+        else:
+            with self.tracer.span(
+                handle,
+                component="fallback",
+                operation="deterministic_coach_response",
+                metadata={"fallback_reason": "AGENT_RESPONSE_UNAVAILABLE"},
+            ) as span:
+                span.mark_fallback("AGENT_RESPONSE_UNAVAILABLE")
+                fallback = DeterministicCoachFallback().build(
+                    intent=intent,
+                    message=payload.message,
+                    context=context,
+                    trace=agent.last_trace,
+                )
         return CoachQueryResponse(
             request_id=agent_response.request_id,
             trace_id=agent_response.trace_id,

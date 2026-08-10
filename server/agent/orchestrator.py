@@ -37,6 +37,7 @@ from server.agent.schemas import (
 from server.agent.trace import AgentTrace
 from server.agent.validator import AgentResponseValidator
 from server.agent.prompts import build_coach_agent_system_prompt
+from server.observability.tracing import NOOP_TRACER, SafeTracer, active_trace_handle
 
 logger = logging.getLogger(__name__)
 
@@ -71,12 +72,14 @@ class GaitLogicCoachAgent:
         context_builder: AgentContextBuilder | None = None,
         validator: AgentResponseValidator | None = None,
         limits: AgentLimits | None = None,
+        tracer: SafeTracer | None = None,
     ) -> None:
         self.limits = limits or self._limits_from_settings()
         self.gateway = gateway
         self.registry = registry or AgentToolRegistry()
         self.context_builder = context_builder or AgentContextBuilder(limits=self.limits)
         self.validator = validator or AgentResponseValidator(limits=self.limits)
+        self.tracer = tracer or NOOP_TRACER
         self.last_trace: AgentTrace | None = None
         self.last_context: AgentContext | None = None
 
@@ -187,18 +190,35 @@ class GaitLogicCoachAgent:
         context: AgentContext,
         trace: AgentTrace,
     ) -> AgentModelOutput:
+        handle = active_trace_handle()
+        if handle is None:
+            return self._call_model_untraced(request=request, context=context, trace=trace)
+        with self.tracer.span(
+            handle,
+            component="provider",
+            operation="generate",
+            metadata={"provider_status": "STARTED", "operation_type": "llm"},
+        ) as span:
+            try:
+                output = self._call_model_untraced(request=request, context=context, trace=trace)
+            except Exception:
+                span.mark_error(AgentErrorCode.AGENT_MODEL_FAILED.value)
+                raise
+            span.add_metadata(provider_status="SUCCEEDED")
+            return output
+
+    def _call_model_untraced(
+        self,
+        *,
+        request: AgentRequest,
+        context: AgentContext,
+        trace: AgentTrace,
+    ) -> AgentModelOutput:
         started = perf_counter()
         trace.add_event(AgentTraceEventType.MODEL_CALL, AgentTraceStatus.STARTED)
         tools = self.registry.list_tools(request.intent)
-        if any(
-            result.tool_name == KNOWLEDGE_TOOL_NAME
-            for result in context.tool_results
-        ):
-            tools = [
-                definition
-                for definition in tools
-                if definition.name != KNOWLEDGE_TOOL_NAME
-            ]
+        if any(result.tool_name == KNOWLEDGE_TOOL_NAME for result in context.tool_results):
+            tools = [definition for definition in tools if definition.name != KNOWLEDGE_TOOL_NAME]
         try:
             output = self.gateway.generate(
                 system_instructions=build_coach_agent_system_prompt(),
@@ -221,6 +241,48 @@ class GaitLogicCoachAgent:
             duration_ms=(perf_counter() - started) * 1000,
         )
         return output
+
+    def _validate_request(self, request: AgentRequest) -> AgentValidationResult:
+        handle = active_trace_handle()
+        if handle is None:
+            return self.validator.validate_request(request)
+        with self.tracer.span(
+            handle,
+            component="validator",
+            operation="validate_request",
+            metadata={"operation_type": "request_validation"},
+        ) as span:
+            result = self.validator.validate_request(request)
+            span.add_metadata(validator_result="VALID" if result.valid else "INVALID")
+            if not result.valid:
+                span.set_status("REJECTED", error_code=result.errors[0].value)
+            return result
+
+    def _validate_output(
+        self,
+        output: AgentModelOutput,
+        *,
+        context: AgentContext,
+        final: bool,
+    ) -> AgentValidationResult:
+        handle = active_trace_handle()
+        if handle is None:
+            return self.validator.validate_model_output(
+                output, context=context, registry=self.registry, final=final
+            )
+        with self.tracer.span(
+            handle,
+            component="validator",
+            operation="validate_output",
+            metadata={"operation_type": "final" if final else "intermediate"},
+        ) as span:
+            result = self.validator.validate_model_output(
+                output, context=context, registry=self.registry, final=final
+            )
+            span.add_metadata(validator_result="VALID" if result.valid else "INVALID")
+            if not result.valid:
+                span.set_status("FAILED", error_code=result.errors[0].value)
+            return result
 
     def _validation_failure(
         self,
@@ -251,9 +313,47 @@ class GaitLogicCoachAgent:
         *,
         context_seed: AgentContextSeed | None = None,
     ) -> AgentResponse:
+        """Run under an existing request trace, or create a safe root trace."""
+
+        handle = active_trace_handle()
+        if handle is not None:
+            with self.tracer.span(
+                handle,
+                component="agent",
+                operation="orchestrate",
+                metadata={"intent": request.intent.value},
+            ) as span:
+                response = self._run(request, context_seed=context_seed)
+                self._complete_span_from_response(span, response)
+                return response
+        handle = self.tracer.start_trace()
+        with self.tracer.span(
+            handle,
+            component="agent",
+            operation="request",
+            metadata={"intent": request.intent.value},
+            root=True,
+        ) as span:
+            response = self._run(request, context_seed=context_seed)
+            self._complete_span_from_response(span, response)
+            return response
+
+    @staticmethod
+    def _complete_span_from_response(span, response: AgentResponse) -> None:
+        if response.status == AgentRunStatus.SUCCEEDED:
+            return
+        error_code = response.limitations[0].code if response.limitations else "AGENT_REQUEST_DEGRADED"
+        span.set_status("REJECTED" if response.status == AgentRunStatus.REJECTED else "FAILED", error_code=error_code)
+
+    def _run(
+        self,
+        request: AgentRequest,
+        *,
+        context_seed: AgentContextSeed | None = None,
+    ) -> AgentResponse:
         trace = AgentTrace(request_id=request.request_id)
         self.last_trace = trace
-        request_validation = self.validator.validate_request(request)
+        request_validation = self._validate_request(request)
         if not request_validation.valid:
             trace.add_event(
                 AgentTraceEventType.REQUEST_VALIDATED,
@@ -303,11 +403,8 @@ class GaitLogicCoachAgent:
                 errors=[AgentErrorCode.AGENT_MODEL_FAILED],
             )
 
-        first_validation = self.validator.validate_model_output(
-            first_output,
-            context=context,
-            registry=self.registry,
-            final=not first_output.tool_calls,
+        first_validation = self._validate_output(
+            first_output, context=context, final=not first_output.tool_calls
         )
         if not first_validation.valid:
             return self._validation_failure(
@@ -423,12 +520,7 @@ class GaitLogicCoachAgent:
                     ]
                 }
             )
-        final_validation = self.validator.validate_model_output(
-            final_output,
-            context=context,
-            registry=self.registry,
-            final=True,
-        )
+        final_validation = self._validate_output(final_output, context=context, final=True)
         if not final_validation.valid:
             return self._validation_failure(
                 request=request,

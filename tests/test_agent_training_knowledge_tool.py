@@ -18,6 +18,7 @@ from server.agent.tools.knowledge_tools import (
     RetrieveTrainingKnowledgeInput,
     RetrieveTrainingKnowledgeTool,
 )
+from server.observability.tracing import InMemoryTraceSink, SafeTracer
 from server.knowledge_retrieval.enums import (
     KnowledgeCategory,
     KnowledgeEvidenceLevel,
@@ -156,6 +157,30 @@ def test_empty_result_is_structured_and_does_not_invent_reference() -> None:
     assert result.query_status == "EMPTY"
     assert result.results == []
     assert result.limitations == ["No matching result."]
+
+
+def test_knowledge_retrieval_is_a_child_of_the_agent_tool_span() -> None:
+    sink = InMemoryTraceSink()
+    tracer = SafeTracer(sink)
+    registry = AgentToolRegistry()
+    registry.register(tool(FakeRetriever()))
+    with tracer.request(
+        component="agent",
+        operation="request",
+        metadata={"intent": AgentIntent.GENERAL_TRAINING_QUESTION.value},
+    ):
+        result = registry.invoke(
+            "retrieve_training_knowledge",
+            {"query": "完全虚构的训练知识问题"},
+            context(),
+        )
+    assert result.status == AgentToolStatus.SUCCEEDED
+    tool_span = next(item for item in sink.spans if item.component == "tool")
+    rag_span = next(item for item in sink.spans if item.component == "knowledge")
+    assert rag_span.operation == "retrieve"
+    assert rag_span.parent_span_id == tool_span.span_id
+    assert rag_span.metadata["knowledge_retrieval_status"] == "SUCCEEDED"
+    assert rag_span.metadata["retrieval_result_count"] == 1
 
 
 def test_registry_failure_is_safe_and_query_is_not_logged(caplog) -> None:
