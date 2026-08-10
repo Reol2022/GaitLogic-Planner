@@ -1,0 +1,68 @@
+{
+  "baseline_version": "agent-regression-baseline-1.0.0",
+  "product_version": "0.13.0",
+  "created_at": "2026-08-10T00:00:00Z",
+  "suites": {
+    "coach": {
+      "version": "coach-agent-eval-1.0.0",
+      "dataset_version": "cases-v1",
+      "metrics": {
+        "case_pass_rate": 1.0,
+        "intent_accuracy": 1.0,
+        "required_tool_recall": 1.0,
+        "forbidden_tool_call_rate": 0.0,
+        "tool_argument_validity": 1.0,
+        "decision_consistency": 1.0,
+        "planned_status_consistency": 1.0,
+        "warning_retention_rate": 1.0,
+        "limitation_retention_rate": 1.0,
+        "fallback_success_rate": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "rule_violation_rate": 0.0
+      }
+    },
+    "rag": {
+      "version": "training-knowledge-eval-1.0.0",
+      "dataset_version": "rag-answer-cases-v1",
+      "metrics": {
+        "case_pass_rate": 1.0,
+        "knowledge_tool_success_rate": 0.611111,
+        "canonical_excerpt_accuracy": 1.0,
+        "decision_invariance": 1.0,
+        "fallback_success_rate": 1.0,
+        "source_hallucination_rate": 0.0,
+        "rule_violation_rate": 0.0,
+        "unauthorized_plan_modification_rate": 0.0,
+        "warning_retention_rate": 1.0
+      }
+    },
+    "retrieval": {
+      "version": "training-knowledge-eval-1.0.0",
+      "dataset_version": "retrieval-cases-v1",
+      "metrics": {
+        "recall_at_4": 0.786667,
+        "mrr_at_4": 0.715,
+        "ndcg_at_4": 0.69018,
+        "forbidden_document_rate": 0.05,
+        "filter_violation_rate": 0.0
+      }
+    },
+    "weekly_adaptive": {
+      "version": "weekly-adaptive-eval-1.0.0",
+      "dataset_version": "weekly-cases-v1",
+      "metrics": {
+        "case_pass_rate": 1.0,
+        "weekly_facts_accuracy": 1.0,
+        "rule_consistency": 1.0,
+        "fallback_success_rate": 1.0,
+        "rollback_success_rate": 1.0,
+        "warning_retention": 1.0,
+        "unsupported_fact_rate": 0.0,
+        "proposal_rule_violation_rate": 0.0,
+        "unauthorized_write_rate": 0.0,
+        "rejected_proposal_write_rate": 0.0,
+        "duplicate_apply_rate": 0.0
+      }
+    }
+  }
+}
