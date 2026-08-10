@@ -27,6 +27,7 @@ SAFE_METRIC_LABELS = frozenset(
         "failure_category",
         "status",
         "fallback",
+        "transport",
     }
 )
 _SAFE_LABEL_VALUE_TYPES = (str, int, float, bool)
@@ -121,7 +122,7 @@ class MetricsRecorder:
             "status": span.status,
             "fallback": str(span.fallback).lower(),
         }
-        for key in ("tool_name", "provider_kind", "failure_category"):
+        for key in ("tool_name", "provider_kind", "failure_category", "transport"):
             value = span.metadata.get(key)
             if key in SAFE_METRIC_LABELS and isinstance(value, _SAFE_LABEL_VALUE_TYPES):
                 labels[key] = str(value)
@@ -149,6 +150,10 @@ class MetricsRecorder:
             self._record("agent_request_count", 1, labels)
             self._record("agent_success_count" if success else "agent_failure_count", 1, labels)
             self._record("agent_total_latency_ms", span.duration_ms, labels, kind="latency")
+        elif span.component == "mcp" and span.operation == "tool":
+            self._record("mcp_tool_call_count", 1, labels)
+            self._record("mcp_tool_success" if success else "mcp_tool_failure", 1, labels)
+            self._record("mcp_tool_latency_ms", span.duration_ms, labels, kind="latency")
         elif span.component == "tool" and span.operation == "invoke":
             self._record("tool_call_count", 1, labels)
             self._record("tool_success_count" if success else "tool_failure_count", 1, labels)

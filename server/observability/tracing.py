@@ -33,6 +33,7 @@ SAFE_METADATA_KEYS = frozenset(
         "provider_status",
         "knowledge_retrieval_status",
         "operation_type",
+        "transport",
         "latency",
         "status",
         "error_code",
