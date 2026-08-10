@@ -8,7 +8,7 @@ from server.main import app
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_VERSION = "0.13.0"
+EXPECTED_VERSION = "0.14.0"
 
 
 def test_release_version_declarations_are_consistent() -> None:
@@ -41,15 +41,15 @@ def test_frontend_version_is_derived_from_package_json() -> None:
     assert "__APP_VERSION__" in app_config
 
 
-def test_release_documents_declare_v0130() -> None:
+def test_release_documents_declare_v0140() -> None:
     readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
     readme_en = (PROJECT_ROOT / "README-EN.md").read_text(encoding="utf-8")
     changelog = (PROJECT_ROOT / "docs" / "更新历史.md").read_text(encoding="utf-8")
     release_notes = (
-        PROJECT_ROOT / "docs" / "releases" / "v0.13.0-release-notes.md"
+        PROJECT_ROOT / "docs" / "releases" / "v0.14.0-release-notes.md"
     ).read_text(encoding="utf-8")
 
-    assert "v0.13.0" in readme
-    assert "v0.13.0" in readme_en
-    assert "## v0.13.0" in changelog
-    assert "# GaitLogic v0.13.0" in release_notes
+    assert "v0.14.0" in readme
+    assert "v0.14.0" in readme_en
+    assert "## v0.14.0" in changelog
+    assert "# GaitLogic v0.14.0" in release_notes

@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.13.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.14.0-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -101,6 +101,14 @@ GaitLogic Coach Agent 将结构化训练事实、确定性训练规则和大语�
 ![AI 教练页面](docs/assets/coach-agent/coach-overview.png)
 
 ![今日训练建议](docs/assets/coach-agent/coach-today-recommendation.png)
+
+### v0.14.0 Agent 可观测性、评测与可靠性
+
+v0.14.0 将既有 Coach、RAG、Weekly Review 与人工批准链路工程化：安全 Trace/Span、可选 OpenTelemetry 输出、低基数运行 Metrics、统一 Provider Failure Taxonomy、有限重试与确定性 Fallback，以及四套公开虚构回归评测。运行指标不保存用户问题、Prompt、训练正文、原始模型响应、身份信息或凭据；它们只用于定位组件延迟、失败和降级趋势。
+
+![v0.14.0 Agent 工程架构](docs/assets/v014-agent-productionization-architecture.svg)
+
+评测复现命令为 `python scripts/evaluate_agent.py --suite all`。当前 Coach、RAG、Weekly Adaptive 套件通过；Retrieval 保留基线中的 17 项失败，整体为 `PARTIAL`，未伪装为 PASS。详见 [v0.14.0 学习地图](docs/learning/v0.14.0/00-v0.14.0-overview.md)。
 
 ### v0.13.0 周复盘与自适应训练闭环
 

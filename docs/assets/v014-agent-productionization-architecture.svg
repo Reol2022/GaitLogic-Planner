@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">GaitLogic v0.14 Agent productionization architecture</title>
+  <desc id="desc">The request lifecycle is observed by Trace, Metrics, Evaluation, and Reliability side layers.</desc>
+  <style>text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#17324d}.box{fill:#eff6ff;stroke:#2563eb;stroke-width:2}.safe{fill:#ecfdf5;stroke:#059669;stroke-width:2}.layer{fill:#fff7ed;stroke:#ea580c;stroke-width:2}.arrow{stroke:#64748b;stroke-width:2;marker-end:url(#a)}.label{font-size:17px;font-weight:600}.small{font-size:14px}.title{font-size:24px;font-weight:700}</style>
+  <defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#64748b"/></marker></defs>
+  <text x="40" y="42" class="title">GaitLogic v0.14：可观测、可评测、可降级的 Agent 工程链路</text>
+  <g transform="translate(40,90)">
+    <rect class="box" x="0" y="0" width="120" height="58" rx="9"/><text class="label" x="25" y="34">用户请求</text>
+    <rect class="box" x="160" y="0" width="120" height="58" rx="9"/><text class="label" x="185" y="34">Intent</text>
+    <rect class="box" x="320" y="0" width="120" height="58" rx="9"/><text class="label" x="350" y="34">工具策略</text>
+    <rect class="box" x="480" y="0" width="120" height="58" rx="9"/><text class="label" x="515" y="34">RAG</text>
+    <rect class="box" x="640" y="0" width="120" height="58" rx="9"/><text class="label" x="663" y="34">Provider</text>
+    <rect class="box" x="800" y="0" width="130" height="58" rx="9"/><text class="label" x="820" y="34">LangGraph</text>
+    <rect class="box" x="970" y="0" width="150" height="58" rx="9"/><text class="label" x="993" y="34">Validator</text>
+    <path class="arrow" d="M120,29H158M280,29H318M440,29H478M600,29H638M760,29H798M930,29H968"/>
+    <rect class="safe" x="850" y="110" width="150" height="58" rx="9"/><text class="label" x="875" y="144">Fallback</text>
+    <rect class="safe" x="1030" y="110" width="90" height="58" rx="9"/><text class="label" x="1044" y="144">HITL</text>
+    <rect class="safe" x="850" y="220" width="125" height="58" rx="9"/><text class="label" x="873" y="254">事务写入</text>
+    <rect class="safe" x="1000" y="220" width="120" height="58" rx="9"/><text class="label" x="1025" y="254">版本管理</text>
+    <path class="arrow" d="M1045,58V108H925M1045,58V108H1075M1075,168V218H912M975,249H998"/>
+  </g>
+  <g transform="translate(40,410)">
+    <rect class="layer" x="0" y="0" width="350" height="140" rx="12"/><text class="label" x="22" y="32">Trace：单次请求解释</text><text class="small" x="22" y="60">父子 Span、组件、状态、耗时、</text><text class="small" x="22" y="82">安全错误码与 fallback；不保存正文。</text><text class="small" x="22" y="112">可选 OTLP Adapter，Sink 故障隔离。</text>
+    <rect class="layer" x="405" y="0" width="350" height="140" rx="12"/><text class="label" x="427" y="32">Metrics：一段时间总体表现</text><text class="small" x="427" y="60">低基数计数、成功率、重试率、</text><text class="small" x="427" y="82">有界 P50/P95 延迟；无 trace_id label。</text><text class="small" x="427" y="112">Recorder/Sink 故障不影响业务。</text>
+    <rect class="layer" x="770" y="0" width="350" height="140" rx="12"/><text class="label" x="792" y="32">Evaluation：固定案例质量门禁</text><text class="small" x="792" y="60">Coach、RAG、Retrieval、Weekly；</text><text class="small" x="792" y="82">基线对比、回归门禁与安全检查。</text><text class="small" x="792" y="112">与运行时指标保持独立。</text>
+  </g>
+</svg>

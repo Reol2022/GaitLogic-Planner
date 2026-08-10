@@ -724,6 +724,29 @@ v0.11.0 不支持 RAG、Weekly Review Agent、写工具、长期记忆、Streami
 
 部署 v0.13.0 前先备份数据库并在隔离环境验证 `scripts/upgrade_v0130_adaptive_plan.py` 的 upgrade/downgrade。该脚本只新增计划版本、LangGraph checkpoint 和 pending write 相关结构，不扫描或回填用户训练数据。升级后执行 Python 编译、完整 pytest、前端 typecheck/test/build 与 `python scripts/evaluate_weekly_adaptive.py`。
 
+## 19. v0.14.0 Agent Observability and Reliability
+
+v0.14 不新增数据库迁移。默认关闭可选运行时观测：
+
+```env
+AGENT_TRACING_ENABLED=false
+AGENT_TRACE_EXPORTER=noop
+AGENT_METRICS_ENABLED=false
+AGENT_METRICS_MAX_LATENCY_SAMPLES=2048
+```
+
+启用 OTLP Trace 时设置 `AGENT_TRACING_ENABLED=true`、`AGENT_TRACE_EXPORTER=otlp` 和无凭据、无查询参数的 `OTEL_EXPORTER_OTLP_ENDPOINT`。启用 Metrics 时仅保存有界聚合，不保存原始 Span 或请求正文。所有 Trace/Metrics exporter 故障都会被隔离，不能影响 Coach、Weekly Review、HITL 或计划写事务。
+
+部署前运行：
+
+```powershell
+python -m compileall planner_core server scripts tests
+pytest -q
+python scripts/evaluate_agent.py --suite all
+```
+
+评测总状态目前是 `PARTIAL`：Coach、RAG、Weekly Adaptive 通过，Retrieval 保留已知基线的 17 项失败。发布前应确认其未相对基线退化，而不是把该状态替换为 PASS。
+
 生产流程必须保持：Nginx 只代理 `/api/`，FastAPI 从认证上下文注入用户，LangGraph Checkpoint 使用 MySQL 持久化，LLM 无数据库写工具。计划批准由 `AdaptivePlanApprovalService` 在单事务内执行所有权、base version、锁定状态和规则复核；Trace Sink 故障不得影响业务事务。
 
 回滚代码前先停止新审批流量。数据库 downgrade 仅在确认没有需要保留的 v0.13 checkpoint/版本记录后执行；优先关闭自适应入口并回滚应用代码，不得直接删除历史版本证据。MySQL 5.7 与 8 应分别验证 upgrade、审批幂等、rollback 和 downgrade。

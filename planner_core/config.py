@@ -380,6 +380,16 @@ class Settings(BaseSettings):
         default="noop",
         validation_alias="AGENT_TRACE_EXPORTER",
     )
+    agent_metrics_enabled: bool = Field(
+        default=False,
+        validation_alias="AGENT_METRICS_ENABLED",
+    )
+    agent_metrics_max_latency_samples: int = Field(
+        default=2048,
+        ge=64,
+        le=10000,
+        validation_alias="AGENT_METRICS_MAX_LATENCY_SAMPLES",
+    )
     otel_exporter_otlp_endpoint: str | None = Field(
         default=None,
         max_length=512,

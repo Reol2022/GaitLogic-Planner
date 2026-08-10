@@ -9,7 +9,7 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.13.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.14.0-1976d2?style=for-the-badge" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?style=for-the-badge&logo=vue.js&logoColor=white" />
@@ -97,6 +97,14 @@ GaitLogic Coach Agent combines structured training facts, deterministic rules, a
 ![AI Coach](docs/assets/coach-agent/coach-overview.png)
 
 ![Today Recommendation](docs/assets/coach-agent/coach-today-recommendation.png)
+
+### v0.14.0 Agent Observability, Evaluation, and Reliability
+
+v0.14.0 productionizes the existing Coach, RAG, Weekly Review, and human-approval paths with safe Trace/Span instrumentation, optional OpenTelemetry export, low-cardinality runtime metrics, a unified Provider Failure Taxonomy, bounded retry with deterministic fallback, and four public fictional regression suites. Runtime observability never stores user queries, prompts, training content, raw model output, identity data, or credentials.
+
+![v0.14.0 Agent productionization architecture](docs/assets/v014-agent-productionization-architecture.svg)
+
+Reproduce the evaluation with `python scripts/evaluate_agent.py --suite all`. Coach, RAG, and Weekly Adaptive pass; Retrieval retains its baseline 17 failures, so the honest overall result is `PARTIAL`, not PASS. See the [v0.14.0 learning map](docs/learning/v0.14.0/00-v0.14.0-overview.md).
 
 ### v0.13.0 Weekly Review and Adaptive Coaching Loop
 

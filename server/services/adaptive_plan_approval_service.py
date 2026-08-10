@@ -212,6 +212,18 @@ class AdaptivePlanApprovalService:
             raise
 
     def reject(self, db: Session, *, user_id: int, proposal_id: int) -> AdaptiveApprovalResult:
+        trace = self.tracer.start_trace()
+        with self.tracer.span(
+            trace,
+            component="approval",
+            operation="reject_proposal",
+            metadata={"proposal_id": proposal_id, "operation_type": "hitl_rejection"},
+            root=True,
+        ):
+            return self._reject(db, user_id=user_id, proposal_id=proposal_id)
+
+    @staticmethod
+    def _reject(db: Session, *, user_id: int, proposal_id: int) -> AdaptiveApprovalResult:
         try:
             record = db.scalar(
                 select(TrainingAdjustmentDraft)

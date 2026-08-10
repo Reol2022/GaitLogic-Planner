@@ -109,6 +109,20 @@ class InMemoryTraceSink:
         self.spans.append(span)
 
 
+class FanoutTraceSink:
+    """Deliver a completed span to independent best-effort side channels."""
+
+    def __init__(self, *sinks: TraceSink) -> None:
+        self._sinks = tuple(sinks)
+
+    def write(self, span: SpanRecord) -> None:
+        for sink in self._sinks:
+            try:
+                sink.write(span)
+            except Exception:
+                logger.warning("trace_fanout_sink_failed code=TRACE_SINK_WRITE_FAILED")
+
+
 @dataclass(frozen=True)
 class TraceHandle:
     trace_id: str
