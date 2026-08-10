@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -23,16 +25,29 @@ from server.schemas.adaptive_plan import (
     AdaptivePlanVersionRead,
     AdaptiveProposalRead,
     PlanRollbackRequest,
+    WeeklyGraphRequest,
 )
 from server.services.adaptive_plan_approval_service import AdaptivePlanApprovalService
 from server.services.adaptive_plan_version_service import AdaptivePlanVersionService
 from planner_core.database.models import TrainingAdjustmentDraft
 from sqlalchemy import select
 from server.common.exceptions import NotFoundError
+from planner_core.config import get_settings
+from planner_core.weekly_review.schemas import WeeklyFacts, WeeklyFactsRequest
+from server.agent.providers.openai_compatible import OpenAICompatibleAgentGateway
+from server.agent.tools.knowledge_tools import build_configured_knowledge_tool
+from server.services.weekly_facts_service import WeeklyFactsService
+from server.weekly_review_graph.adapters import (
+    AgentGatewayWeeklyReviewGenerator,
+    KnowledgeToolWeeklyRetriever,
+)
+from server.weekly_review_graph.schemas import WeeklyReviewResult, WeeklyReviewState
+from server.weekly_review_graph.workflow import build_weekly_review_graph
 
 router = APIRouter(tags=["weekly reviews"])
 adaptive_approval_service = AdaptivePlanApprovalService()
 adaptive_version_service = AdaptivePlanVersionService()
+weekly_facts_service = WeeklyFactsService()
 
 
 @router.get("/weekly-reviews/summary", response_model=WeeklyReviewSummaryResponse)
@@ -220,3 +235,73 @@ def rollback_adaptive_plan_version(
             reason=payload.reason,
         )
     )
+
+
+@router.get("/weekly-reviews/facts", response_model=WeeklyFacts)
+def get_canonical_weekly_facts(
+    week_start: date = Query(...),
+    week_end: date = Query(...),
+    cycle_id: int | None = Query(default=None, gt=0),
+    timezone: str = Query(default="Asia/Shanghai"),
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    return weekly_facts_service.build_weekly_facts(
+        db,
+        WeeklyFactsRequest(
+            user_id=current_user.id,
+            week_start=week_start,
+            week_end=week_end,
+            cycle_id=cycle_id,
+            timezone=timezone,
+        ),
+    ).model_dump(mode="json")
+
+
+@router.post("/weekly-reviews/graph", response_model=WeeklyReviewResult)
+def generate_langgraph_weekly_review(
+    payload: WeeklyGraphRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    settings = get_settings()
+    request = WeeklyFactsRequest(
+        user_id=current_user.id,
+        week_start=payload.week_start,
+        week_end=payload.week_end,
+        cycle_id=payload.cycle_id,
+        timezone=payload.timezone,
+    )
+    provider_configured = settings.coach_agent_enabled and all(
+        (
+            settings.coach_agent_api_key,
+            settings.coach_agent_base_url,
+            settings.coach_agent_model,
+        )
+    )
+
+    def provider_unavailable(state):
+        del state
+        raise RuntimeError("Coach Provider is disabled or incomplete")
+
+    generator = (
+        AgentGatewayWeeklyReviewGenerator(OpenAICompatibleAgentGateway(settings))
+        if provider_configured
+        else provider_unavailable
+    )
+    knowledge_tool = build_configured_knowledge_tool(settings)
+    graph = build_weekly_review_graph(
+        facts_loader=lambda facts_request: weekly_facts_service.build_weekly_facts(db, facts_request),
+        generator=generator,
+        knowledge_retriever=(
+            KnowledgeToolWeeklyRetriever(knowledge_tool, timezone=payload.timezone)
+            if knowledge_tool is not None
+            else None
+        ),
+    )
+    result = WeeklyReviewState.model_validate(
+        graph.invoke(WeeklyReviewState(user_id=current_user.id, request=request).model_dump(mode="python"))
+    )
+    if result.final_review is None:
+        raise RuntimeError("Weekly review graph did not produce a final result")
+    return result.final_review

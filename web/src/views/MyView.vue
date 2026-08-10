@@ -61,6 +61,7 @@ const allPrimaryItems = [
 const primaryItems = computed(() => allPrimaryItems.filter((item) => item.path !== "/data-sync" || garminSyncVisible.value));
 
 const advancedItems = [
+  { path: "/adaptive-weekly-review", title: "周复盘与自适应调整", icon: Memo },
   { path: "/training-plan", title: "训练计划中心", icon: List },
   { path: "/weekly-review", title: "智能周复盘", icon: Memo },
   { path: "/dashboard", title: "训练统计", icon: DataAnalysis },

@@ -44,3 +44,10 @@ class AdaptivePlanVersionList(BaseModel):
 
 class PlanRollbackRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=1000)
+
+
+class WeeklyGraphRequest(BaseModel):
+    week_start: date
+    week_end: date
+    cycle_id: int | None = Field(default=None, gt=0)
+    timezone: str = "Asia/Shanghai"

@@ -91,6 +91,12 @@ const router = createRouter({
       meta: { title: "智能周复盘" },
     },
     {
+      path: "/adaptive-weekly-review",
+      name: "AdaptiveWeeklyReview",
+      component: () => import("@/views/AdaptiveWeeklyReviewView.vue"),
+      meta: { title: "周复盘与自适应调整" },
+    },
+    {
       path: "/ai-plan",
       name: "AIPlan",
       component: () => import("@/views/AIPlanGenerator.vue"),
