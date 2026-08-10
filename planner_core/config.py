@@ -172,8 +172,20 @@ class Settings(BaseSettings):
     coach_agent_max_retries: int = Field(
         default=1,
         ge=0,
-        le=1,
+        le=3,
         validation_alias="COACH_AGENT_MAX_RETRIES",
+    )
+    coach_agent_retry_initial_backoff_seconds: float = Field(
+        default=0.25,
+        ge=0,
+        le=10,
+        validation_alias="COACH_AGENT_RETRY_INITIAL_BACKOFF_SECONDS",
+    )
+    coach_agent_retry_max_backoff_seconds: float = Field(
+        default=1.0,
+        ge=0,
+        le=30,
+        validation_alias="COACH_AGENT_RETRY_MAX_BACKOFF_SECONDS",
     )
     coach_agent_max_output_tokens: int = Field(
         default=2000,
@@ -250,6 +262,24 @@ class Settings(BaseSettings):
         gt=0,
         le=300,
         validation_alias="KNOWLEDGE_EMBEDDING_TOTAL_TIMEOUT_SECONDS",
+    )
+    knowledge_embedding_max_retries: int = Field(
+        default=1,
+        ge=0,
+        le=3,
+        validation_alias="KNOWLEDGE_EMBEDDING_MAX_RETRIES",
+    )
+    knowledge_embedding_retry_initial_backoff_seconds: float = Field(
+        default=0.25,
+        ge=0,
+        le=10,
+        validation_alias="KNOWLEDGE_EMBEDDING_RETRY_INITIAL_BACKOFF_SECONDS",
+    )
+    knowledge_embedding_retry_max_backoff_seconds: float = Field(
+        default=1.0,
+        ge=0,
+        le=30,
+        validation_alias="KNOWLEDGE_EMBEDDING_RETRY_MAX_BACKOFF_SECONDS",
     )
     knowledge_embedding_allow_local_provider_in_development: bool = Field(
         default=False,

@@ -23,6 +23,12 @@ class AgentTraceEvent(AgentContractModel):
     response_format_mode: Literal["json_schema", "json_object"] | None = None
     prompt_tokens: int | None = Field(default=None, ge=0)
     completion_tokens: int | None = Field(default=None, ge=0)
+    provider_kind: str | None = Field(default=None, max_length=40)
+    attempt: int | None = Field(default=None, ge=1, le=10)
+    max_attempts: int | None = Field(default=None, ge=1, le=10)
+    failure_category: str | None = Field(default=None, max_length=80)
+    retried: bool | None = None
+    final_status: str | None = Field(default=None, max_length=40)
 
 
 class AgentTrace(AgentContractModel):
@@ -43,6 +49,12 @@ class AgentTrace(AgentContractModel):
         response_format_mode: Literal["json_schema", "json_object"] | None = None,
         prompt_tokens: int | None = None,
         completion_tokens: int | None = None,
+        provider_kind: str | None = None,
+        attempt: int | None = None,
+        max_attempts: int | None = None,
+        failure_category: str | None = None,
+        retried: bool | None = None,
+        final_status: str | None = None,
     ) -> None:
         self.events.append(
             AgentTraceEvent(
@@ -57,5 +69,11 @@ class AgentTrace(AgentContractModel):
                 response_format_mode=response_format_mode,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
+                provider_kind=provider_kind,
+                attempt=attempt,
+                max_attempts=max_attempts,
+                failure_category=failure_category,
+                retried=retried,
+                final_status=final_status,
             )
         )

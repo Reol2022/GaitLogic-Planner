@@ -18,6 +18,7 @@ from server.knowledge_retrieval.enums import (
     KnowledgeEvidenceLevel,
 )
 from server.knowledge_retrieval.index_service import KnowledgeIndexService
+from server.knowledge_retrieval.errors import KnowledgeEmbeddingProviderError
 from server.knowledge_retrieval.retrieval_schemas import (
     MAX_QUERY_CHARS,
     KnowledgeRetrievalRequest,
@@ -125,18 +126,27 @@ class RetrieveTrainingKnowledgeTool(AgentTool):
         del context
         tracer = active_tracer()
         handle = active_trace_handle()
+        reliability = None
 
         def retrieve() -> RetrieveTrainingKnowledgeOutput:
+            nonlocal reliability
             retriever = self.retriever_factory()
-            response = retriever.retrieve(
-                KnowledgeRetrievalRequest(
-                    query=arguments.query,
-                    top_k=min(arguments.top_k, self.maximum_top_k),
-                    categories=arguments.categories,
-                    tags=arguments.tags,
-                    language=arguments.language,
+            try:
+                response = retriever.retrieve(
+                    KnowledgeRetrievalRequest(
+                        query=arguments.query,
+                        top_k=min(arguments.top_k, self.maximum_top_k),
+                        categories=arguments.categories,
+                        tags=arguments.tags,
+                        language=arguments.language,
+                    )
                 )
-            )
+            finally:
+                reliability = getattr(
+                    getattr(retriever, "provider", None),
+                    "last_reliability",
+                    None,
+                )
             results = [
                 KnowledgeToolResultItem(
                     knowledge_reference_id=f"knowledge_{rank}",
@@ -171,11 +181,38 @@ class RetrieveTrainingKnowledgeTool(AgentTool):
             operation="retrieve",
             metadata={"knowledge_retrieval_status": "STARTED"},
         ) as span:
-            output = retrieve()
+            try:
+                output = retrieve()
+            except KnowledgeEmbeddingProviderError as exc:
+                if reliability is not None:
+                    span.add_metadata(
+                        provider_kind="embedding",
+                        attempt=reliability.attempts,
+                        max_attempts=reliability.max_attempts,
+                        retried=reliability.retried,
+                        final_status=reliability.final_status,
+                        failure_category=(
+                            reliability.failure_category.value
+                            if reliability.failure_category is not None
+                            else "PROVIDER_UNKNOWN_ERROR"
+                        ),
+                    )
+                span.mark_error(
+                    exc.category.value if getattr(exc, "category", None) is not None else "PROVIDER_UNKNOWN_ERROR"
+                )
+                raise
             span.add_metadata(
                 knowledge_retrieval_status=output.query_status,
                 retrieval_result_count=len(output.results),
             )
+            if reliability is not None:
+                span.add_metadata(
+                    provider_kind="embedding",
+                    attempt=reliability.attempts,
+                    max_attempts=reliability.max_attempts,
+                    retried=reliability.retried,
+                    final_status=reliability.final_status,
+                )
             return output
 
 

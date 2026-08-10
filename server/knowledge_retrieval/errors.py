@@ -36,6 +36,10 @@ class KnowledgeEmbeddingConfigurationError(KnowledgeEmbeddingError):
 class KnowledgeEmbeddingProviderError(KnowledgeEmbeddingError):
     """The embedding provider failed with a safe public error."""
 
+    def __init__(self, message: str, *, category=None) -> None:
+        super().__init__(message)
+        self.category = category
+
 
 class KnowledgeVectorStoreError(KnowledgeCorpusError):
     """A derived vector store is invalid or unavailable."""

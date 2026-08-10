@@ -202,9 +202,37 @@ class GaitLogicCoachAgent:
             try:
                 output = self._call_model_untraced(request=request, context=context, trace=trace)
             except Exception:
+                reliability = getattr(self.gateway, "last_reliability", None)
+                metadata = {"provider_status": "FAILED", "final_status": "FAILED"}
+                if reliability is not None:
+                    metadata.update(
+                        {
+                            "provider_kind": "chat",
+                            "attempt": reliability.attempts,
+                            "max_attempts": reliability.max_attempts,
+                            "retried": reliability.retried,
+                            "failure_category": (
+                                reliability.failure_category.value
+                                if reliability.failure_category is not None
+                                else "PROVIDER_UNKNOWN_ERROR"
+                            ),
+                        }
+                    )
+                span.add_metadata(**metadata)
                 span.mark_error(AgentErrorCode.AGENT_MODEL_FAILED.value)
                 raise
-            span.add_metadata(provider_status="SUCCEEDED")
+            reliability = getattr(self.gateway, "last_reliability", None)
+            metadata = {"provider_status": "SUCCEEDED", "final_status": "SUCCEEDED"}
+            if reliability is not None:
+                metadata.update(
+                    {
+                        "provider_kind": "chat",
+                        "attempt": reliability.attempts,
+                        "max_attempts": reliability.max_attempts,
+                        "retried": reliability.retried,
+                    }
+                )
+            span.add_metadata(**metadata)
             return output
 
     def _call_model_untraced(

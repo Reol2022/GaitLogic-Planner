@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from collections.abc import Callable
-from time import perf_counter
+from time import perf_counter, sleep
 from typing import Any
 from uuid import uuid4
 
@@ -33,6 +33,12 @@ from server.agent.today_recommendation import (
     build_evidence_catalog,
     build_authoritative_today_facts,
     materialize_evidence_references,
+)
+from server.provider_reliability import (
+    ProviderCallReliability,
+    ProviderFailureCategory,
+    RetryPolicy,
+    classify_provider_exception,
 )
 
 logger = logging.getLogger(__name__)
@@ -120,6 +126,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         settings: Settings,
         *,
         client_factory: Callable[[Settings, str], Any] | None = None,
+        sleeper: Callable[[float], None] = sleep,
     ) -> None:
         self.settings = settings
         allow_local = (
@@ -131,8 +138,16 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
             allow_local_development=allow_local,
         )
         self._client_factory = client_factory or self._default_client
+        self._sleeper = sleeper
         self._client: Any | None = None
         self.last_usage = AgentProviderUsage()
+        self.last_reliability = ProviderCallReliability(
+            attempts=0,
+            max_attempts=settings.coach_agent_max_retries + 1,
+            failure_category=None,
+            retried=False,
+            final_status="NOT_CALLED",
+        )
 
     @staticmethod
     def _default_client(settings: Settings, base_url: str) -> Any:
@@ -160,19 +175,23 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         return self._client
 
     @staticmethod
-    def _retryable(exc: Exception) -> bool:
-        status = getattr(exc, "status_code", None)
-        name = type(exc).__name__.lower()
-        return status == 429 or (isinstance(status, int) and status >= 500) or any(
-            marker in name for marker in ("timeout", "connection")
-        )
-
-    @staticmethod
-    def _error_code(exc: Exception) -> AgentErrorCode:
-        status = getattr(exc, "status_code", None)
-        if status == 429:
+    def _error_code(category: ProviderFailureCategory) -> AgentErrorCode:
+        if category == ProviderFailureCategory.PROVIDER_RATE_LIMIT:
             return AgentErrorCode.AGENT_PROVIDER_RATE_LIMITED
+        if category in {
+            ProviderFailureCategory.PROVIDER_INVALID_RESPONSE,
+            ProviderFailureCategory.PROVIDER_SCHEMA_ERROR,
+            ProviderFailureCategory.PROVIDER_TOOL_PROTOCOL_ERROR,
+        }:
+            return AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID
         return AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE
+
+    def _retry_policy(self) -> RetryPolicy:
+        return RetryPolicy(
+            max_retries=self.settings.coach_agent_max_retries,
+            initial_backoff_seconds=self.settings.coach_agent_retry_initial_backoff_seconds,
+            max_backoff_seconds=self.settings.coach_agent_retry_max_backoff_seconds,
+        )
 
     def _response_format(self, intent: AgentIntent) -> dict[str, Any]:
         if self.settings.coach_agent_response_format_mode == "json_object":
@@ -207,7 +226,10 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
             # tool-call sub-turns. v0.11.0 intentionally does not implement
             # that chain, so fail closed instead of sending an unsafe partial
             # thinking request.
-            raise AgentProviderError(AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE)
+            raise AgentProviderError(
+                AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE,
+                category=ProviderFailureCategory.PROVIDER_TOOL_PROTOCOL_ERROR,
+            )
         request: dict[str, Any] = {
             "model": self.settings.coach_agent_model,
             "messages": messages,
@@ -236,10 +258,16 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         user_message: str,
     ) -> AgentModelOutput:
         if not getattr(response, "choices", None):
-            raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
+            raise AgentProviderError(
+                AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID,
+                category=ProviderFailureCategory.PROVIDER_INVALID_RESPONSE,
+            )
         choice = response.choices[0]
         if getattr(choice, "finish_reason", None) == "length":
-            raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
+            raise AgentProviderError(
+                AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID,
+                category=ProviderFailureCategory.PROVIDER_INVALID_RESPONSE,
+            )
         message = choice.message
         native_calls = getattr(message, "tool_calls", None) or []
         if native_calls:
@@ -262,13 +290,22 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     risk_level=AgentRiskLevel.UNKNOWN,
                 )
             except (AttributeError, json.JSONDecodeError, TypeError, ValidationError, ValueError) as exc:
-                raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID) from exc
+                raise AgentProviderError(
+                    AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID,
+                    category=ProviderFailureCategory.PROVIDER_TOOL_PROTOCOL_ERROR,
+                ) from exc
         content = getattr(message, "content", None)
         if not isinstance(content, str):
-            raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
+            raise AgentProviderError(
+                AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID,
+                category=ProviderFailureCategory.PROVIDER_INVALID_RESPONSE,
+            )
         stripped = content.strip()
         if stripped.startswith("```"):
-            raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
+            raise AgentProviderError(
+                AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID,
+                category=ProviderFailureCategory.PROVIDER_SCHEMA_ERROR,
+            )
         try:
             if intent == AgentIntent.TODAY_RECOMMENDATION:
                 provider_output = ProviderTodayModelOutput.model_validate_json(stripped)
@@ -296,7 +333,10 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                 provider_output.model_dump(mode="python")
             )
         except (ValidationError, ValueError) as exc:
-            raise AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID) from exc
+            raise AgentProviderError(
+                AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID,
+                category=ProviderFailureCategory.PROVIDER_SCHEMA_ERROR,
+            ) from exc
 
     def generate(
         self,
@@ -336,8 +376,8 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
             model_alias=self.settings.coach_agent_model,
             response_format_mode=self.settings.coach_agent_response_format_mode,
         )
-        attempts = self.settings.coach_agent_max_retries + 1
-        for attempt in range(attempts):
+        policy = self._retry_policy()
+        for attempt in range(policy.max_attempts):
             try:
                 response = self._request(
                     messages=messages,
@@ -359,6 +399,13 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     duration_ms=duration,
                     status="SUCCEEDED",
                 )
+                self.last_reliability = ProviderCallReliability(
+                    attempts=attempt + 1,
+                    max_attempts=policy.max_attempts,
+                    failure_category=None,
+                    retried=attempt > 0,
+                    final_status="SUCCEEDED",
+                )
                 trace.add_event(
                     AgentTraceEventType.PROVIDER_CALL_COMPLETED,
                     AgentTraceStatus.SUCCEEDED,
@@ -368,6 +415,11 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     response_format_mode=self.settings.coach_agent_response_format_mode,
                     prompt_tokens=self.last_usage.prompt_tokens,
                     completion_tokens=self.last_usage.completion_tokens,
+                    provider_kind="chat",
+                    attempt=attempt + 1,
+                    max_attempts=policy.max_attempts,
+                    retried=attempt > 0,
+                    final_status="SUCCEEDED",
                 )
                 return output
             except AgentProviderError as exc:
@@ -377,6 +429,13 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     status="FAILED",
                     safe_error_code=exc.code.value,
                 )
+                self.last_reliability = ProviderCallReliability(
+                    attempts=attempt + 1,
+                    max_attempts=policy.max_attempts,
+                    failure_category=exc.category,
+                    retried=attempt > 0,
+                    final_status="FAILED",
+                )
                 trace.add_event(
                     AgentTraceEventType.PROVIDER_CALL_FAILED,
                     AgentTraceStatus.FAILED,
@@ -385,17 +444,45 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     model_alias=self.settings.coach_agent_model,
                     response_format_mode=self.settings.coach_agent_response_format_mode,
                     safe_error_code=exc.code,
+                    provider_kind="chat",
+                    attempt=attempt + 1,
+                    max_attempts=policy.max_attempts,
+                    failure_category=exc.category.value,
+                    retried=attempt > 0,
+                    final_status="FAILED",
                 )
                 raise
             except Exception as exc:
-                if attempt + 1 < attempts and self._retryable(exc):
+                failure = classify_provider_exception(exc)
+                if policy.can_retry(attempt=attempt, failure=failure):
+                    trace.add_event(
+                        AgentTraceEventType.PROVIDER_CALL_FAILED,
+                        AgentTraceStatus.FAILED,
+                        provider_alias=self.settings.coach_agent_provider,
+                        model_alias=self.settings.coach_agent_model,
+                        response_format_mode=self.settings.coach_agent_response_format_mode,
+                        provider_kind="chat",
+                        attempt=attempt + 1,
+                        max_attempts=policy.max_attempts,
+                        failure_category=failure.category.value,
+                        retried=True,
+                        final_status="RETRYING",
+                    )
+                    policy.wait(attempt=attempt, sleeper=self._sleeper)
                     continue
-                code = self._error_code(exc)
+                code = self._error_code(failure.category)
                 duration = (perf_counter() - started) * 1000
                 self.last_usage = AgentProviderUsage(
                     duration_ms=duration,
                     status="FAILED",
                     safe_error_code=code.value,
+                )
+                self.last_reliability = ProviderCallReliability(
+                    attempts=attempt + 1,
+                    max_attempts=policy.max_attempts,
+                    failure_category=failure.category,
+                    retried=attempt > 0,
+                    final_status="FAILED",
                 )
                 trace.add_event(
                     AgentTraceEventType.PROVIDER_CALL_FAILED,
@@ -405,6 +492,12 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     model_alias=self.settings.coach_agent_model,
                     response_format_mode=self.settings.coach_agent_response_format_mode,
                     safe_error_code=code,
+                    provider_kind="chat",
+                    attempt=attempt + 1,
+                    max_attempts=policy.max_attempts,
+                    failure_category=failure.category.value,
+                    retried=attempt > 0,
+                    final_status="FAILED",
                 )
                 logger.warning(
                     "coach_provider_call_failed provider=%s model=%s code=%s",
@@ -412,5 +505,8 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     self.settings.coach_agent_model,
                     code.value,
                 )
-                raise AgentProviderError(code) from exc
-        raise AgentProviderError(AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE)
+                raise AgentProviderError(code, category=failure.category) from exc
+        raise AgentProviderError(
+            AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE,
+            category=ProviderFailureCategory.PROVIDER_UNKNOWN_ERROR,
+        )
