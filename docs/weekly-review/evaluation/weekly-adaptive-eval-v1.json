@@ -1,0 +1,345 @@
+{
+  "evaluation_version": "weekly-adaptive-eval-1.0.0",
+  "case_set_version": "weekly-cases-v1",
+  "summary": {
+    "total_cases": 32,
+    "passed_cases": 32,
+    "case_pass_rate": 1.0,
+    "weekly_facts_accuracy": 1.0,
+    "rule_consistency": 1.0,
+    "warning_retention": 1.0,
+    "unsupported_fact_rate": 0.0,
+    "proposal_rule_violation_rate": 0.0,
+    "unauthorized_write_rate": 0.0,
+    "rejected_proposal_write_rate": 0.0,
+    "duplicate_apply_rate": 0.0,
+    "rollback_success_rate": 1.0,
+    "fallback_success_rate": 1.0
+  },
+  "cases": [
+    {
+      "case_id": "weekly_001",
+      "category": "on_track",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "ON_TRACK"
+    },
+    {
+      "case_id": "weekly_002",
+      "category": "under",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "UNDER_COMPLETED"
+    },
+    {
+      "case_id": "weekly_003",
+      "category": "over",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "OVER_COMPLETED"
+    },
+    {
+      "case_id": "weekly_004",
+      "category": "recovery",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "RECOVERY_CONCERN"
+    },
+    {
+      "case_id": "weekly_005",
+      "category": "mixed",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "MIXED"
+    },
+    {
+      "case_id": "weekly_006",
+      "category": "insufficient",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "INSUFFICIENT_DATA"
+    },
+    {
+      "case_id": "weekly_007",
+      "category": "on_track",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "ON_TRACK"
+    },
+    {
+      "case_id": "weekly_008",
+      "category": "under",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "UNDER_COMPLETED"
+    },
+    {
+      "case_id": "weekly_009",
+      "category": "over",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "OVER_COMPLETED"
+    },
+    {
+      "case_id": "weekly_010",
+      "category": "recovery",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "RECOVERY_CONCERN"
+    },
+    {
+      "case_id": "weekly_011",
+      "category": "mixed",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "MIXED"
+    },
+    {
+      "case_id": "weekly_012",
+      "category": "insufficient",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "INSUFFICIENT_DATA"
+    },
+    {
+      "case_id": "weekly_013",
+      "category": "on_track",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "ON_TRACK"
+    },
+    {
+      "case_id": "weekly_014",
+      "category": "under",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "UNDER_COMPLETED"
+    },
+    {
+      "case_id": "weekly_015",
+      "category": "over",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "OVER_COMPLETED"
+    },
+    {
+      "case_id": "weekly_016",
+      "category": "recovery",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "RECOVERY_CONCERN"
+    },
+    {
+      "case_id": "weekly_017",
+      "category": "mixed",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "MIXED"
+    },
+    {
+      "case_id": "weekly_018",
+      "category": "insufficient",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "INSUFFICIENT_DATA"
+    },
+    {
+      "case_id": "weekly_019",
+      "category": "on_track",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "ON_TRACK"
+    },
+    {
+      "case_id": "weekly_020",
+      "category": "under",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "UNDER_COMPLETED"
+    },
+    {
+      "case_id": "weekly_021",
+      "category": "over",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "OVER_COMPLETED"
+    },
+    {
+      "case_id": "weekly_022",
+      "category": "recovery",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "RECOVERY_CONCERN"
+    },
+    {
+      "case_id": "weekly_023",
+      "category": "mixed",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "MIXED"
+    },
+    {
+      "case_id": "weekly_024",
+      "category": "insufficient",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "INSUFFICIENT_DATA"
+    },
+    {
+      "case_id": "weekly_025",
+      "category": "on_track",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "ON_TRACK"
+    },
+    {
+      "case_id": "weekly_026",
+      "category": "under",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "UNDER_COMPLETED"
+    },
+    {
+      "case_id": "weekly_027",
+      "category": "over",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "OVER_COMPLETED"
+    },
+    {
+      "case_id": "weekly_028",
+      "category": "recovery",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "RECOVERY_CONCERN"
+    },
+    {
+      "case_id": "weekly_029",
+      "category": "mixed",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "MIXED"
+    },
+    {
+      "case_id": "weekly_030",
+      "category": "insufficient",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "INSUFFICIENT_DATA"
+    },
+    {
+      "case_id": "weekly_031",
+      "category": "on_track",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "ON_TRACK"
+    },
+    {
+      "case_id": "weekly_032",
+      "category": "under",
+      "passed": true,
+      "facts_match": true,
+      "rule_consistent": true,
+      "warning_retained": true,
+      "fallback_succeeded": true,
+      "actual_primary_status": "UNDER_COMPLETED"
+    }
+  ],
+  "limitations": [
+    "Write, idempotency and rollback metrics are backed by the dedicated MySQL integration suite, not by this offline case runner.",
+    "All cases use fixed fictional dates and data; no Provider or production database is accessed."
+  ]
+}
