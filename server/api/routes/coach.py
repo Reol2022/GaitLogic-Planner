@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from planner_core.database.models import UserAccount
 from server.api.deps import get_current_user, get_db
 from server.schemas.coach_agent import CoachQueryRequest, CoachQueryResponse
+from server.observability.factory import get_configured_tracer
 from server.services.coach_agent_query_service import CoachAgentQueryService
 
 router = APIRouter(prefix="/coach", tags=["coach agent"])
@@ -24,7 +25,10 @@ def query_coach(
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user),
 ) -> CoachQueryResponse:
-    result = CoachAgentQueryService(db).query(user_id=int(current_user.id), payload=payload)
+    result = CoachAgentQueryService(
+        db,
+        tracer=get_configured_tracer(),
+    ).query(user_id=int(current_user.id), payload=payload)
     if result.status == "REJECTED":
         response.status_code = status.HTTP_403_FORBIDDEN
     elif result.status == "UNAVAILABLE":

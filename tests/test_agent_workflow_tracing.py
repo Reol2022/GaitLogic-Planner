@@ -33,7 +33,7 @@ def draft():
     )
 
 
-def test_weekly_graph_emits_unique_parented_safe_spans() -> None:
+def test_weekly_graph_emits_rooted_safe_spans_with_graph_nodes() -> None:
     sink = InMemoryTraceSink()
     tracer = SafeTracer(sink)
     graph = build_weekly_review_graph(
@@ -45,11 +45,23 @@ def test_weekly_graph_emits_unique_parented_safe_spans() -> None:
     result = graph.invoke(WeeklyReviewState(user_id=7, request=request).model_dump(mode="python"))
     assert result["final_review"] is not None
     assert {item.name for item in sink.spans} == {
+        "langgraph.weekly_review",
         "weekly_facts", "rules.evaluate", "rag.retrieve", "llm.generate", "validator", "finalize"
     }
     assert len({item.span_id for item in sink.spans}) == len(sink.spans)
     assert len({item.trace_id for item in sink.spans}) == 1
-    assert all(item.parent_span_id for item in sink.spans)
+    root = next(item for item in sink.spans if item.name == "langgraph.weekly_review")
+    assert root.parent_span_id is None
+    assert all(
+        item.parent_span_id == root.span_id
+        for item in sink.spans
+        if item is not root
+    )
+    assert all(
+        item.metadata.get("graph_node") == item.name
+        for item in sink.spans
+        if item is not root
+    )
     serialized = str([item.attributes for item in sink.spans]).lower()
     assert "prompt" not in serialized
     assert "api_key" not in serialized

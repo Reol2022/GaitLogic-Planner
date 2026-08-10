@@ -43,9 +43,10 @@ from server.weekly_review_graph.adapters import (
 )
 from server.weekly_review_graph.schemas import WeeklyReviewResult, WeeklyReviewState
 from server.weekly_review_graph.workflow import build_weekly_review_graph
+from server.observability.factory import get_configured_tracer
 
 router = APIRouter(tags=["weekly reviews"])
-adaptive_approval_service = AdaptivePlanApprovalService()
+adaptive_approval_service = AdaptivePlanApprovalService(tracer=get_configured_tracer())
 adaptive_version_service = AdaptivePlanVersionService()
 weekly_facts_service = WeeklyFactsService()
 
@@ -298,6 +299,7 @@ def generate_langgraph_weekly_review(
             if knowledge_tool is not None
             else None
         ),
+        tracer=get_configured_tracer(),
     )
     result = WeeklyReviewState.model_validate(
         graph.invoke(WeeklyReviewState(user_id=current_user.id, request=request).model_dump(mode="python"))

@@ -26,6 +26,13 @@ dependencies = [
     "langgraph==1.2.9",
 ]
 
+[project.optional-dependencies]
+observability = [
+    "opentelemetry-api>=1.24,<2.0",
+    "opentelemetry-sdk>=1.24,<2.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.24,<2.0",
+]
+
 [tool.setuptools]
 include-package-data = false
 

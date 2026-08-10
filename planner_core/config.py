@@ -1,8 +1,8 @@
 from functools import lru_cache
 from typing import Literal
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -342,6 +342,19 @@ class Settings(BaseSettings):
     competition_mode: bool = Field(default=False, validation_alias="COMPETITION_MODE")
     enable_experiment_dashboard: bool = Field(default=False, validation_alias="ENABLE_EXPERIMENT_DASHBOARD")
     enable_agent_trace: bool = Field(default=False, validation_alias="ENABLE_AGENT_TRACE")
+    agent_tracing_enabled: bool = Field(
+        default=False,
+        validation_alias="AGENT_TRACING_ENABLED",
+    )
+    agent_trace_exporter: Literal["noop", "otlp"] = Field(
+        default="noop",
+        validation_alias="AGENT_TRACE_EXPORTER",
+    )
+    otel_exporter_otlp_endpoint: str | None = Field(
+        default=None,
+        max_length=512,
+        validation_alias="OTEL_EXPORTER_OTLP_ENDPOINT",
+    )
     enable_survey_module: bool = Field(default=False, validation_alias="ENABLE_SURVEY_MODULE")
     enable_competition_demo_data: bool = Field(default=False, validation_alias="ENABLE_COMPETITION_DEMO_DATA")
 
@@ -351,6 +364,23 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @field_validator("otel_exporter_otlp_endpoint")
+    @classmethod
+    def validate_otel_endpoint(cls, value: str | None) -> str | None:
+        if value in (None, ""):
+            return None
+        parsed = urlparse(value)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("OTLP endpoint must be an http(s) URL without credentials or query data")
+        return value.rstrip("/")
 
     @property
     def database_url(self) -> str:

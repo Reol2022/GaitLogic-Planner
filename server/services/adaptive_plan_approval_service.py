@@ -80,6 +80,23 @@ class AdaptivePlanApprovalService:
 
     def approve(self, db: Session, *, user_id: int, proposal_id: int) -> AdaptiveApprovalResult:
         trace = self.tracer.start_trace()
+        with self.tracer.span(
+            trace,
+            component="approval",
+            operation="approve_proposal",
+            metadata={"proposal_id": proposal_id, "operation_type": "hitl_approval"},
+            root=True,
+        ):
+            return self._approve(db, user_id=user_id, proposal_id=proposal_id, trace=trace)
+
+    def _approve(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        proposal_id: int,
+        trace,
+    ) -> AdaptiveApprovalResult:
         try:
             with self.tracer.span(
                 trace,
@@ -172,10 +189,16 @@ class AdaptivePlanApprovalService:
                 before_snapshot_json=before,
                 after_snapshot_json=after,
             )
-            db.add(version)
-            db.flush()
-            record.status = "applied"
-            record.applied_result_json = {"version_id": version.id, "before": before, "after": after}
+            with self.tracer.span(
+                trace,
+                component="versioning",
+                operation="create_plan_version",
+                metadata={"operation_type": "plan_versioning"},
+            ):
+                db.add(version)
+                db.flush()
+                record.status = "applied"
+                record.applied_result_json = {"version_id": version.id, "before": before, "after": after}
             with self.tracer.span(trace, "transaction"):
                 db.commit()
             return AdaptiveApprovalResult(

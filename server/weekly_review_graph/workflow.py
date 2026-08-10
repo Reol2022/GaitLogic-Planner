@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from langgraph.graph import END, START, StateGraph
 
 from server.weekly_review_graph.nodes import WeeklyReviewNodes
@@ -10,6 +12,36 @@ from server.weekly_review_graph.ports import (
 )
 from server.weekly_review_graph.schemas import WeeklyReviewGraphStatus, WeeklyReviewState
 from server.observability.tracing import NOOP_TRACER, SafeTracer, TraceHandle
+
+
+class _TracedWeeklyReviewGraph:
+    """Keep the root span open across every synchronous LangGraph node."""
+
+    def __init__(self, graph: Any, tracer: SafeTracer) -> None:
+        self._graph = graph
+        self._tracer = tracer
+
+    def invoke(self, raw: WeeklyReviewState | dict, *args: Any, **kwargs: Any):
+        state = raw if isinstance(raw, WeeklyReviewState) else WeeklyReviewState.model_validate(raw)
+        if state.trace_context.get("trace_id") and state.trace_context.get("root_span_id"):
+            return self._graph.invoke(raw, *args, **kwargs)
+        handle = self._tracer.start_trace()
+        values = state.model_dump(mode="python")
+        values["trace_context"] = {
+            "trace_id": handle.trace_id,
+            "root_span_id": handle.root_span_id,
+        }
+        with self._tracer.span(
+            handle,
+            component="langgraph",
+            operation="weekly_review",
+            metadata={"operation_type": "weekly_review_graph"},
+            root=True,
+        ):
+            return self._graph.invoke(values, *args, **kwargs)
+
+    def get_graph(self, *args: Any, **kwargs: Any):
+        return self._graph.get_graph(*args, **kwargs)
 
 
 def _after_validation(state: WeeklyReviewState | dict) -> str:
@@ -39,7 +71,15 @@ def build_weekly_review_graph(
                 if values.get("trace_id") and values.get("root_span_id")
                 else tracer.start_trace()
             )
-            with tracer.span(handle, name):
+            is_root = name == "weekly_facts" and not values.get("root_span_id")
+            with tracer.span(
+                handle,
+                name,
+                metadata={"graph_node": name},
+                root=is_root,
+            ) as span:
+                if name == "fallback":
+                    span.mark_fallback("WEEKLY_REVIEW_VALIDATION_FALLBACK")
                 result = function(raw)
             if name == "weekly_facts":
                 result["trace_context"] = {
@@ -72,4 +112,4 @@ def build_weekly_review_graph(
     )
     graph.add_edge("fallback_weekly_review", "finalize_weekly_review")
     graph.add_edge("finalize_weekly_review", END)
-    return graph.compile()
+    return _TracedWeeklyReviewGraph(graph.compile(), tracer)
