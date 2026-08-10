@@ -40,6 +40,7 @@ class ProposalCandidateChange(ProposalModel):
 class PlanAdjustmentChange(ProposalModel):
     date: date
     plan_id: int = Field(gt=0)
+    base_plan_version: int = Field(ge=1)
     action: PlanAdjustmentAction
     before: PlanValue
     after: PlanValue
@@ -76,3 +77,4 @@ class TargetPlanFact(ProposalModel):
     value: PlanValue
     is_locked: bool = False
     is_completed: bool = False
+    plan_version: int = Field(default=1, ge=1)

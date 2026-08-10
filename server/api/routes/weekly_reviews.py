@@ -17,8 +17,22 @@ from server.services import readiness_assessment_service
 from server.services.training_status_service import evaluate_training_status
 from server.services.training_load_service import build_training_load_summary
 from server.services.weekly_review_stats_service import build_weekly_review_metrics, local_today
+from server.schemas.adaptive_plan import (
+    AdaptiveApprovalResult,
+    AdaptivePlanVersionList,
+    AdaptivePlanVersionRead,
+    AdaptiveProposalRead,
+    PlanRollbackRequest,
+)
+from server.services.adaptive_plan_approval_service import AdaptivePlanApprovalService
+from server.services.adaptive_plan_version_service import AdaptivePlanVersionService
+from planner_core.database.models import TrainingAdjustmentDraft
+from sqlalchemy import select
+from server.common.exceptions import NotFoundError
 
 router = APIRouter(tags=["weekly reviews"])
+adaptive_approval_service = AdaptivePlanApprovalService()
+adaptive_version_service = AdaptivePlanVersionService()
 
 
 @router.get("/weekly-reviews/summary", response_model=WeeklyReviewSummaryResponse)
@@ -120,3 +134,89 @@ def reject_adjustment_draft(
 ):
     draft = plan_adjustment_apply_service.reject_adjustment_draft(db, current_user.id, draft_id)
     return weekly_review_ai_service.get_weekly_review_detail(db, current_user.id, draft.review_report_id)
+
+
+@router.get("/adaptive-plan/proposals/{proposal_id}", response_model=AdaptiveProposalRead)
+def get_adaptive_proposal(
+    proposal_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    record = db.scalar(
+        select(TrainingAdjustmentDraft).where(
+            TrainingAdjustmentDraft.id == proposal_id,
+            TrainingAdjustmentDraft.user_id == current_user.id,
+            TrainingAdjustmentDraft.source_type == "weekly_review_v0130",
+        )
+    )
+    if record is None:
+        raise NotFoundError("Adaptive proposal not found.")
+    return AdaptiveProposalRead(
+        id=record.id,
+        week_start=record.week_start,
+        status=record.status,
+        proposal=record.adjustment_json,
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    )
+
+
+@router.post(
+    "/adaptive-plan/proposals/{proposal_id}/approve",
+    response_model=AdaptiveApprovalResult,
+)
+def approve_adaptive_proposal(
+    proposal_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    return adaptive_approval_service.approve(
+        db, user_id=current_user.id, proposal_id=proposal_id
+    )
+
+
+@router.post(
+    "/adaptive-plan/proposals/{proposal_id}/reject",
+    response_model=AdaptiveApprovalResult,
+)
+def reject_adaptive_proposal(
+    proposal_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    return adaptive_approval_service.reject(
+        db, user_id=current_user.id, proposal_id=proposal_id
+    )
+
+
+@router.get("/adaptive-plan/versions", response_model=AdaptivePlanVersionList)
+def list_adaptive_plan_versions(
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    return AdaptivePlanVersionList(
+        items=[
+            AdaptivePlanVersionRead.model_validate(item)
+            for item in adaptive_version_service.list_versions(db, user_id=current_user.id)
+        ]
+    )
+
+
+@router.post(
+    "/adaptive-plan/versions/{version_id}/rollback",
+    response_model=AdaptivePlanVersionRead,
+)
+def rollback_adaptive_plan_version(
+    version_id: int,
+    payload: PlanRollbackRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    return AdaptivePlanVersionRead.model_validate(
+        adaptive_version_service.rollback(
+            db,
+            user_id=current_user.id,
+            version_id=version_id,
+            reason=payload.reason,
+        )
+    )

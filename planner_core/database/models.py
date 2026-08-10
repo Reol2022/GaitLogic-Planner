@@ -14,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -2098,6 +2099,83 @@ class TrainingAdjustmentDraft(IdMixin, TimestampMixin, Base):
     user: Mapped[UserAccount] = relationship(back_populates="training_adjustment_drafts")
     source_evaluation: Mapped[TrainingRuleEvaluation | None] = relationship()
     cycle: Mapped[TrainingCycle | None] = relationship()
+
+
+class AdaptivePlanVersionRecord(IdMixin, TimestampMixin, Base):
+    __tablename__ = "adaptive_plan_versions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "version_number", name="uq_adaptive_plan_version_user_number"),
+        UniqueConstraint("proposal_id", name="uq_adaptive_plan_version_proposal"),
+        Index("ix_adaptive_plan_versions_user_created", "user_id", "created_at"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    proposal_id: Mapped[int | None] = mapped_column(
+        ForeignKey("training_adjustment_drafts.id", ondelete="SET NULL"), nullable=True
+    )
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    previous_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("adaptive_plan_versions.id", ondelete="SET NULL"), nullable=True
+    )
+    rollback_of_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("adaptive_plan_versions.id", ondelete="SET NULL"), nullable=True
+    )
+    reason: Mapped[str] = mapped_column(String(1000), nullable=False)
+    actor_user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False
+    )
+    source: Mapped[str] = mapped_column(String(64), nullable=False)
+    before_snapshot_json: Mapped[list] = mapped_column(JSON, nullable=False)
+    after_snapshot_json: Mapped[list] = mapped_column(JSON, nullable=False)
+
+
+class AdaptiveWorkflowCheckpointRecord(IdMixin, TimestampMixin, Base):
+    __tablename__ = "adaptive_workflow_checkpoints"
+    __table_args__ = (
+        UniqueConstraint(
+            "thread_id", "checkpoint_namespace", "checkpoint_id",
+            name="uq_adaptive_checkpoint_thread_namespace_id",
+        ),
+        Index("ix_adaptive_checkpoint_thread_created", "thread_id", "created_at"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    thread_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    checkpoint_namespace: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    checkpoint_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    parent_checkpoint_id: Mapped[str | None] = mapped_column(String(128))
+    checkpoint_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    checkpoint_blob: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    metadata_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_blob: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+
+
+class AdaptiveWorkflowCheckpointWriteRecord(IdMixin, Base):
+    __tablename__ = "adaptive_workflow_checkpoint_writes"
+    __table_args__ = (
+        UniqueConstraint(
+            "thread_id", "checkpoint_namespace", "checkpoint_id", "task_id", "task_path", "write_index",
+            name="uq_adaptive_checkpoint_write_identity",
+        ),
+        Index(
+            "ix_adaptive_checkpoint_writes_lookup",
+            "thread_id", "checkpoint_namespace", "checkpoint_id",
+        ),
+        MYSQL_TABLE_ARGS,
+    )
+
+    thread_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    checkpoint_namespace: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    checkpoint_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    task_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    task_path: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    write_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    channel: Mapped[str] = mapped_column(String(128), nullable=False)
+    value_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    value_blob: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
 
 
 class ExcelImportJob(IdMixin, TimestampMixin, Base):

@@ -60,6 +60,7 @@ class AdaptivePlanProposalService:
                 PlanAdjustmentChange(
                     date=target.workout_date,
                     plan_id=target.plan_id,
+                    base_plan_version=target.plan_version,
                     action=candidate.action,
                     before=target.value,
                     after=candidate.after,

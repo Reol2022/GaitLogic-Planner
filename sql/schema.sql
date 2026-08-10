@@ -1455,3 +1455,61 @@ CREATE TABLE IF NOT EXISTS `runner_state_snapshot_trigger_receipt` (
   CONSTRAINT `fk_runner_state_receipt_sync_job_id`
     FOREIGN KEY (`sync_job_id`) REFERENCES `external_sync_job` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `adaptive_plan_versions` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `proposal_id` BIGINT NULL,
+  `version_number` INT NOT NULL,
+  `previous_version_id` BIGINT NULL,
+  `rollback_of_version_id` BIGINT NULL,
+  `reason` VARCHAR(1000) NOT NULL,
+  `actor_user_id` BIGINT NOT NULL,
+  `source` VARCHAR(64) NOT NULL,
+  `before_snapshot_json` JSON NOT NULL,
+  `after_snapshot_json` JSON NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_adaptive_plan_version_user_number` (`user_id`, `version_number`),
+  UNIQUE KEY `uq_adaptive_plan_version_proposal` (`proposal_id`),
+  KEY `ix_adaptive_plan_versions_user_created` (`user_id`, `created_at`),
+  CONSTRAINT `fk_adaptive_plan_version_user` FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_adaptive_plan_version_actor` FOREIGN KEY (`actor_user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_adaptive_plan_version_proposal` FOREIGN KEY (`proposal_id`) REFERENCES `training_adjustment_drafts` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_adaptive_plan_version_previous` FOREIGN KEY (`previous_version_id`) REFERENCES `adaptive_plan_versions` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_adaptive_plan_version_rollback` FOREIGN KEY (`rollback_of_version_id`) REFERENCES `adaptive_plan_versions` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `adaptive_workflow_checkpoints` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `thread_id` VARCHAR(128) NOT NULL,
+  `checkpoint_namespace` VARCHAR(128) NOT NULL DEFAULT '',
+  `checkpoint_id` VARCHAR(128) NOT NULL,
+  `parent_checkpoint_id` VARCHAR(128) NULL,
+  `checkpoint_type` VARCHAR(64) NOT NULL,
+  `checkpoint_blob` LONGBLOB NOT NULL,
+  `metadata_type` VARCHAR(64) NOT NULL,
+  `metadata_blob` LONGBLOB NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_adaptive_checkpoint_thread_namespace_id` (`thread_id`, `checkpoint_namespace`, `checkpoint_id`),
+  KEY `ix_adaptive_checkpoint_thread_created` (`thread_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `adaptive_workflow_checkpoint_writes` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `thread_id` VARCHAR(128) NOT NULL,
+  `checkpoint_namespace` VARCHAR(128) NOT NULL DEFAULT '',
+  `checkpoint_id` VARCHAR(128) NOT NULL,
+  `task_id` VARCHAR(128) NOT NULL,
+  `task_path` VARCHAR(512) NOT NULL DEFAULT '',
+  `write_index` INT NOT NULL,
+  `channel` VARCHAR(128) NOT NULL,
+  `value_type` VARCHAR(64) NOT NULL,
+  `value_blob` LONGBLOB NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_adaptive_checkpoint_write_identity` (`thread_id`, `checkpoint_namespace`, `checkpoint_id`, `task_id`, `task_path`, `write_index`),
+  KEY `ix_adaptive_checkpoint_writes_lookup` (`thread_id`, `checkpoint_namespace`, `checkpoint_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
