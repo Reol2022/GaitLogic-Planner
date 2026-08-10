@@ -9,7 +9,7 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.12.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.13.0-1976d2?style=for-the-badge" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?style=for-the-badge&logo=vue.js&logoColor=white" />
@@ -97,6 +97,17 @@ GaitLogic Coach Agent combines structured training facts, deterministic rules, a
 ![AI Coach](docs/assets/coach-agent/coach-overview.png)
 
 ![Today Recommendation](docs/assets/coach-agent/coach-today-recommendation.png)
+
+### v0.13.0 Weekly Review and Adaptive Coaching Loop
+
+v0.13.0 adds deterministic Weekly Facts, a LangGraph weekly-review workflow, training-knowledge references, inspectable plan-adjustment Proposals, human approval/rejection, persistent checkpoints, plan versioning, and controlled rollback. The model explains and proposes within bounded rules; the server owns facts and validation, and only an authenticated human approval can authorize a transactional plan update.
+
+```text
+Training Plan -> Workout Logs -> Weekly Facts -> Rules -> LangGraph Review
+              -> Proposal Diff -> Human Approval -> New Plan Version -> Audit/Rollback
+```
+
+The UI is available at `/adaptive-weekly-review`. See the [public fictional evaluation](docs/weekly-review/evaluation/weekly-adaptive-eval-v1.md) and the [v0.13.0 learning map](docs/learning/v0.13.0/01-v0.13.0-architecture.md). This capability is not medical advice and does not grant a general database write tool to the LLM.
 
 ### v0.12.0 Training Knowledge RAG and Trusted References
 

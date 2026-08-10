@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.12.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.13.0-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -101,6 +101,17 @@ GaitLogic Coach Agent 将结构化训练事实、确定性训练规则和大语�
 ![AI 教练页面](docs/assets/coach-agent/coach-overview.png)
 
 ![今日训练建议](docs/assets/coach-agent/coach-today-recommendation.png)
+
+### v0.13.0 周复盘与自适应训练闭环
+
+v0.13.0 新增确定性 Weekly Facts、LangGraph 周复盘、训练知识引用、可审查的计划调整 Proposal、人工批准/拒绝、持久 Checkpoint、计划版本与受控回滚。模型只负责解释和受限候选生成；训练事实与规则由服务端确定，计划只有在当前用户明确批准并通过服务端重新校验后才会写入。
+
+```text
+训练计划 -> 训练日志 -> Weekly Facts -> Rules -> LangGraph Review
+         -> Proposal Diff -> Human Approval -> New Plan Version -> Audit/Rollback
+```
+
+前端入口为 `/adaptive-weekly-review`。公开虚构评测与复现命令见 [Weekly/Adaptive Evaluation](docs/weekly-review/evaluation/weekly-adaptive-eval-v1.md)，实现复习见 [v0.13.0 Learning Docs](docs/learning/v0.13.0/01-v0.13.0-architecture.md)。本能力不构成医疗诊断，也不会把通用数据库写权限交给 LLM。
 
 ### v0.12.0 训练知识 RAG 与可信引用
 

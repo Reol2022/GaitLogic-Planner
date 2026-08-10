@@ -720,6 +720,14 @@ v0.11.0 不支持 RAG、Weekly Review Agent、写工具、长期记忆、Streami
 
 ---
 
+## 18. v0.13.0 Weekly Review 与 Adaptive Coaching
+
+部署 v0.13.0 前先备份数据库并在隔离环境验证 `scripts/upgrade_v0130_adaptive_plan.py` 的 upgrade/downgrade。该脚本只新增计划版本、LangGraph checkpoint 和 pending write 相关结构，不扫描或回填用户训练数据。升级后执行 Python 编译、完整 pytest、前端 typecheck/test/build 与 `python scripts/evaluate_weekly_adaptive.py`。
+
+生产流程必须保持：Nginx 只代理 `/api/`，FastAPI 从认证上下文注入用户，LangGraph Checkpoint 使用 MySQL 持久化，LLM 无数据库写工具。计划批准由 `AdaptivePlanApprovalService` 在单事务内执行所有权、base version、锁定状态和规则复核；Trace Sink 故障不得影响业务事务。
+
+回滚代码前先停止新审批流量。数据库 downgrade 仅在确认没有需要保留的 v0.13 checkpoint/版本记录后执行；优先关闭自适应入口并回滚应用代码，不得直接删除历史版本证据。MySQL 5.7 与 8 应分别验证 upgrade、审批幂等、rollback 和 downgrade。
+
 ## 17. v0.12.0 Training Knowledge RAG
 
 v0.12.0 没有数据库迁移。生产仍使用 Nginx 托管前端静态文件，并将 `/api/` 转发至由 Gunicorn、Uvicorn Worker 和 Supervisor 托管的 FastAPI 进程；仓库没有正式 Docker Compose 部署。默认保持知识检索关闭，只有真实索引构建、校验和 Readiness 全部通过后才启用。
