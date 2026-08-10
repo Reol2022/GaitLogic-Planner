@@ -13,6 +13,7 @@ from server.knowledge_retrieval.embeddings.deterministic import (
     DeterministicEmbeddingProvider,
 )
 from server.knowledge_retrieval.index_service import KnowledgeIndexService
+from server.knowledge_retrieval.corpus_service import KnowledgeCorpusService
 from server.knowledge_retrieval.readiness import (
     CoachRagReadinessService,
     ReadinessExitCode,
@@ -55,6 +56,11 @@ def _ready_repository(tmp_path: Path) -> tuple[Settings, Path]:
         "var/knowledge_indexes/\n",
         encoding="utf-8",
     )
+    # Build the derived manifest from the copied fixture. Git may normalize
+    # Markdown line endings differently across Windows and Linux checkouts,
+    # so copying a manifest generated in another checkout is not a stable
+    # representation of this temporary repository.
+    KnowledgeCorpusService(repository_root=tmp_path).build(force=True)
     result = KnowledgeIndexService(repository_root=tmp_path).build(
         ConfiguredEmbeddingProvider(dimensions=32)
     )
