@@ -14,6 +14,7 @@ from planner_core.database.models import (
 from planner_core.enums import WorkoutMainTypeNormalized, WorkoutStatusNormalized
 from server.common.exceptions import BadRequestError, NotFoundError
 from server.schemas.adaptive_plan import AdaptiveApprovalResult
+from server.observability.tracing import NOOP_TRACER, SafeTracer
 
 
 COMPLETED = {
@@ -36,6 +37,9 @@ def _snapshot(workout: PlannedWorkout) -> dict:
 
 
 class AdaptivePlanApprovalService:
+    def __init__(self, tracer: SafeTracer | None = None) -> None:
+        self.tracer = tracer or NOOP_TRACER
+
     def persist_proposal(
         self,
         db: Session,
@@ -75,16 +79,22 @@ class AdaptivePlanApprovalService:
         return record
 
     def approve(self, db: Session, *, user_id: int, proposal_id: int) -> AdaptiveApprovalResult:
+        trace = self.tracer.start_trace()
         try:
-            record = db.scalar(
-                select(TrainingAdjustmentDraft)
-                .where(
-                    TrainingAdjustmentDraft.id == proposal_id,
-                    TrainingAdjustmentDraft.user_id == user_id,
-                    TrainingAdjustmentDraft.source_type == "weekly_review_v0130",
+            with self.tracer.span(
+                trace,
+                "proposal.validate",
+                attributes={"proposal_id": proposal_id},
+            ):
+                record = db.scalar(
+                    select(TrainingAdjustmentDraft)
+                    .where(
+                        TrainingAdjustmentDraft.id == proposal_id,
+                        TrainingAdjustmentDraft.user_id == user_id,
+                        TrainingAdjustmentDraft.source_type == "weekly_review_v0130",
+                    )
+                    .with_for_update()
                 )
-                .with_for_update()
-            )
             if record is None:
                 raise NotFoundError("Adaptive proposal not found.")
             if record.status == "applied":
@@ -120,24 +130,29 @@ class AdaptivePlanApprovalService:
                 raise BadRequestError("Proposal contains a plan outside the authenticated user scope.")
             before: list[dict] = []
             after: list[dict] = []
-            for change in proposal.changes:
-                workout = by_id[change.plan_id]
-                if workout.plan_version != change.base_plan_version:
-                    raise BadRequestError("Plan changed after proposal generation; approval is stale.")
-                if workout.is_locked or (workout.workout_log and workout.workout_log.status_normalized in COMPLETED):
-                    raise BadRequestError("Locked or completed plans cannot be changed.")
-                before.append(_snapshot(workout))
-                workout.planned_content = change.after.content
-                workout.planned_distance_km = (
-                    Decimal(str(change.after.distance_km))
-                    if change.after.distance_km is not None
-                    else None
-                )
-                workout.main_type_normalized = WorkoutMainTypeNormalized(change.after.main_type)
-                workout.main_type_raw = change.after.main_type
-                workout.target_pace_text = change.after.target_pace_text
-                workout.plan_version += 1
-                after.append(_snapshot(workout))
+            with self.tracer.span(
+                trace,
+                "plan.apply",
+                attributes={"plan_count": len(proposal.changes)},
+            ):
+                for change in proposal.changes:
+                    workout = by_id[change.plan_id]
+                    if workout.plan_version != change.base_plan_version:
+                        raise BadRequestError("Plan changed after proposal generation; approval is stale.")
+                    if workout.is_locked or (workout.workout_log and workout.workout_log.status_normalized in COMPLETED):
+                        raise BadRequestError("Locked or completed plans cannot be changed.")
+                    before.append(_snapshot(workout))
+                    workout.planned_content = change.after.content
+                    workout.planned_distance_km = (
+                        Decimal(str(change.after.distance_km))
+                        if change.after.distance_km is not None
+                        else None
+                    )
+                    workout.main_type_normalized = WorkoutMainTypeNormalized(change.after.main_type)
+                    workout.main_type_raw = change.after.main_type
+                    workout.target_pace_text = change.after.target_pace_text
+                    workout.plan_version += 1
+                    after.append(_snapshot(workout))
             previous = db.scalar(
                 select(AdaptivePlanVersionRecord)
                 .where(AdaptivePlanVersionRecord.user_id == user_id)
@@ -161,7 +176,8 @@ class AdaptivePlanApprovalService:
             db.flush()
             record.status = "applied"
             record.applied_result_json = {"version_id": version.id, "before": before, "after": after}
-            db.commit()
+            with self.tracer.span(trace, "transaction"):
+                db.commit()
             return AdaptiveApprovalResult(
                 proposal_id=record.id,
                 status="applied",

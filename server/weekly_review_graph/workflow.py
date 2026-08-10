@@ -9,6 +9,7 @@ from server.weekly_review_graph.ports import (
     WeeklyReviewGenerator,
 )
 from server.weekly_review_graph.schemas import WeeklyReviewGraphStatus, WeeklyReviewState
+from server.observability.tracing import NOOP_TRACER, SafeTracer, TraceHandle
 
 
 def _after_validation(state: WeeklyReviewState | dict) -> str:
@@ -21,20 +22,41 @@ def build_weekly_review_graph(
     facts_loader: WeeklyFactsLoader,
     generator: WeeklyReviewGenerator,
     knowledge_retriever: WeeklyKnowledgeRetriever | None = None,
+    tracer: SafeTracer | None = None,
 ):
+    tracer = tracer or NOOP_TRACER
     nodes = WeeklyReviewNodes(
         facts_loader=facts_loader,
         generator=generator,
         knowledge_retriever=knowledge_retriever,
     )
+    def traced(name, function):
+        def run(raw):
+            state = raw if isinstance(raw, WeeklyReviewState) else WeeklyReviewState.model_validate(raw)
+            values = state.trace_context
+            handle = (
+                TraceHandle(trace_id=values["trace_id"], root_span_id=values["root_span_id"])
+                if values.get("trace_id") and values.get("root_span_id")
+                else tracer.start_trace()
+            )
+            with tracer.span(handle, name):
+                result = function(raw)
+            if name == "weekly_facts":
+                result["trace_context"] = {
+                    "trace_id": handle.trace_id,
+                    "root_span_id": handle.root_span_id,
+                }
+            return result
+        return run
+
     graph = StateGraph(WeeklyReviewState)
-    graph.add_node("load_weekly_facts", nodes.load_weekly_facts)
-    graph.add_node("evaluate_weekly_rules", nodes.evaluate_weekly_rules)
-    graph.add_node("retrieve_training_knowledge", nodes.retrieve_training_knowledge)
-    graph.add_node("generate_weekly_review", nodes.generate_weekly_review)
-    graph.add_node("validate_weekly_review", nodes.validate_weekly_review)
-    graph.add_node("fallback_weekly_review", nodes.fallback_weekly_review)
-    graph.add_node("finalize_weekly_review", nodes.finalize_weekly_review)
+    graph.add_node("load_weekly_facts", traced("weekly_facts", nodes.load_weekly_facts))
+    graph.add_node("evaluate_weekly_rules", traced("rules.evaluate", nodes.evaluate_weekly_rules))
+    graph.add_node("retrieve_training_knowledge", traced("rag.retrieve", nodes.retrieve_training_knowledge))
+    graph.add_node("generate_weekly_review", traced("llm.generate", nodes.generate_weekly_review))
+    graph.add_node("validate_weekly_review", traced("validator", nodes.validate_weekly_review))
+    graph.add_node("fallback_weekly_review", traced("fallback", nodes.fallback_weekly_review))
+    graph.add_node("finalize_weekly_review", traced("finalize", nodes.finalize_weekly_review))
     graph.add_edge(START, "load_weekly_facts")
     graph.add_edge("load_weekly_facts", "evaluate_weekly_rules")
     graph.add_edge("evaluate_weekly_rules", "retrieve_training_knowledge")
