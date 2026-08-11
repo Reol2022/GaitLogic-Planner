@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Protocol
 
 from pydantic import Field, field_validator
 
@@ -24,6 +24,9 @@ from server.knowledge_retrieval.retrieval_schemas import (
     KnowledgeRetrievalRequest,
 )
 from server.knowledge_retrieval.retriever import TrainingKnowledgeRetriever
+from server.knowledge_retrieval.sparse.index_service import Bm25IndexService
+from server.knowledge_retrieval.sparse.retriever import TrainingKnowledgeBm25Retriever
+from server.knowledge_retrieval.hybrid.retriever import HybridKnowledgeRetriever
 from server.knowledge_retrieval.schemas import ID_PATTERN
 from server.observability.tracing import active_trace_handle, active_tracer
 
@@ -92,7 +95,11 @@ class RetrieveTrainingKnowledgeOutput(AgentContractModel):
     limitations: list[str] = Field(default_factory=list, max_length=20)
 
 
-KnowledgeRetrieverFactory = Callable[[], TrainingKnowledgeRetriever]
+class KnowledgeRetriever(Protocol):
+    def retrieve(self, request: KnowledgeRetrievalRequest): ...
+
+
+KnowledgeRetrieverFactory = Callable[[], KnowledgeRetriever]
 
 
 class RetrieveTrainingKnowledgeTool(AgentTool):
@@ -114,9 +121,11 @@ class RetrieveTrainingKnowledgeTool(AgentTool):
         retriever_factory: KnowledgeRetrieverFactory,
         *,
         maximum_top_k: int = 4,
+        vector_store: str = "exact",
     ) -> None:
         self.retriever_factory = retriever_factory
         self.maximum_top_k = maximum_top_k
+        self.vector_store = vector_store
 
     def execute(
         self,
@@ -204,6 +213,8 @@ class RetrieveTrainingKnowledgeTool(AgentTool):
             span.add_metadata(
                 knowledge_retrieval_status=output.query_status,
                 retrieval_result_count=len(output.results),
+                retrieval_strategy=(self.vector_store if self.vector_store in {"bm25", "hybrid"} else "dense"),
+                vector_store=(self.vector_store if self.vector_store not in {"bm25", "hybrid"} else ""),
             )
             if reliability is not None:
                 span.add_metadata(
@@ -222,20 +233,48 @@ def build_configured_knowledge_tool(
     if not settings.coach_agent_knowledge_retrieval_enabled:
         return None
 
-    def factory() -> TrainingKnowledgeRetriever:
+    def dense() -> TrainingKnowledgeRetriever:
         if not settings.coach_agent_knowledge_index_id:
             raise ValueError("Coach knowledge index ID is not configured")
         service = KnowledgeIndexService(
-            index_root=Path(settings.knowledge_index_runtime_directory)
+            index_root=Path(settings.knowledge_index_runtime_directory),
+            vector_store=settings.knowledge_vector_store,
+            qdrant_url=settings.qdrant_url,
+            qdrant_api_key=settings.qdrant_api_key,
+            qdrant_collection_prefix=settings.qdrant_collection_prefix,
         )
-        provider = OpenAICompatibleEmbeddingProvider(settings)
         return TrainingKnowledgeRetriever(
-            index_service=service,
-            provider=provider,
+            index_service=service, provider=OpenAICompatibleEmbeddingProvider(settings),
             index_id=settings.coach_agent_knowledge_index_id,
+            vector_store=settings.knowledge_vector_store, qdrant_url=settings.qdrant_url,
+            qdrant_api_key=settings.qdrant_api_key, qdrant_collection_prefix=settings.qdrant_collection_prefix,
         )
+
+    def bm25() -> TrainingKnowledgeBm25Retriever:
+        if not settings.coach_agent_knowledge_bm25_index_id:
+            raise ValueError("Coach BM25 knowledge index ID is not configured")
+        return TrainingKnowledgeBm25Retriever(
+            index_service=Bm25IndexService(index_root=Path(settings.knowledge_bm25_index_runtime_directory)),
+            index_id=settings.coach_agent_knowledge_bm25_index_id,
+        )
+
+    if settings.knowledge_retrieval_strategy == "hybrid":
+        def factory() -> HybridKnowledgeRetriever:
+            return HybridKnowledgeRetriever(
+                dense_retriever=dense(), bm25_retriever=bm25(),
+                dense_candidate_depth=settings.knowledge_hybrid_dense_candidates,
+                bm25_candidate_depth=settings.knowledge_hybrid_bm25_candidates,
+            )
+        strategy_name = "hybrid"
+    elif settings.knowledge_retrieval_strategy == "bm25":
+        factory = bm25
+        strategy_name = "bm25"
+    else:
+        factory = dense
+        strategy_name = settings.knowledge_vector_store
 
     return RetrieveTrainingKnowledgeTool(
         factory,
         maximum_top_k=settings.coach_agent_knowledge_top_k,
+        vector_store=strategy_name,
     )

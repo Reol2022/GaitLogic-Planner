@@ -1,0 +1,1827 @@
+{
+  "bm25": {
+    "case_count": 60,
+    "failure_case_ids": [
+      "ret_multi_008",
+      "ret_multi_011",
+      "ret_hard_001",
+      "ret_hard_002",
+      "ret_hard_003",
+      "ret_hard_004",
+      "ret_hard_005",
+      "ret_hard_008"
+    ],
+    "index_id": "bm25-0e67bfe0fcd1eb4ba4938b8b",
+    "metrics": {
+      "abstention_precision": 1.0,
+      "abstention_recall": 1.0,
+      "empty_result_accuracy": 1.0,
+      "filter_violation_rate": 0.0,
+      "forbidden_document_rate": 0.1,
+      "hit_at_1": 0.88,
+      "hit_at_3": 0.98,
+      "hit_at_4": 0.98,
+      "mrr_at_4": 0.923333,
+      "ndcg_at_4": 0.910589,
+      "recall_at_1": 0.78,
+      "recall_at_3": 0.946667,
+      "recall_at_4": 0.956667
+    }
+  },
+  "candidate_depth": {
+    "bm25": 8,
+    "dense": 8
+  },
+  "comparison": {
+    "all_fail": [
+      "ret_multi_008",
+      "ret_multi_011",
+      "ret_hard_001",
+      "ret_hard_002",
+      "ret_hard_004"
+    ],
+    "hybrid_recovered_vs_bm25": [
+      "ret_hard_003",
+      "ret_hard_005"
+    ],
+    "hybrid_recovered_vs_dense": [
+      "ret_single_011",
+      "ret_multi_002",
+      "ret_multi_004",
+      "ret_multi_007",
+      "ret_multi_009",
+      "ret_multi_012",
+      "ret_hard_005",
+      "ret_hard_007"
+    ],
+    "hybrid_regressed_vs_bm25": [
+      "ret_single_001",
+      "ret_single_007",
+      "ret_single_015",
+      "ret_multi_003",
+      "ret_multi_006",
+      "ret_multi_010",
+      "ret_hard_006"
+    ],
+    "hybrid_regressed_vs_dense": [
+      "ret_single_015",
+      "ret_multi_010",
+      "ret_hard_006",
+      "ret_hard_008"
+    ]
+  },
+  "comparison_version": "retrieval-hybrid-comparison-1.0.0",
+  "dataset_version": "retrieval-cases-v1",
+  "dense": {
+    "case_count": 60,
+    "failure_case_ids": [
+      "ret_single_001",
+      "ret_single_007",
+      "ret_single_011",
+      "ret_multi_002",
+      "ret_multi_003",
+      "ret_multi_004",
+      "ret_multi_006",
+      "ret_multi_007",
+      "ret_multi_008",
+      "ret_multi_009",
+      "ret_multi_011",
+      "ret_multi_012",
+      "ret_hard_001",
+      "ret_hard_002",
+      "ret_hard_004",
+      "ret_hard_005",
+      "ret_hard_007"
+    ],
+    "metrics": {
+      "abstention_precision": 1.0,
+      "abstention_recall": 1.0,
+      "empty_result_accuracy": 1.0,
+      "filter_violation_rate": 0.0,
+      "forbidden_document_rate": 0.05,
+      "hit_at_1": 0.6,
+      "hit_at_3": 0.84,
+      "hit_at_4": 0.86,
+      "mrr_at_4": 0.715,
+      "ndcg_at_4": 0.69018,
+      "provider_success_rate": 1.0,
+      "recall_at_1": 0.536667,
+      "recall_at_3": 0.766667,
+      "recall_at_4": 0.786667
+    }
+  },
+  "forbidden_analysis": {
+    "bm25_cases": [
+      "ret_hard_001",
+      "ret_hard_002",
+      "ret_hard_003",
+      "ret_hard_004",
+      "ret_hard_005",
+      "ret_hard_008"
+    ],
+    "dense_cases": [
+      "ret_hard_001",
+      "ret_hard_004",
+      "ret_hard_005"
+    ],
+    "hybrid_cases": [
+      "ret_hard_001",
+      "ret_hard_002",
+      "ret_hard_004",
+      "ret_hard_006",
+      "ret_hard_008"
+    ],
+    "promoted_by_fusion": [
+      "ret_hard_006"
+    ],
+    "suppressed_from_bm25": [
+      "ret_hard_003",
+      "ret_hard_005"
+    ],
+    "suppressed_from_dense": [
+      "ret_hard_005"
+    ]
+  },
+  "hybrid_cases": [
+    {
+      "case_id": "ret_single_001",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 1,
+          "score": 0.37550354192564706
+        },
+        {
+          "chunk_id": "threshold-session-placement#decision-conditions#003",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.33705560746056673
+        },
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 3,
+          "score": 0.34015619605339564
+        },
+        {
+          "chunk_id": "long-run-placement#decision-conditions#003",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.2905643434731323
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_002",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#recommended-strategies#004",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 1,
+          "score": 0.31022625636940854
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#applicable-scenarios#001",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 2,
+          "score": 0.26257171840116206
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#decision-conditions#003",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 3,
+          "score": 0.12024016587437464
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.28247584383999513
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_003",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.42256677349440774
+        },
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.38072667963096146
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.27312096507225686
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 4,
+          "score": 0.22214645312165626
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_004",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "progressive-volume-adjustment#decision-conditions#003",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 1,
+          "score": 0.2714509249597501
+        },
+        {
+          "chunk_id": "intensity-density-management#recommended-strategies#004",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.097951807522414
+        },
+        {
+          "chunk_id": "intensity-density-management#cautions#005",
+          "document_id": "intensity-density-management",
+          "rank": 3,
+          "score": 0.19071849884640185
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.09132293175248472
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_005",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "interval-recovery-design#core-principles#002",
+          "document_id": "interval-recovery-design",
+          "rank": 1,
+          "score": 0.468829292353526
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.4411503055031279
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.43685101083580147
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.5289087964545186
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_006",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "interval-recovery-design#applicable-scenarios#001",
+          "document_id": "interval-recovery-design",
+          "rank": 1,
+          "score": 0.09201533268972574
+        },
+        {
+          "chunk_id": "interval-recovery-design#core-principles#002",
+          "document_id": "interval-recovery-design",
+          "rank": 2,
+          "score": 0.06208205904048165
+        },
+        {
+          "chunk_id": "interval-recovery-design#cautions#005",
+          "document_id": "interval-recovery-design",
+          "rank": 3,
+          "score": -0.02043105842447377
+        },
+        {
+          "chunk_id": "interval-recovery-design#decision-conditions#003",
+          "document_id": "interval-recovery-design",
+          "rank": 4,
+          "score": -0.27826269923776803
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_007",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.3820760628264496
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.2839467627922094
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.95334499
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.3818520728625721
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_008",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 1,
+          "score": 0.477973881840022
+        },
+        {
+          "chunk_id": "long-run-placement#applicable-scenarios#001",
+          "document_id": "long-run-placement",
+          "rank": 2,
+          "score": 0.3688789794789348
+        },
+        {
+          "chunk_id": "long-run-placement#core-principles#002",
+          "document_id": "long-run-placement",
+          "rank": 3,
+          "score": 0.2719949348603576
+        },
+        {
+          "chunk_id": "long-run-placement#decision-conditions#003",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.24997289906388617
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_009",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+          "document_id": "pain-risk-boundaries",
+          "rank": 1,
+          "score": 0.5204209201029959
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#cautions#005",
+          "document_id": "pain-risk-boundaries",
+          "rank": 2,
+          "score": 0.333852666534316
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#cautions#005",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 3,
+          "score": 0.2798113233736886
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#decision-conditions#003",
+          "document_id": "pain-risk-boundaries",
+          "rank": 4,
+          "score": 0.3003224971739478
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_010",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pain-risk-boundaries#core-principles#002",
+          "document_id": "pain-risk-boundaries",
+          "rank": 1,
+          "score": 0.4310504503422108
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#decision-conditions#003",
+          "document_id": "pain-risk-boundaries",
+          "rank": 2,
+          "score": 0.3326538051778705
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+          "document_id": "pain-risk-boundaries",
+          "rank": 3,
+          "score": 0.08905575260421394
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#recommended-strategies#004",
+          "document_id": "pain-risk-boundaries",
+          "rank": 4,
+          "score": 0.09213410056187456
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_011",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 1,
+          "score": 0.27947958113735843
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 2,
+          "score": 0.1458208987122259
+        },
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.93010703
+        },
+        {
+          "chunk_id": "threshold-control-signals#recommended-strategies#004",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.24601382563641333
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_012",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "phase-transition-principles#core-principles#002",
+          "document_id": "phase-transition-principles",
+          "rank": 1,
+          "score": 0.293918237744426
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 2,
+          "score": 0.3153119325526698
+        },
+        {
+          "chunk_id": "phase-transition-principles#decision-conditions#003",
+          "document_id": "phase-transition-principles",
+          "rank": 3,
+          "score": 0.4192407368430643
+        },
+        {
+          "chunk_id": "phase-transition-principles#recommended-strategies#004",
+          "document_id": "phase-transition-principles",
+          "rank": 4,
+          "score": 0.28469639564141364
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_013",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 1,
+          "score": 0.31078981731157623
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.19771694921892247
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#recommended-strategies#004",
+          "document_id": "pre-race-taper-principles",
+          "rank": 3,
+          "score": 0.2635540019941637
+        },
+        {
+          "chunk_id": "recovery-week-principles#decision-conditions#003",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.2633273572118971
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_014",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pre-race-taper-principles#decision-conditions#003",
+          "document_id": "pre-race-taper-principles",
+          "rank": 1,
+          "score": 0.02300476224547501
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.13543564253500254
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#applicable-scenarios#001",
+          "document_id": "pre-race-taper-principles",
+          "rank": 3,
+          "score": 0.21802760721402786
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#cautions#005",
+          "document_id": "pre-race-taper-principles",
+          "rank": 4,
+          "score": 0.1823106731308343
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_015",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#core-principles#002",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.21326650380261433
+        },
+        {
+          "chunk_id": "recovery-week-principles#applicable-scenarios#001",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.1775920187740042
+        },
+        {
+          "chunk_id": "phase-transition-principles#cautions#005",
+          "document_id": "phase-transition-principles",
+          "rank": 3,
+          "score": 0.19415685056566256
+        },
+        {
+          "chunk_id": "interval-recovery-design#core-principles#002",
+          "document_id": "interval-recovery-design",
+          "rank": 4,
+          "score": 0.24945849395477795
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_016",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.35147273077584845
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 2,
+          "score": 0.22905393248103126
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 3,
+          "score": 0.25000838602908476
+        },
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.2703924601398073
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_017",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 1,
+          "score": 0.4608466974472885
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.6350123175691454
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 3,
+          "score": 0.91732534
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#recommended-strategies#004",
+          "document_id": "pre-race-taper-principles",
+          "rank": 4,
+          "score": 0.4319484314268674
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_018",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "recovery-week-principles#core-principles#002",
+          "document_id": "recovery-week-principles",
+          "rank": 1,
+          "score": 0.4719288078833975
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.38005167141808
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.3686350786909447
+        },
+        {
+          "chunk_id": "recovery-week-principles#decision-conditions#003",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.11585701427241649
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_019",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.43068669032694645
+        },
+        {
+          "chunk_id": "threshold-session-placement#core-principles#002",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.4154369032337089
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#recommended-strategies#004",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 3,
+          "score": 0.27985619524607663
+        },
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.28909989716317214
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_020",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.22747105589326366
+        },
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.3329635471141978
+        },
+        {
+          "chunk_id": "running-strength-basics#decision-conditions#003",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.11823837874327646
+        },
+        {
+          "chunk_id": "running-strength-basics#cautions#005",
+          "document_id": "running-strength-basics",
+          "rank": 4,
+          "score": 0.08274523426676428
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_021",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-control-signals#core-principles#002",
+          "document_id": "threshold-control-signals",
+          "rank": 1,
+          "score": 0.167178936122422
+        },
+        {
+          "chunk_id": "threshold-session-placement#cautions#005",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.17040932872382003
+        },
+        {
+          "chunk_id": "threshold-control-signals#cautions#005",
+          "document_id": "threshold-control-signals",
+          "rank": 3,
+          "score": 0.18974243494079188
+        },
+        {
+          "chunk_id": "intensity-density-management#cautions#005",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.14085866961763435
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_022",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 1,
+          "score": 0.3236644281729629
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.29776981099704747
+        },
+        {
+          "chunk_id": "threshold-control-signals#cautions#005",
+          "document_id": "threshold-control-signals",
+          "rank": 3,
+          "score": 0.24820096258622545
+        },
+        {
+          "chunk_id": "threshold-session-placement#core-principles#002",
+          "document_id": "threshold-session-placement",
+          "rank": 4,
+          "score": 0.14708631473118233
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_023",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.4739168935265841
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.4748697521787407
+        },
+        {
+          "chunk_id": "threshold-session-placement#recommended-strategies#004",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.93642379
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.93137901
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_024",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.4477701371697026
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 2,
+          "score": 0.3243674721199845
+        },
+        {
+          "chunk_id": "threshold-control-signals#cautions#005",
+          "document_id": "threshold-control-signals",
+          "rank": 3,
+          "score": 0.30628082510411375
+        },
+        {
+          "chunk_id": "threshold-session-placement#core-principles#002",
+          "document_id": "threshold-session-placement",
+          "rank": 4,
+          "score": 0.20367190476554278
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_025",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#applicable-scenarios#001",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 1,
+          "score": 0.28650538899636085
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#decision-conditions#003",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 2,
+          "score": 0.11918254517695484
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 3,
+          "score": -0.07822691432893976
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#recommended-strategies#004",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 4,
+          "score": 0.006476958341572131
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_026",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.04208340498972262
+        },
+        {
+          "chunk_id": "intensity-density-management#cautions#005",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.0942203048809875
+        },
+        {
+          "chunk_id": "intensity-density-management#decision-conditions#003",
+          "document_id": "intensity-density-management",
+          "rank": 3,
+          "score": 0.060279602462451516
+        },
+        {
+          "chunk_id": "intensity-density-management#recommended-strategies#004",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.03644225678752005
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_027",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 1,
+          "score": -0.03250038703863599
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#decision-conditions#003",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.07703847193876914
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#cautions#005",
+          "document_id": "pre-race-taper-principles",
+          "rank": 3,
+          "score": -0.009283918045018904
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#recommended-strategies#004",
+          "document_id": "pre-race-taper-principles",
+          "rank": 4,
+          "score": 0.044528225470828305
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_028",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.411543200808815
+        },
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.3752424507506516
+        },
+        {
+          "chunk_id": "running-strength-basics#decision-conditions#003",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.3580658548233619
+        },
+        {
+          "chunk_id": "running-strength-basics#cautions#005",
+          "document_id": "running-strength-basics",
+          "rank": 4,
+          "score": 0.13333364732005337
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_029",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 1,
+          "score": 0.3424440062500445
+        },
+        {
+          "chunk_id": "threshold-control-signals#decision-conditions#003",
+          "document_id": "threshold-control-signals",
+          "rank": 2,
+          "score": 0.27670196224957183
+        },
+        {
+          "chunk_id": "threshold-control-signals#recommended-strategies#004",
+          "document_id": "threshold-control-signals",
+          "rank": 3,
+          "score": 0.0435201318947587
+        },
+        {
+          "chunk_id": "threshold-control-signals#core-principles#002",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.1342852896108076
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_030",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 1,
+          "score": 0.248383311219767
+        },
+        {
+          "chunk_id": "long-run-placement#applicable-scenarios#001",
+          "document_id": "long-run-placement",
+          "rank": 2,
+          "score": 0.10811433933491943
+        },
+        {
+          "chunk_id": "long-run-placement#decision-conditions#003",
+          "document_id": "long-run-placement",
+          "rank": 3,
+          "score": 0.28373950195679426
+        },
+        {
+          "chunk_id": "long-run-placement#core-principles#002",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.15614960537559
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_001",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 1,
+          "score": 0.15870835441276387
+        },
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.3204178708414092
+        },
+        {
+          "chunk_id": "threshold-session-placement#cautions#005",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.94568971
+        },
+        {
+          "chunk_id": "long-run-placement#decision-conditions#003",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.22204281916014323
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_002",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 1,
+          "score": 0.3316923111633753
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.27538348841418897
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 3,
+          "score": 0.263602890570115
+        },
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.94857908
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_003",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "recovery-week-principles#core-principles#002",
+          "document_id": "recovery-week-principles",
+          "rank": 1,
+          "score": 0.3058131025851709
+        },
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.30866988576066373
+        },
+        {
+          "chunk_id": "interval-recovery-design#applicable-scenarios#001",
+          "document_id": "interval-recovery-design",
+          "rank": 3,
+          "score": 0.2920966953303543
+        },
+        {
+          "chunk_id": "phase-transition-principles#cautions#005",
+          "document_id": "phase-transition-principles",
+          "rank": 4,
+          "score": 0.3258531761518079
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_004",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "phase-transition-principles#core-principles#002",
+          "document_id": "phase-transition-principles",
+          "rank": 1,
+          "score": 0.3632181260593695
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 2,
+          "score": 0.260449071787098
+        },
+        {
+          "chunk_id": "phase-transition-principles#recommended-strategies#004",
+          "document_id": "phase-transition-principles",
+          "rank": 3,
+          "score": 0.2892052384563041
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 4,
+          "score": 0.20188391760729124
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_005",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.3645993205338349
+        },
+        {
+          "chunk_id": "threshold-session-placement#core-principles#002",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.3003809777368119
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 3,
+          "score": 0.3017655542653757
+        },
+        {
+          "chunk_id": "threshold-control-signals#cautions#005",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.314623410722776
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_006",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.37204584380254374
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.3552457030690233
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.43671783472902587
+        },
+        {
+          "chunk_id": "intensity-density-management#recommended-strategies#004",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.94682016
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_007",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "long-run-placement#core-principles#002",
+          "document_id": "long-run-placement",
+          "rank": 1,
+          "score": 0.30099957184681536
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.41288226473872297
+        },
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.94175879
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#cautions#005",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 4,
+          "score": 0.40567980107146423
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_008",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+          "document_id": "pain-risk-boundaries",
+          "rank": 1,
+          "score": 0.27987418655591406
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 2,
+          "score": 0.2519680922806312
+        },
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.3337813023528337
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#applicable-scenarios#001",
+          "document_id": "pre-race-taper-principles",
+          "rank": 4,
+          "score": 0.95710828
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_009",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 1,
+          "score": 0.33972713228933277
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.49279703997838314
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.3043004964114124
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.95124198
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_010",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 1,
+          "score": 0.309968248932697
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.3137069009997682
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 3,
+          "score": 0.93794607
+        },
+        {
+          "chunk_id": "phase-transition-principles#recommended-strategies#004",
+          "document_id": "phase-transition-principles",
+          "rank": 4,
+          "score": 0.3060077217044477
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_011",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#decision-conditions#003",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.31121715368259817
+        },
+        {
+          "chunk_id": "long-run-placement#decision-conditions#003",
+          "document_id": "long-run-placement",
+          "rank": 2,
+          "score": 0.32484803165518944
+        },
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 3,
+          "score": 0.4652026406880415
+        },
+        {
+          "chunk_id": "threshold-control-signals#core-principles#002",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.42501107921374187
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_012",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.36743735904122476
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#decision-conditions#003",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.3418408429116349
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#core-principles#002",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 3,
+          "score": 0.4123055600429818
+        },
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 4,
+          "score": 0.94167666
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_001",
+      "failure_codes": [
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 1,
+          "score": 0.4404604442892415
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.44358807143665796
+        },
+        {
+          "chunk_id": "recovery-week-principles#core-principles#002",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.3681642529657973
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.5227354553371436
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_002",
+      "failure_codes": [
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.326834856592306
+        },
+        {
+          "chunk_id": "threshold-session-placement#core-principles#002",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.2967130855787914
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 3,
+          "score": 0.24443861154622923
+        },
+        {
+          "chunk_id": "interval-recovery-design#applicable-scenarios#001",
+          "document_id": "interval-recovery-design",
+          "rank": 4,
+          "score": 0.94441371
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_003",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 1,
+          "score": 0.39745404232531273
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.4466801012249732
+        },
+        {
+          "chunk_id": "long-run-placement#applicable-scenarios#001",
+          "document_id": "long-run-placement",
+          "rank": 3,
+          "score": 0.94324263
+        },
+        {
+          "chunk_id": "phase-transition-principles#cautions#005",
+          "document_id": "phase-transition-principles",
+          "rank": 4,
+          "score": 0.42766291291651054
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_004",
+      "failure_codes": [
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 1,
+          "score": 0.3770822924641306
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#cautions#005",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.28233224683266406
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.2893084094433151
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.33216605738097055
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_005",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.41741958313816635
+        },
+        {
+          "chunk_id": "intensity-density-management#cautions#005",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.3216380730649096
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+          "document_id": "pain-risk-boundaries",
+          "rank": 3,
+          "score": 0.9583031
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#core-principles#002",
+          "document_id": "pain-risk-boundaries",
+          "rank": 4,
+          "score": 0.4503351148153363
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_006",
+      "failure_codes": [
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "phase-transition-principles#core-principles#002",
+          "document_id": "phase-transition-principles",
+          "rank": 1,
+          "score": 0.3364826187891632
+        },
+        {
+          "chunk_id": "phase-transition-principles#decision-conditions#003",
+          "document_id": "phase-transition-principles",
+          "rank": 2,
+          "score": 0.4253526813451925
+        },
+        {
+          "chunk_id": "recovery-week-principles#core-principles#002",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.4297147333639448
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#core-principles#002",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.31003593549374736
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_007",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.3657247760540173
+        },
+        {
+          "chunk_id": "running-strength-basics#decision-conditions#003",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.3621264603098019
+        },
+        {
+          "chunk_id": "interval-recovery-design#recommended-strategies#004",
+          "document_id": "interval-recovery-design",
+          "rank": 3,
+          "score": 0.4814024100860173
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.4023455457924369
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_008",
+      "failure_codes": [
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "interval-recovery-design#core-principles#002",
+          "document_id": "interval-recovery-design",
+          "rank": 1,
+          "score": 0.3492672586035816
+        },
+        {
+          "chunk_id": "long-run-placement#applicable-scenarios#001",
+          "document_id": "long-run-placement",
+          "rank": 2,
+          "score": 0.3322948491799759
+        },
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 3,
+          "score": 0.279827075180284
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 4,
+          "score": 0.3170461991612142
+        }
+      ]
+    },
+    {
+      "case_id": "ret_abstain_001",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_002",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_003",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_004",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_005",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_006",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_007",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_008",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_009",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_010",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    }
+  ],
+  "hybrid_rrf": {
+    "case_count": 60,
+    "failure_case_ids": [
+      "ret_single_001",
+      "ret_single_007",
+      "ret_single_015",
+      "ret_multi_003",
+      "ret_multi_006",
+      "ret_multi_008",
+      "ret_multi_010",
+      "ret_multi_011",
+      "ret_hard_001",
+      "ret_hard_002",
+      "ret_hard_004",
+      "ret_hard_006",
+      "ret_hard_008"
+    ],
+    "metrics": {
+      "abstention_precision": 1.0,
+      "abstention_recall": 1.0,
+      "empty_result_accuracy": 1.0,
+      "filter_violation_rate": 0.0,
+      "forbidden_document_rate": 0.083333,
+      "hit_at_1": 0.76,
+      "hit_at_3": 0.94,
+      "hit_at_4": 0.94,
+      "mrr_at_4": 0.843333,
+      "ndcg_at_4": 0.812712,
+      "recall_at_1": 0.66,
+      "recall_at_3": 0.876667,
+      "recall_at_4": 0.886667
+    }
+  },
+  "oracle_candidate_recall": {
+    "12": 1.0,
+    "4": 0.963889,
+    "8": 1.0
+  },
+  "safety": {
+    "chunk_text_saved": false,
+    "private_cases_used": false,
+    "raw_query_saved": false
+  },
+  "top_k": 4
+}
