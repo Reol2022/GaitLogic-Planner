@@ -5,6 +5,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from sqlalchemy import (
+    BINARY,
     JSON,
     Boolean,
     CheckConstraint,
@@ -20,6 +21,7 @@ from sqlalchemy import (
     Text,
     Time,
     UniqueConstraint,
+    event,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -2157,7 +2159,7 @@ class AdaptiveWorkflowCheckpointWriteRecord(IdMixin, Base):
     __tablename__ = "adaptive_workflow_checkpoint_writes"
     __table_args__ = (
         UniqueConstraint(
-            "thread_id", "checkpoint_namespace", "checkpoint_id", "task_id", "task_path", "write_index",
+            "thread_id", "checkpoint_namespace", "checkpoint_id", "task_id", "task_path_hash", "write_index",
             name="uq_adaptive_checkpoint_write_identity",
         ),
         Index(
@@ -2172,10 +2174,27 @@ class AdaptiveWorkflowCheckpointWriteRecord(IdMixin, Base):
     checkpoint_id: Mapped[str] = mapped_column(String(128), nullable=False)
     task_id: Mapped[str] = mapped_column(String(128), nullable=False)
     task_path: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    task_path_hash: Mapped[bytes] = mapped_column(BINARY(32), nullable=False)
     write_index: Mapped[int] = mapped_column(Integer, nullable=False)
     channel: Mapped[str] = mapped_column(String(128), nullable=False)
     value_type: Mapped[str] = mapped_column(String(64), nullable=False)
     value_blob: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+
+
+@event.listens_for(AdaptiveWorkflowCheckpointWriteRecord, "before_insert")
+@event.listens_for(AdaptiveWorkflowCheckpointWriteRecord, "before_update")
+def _synchronize_adaptive_checkpoint_task_path_hash(mapper, connection, target) -> None:
+    """Make path/hash consistency an ORM persistence invariant.
+
+    ``mapper`` and ``connection`` are SQLAlchemy event parameters.  The helper
+    is intentionally the sole hash implementation and this field is never a
+    public API or workflow input.
+    """
+
+    del mapper, connection
+    from planner_core.adaptive_plan.checkpoint_identity import compute_task_path_hash
+
+    target.task_path_hash = compute_task_path_hash(target.task_path)
 
 
 class ExcelImportJob(IdMixin, TimestampMixin, Base):

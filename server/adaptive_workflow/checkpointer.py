@@ -12,6 +12,7 @@ from langgraph.checkpoint.base import (
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from planner_core.adaptive_plan.checkpoint_identity import compute_task_path_hash
 from planner_core.database.models import (
     AdaptiveWorkflowCheckpointRecord,
     AdaptiveWorkflowCheckpointWriteRecord,
@@ -189,6 +190,7 @@ class SQLAlchemyCheckpointSaver(BaseCheckpointSaver[int]):
         thread_id, namespace, checkpoint_id = self._parts(config)
         if checkpoint_id is None:
             raise ValueError("checkpoint_id is required for pending writes")
+        task_path_hash = compute_task_path_hash(task_path)
         with self.session_factory.begin() as db:
             for index, (channel, value) in enumerate(writes):
                 existing = db.scalar(
@@ -197,6 +199,7 @@ class SQLAlchemyCheckpointSaver(BaseCheckpointSaver[int]):
                         AdaptiveWorkflowCheckpointWriteRecord.checkpoint_namespace == namespace,
                         AdaptiveWorkflowCheckpointWriteRecord.checkpoint_id == checkpoint_id,
                         AdaptiveWorkflowCheckpointWriteRecord.task_id == task_id,
+                        AdaptiveWorkflowCheckpointWriteRecord.task_path_hash == task_path_hash,
                         AdaptiveWorkflowCheckpointWriteRecord.task_path == task_path,
                         AdaptiveWorkflowCheckpointWriteRecord.write_index == index,
                     )

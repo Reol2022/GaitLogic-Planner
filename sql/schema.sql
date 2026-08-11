@@ -1505,11 +1505,12 @@ CREATE TABLE IF NOT EXISTS `adaptive_workflow_checkpoint_writes` (
   `checkpoint_id` VARCHAR(128) NOT NULL,
   `task_id` VARCHAR(128) NOT NULL,
   `task_path` VARCHAR(512) NOT NULL DEFAULT '',
+  `task_path_hash` BINARY(32) NOT NULL,
   `write_index` INT NOT NULL,
   `channel` VARCHAR(128) NOT NULL,
   `value_type` VARCHAR(64) NOT NULL,
   `value_blob` LONGBLOB NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_adaptive_checkpoint_write_identity` (`thread_id`, `checkpoint_namespace`, `checkpoint_id`, `task_id`, `task_path`, `write_index`),
+  UNIQUE KEY `uq_adaptive_checkpoint_write_identity` (`thread_id`, `checkpoint_namespace`, `checkpoint_id`, `task_id`, `task_path_hash`, `write_index`),
   KEY `ix_adaptive_checkpoint_writes_lookup` (`thread_id`, `checkpoint_namespace`, `checkpoint_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

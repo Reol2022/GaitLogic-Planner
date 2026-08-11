@@ -724,6 +724,14 @@ v0.11.0 不支持 RAG、Weekly Review Agent、写工具、长期记忆、Streami
 
 部署 v0.13.0 前先备份数据库并在隔离环境验证 `scripts/upgrade_v0130_adaptive_plan.py` 的 upgrade/downgrade。该脚本只新增计划版本、LangGraph checkpoint 和 pending write 相关结构，不扫描或回填用户训练数据。升级后执行 Python 编译、完整 pytest、前端 typecheck/test/build 与 `python scripts/evaluate_weekly_adaptive.py`。
 
+已运行早期 v0.13 checkpoint schema 的 MySQL 数据库，在部署包含本修复的版本前还必须执行一次前向升级：
+
+```powershell
+python scripts/upgrade_v0160_adaptive_checkpoint_hash.py upgrade
+```
+
+该脚本保留完整 `task_path`，新增并回填 `task_path_hash BINARY(32)`，再将 pending write 的联合唯一键从完整路径替换为 SHA-256 二进制摘要。它用于解决 `utf8mb4` 下旧 4096-byte 联合索引超过 MySQL 5.7/8 3072-byte 上限的问题。升级前必须备份；这是一项前向迁移，旧的超宽索引在现代 MySQL 上无法安全恢复。详见 `docs/learning/v0.16.0/24-mysql-composite-index-hash-key.md`。
+
 ## 19. v0.14.0 Agent Observability and Reliability
 
 v0.14 不新增数据库迁移。默认关闭可选运行时观测：
