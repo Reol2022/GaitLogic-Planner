@@ -9,7 +9,7 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.15.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.16.0-1976d2?style=for-the-badge" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?style=for-the-badge&logo=vue.js&logoColor=white" />
@@ -27,6 +27,14 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 </p>
 
 </div>
+
+---
+
+## v0.16.0 Retrieval Quality and Safety Boundary
+
+Training knowledge retrieval supports Dense Exact, optional Qdrant, deterministic BM25, fixed Hybrid RRF, and an optional reranker. Strategy selection uses an independent 40-case public fictional Holdout v2 rather than presenting the repeatedly observed Legacy regression set as blind evidence. Dense Exact remains the default: it tied Rerank at 33/40 Holdout passes with lower operational complexity. Rerank is real-provider evaluated but non-default and safely falls back on failure.
+
+See the [v0.16.0 release note](docs/release/v0.16.0.md) and [Holdout report](docs/evaluation/reports/retrieval-holdout-v2.md). Retrieval supplies knowledge explanation only; it cannot change Runner State, deterministic TODAY advice, or training plans.
 
 ---
 

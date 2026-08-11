@@ -839,3 +839,7 @@ Readiness 不访问网络，只输出布尔状态、非敏感模式名和稳定�
 ## v0.15.0 MCP deployment boundary
 
 MCP stdio is for a local trusted Host. Streamable HTTP remains disabled unless explicitly configured, and must use the scoped MCP token endpoint, the configured origin allowlist, and the existing authenticated application deployment. Do not expose corpus/index runtime paths through Nginx. MCP Tools are read-only; Resources contain only public knowledge projections and never runner data.
+
+## v0.16.0 retrieval deployment boundary
+
+Deploy the Corpus manifest and only the index artifacts required by `KNOWLEDGE_RETRIEVAL_STRATEGY`. The v0.16 default is `dense`, requiring a valid configured Dense index; `bm25` requires the BM25 index; `hybrid` requires both; `rerank` also requires a configured Reranker Provider. Validate before traffic with `python scripts/knowledge_corpus.py validate`, index validation, and the frozen Holdout/readiness checks. Never place Corpus manifests, `var/knowledge_indexes`, `var/knowledge_bm25_indexes`, Qdrant credentials, or `.env` under the web root. Reranker failure must preserve the bounded Hybrid RRF fallback and must not affect deterministic training decisions.

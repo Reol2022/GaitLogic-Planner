@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.15.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.16.0-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -31,6 +31,14 @@
 </p>
 
 </div>
+
+---
+
+## v0.16.0 检索质量与安全边界
+
+训练知识检索支持 Dense Exact、可选 Qdrant、确定性 BM25、固定 Hybrid RRF 与可选 Reranker。策略通过独立的 40 条公开虚构 Holdout v2 消融评测选择，而不是将已反复使用的 Legacy 回归集当作盲测。当前默认保持 Dense Exact：它在 Holdout 上与 Rerank 同为 33/40 通过，同时拥有更低的运行复杂度；Rerank 保留为真实 Provider 已验证的非默认能力，并在故障时安全回退。
+
+详见 [v0.16.0 发布说明](docs/release/v0.16.0.md) 与 [Holdout 报告](docs/evaluation/reports/retrieval-holdout-v2.md)。检索只提供知识解释，不修改 Runner State、TODAY 确定性建议或训练计划。
 
 ---
 

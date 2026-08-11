@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="Gaitlogic Planner API",
-        version="0.15.0",
+        version="0.16.0",
         description="Backend API for training plans, logs, dashboard stats, and pace rules.",
     )
     app.add_middleware(
