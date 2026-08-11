@@ -19,6 +19,10 @@ from tests.agent_tool_fakes import FakeDependencies
 
 
 ALLOWED_ORIGIN = "https://mcp-client.example.test"
+MODERN_PROTOCOL_VERSION = "2026-07-28"
+_PROTOCOL_VERSION_KEY = "io.modelcontextprotocol/protocolVersion"
+_CLIENT_CAPABILITIES_KEY = "io.modelcontextprotocol/clientCapabilities"
+_CLIENT_INFO_KEY = "io.modelcontextprotocol/clientInfo"
 
 
 class _Session:
@@ -50,9 +54,9 @@ def http_dependencies(monkeypatch: pytest.MonkeyPatch):
 
     fake = FakeDependencies()
     settings = Settings(
-        mcp_allowed_hosts="testserver",
-        mcp_allowed_origins=ALLOWED_ORIGIN,
-        mcp_http_enabled=True,
+        MCP_ALLOWED_HOSTS="testserver",
+        MCP_ALLOWED_ORIGINS=ALLOWED_ORIGIN,
+        MCP_HTTP_ENABLED=True,
     )
     yield McpHttpDependencies(
         settings=settings,
@@ -77,42 +81,47 @@ def _headers(token: str | None, *, origin: str = ALLOWED_ORIGIN) -> dict[str, st
     return headers
 
 
-def _initialize(client: TestClient, headers: dict[str, str]) -> dict[str, str]:
-    response = client.post(
-        "/mcp",
-        headers=headers,
-        json={
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2025-06-18",
-                "capabilities": {},
-                "clientInfo": {"name": "fictional-test-client", "version": "1"},
-            },
-        },
-    )
-    assert response.status_code == 200
-    resolved = dict(headers)
-    resolved["Mcp-Session-Id"] = response.headers["mcp-session-id"]
-    resolved["MCP-Protocol-Version"] = "2025-06-18"
-    return resolved
-
-
 def _request(client: TestClient, headers: dict[str, str], method: str, params: dict) -> dict:
+    """Send one independent MCP 2026-07-28 Streamable HTTP request.
+
+    Modern MCP does not negotiate a protocol-level session.  The version,
+    client capabilities and method metadata travel with every JSON-RPC POST.
+    """
+
+    resolved_headers = {
+        **headers,
+        "MCP-Protocol-Version": MODERN_PROTOCOL_VERSION,
+        "Mcp-Method": method,
+    }
+    name_parameter = {
+        "tools/call": "name",
+        "prompts/get": "name",
+        "resources/read": "uri",
+    }.get(method)
+    if name_parameter is not None and isinstance(params.get(name_parameter), str):
+        resolved_headers["Mcp-Name"] = params[name_parameter]
+    request_params = {
+        **params,
+        "_meta": {
+            _PROTOCOL_VERSION_KEY: MODERN_PROTOCOL_VERSION,
+            _CLIENT_CAPABILITIES_KEY: {},
+            _CLIENT_INFO_KEY: {"name": "fictional-test-client", "version": "1"},
+        },
+    }
     response = client.post(
         "/mcp",
-        headers=headers,
-        json={"jsonrpc": "2.0", "id": 2, "method": method, "params": params},
+        headers=resolved_headers,
+        json={"jsonrpc": "2.0", "id": 1, "method": method, "params": request_params},
     )
     assert response.status_code == 200
+    assert "mcp-session-id" not in response.headers
     return response.json()
 
 
 def test_streamable_http_tools_list_and_authenticated_calls(http_dependencies) -> None:
     dependencies, users, fake, _sessions = http_dependencies
     with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
-        headers = _initialize(client, _headers(_token(users[101])))
+        headers = _headers(_token(users[101]))
         listed = _request(client, headers, "tools/list", {})
         assert {item["name"] for item in listed["result"]["tools"]} == {
             "get_today_plan", "get_recent_training", "get_runner_state", "retrieve_training_knowledge"
@@ -126,6 +135,39 @@ def test_streamable_http_tools_list_and_authenticated_calls(http_dependencies) -
             assert result["result"]["structuredContent"]["status"] == "SUCCEEDED"
     assert len(fake.seen_user_ids) >= 3
     assert set(fake.seen_user_ids) == {101}
+
+
+def test_modern_streamable_http_reads_resources_and_prompts_without_a_session(http_dependencies) -> None:
+    """MCP SDK v2 uses independent 2026-07-28 JSON-RPC POST requests."""
+
+    dependencies, users, _fake, _sessions = http_dependencies
+    with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
+        headers = _headers(_token(users[101]))
+        resource = _request(
+            client,
+            headers,
+            "resources/read",
+            {"uri": "gaitlogic://capabilities"},
+        )
+        prompt = _request(client, headers, "prompts/get", {"name": "review_my_training"})
+        get_response = client.get("/mcp", headers=headers)
+
+    assert resource["result"]["contents"][0]["uri"] == "gaitlogic://capabilities"
+    assert prompt["result"]["messages"][0]["content"]["type"] == "text"
+    # The SDK retains a legacy GET handler for compatibility, but no modern
+    # GaitLogic request depends on it; a JSON-only GET is rejected here.
+    assert get_response.status_code == 400
+
+
+def test_missing_origin_uses_the_authenticated_non_browser_client_path(http_dependencies) -> None:
+    dependencies, users, fake, _sessions = http_dependencies
+    with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
+        headers = _headers(_token(users[101]))
+        headers.pop("Origin")
+        result = _request(client, headers, "tools/call", {"name": "get_today_plan", "arguments": {}})
+
+    assert result["result"]["structuredContent"]["status"] == "SUCCEEDED"
+    assert fake.seen_user_ids == [101]
 
 
 @pytest.mark.parametrize("authorization, expected", [(None, "UNAUTHENTICATED"), ("Bearer bad.token.value", "INVALID_TOKEN")])
@@ -174,7 +216,7 @@ def test_http_mcp_origin_rejection_happens_before_auth_or_tools(http_dependencie
 def test_http_mcp_closed_world_arguments_cannot_override_identity(http_dependencies) -> None:
     dependencies, users, fake, _sessions = http_dependencies
     with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
-        headers = _initialize(client, _headers(_token(users[101])))
+        headers = _headers(_token(users[101]))
         result = _request(
             client,
             headers,
@@ -189,7 +231,7 @@ def test_http_mcp_closed_world_arguments_cannot_override_identity(http_dependenc
 def test_http_mcp_user_identity_is_server_validated_and_isolated(http_dependencies) -> None:
     dependencies, users, fake, _sessions = http_dependencies
     with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
-        headers = _initialize(client, _headers(_token(users[202])))
+        headers = _headers(_token(users[202]))
         result = _request(client, headers, "tools/call", {"name": "get_runner_state", "arguments": {}})
     assert result["result"]["structuredContent"]["status"] == "SUCCEEDED"
     assert fake.seen_user_ids == [202]
@@ -207,20 +249,18 @@ def test_http_mcp_trace_metrics_and_sink_failures_are_non_blocking(http_dependen
         tracer=tracer,
     )
     with TestClient(create_mcp_http_app(dependencies=enabled)) as client:
-        headers = _initialize(client, _headers(_token(users[101])))
+        headers = _headers(_token(users[101]))
         _request(client, headers, "tools/call", {"name": "get_today_plan", "arguments": {}})
     assert [(span.component, span.operation) for span in trace_sink.spans] == [
-        ("auth", "validate"),
-        ("mcp.http", "request"),
         ("auth", "validate"),
         ("tool", "invoke"),
         ("mcp", "tool"),
         ("mcp.http", "request"),
     ]
-    tool_span = trace_sink.spans[3]
-    assert tool_span.parent_span_id == trace_sink.spans[4].span_id
-    assert metric_sink.counter("mcp_http_request_count") == 2
-    assert metric_sink.counter("mcp_auth_success") == 2
+    tool_span = trace_sink.spans[1]
+    assert tool_span.parent_span_id == trace_sink.spans[2].span_id
+    assert metric_sink.counter("mcp_http_request_count") == 1
+    assert metric_sink.counter("mcp_auth_success") == 1
     assert metric_sink.counter("mcp_tool_success") == 1
     assert all("user_id" not in str(span.metadata) and "token" not in str(span.metadata) for span in trace_sink.spans)
     assert fake.seen_user_ids == [101]
@@ -246,7 +286,7 @@ def test_http_trace_and_metrics_sink_failures_do_not_change_tool_result(http_dep
         tracer=tracer,
     )
     with TestClient(create_mcp_http_app(dependencies=broken)) as client:
-        headers = _initialize(client, _headers(_token(users[101])))
+        headers = _headers(_token(users[101]))
         result = _request(client, headers, "tools/call", {"name": "get_runner_state", "arguments": {}})
     assert result["result"]["structuredContent"]["status"] == "SUCCEEDED"
     assert fake.seen_user_ids == [101]
@@ -261,7 +301,7 @@ def test_http_tracing_and_metrics_can_be_disabled_without_changing_result(http_d
         tracer=SafeTracer(enabled=False),
     )
     with TestClient(create_mcp_http_app(dependencies=disabled)) as client:
-        headers = _initialize(client, _headers(_token(users[101])))
+        headers = _headers(_token(users[101]))
         result = _request(client, headers, "tools/call", {"name": "get_recent_training", "arguments": {}})
     assert result["result"]["structuredContent"]["status"] == "SUCCEEDED"
     assert fake.seen_user_ids and set(fake.seen_user_ids) == {101}
@@ -272,7 +312,7 @@ def test_stdio_remains_unauthenticated_and_http_never_uses_provider(http_depende
 
     dependencies, users, fake, _sessions = http_dependencies
     with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
-        headers = _initialize(client, _headers(_token(users[101])))
+        headers = _headers(_token(users[101]))
         _request(client, headers, "tools/call", {"name": "get_today_plan", "arguments": {}})
     assert fake.seen_user_ids == [101]
     assert "provider" not in str(fake).lower()
