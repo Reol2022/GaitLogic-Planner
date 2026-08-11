@@ -13,6 +13,7 @@ from server.knowledge_retrieval.embeddings.deterministic import (
     DeterministicEmbeddingProvider,
 )
 from server.knowledge_retrieval.index_service import KnowledgeIndexService
+from server.knowledge_retrieval.sparse.index_service import Bm25IndexService
 from server.knowledge_retrieval.corpus_service import KnowledgeCorpusService
 from server.knowledge_retrieval.readiness import (
     CoachRagReadinessService,
@@ -200,3 +201,20 @@ def test_json_output_contains_modes_but_not_credentials(
     assert "fictional-chat-secret" not in raw
     assert "fictional-embedding-secret" not in raw
     assert "api_key" not in raw.lower()
+
+
+def test_bm25_strategy_is_ready_without_embedding_configuration(tmp_path: Path) -> None:
+    source_root = Path(__file__).resolve().parents[1]
+    shutil.copytree(source_root / "knowledge", tmp_path / "knowledge")
+    (tmp_path / ".gitignore").write_text("var/knowledge_bm25_indexes/\n", encoding="utf-8")
+    KnowledgeCorpusService(repository_root=tmp_path).build(force=True)
+    index = Bm25IndexService(repository_root=tmp_path).build()
+    settings = _settings(
+        KNOWLEDGE_EMBEDDING_ENABLED=False,
+        KNOWLEDGE_EMBEDDING_API_KEY="",
+        KNOWLEDGE_RETRIEVAL_STRATEGY="bm25",
+        COACH_AGENT_KNOWLEDGE_BM25_INDEX_ID=index.index_id,
+    )
+    report = CoachRagReadinessService(settings, repository_root=tmp_path).run(require_enabled=True)
+    assert report.ready is True
+    assert "EMBEDDING_NOT_REQUIRED" in {item.code for item in report.checks}

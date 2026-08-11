@@ -13,6 +13,8 @@ from server.agent.tools.knowledge_tools import build_configured_knowledge_tool
 from server.knowledge_retrieval.corpus_service import KnowledgeCorpusService
 from server.knowledge_retrieval.embeddings.security import validate_embedding_base_url
 from server.knowledge_retrieval.index_service import KnowledgeIndexService
+from server.knowledge_retrieval.sparse.index_service import Bm25IndexService
+from server.knowledge_retrieval.vector_stores.factory import vector_store_name
 
 
 class ReadinessExitCode(IntEnum):
@@ -93,12 +95,14 @@ class CoachRagReadinessService:
             embedding_provider=self.settings.knowledge_embedding_provider,
             embedding_dimensions=self.settings.knowledge_embedding_dimensions,
             index_id_configured=bool(
-                self.settings.coach_agent_knowledge_index_id
+                self.settings.coach_agent_knowledge_bm25_index_id
+                if self.settings.knowledge_retrieval_strategy == "bm25"
+                else self.settings.coach_agent_knowledge_index_id
             ),
             checks=self.checks,
         )
 
-    def _provider_configuration_valid(self) -> bool:
+    def _provider_configuration_valid(self, *, requires_embedding: bool) -> bool:
         chat_complete = all(
             (
                 self.settings.coach_agent_provider,
@@ -122,7 +126,7 @@ class CoachRagReadinessService:
             "CHAT_CONFIGURED" if chat_complete else "CHAT_CONFIG_INCOMPLETE",
         ):
             return False
-        if not self._check(
+        if requires_embedding and not self._check(
             "embedding_configuration",
             bool(embedding_complete),
             (
@@ -132,6 +136,8 @@ class CoachRagReadinessService:
             ),
         ):
             return False
+        if not requires_embedding:
+            self._check("embedding_configuration", True, "EMBEDDING_NOT_REQUIRED", disabled=True)
         allow_chat_local = (
             self.settings.app_env.lower() == "development"
             and self.settings.coach_agent_allow_local_provider_in_development
@@ -145,10 +151,11 @@ class CoachRagReadinessService:
                 self.settings.coach_agent_base_url,
                 allow_local_development=allow_chat_local,
             )
-            validate_embedding_base_url(
-                self.settings.knowledge_embedding_base_url,
-                allow_local_development=allow_embedding_local,
-            )
+            if requires_embedding:
+                validate_embedding_base_url(
+                    self.settings.knowledge_embedding_base_url,
+                    allow_local_development=allow_embedding_local,
+                )
         except ValueError:
             self._check("provider_urls", False, "PROVIDER_URL_INVALID")
             return False
@@ -176,18 +183,20 @@ class CoachRagReadinessService:
                 if require_enabled
                 else ReadinessExitCode.READY
             )
+        is_bm25_only = self.settings.knowledge_retrieval_strategy == "bm25"
+        uses_bm25 = self.settings.knowledge_retrieval_strategy in {"bm25", "hybrid"}
         embedding_enabled = self.settings.knowledge_embedding_enabled
         self._check(
             "embedding_feature",
-            embedding_enabled,
+            embedding_enabled or is_bm25_only,
             (
-                "EMBEDDING_ENABLED"
-                if embedding_enabled
+                "EMBEDDING_ENABLED" if embedding_enabled else "EMBEDDING_NOT_REQUIRED"
+                if is_bm25_only
                 else "EMBEDDING_DISABLED"
             ),
-            disabled=not embedding_enabled,
+            disabled=is_bm25_only or not embedding_enabled,
         )
-        if not embedding_enabled:
+        if not embedding_enabled and not is_bm25_only:
             return self._report(ReadinessExitCode.CONFIG_INCOMPLETE)
         if self.settings.coach_agent_thinking_mode == "enabled":
             self._check(
@@ -199,7 +208,7 @@ class CoachRagReadinessService:
                 ReadinessExitCode.PROVIDER_CONFIGURATION_INVALID
             )
         self._check("thinking_mode", True, "THINKING_MODE_SAFE")
-        if not self._provider_configuration_valid():
+        if not self._provider_configuration_valid(requires_embedding=not is_bm25_only):
             if any(
                 item.code.endswith("INCOMPLETE")
                 for item in self.checks
@@ -216,28 +225,43 @@ class CoachRagReadinessService:
             return self._report(ReadinessExitCode.CORPUS_INVALID)
         self._check("corpus", True, "CORPUS_VALID")
 
-        index_id = self.settings.coach_agent_knowledge_index_id
+        index_id = (
+            self.settings.coach_agent_knowledge_bm25_index_id
+            if is_bm25_only
+            else self.settings.coach_agent_knowledge_index_id
+        )
         if not index_id:
             self._check("index", False, "INDEX_ID_MISSING")
             return self._report(ReadinessExitCode.CONFIG_INCOMPLETE)
         try:
-            service = KnowledgeIndexService(
+            service = Bm25IndexService(
+                repository_root=self.repository_root,
+                index_root=Path(self.settings.knowledge_bm25_index_runtime_directory),
+            ) if is_bm25_only else KnowledgeIndexService(
                 repository_root=self.repository_root,
                 index_root=Path(
                     self.settings.knowledge_index_runtime_directory
                 ),
+                vector_store=self.settings.knowledge_vector_store,
+                qdrant_url=self.settings.qdrant_url,
+                qdrant_api_key=self.settings.qdrant_api_key,
+                qdrant_collection_prefix=self.settings.qdrant_collection_prefix,
             )
             manifest = service.validate(index_id)
         except Exception:
             self._check("index", False, "INDEX_MISSING_OR_STALE")
             return self._report(ReadinessExitCode.INDEX_MISSING_OR_STALE)
-        matches = (
-            manifest.corpus_root_hash == corpus.root_hash
-            and manifest.embedding_provider
-            == self.settings.knowledge_embedding_provider
-            and manifest.embedding_model == self.settings.knowledge_embedding_model
-            and manifest.embedding_dimensions
-            == self.settings.knowledge_embedding_dimensions
+        matches = manifest.corpus_root_hash == corpus.root_hash and (
+            is_bm25_only
+            or (
+                manifest.embedding_provider
+                == self.settings.knowledge_embedding_provider
+                and manifest.embedding_model == self.settings.knowledge_embedding_model
+                and manifest.embedding_dimensions
+                == self.settings.knowledge_embedding_dimensions
+                and manifest.vector_store
+                == vector_store_name(self.settings.knowledge_vector_store)
+            )
         )
         if not self._check(
             "index_configuration",
@@ -245,6 +269,23 @@ class CoachRagReadinessService:
             "INDEX_MATCHES_CONFIGURATION" if matches else "INDEX_CONFIG_MISMATCH",
         ):
             return self._report(ReadinessExitCode.INDEX_MISSING_OR_STALE)
+        if uses_bm25 and not is_bm25_only:
+            if not self.settings.coach_agent_knowledge_bm25_index_id:
+                self._check("bm25_index", False, "BM25_INDEX_ID_MISSING")
+                return self._report(ReadinessExitCode.CONFIG_INCOMPLETE)
+            try:
+                bm25_manifest = Bm25IndexService(
+                    repository_root=self.repository_root,
+                    index_root=Path(self.settings.knowledge_bm25_index_runtime_directory),
+                ).validate(self.settings.coach_agent_knowledge_bm25_index_id)
+                bm25_matches = bm25_manifest.corpus_root_hash == corpus.root_hash
+            except Exception:
+                bm25_matches = False
+            if not self._check(
+                "bm25_index", bm25_matches,
+                "BM25_INDEX_MATCHES_CONFIGURATION" if bm25_matches else "BM25_INDEX_MISSING_OR_STALE",
+            ):
+                return self._report(ReadinessExitCode.INDEX_MISSING_OR_STALE)
         index_age_days = (self.now - manifest.created_at).total_seconds() / 86400
         if not self._check(
             "index_age",
@@ -258,7 +299,7 @@ class CoachRagReadinessService:
             return self._report(ReadinessExitCode.INDEX_MISSING_OR_STALE)
 
         configured_root = Path(
-            self.settings.knowledge_index_runtime_directory
+            self.settings.knowledge_bm25_index_runtime_directory if is_bm25_only else self.settings.knowledge_index_runtime_directory
         )
         if configured_root.is_absolute() or ".." in configured_root.parts:
             self._check("index_security", False, "INDEX_RUNTIME_PATH_INVALID")

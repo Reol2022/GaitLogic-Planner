@@ -1,0 +1,3196 @@
+{
+  "bm25": {
+    "case_count": 60,
+    "failure_case_ids": [
+      "ret_multi_008",
+      "ret_multi_011",
+      "ret_hard_001",
+      "ret_hard_002",
+      "ret_hard_003",
+      "ret_hard_004",
+      "ret_hard_005",
+      "ret_hard_008"
+    ],
+    "index_id": "bm25-0e67bfe0fcd1eb4ba4938b8b",
+    "metrics": {
+      "abstention_precision": 1.0,
+      "abstention_recall": 1.0,
+      "empty_result_accuracy": 1.0,
+      "filter_violation_rate": 0.0,
+      "forbidden_document_rate": 0.1,
+      "hit_at_1": 0.88,
+      "hit_at_3": 0.98,
+      "hit_at_4": 0.98,
+      "mrr_at_4": 0.923333,
+      "ndcg_at_4": 0.910589,
+      "recall_at_1": 0.78,
+      "recall_at_3": 0.946667,
+      "recall_at_4": 0.956667
+    }
+  },
+  "bm25_case_results": [
+    {
+      "case_id": "ret_single_001",
+      "duration_ms": 11.398,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 0.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 0.5,
+        "ndcg_at_4": 0.63093,
+        "recall_at_1": 0.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "interval-recovery-design#decision-conditions#003",
+          "document_id": "interval-recovery-design",
+          "rank": 1,
+          "score": 0.95267901
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#applicable-scenarios#001",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 2,
+          "score": 0.92875834
+        },
+        {
+          "chunk_id": "threshold-session-placement#decision-conditions#003",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.92500946
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.92464989
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_002",
+      "duration_ms": 12.891,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#decision-conditions#003",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 1,
+          "score": 0.93982843
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#applicable-scenarios#001",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 2,
+          "score": 0.912098
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 3,
+          "score": 0.90076725
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#recommended-strategies#004",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 4,
+          "score": 0.89256076
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_003",
+      "duration_ms": 13.558,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.97169086
+        },
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.96363307
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 3,
+          "score": 0.93991643
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 4,
+          "score": 0.93697797
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_004",
+      "duration_ms": 11.608,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#recommended-strategies#004",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.95278874
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#decision-conditions#003",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 2,
+          "score": 0.93014786
+        },
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 3,
+          "score": 0.90562741
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.87208734
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_005",
+      "duration_ms": 11.528,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "interval-recovery-design#core-principles#002",
+          "document_id": "interval-recovery-design",
+          "rank": 1,
+          "score": 0.94486727
+        },
+        {
+          "chunk_id": "interval-recovery-design#applicable-scenarios#001",
+          "document_id": "interval-recovery-design",
+          "rank": 2,
+          "score": 0.92903704
+        },
+        {
+          "chunk_id": "threshold-session-placement#recommended-strategies#004",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.928003
+        },
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.9150931
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_006",
+      "duration_ms": 12.005,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "interval-recovery-design#applicable-scenarios#001",
+          "document_id": "interval-recovery-design",
+          "rank": 1,
+          "score": 0.89058591
+        },
+        {
+          "chunk_id": "interval-recovery-design#core-principles#002",
+          "document_id": "interval-recovery-design",
+          "rank": 2,
+          "score": 0.8750144
+        },
+        {
+          "chunk_id": "interval-recovery-design#cautions#005",
+          "document_id": "interval-recovery-design",
+          "rank": 3,
+          "score": 0.7379517
+        },
+        {
+          "chunk_id": "interval-recovery-design#decision-conditions#003",
+          "document_id": "interval-recovery-design",
+          "rank": 4,
+          "score": 0.41313106
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_007",
+      "duration_ms": 13.041,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 0.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 0.333333,
+        "ndcg_at_4": 0.5,
+        "recall_at_1": 0.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.95334499
+        },
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.94719145
+        },
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 3,
+          "score": 0.92247894
+        },
+        {
+          "chunk_id": "long-run-placement#core-principles#002",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.91463542
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_008",
+      "duration_ms": 12.081,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 1,
+          "score": 0.94204583
+        },
+        {
+          "chunk_id": "long-run-placement#applicable-scenarios#001",
+          "document_id": "long-run-placement",
+          "rank": 2,
+          "score": 0.94076254
+        },
+        {
+          "chunk_id": "long-run-placement#decision-conditions#003",
+          "document_id": "long-run-placement",
+          "rank": 3,
+          "score": 0.73430357
+        },
+        {
+          "chunk_id": "long-run-placement#core-principles#002",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.56612361
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_009",
+      "duration_ms": 12.571,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+          "document_id": "pain-risk-boundaries",
+          "rank": 1,
+          "score": 0.9646294
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#cautions#005",
+          "document_id": "pain-risk-boundaries",
+          "rank": 2,
+          "score": 0.95049014
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#cautions#005",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 3,
+          "score": 0.94123034
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#decision-conditions#003",
+          "document_id": "pain-risk-boundaries",
+          "rank": 4,
+          "score": 0.93414521
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_010",
+      "duration_ms": 11.57,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pain-risk-boundaries#core-principles#002",
+          "document_id": "pain-risk-boundaries",
+          "rank": 1,
+          "score": 0.95782489
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+          "document_id": "pain-risk-boundaries",
+          "rank": 2,
+          "score": 0.94271702
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#recommended-strategies#004",
+          "document_id": "pain-risk-boundaries",
+          "rank": 3,
+          "score": 0.90520516
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#decision-conditions#003",
+          "document_id": "pain-risk-boundaries",
+          "rank": 4,
+          "score": 0.87788034
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_011",
+      "duration_ms": 12.023,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 1,
+          "score": 0.96927942
+        },
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.93010703
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 3,
+          "score": 0.92620808
+        },
+        {
+          "chunk_id": "interval-recovery-design#applicable-scenarios#001",
+          "document_id": "interval-recovery-design",
+          "rank": 4,
+          "score": 0.92365945
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_012",
+      "duration_ms": 10.756,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "phase-transition-principles#core-principles#002",
+          "document_id": "phase-transition-principles",
+          "rank": 1,
+          "score": 0.93598668
+        },
+        {
+          "chunk_id": "phase-transition-principles#recommended-strategies#004",
+          "document_id": "phase-transition-principles",
+          "rank": 2,
+          "score": 0.92194579
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 3,
+          "score": 0.91537567
+        },
+        {
+          "chunk_id": "phase-transition-principles#cautions#005",
+          "document_id": "phase-transition-principles",
+          "rank": 4,
+          "score": 0.91211211
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_013",
+      "duration_ms": 12.001,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 1,
+          "score": 0.95919718
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#cautions#005",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.94116414
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 3,
+          "score": 0.93602561
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.93204825
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_014",
+      "duration_ms": 12.569,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pre-race-taper-principles#decision-conditions#003",
+          "document_id": "pre-race-taper-principles",
+          "rank": 1,
+          "score": 0.81319722
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.38820662
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_015",
+      "duration_ms": 11.404,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 1,
+          "score": 0.95718307
+        },
+        {
+          "chunk_id": "recovery-week-principles#applicable-scenarios#001",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.93507728
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 3,
+          "score": 0.92443989
+        },
+        {
+          "chunk_id": "phase-transition-principles#cautions#005",
+          "document_id": "phase-transition-principles",
+          "rank": 4,
+          "score": 0.89075196
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_016",
+      "duration_ms": 11.387,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 1,
+          "score": 0.95198913
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 2,
+          "score": 0.94588812
+        },
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 3,
+          "score": 0.8762797
+        },
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.86276579
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_017",
+      "duration_ms": 12.935,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 1,
+          "score": 0.92017328
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 2,
+          "score": 0.91732534
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.91076738
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.89514456
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_018",
+      "duration_ms": 12.014,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "recovery-week-principles#core-principles#002",
+          "document_id": "recovery-week-principles",
+          "rank": 1,
+          "score": 0.96317509
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.86482887
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.86130169
+        },
+        {
+          "chunk_id": "recovery-week-principles#decision-conditions#003",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.85918265
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_019",
+      "duration_ms": 11.171,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.9384325
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#recommended-strategies#004",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 2,
+          "score": 0.92310696
+        },
+        {
+          "chunk_id": "running-strength-basics#decision-conditions#003",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.91772875
+        },
+        {
+          "chunk_id": "long-run-placement#applicable-scenarios#001",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.90269381
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_020",
+      "duration_ms": 11.591,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.96049829
+        },
+        {
+          "chunk_id": "running-strength-basics#decision-conditions#003",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.93814086
+        },
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.90232282
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_021",
+      "duration_ms": 12.503,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-control-signals#core-principles#002",
+          "document_id": "threshold-control-signals",
+          "rank": 1,
+          "score": 0.92684972
+        },
+        {
+          "chunk_id": "intensity-density-management#cautions#005",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.91393381
+        },
+        {
+          "chunk_id": "interval-recovery-design#decision-conditions#003",
+          "document_id": "interval-recovery-design",
+          "rank": 3,
+          "score": 0.90294995
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 4,
+          "score": 0.90223392
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_022",
+      "duration_ms": 10.829,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 0.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 0.5,
+        "ndcg_at_4": 0.63093,
+        "recall_at_1": 0.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.95312121
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 2,
+          "score": 0.95146813
+        },
+        {
+          "chunk_id": "threshold-session-placement#core-principles#002",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.90766808
+        },
+        {
+          "chunk_id": "threshold-session-placement#cautions#005",
+          "document_id": "threshold-session-placement",
+          "rank": 4,
+          "score": 0.85761205
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_023",
+      "duration_ms": 11.647,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#recommended-strategies#004",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.93642379
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 2,
+          "score": 0.93137901
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.92639027
+        },
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.92577711
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_024",
+      "duration_ms": 12.652,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.96222116
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 2,
+          "score": 0.91900705
+        },
+        {
+          "chunk_id": "threshold-session-placement#core-principles#002",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.90627766
+        },
+        {
+          "chunk_id": "threshold-session-placement#cautions#005",
+          "document_id": "threshold-session-placement",
+          "rank": 4,
+          "score": 0.85761205
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_025",
+      "duration_ms": 11.825,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#applicable-scenarios#001",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 1,
+          "score": 0.95015778
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#decision-conditions#003",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 2,
+          "score": 0.87323638
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 3,
+          "score": 0.81429423
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#recommended-strategies#004",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 4,
+          "score": 0.6986363
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_026",
+      "duration_ms": 10.654,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.93779146
+        },
+        {
+          "chunk_id": "intensity-density-management#recommended-strategies#004",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.89200538
+        },
+        {
+          "chunk_id": "intensity-density-management#decision-conditions#003",
+          "document_id": "intensity-density-management",
+          "rank": 3,
+          "score": 0.88510228
+        },
+        {
+          "chunk_id": "intensity-density-management#cautions#005",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.88432473
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_027",
+      "duration_ms": 12.256,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 1,
+          "score": 0.95648423
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#cautions#005",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.94228196
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#applicable-scenarios#001",
+          "document_id": "pre-race-taper-principles",
+          "rank": 3,
+          "score": 0.92531177
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#recommended-strategies#004",
+          "document_id": "pre-race-taper-principles",
+          "rank": 4,
+          "score": 0.89563771
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_028",
+      "duration_ms": 12.368,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.93806908
+        },
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.92075068
+        },
+        {
+          "chunk_id": "running-strength-basics#decision-conditions#003",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.91177512
+        },
+        {
+          "chunk_id": "running-strength-basics#cautions#005",
+          "document_id": "running-strength-basics",
+          "rank": 4,
+          "score": 0.42052019
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_029",
+      "duration_ms": 10.86,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 1,
+          "score": 0.96321241
+        },
+        {
+          "chunk_id": "threshold-control-signals#recommended-strategies#004",
+          "document_id": "threshold-control-signals",
+          "rank": 2,
+          "score": 0.93341486
+        },
+        {
+          "chunk_id": "threshold-control-signals#core-principles#002",
+          "document_id": "threshold-control-signals",
+          "rank": 3,
+          "score": 0.91126516
+        },
+        {
+          "chunk_id": "threshold-control-signals#decision-conditions#003",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.90500038
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_030",
+      "duration_ms": 11.589,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "long-run-placement#applicable-scenarios#001",
+          "document_id": "long-run-placement",
+          "rank": 1,
+          "score": 0.95357194
+        },
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 2,
+          "score": 0.94656377
+        },
+        {
+          "chunk_id": "long-run-placement#core-principles#002",
+          "document_id": "long-run-placement",
+          "rank": 3,
+          "score": 0.92211524
+        },
+        {
+          "chunk_id": "long-run-placement#decision-conditions#003",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.9117111
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_001",
+      "duration_ms": 12.295,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 0.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 0.5,
+        "ndcg_at_4": 0.665315,
+        "recall_at_1": 0.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#cautions#005",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.94568971
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 2,
+          "score": 0.92861501
+        },
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 3,
+          "score": 0.92802734
+        },
+        {
+          "chunk_id": "intensity-density-management#decision-conditions#003",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.92778345
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_002",
+      "duration_ms": 12.232,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 0.919721,
+        "recall_at_1": 0.5,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.97762339
+        },
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.94857908
+        },
+        {
+          "chunk_id": "long-run-placement#decision-conditions#003",
+          "document_id": "long-run-placement",
+          "rank": 3,
+          "score": 0.9396481
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.93837723
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_003",
+      "duration_ms": 11.335,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 0.932444,
+        "recall_at_1": 0.5,
+        "recall_at_3": 0.5,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "recovery-week-principles#core-principles#002",
+          "document_id": "recovery-week-principles",
+          "rank": 1,
+          "score": 0.94854221
+        },
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.94569764
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#applicable-scenarios#001",
+          "document_id": "pre-race-taper-principles",
+          "rank": 3,
+          "score": 0.93754286
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.9263588
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_004",
+      "duration_ms": 11.599,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 0.5,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 1,
+          "score": 0.9553713
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 2,
+          "score": 0.94888768
+        },
+        {
+          "chunk_id": "phase-transition-principles#core-principles#002",
+          "document_id": "phase-transition-principles",
+          "rank": 3,
+          "score": 0.93887247
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#cautions#005",
+          "document_id": "pre-race-taper-principles",
+          "rank": 4,
+          "score": 0.93670003
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_005",
+      "duration_ms": 17.15,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 0.5,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#core-principles#002",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.94984033
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.92785021
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 3,
+          "score": 0.90055276
+        },
+        {
+          "chunk_id": "threshold-control-signals#cautions#005",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.89183517
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_006",
+      "duration_ms": 12.551,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 0.833991,
+        "recall_at_1": 0.5,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.957097
+        },
+        {
+          "chunk_id": "intensity-density-management#recommended-strategies#004",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.94682016
+        },
+        {
+          "chunk_id": "interval-recovery-design#applicable-scenarios#001",
+          "document_id": "interval-recovery-design",
+          "rank": 3,
+          "score": 0.93120808
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 4,
+          "score": 0.92229634
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_007",
+      "duration_ms": 11.457,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 0.5,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.94175879
+        },
+        {
+          "chunk_id": "long-run-placement#core-principles#002",
+          "document_id": "long-run-placement",
+          "rank": 2,
+          "score": 0.93967819
+        },
+        {
+          "chunk_id": "running-strength-basics#decision-conditions#003",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.93264062
+        },
+        {
+          "chunk_id": "long-run-placement#applicable-scenarios#001",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.92968813
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_008",
+      "duration_ms": 11.8,
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 0.787155,
+        "recall_at_1": 0.5,
+        "recall_at_3": 0.5,
+        "recall_at_4": 0.5
+      },
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+          "document_id": "pain-risk-boundaries",
+          "rank": 1,
+          "score": 0.96427974
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#applicable-scenarios#001",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.95710828
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#cautions#005",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 3,
+          "score": 0.95453247
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.94098214
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_009",
+      "duration_ms": 11.862,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 0.919721,
+        "recall_at_1": 0.5,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 1,
+          "score": 0.95124198
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 2,
+          "score": 0.94036933
+        },
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 3,
+          "score": 0.93430553
+        },
+        {
+          "chunk_id": "recovery-week-principles#applicable-scenarios#001",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.93414381
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_010",
+      "duration_ms": 11.78,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 0.730929,
+        "recall_at_1": 0.5,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 1,
+          "score": 0.94104313
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 2,
+          "score": 0.93794607
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.93488924
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.93088136
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_011",
+      "duration_ms": 11.531,
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 0.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 0.333333,
+        "ndcg_at_4": 0.144331,
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.333333,
+        "recall_at_4": 0.333333
+      },
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#decision-conditions#003",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.95208542
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.94153736
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.94126054
+        },
+        {
+          "chunk_id": "long-run-placement#decision-conditions#003",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.93903993
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_012",
+      "duration_ms": 12.201,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 0.833991,
+        "recall_at_1": 0.5,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.94167666
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#applicable-scenarios#001",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.93348191
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 3,
+          "score": 0.93181811
+        },
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 4,
+          "score": 0.93127567
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_001",
+      "duration_ms": 12.849,
+      "failure_codes": [
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 1.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "recovery-week-principles#core-principles#002",
+          "document_id": "recovery-week-principles",
+          "rank": 1,
+          "score": 0.95101745
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 2,
+          "score": 0.93856318
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 3,
+          "score": 0.92741365
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.92602909
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_002",
+      "duration_ms": 11.684,
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED",
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 1.0,
+        "hit_at_1": 0.0,
+        "hit_at_3": 0.0,
+        "hit_at_4": 0.0,
+        "mrr_at_4": 0.0,
+        "ndcg_at_4": 0.0,
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.0,
+        "recall_at_4": 0.0
+      },
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "interval-recovery-design#applicable-scenarios#001",
+          "document_id": "interval-recovery-design",
+          "rank": 1,
+          "score": 0.94441371
+        },
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.94299035
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.93093831
+        },
+        {
+          "chunk_id": "recovery-week-principles#core-principles#002",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.925296
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_003",
+      "duration_ms": 11.878,
+      "failure_codes": [
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 1.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 1,
+          "score": 0.95385461
+        },
+        {
+          "chunk_id": "long-run-placement#applicable-scenarios#001",
+          "document_id": "long-run-placement",
+          "rank": 2,
+          "score": 0.94324263
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 3,
+          "score": 0.93760299
+        },
+        {
+          "chunk_id": "recovery-week-principles#applicable-scenarios#001",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.93414381
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_004",
+      "duration_ms": 12.38,
+      "failure_codes": [
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 1.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 1,
+          "score": 0.94338245
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#cautions#005",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.92520157
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.91693822
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.90847377
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_005",
+      "duration_ms": 11.689,
+      "failure_codes": [
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 1.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+          "document_id": "pain-risk-boundaries",
+          "rank": 1,
+          "score": 0.9583031
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#decision-conditions#003",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 2,
+          "score": 0.93510779
+        },
+        {
+          "chunk_id": "running-strength-basics#recommended-strategies#004",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.92387687
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#cautions#005",
+          "document_id": "pain-risk-boundaries",
+          "rank": 4,
+          "score": 0.90610113
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_006",
+      "duration_ms": 10.668,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "phase-transition-principles#core-principles#002",
+          "document_id": "phase-transition-principles",
+          "rank": 1,
+          "score": 0.92976298
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 2,
+          "score": 0.92450859
+        },
+        {
+          "chunk_id": "phase-transition-principles#recommended-strategies#004",
+          "document_id": "phase-transition-principles",
+          "rank": 3,
+          "score": 0.92444817
+        },
+        {
+          "chunk_id": "phase-transition-principles#cautions#005",
+          "document_id": "phase-transition-principles",
+          "rank": 4,
+          "score": 0.91720856
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_007",
+      "duration_ms": 11.715,
+      "failure_codes": [],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.94520795
+        },
+        {
+          "chunk_id": "running-strength-basics#decision-conditions#003",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.94006057
+        },
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.93436486
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#decision-conditions#003",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.91753215
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_008",
+      "duration_ms": 12.469,
+      "failure_codes": [
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "metrics": {
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 1.0,
+        "hit_at_1": 1.0,
+        "hit_at_3": 1.0,
+        "hit_at_4": 1.0,
+        "mrr_at_4": 1.0,
+        "ndcg_at_4": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0
+      },
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "interval-recovery-design#core-principles#002",
+          "document_id": "interval-recovery-design",
+          "rank": 1,
+          "score": 0.96191335
+        },
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.95573398
+        },
+        {
+          "chunk_id": "long-run-placement#applicable-scenarios#001",
+          "document_id": "long-run-placement",
+          "rank": 3,
+          "score": 0.95087732
+        },
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.93847341
+        }
+      ]
+    },
+    {
+      "case_id": "ret_abstain_001",
+      "duration_ms": 10.887,
+      "failure_codes": [],
+      "metrics": {
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0
+      },
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_002",
+      "duration_ms": 11.545,
+      "failure_codes": [],
+      "metrics": {
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0
+      },
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_003",
+      "duration_ms": 12.172,
+      "failure_codes": [],
+      "metrics": {
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0
+      },
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_004",
+      "duration_ms": 10.701,
+      "failure_codes": [],
+      "metrics": {
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0
+      },
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_005",
+      "duration_ms": 11.968,
+      "failure_codes": [],
+      "metrics": {
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0
+      },
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_006",
+      "duration_ms": 12.531,
+      "failure_codes": [],
+      "metrics": {
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0
+      },
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_007",
+      "duration_ms": 11.122,
+      "failure_codes": [],
+      "metrics": {
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0
+      },
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_008",
+      "duration_ms": 10.6,
+      "failure_codes": [],
+      "metrics": {
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0
+      },
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_009",
+      "duration_ms": 11.801,
+      "failure_codes": [],
+      "metrics": {
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0
+      },
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_010",
+      "duration_ms": 12.553,
+      "failure_codes": [],
+      "metrics": {
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "empty_result_accuracy": 1.0,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.0
+      },
+      "passed": true,
+      "ranked_items": []
+    }
+  ],
+  "cases": [
+    {
+      "bm25_passed": true,
+      "bm25_rank": 2,
+      "case_id": "ret_single_001",
+      "dense_passed": false,
+      "dense_rank": null,
+      "expected_documents": [
+        "high-fatigue-intensity-adjustment"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_002",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "high-fatigue-intensity-adjustment"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_003",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "intensity-density-management"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_004",
+      "dense_passed": true,
+      "dense_rank": 2,
+      "expected_documents": [
+        "intensity-density-management"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_005",
+      "dense_passed": true,
+      "dense_rank": 2,
+      "expected_documents": [
+        "interval-recovery-design"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_006",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "interval-recovery-design"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 3,
+      "case_id": "ret_single_007",
+      "dense_passed": false,
+      "dense_rank": null,
+      "expected_documents": [
+        "long-run-placement"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_008",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "long-run-placement"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_009",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "pain-risk-boundaries"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_010",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "pain-risk-boundaries"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_011",
+      "dense_passed": false,
+      "dense_rank": null,
+      "expected_documents": [
+        "phase-transition-principles"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_012",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "phase-transition-principles"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_013",
+      "dense_passed": true,
+      "dense_rank": 4,
+      "expected_documents": [
+        "pre-race-taper-principles"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_014",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "pre-race-taper-principles"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_015",
+      "dense_passed": true,
+      "dense_rank": 3,
+      "expected_documents": [
+        "progressive-volume-adjustment"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_016",
+      "dense_passed": true,
+      "dense_rank": 2,
+      "expected_documents": [
+        "progressive-volume-adjustment"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_017",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "recovery-week-principles"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_018",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "recovery-week-principles"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_019",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "running-strength-basics"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_020",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "running-strength-basics"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_021",
+      "dense_passed": true,
+      "dense_rank": 2,
+      "expected_documents": [
+        "threshold-control-signals"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 2,
+      "case_id": "ret_single_022",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "threshold-control-signals"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_023",
+      "dense_passed": true,
+      "dense_rank": 2,
+      "expected_documents": [
+        "threshold-session-placement"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_024",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "threshold-session-placement"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_025",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "high-fatigue-intensity-adjustment"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_026",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "intensity-density-management"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_027",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "pre-race-taper-principles"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_028",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "running-strength-basics"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_029",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "threshold-control-signals"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_single_030",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "long-run-placement"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 2,
+      "case_id": "ret_multi_001",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "high-fatigue-intensity-adjustment",
+        "intensity-density-management"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_multi_002",
+      "dense_passed": false,
+      "dense_rank": 1,
+      "expected_documents": [
+        "long-run-placement",
+        "threshold-session-placement"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_multi_003",
+      "dense_passed": false,
+      "dense_rank": 2,
+      "expected_documents": [
+        "recovery-week-principles",
+        "progressive-volume-adjustment"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_multi_004",
+      "dense_passed": false,
+      "dense_rank": 1,
+      "expected_documents": [
+        "pre-race-taper-principles",
+        "phase-transition-principles"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_multi_005",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "threshold-control-signals",
+        "threshold-session-placement"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_multi_006",
+      "dense_passed": false,
+      "dense_rank": 3,
+      "expected_documents": [
+        "interval-recovery-design",
+        "intensity-density-management"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_multi_007",
+      "dense_passed": false,
+      "dense_rank": null,
+      "expected_documents": [
+        "running-strength-basics",
+        "long-run-placement"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": false,
+      "bm25_rank": 1,
+      "case_id": "ret_multi_008",
+      "dense_passed": false,
+      "dense_rank": 3,
+      "expected_documents": [
+        "pain-risk-boundaries",
+        "high-fatigue-intensity-adjustment"
+      ],
+      "failure_category": "semantic_confusion_or_ambiguous_relevance"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_multi_009",
+      "dense_passed": false,
+      "dense_rank": 1,
+      "expected_documents": [
+        "progressive-volume-adjustment",
+        "recovery-week-principles"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_multi_010",
+      "dense_passed": true,
+      "dense_rank": 2,
+      "expected_documents": [
+        "phase-transition-principles",
+        "threshold-session-placement"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": false,
+      "bm25_rank": 4,
+      "case_id": "ret_multi_011",
+      "dense_passed": false,
+      "dense_rank": 1,
+      "expected_documents": [
+        "long-run-placement",
+        "high-fatigue-intensity-adjustment",
+        "interval-recovery-design"
+      ],
+      "failure_category": "semantic_confusion_or_ambiguous_relevance"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_multi_012",
+      "dense_passed": false,
+      "dense_rank": null,
+      "expected_documents": [
+        "pre-race-taper-principles",
+        "running-strength-basics"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": false,
+      "bm25_rank": 1,
+      "case_id": "ret_hard_001",
+      "dense_passed": false,
+      "dense_rank": 1,
+      "expected_documents": [
+        "recovery-week-principles"
+      ],
+      "failure_category": "semantic_confusion_or_ambiguous_relevance"
+    },
+    {
+      "bm25_passed": false,
+      "bm25_rank": null,
+      "case_id": "ret_hard_002",
+      "dense_passed": false,
+      "dense_rank": null,
+      "expected_documents": [
+        "threshold-control-signals"
+      ],
+      "failure_category": "semantic_confusion_or_ambiguous_relevance"
+    },
+    {
+      "bm25_passed": false,
+      "bm25_rank": 1,
+      "case_id": "ret_hard_003",
+      "dense_passed": true,
+      "dense_rank": 3,
+      "expected_documents": [
+        "long-run-placement"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": false,
+      "bm25_rank": 1,
+      "case_id": "ret_hard_004",
+      "dense_passed": false,
+      "dense_rank": 1,
+      "expected_documents": [
+        "pre-race-taper-principles"
+      ],
+      "failure_category": "semantic_confusion_or_ambiguous_relevance"
+    },
+    {
+      "bm25_passed": false,
+      "bm25_rank": 1,
+      "case_id": "ret_hard_005",
+      "dense_passed": false,
+      "dense_rank": 1,
+      "expected_documents": [
+        "pain-risk-boundaries"
+      ],
+      "failure_category": "semantic_confusion_or_ambiguous_relevance"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_hard_006",
+      "dense_passed": true,
+      "dense_rank": 2,
+      "expected_documents": [
+        "phase-transition-principles"
+      ],
+      "failure_category": "both_success"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": 1,
+      "case_id": "ret_hard_007",
+      "dense_passed": false,
+      "dense_rank": null,
+      "expected_documents": [
+        "running-strength-basics"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": false,
+      "bm25_rank": 1,
+      "case_id": "ret_hard_008",
+      "dense_passed": true,
+      "dense_rank": 1,
+      "expected_documents": [
+        "interval-recovery-design"
+      ],
+      "failure_category": "lexical_semantic_complement"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": null,
+      "case_id": "ret_abstain_001",
+      "dense_passed": true,
+      "dense_rank": null,
+      "expected_documents": [],
+      "failure_category": "hard_negative_or_abstention"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": null,
+      "case_id": "ret_abstain_002",
+      "dense_passed": true,
+      "dense_rank": null,
+      "expected_documents": [],
+      "failure_category": "hard_negative_or_abstention"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": null,
+      "case_id": "ret_abstain_003",
+      "dense_passed": true,
+      "dense_rank": null,
+      "expected_documents": [],
+      "failure_category": "hard_negative_or_abstention"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": null,
+      "case_id": "ret_abstain_004",
+      "dense_passed": true,
+      "dense_rank": null,
+      "expected_documents": [],
+      "failure_category": "hard_negative_or_abstention"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": null,
+      "case_id": "ret_abstain_005",
+      "dense_passed": true,
+      "dense_rank": null,
+      "expected_documents": [],
+      "failure_category": "hard_negative_or_abstention"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": null,
+      "case_id": "ret_abstain_006",
+      "dense_passed": true,
+      "dense_rank": null,
+      "expected_documents": [],
+      "failure_category": "hard_negative_or_abstention"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": null,
+      "case_id": "ret_abstain_007",
+      "dense_passed": true,
+      "dense_rank": null,
+      "expected_documents": [],
+      "failure_category": "hard_negative_or_abstention"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": null,
+      "case_id": "ret_abstain_008",
+      "dense_passed": true,
+      "dense_rank": null,
+      "expected_documents": [],
+      "failure_category": "hard_negative_or_abstention"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": null,
+      "case_id": "ret_abstain_009",
+      "dense_passed": true,
+      "dense_rank": null,
+      "expected_documents": [],
+      "failure_category": "hard_negative_or_abstention"
+    },
+    {
+      "bm25_passed": true,
+      "bm25_rank": null,
+      "case_id": "ret_abstain_010",
+      "dense_passed": true,
+      "dense_rank": null,
+      "expected_documents": [],
+      "failure_category": "hard_negative_or_abstention"
+    }
+  ],
+  "comparison_version": "retrieval-bm25-comparison-1.0.0",
+  "corpus_root_hash": "58bae62329a833c7a2a2a79dc12d31ac8c1b8052144597c839700e4b18894a7b",
+  "dataset_sha256": "aa354fb26a3951b095c3ad28cc28ed7baaa83d42447d8d19976521e9bc6cae54",
+  "dataset_version": "retrieval-cases-v1",
+  "dense": {
+    "case_count": 60,
+    "failure_case_ids": [
+      "ret_single_001",
+      "ret_single_007",
+      "ret_single_011",
+      "ret_multi_002",
+      "ret_multi_003",
+      "ret_multi_004",
+      "ret_multi_006",
+      "ret_multi_007",
+      "ret_multi_008",
+      "ret_multi_009",
+      "ret_multi_011",
+      "ret_multi_012",
+      "ret_hard_001",
+      "ret_hard_002",
+      "ret_hard_004",
+      "ret_hard_005",
+      "ret_hard_007"
+    ],
+    "metrics": {
+      "abstention_precision": 1.0,
+      "abstention_recall": 1.0,
+      "empty_result_accuracy": 1.0,
+      "filter_violation_rate": 0.0,
+      "forbidden_document_rate": 0.05,
+      "hit_at_1": 0.6,
+      "hit_at_3": 0.84,
+      "hit_at_4": 0.86,
+      "mrr_at_4": 0.715,
+      "ndcg_at_4": 0.69018,
+      "provider_success_rate": 1.0,
+      "recall_at_1": 0.536667,
+      "recall_at_3": 0.766667,
+      "recall_at_4": 0.786667
+    }
+  },
+  "overlap": {
+    "bm25_only_success": [
+      "ret_single_001",
+      "ret_single_007",
+      "ret_single_011",
+      "ret_multi_002",
+      "ret_multi_003",
+      "ret_multi_004",
+      "ret_multi_006",
+      "ret_multi_007",
+      "ret_multi_009",
+      "ret_multi_012",
+      "ret_hard_007"
+    ],
+    "both_fail": [
+      "ret_multi_008",
+      "ret_multi_011",
+      "ret_hard_001",
+      "ret_hard_002",
+      "ret_hard_004",
+      "ret_hard_005"
+    ],
+    "both_success": [
+      "ret_single_002",
+      "ret_single_003",
+      "ret_single_004",
+      "ret_single_005",
+      "ret_single_006",
+      "ret_single_008",
+      "ret_single_009",
+      "ret_single_010",
+      "ret_single_012",
+      "ret_single_013",
+      "ret_single_014",
+      "ret_single_015",
+      "ret_single_016",
+      "ret_single_017",
+      "ret_single_018",
+      "ret_single_019",
+      "ret_single_020",
+      "ret_single_021",
+      "ret_single_022",
+      "ret_single_023",
+      "ret_single_024",
+      "ret_single_025",
+      "ret_single_026",
+      "ret_single_027",
+      "ret_single_028",
+      "ret_single_029",
+      "ret_single_030",
+      "ret_multi_001",
+      "ret_multi_005",
+      "ret_multi_010",
+      "ret_hard_006",
+      "ret_abstain_001",
+      "ret_abstain_002",
+      "ret_abstain_003",
+      "ret_abstain_004",
+      "ret_abstain_005",
+      "ret_abstain_006",
+      "ret_abstain_007",
+      "ret_abstain_008",
+      "ret_abstain_009",
+      "ret_abstain_010"
+    ],
+    "dense_only_success": [
+      "ret_hard_003",
+      "ret_hard_008"
+    ]
+  },
+  "safety": {
+    "chunk_text_saved": false,
+    "embeddings_saved": false,
+    "private_cases_used": false,
+    "raw_query_saved": false
+  },
+  "top_k": 4
+}
