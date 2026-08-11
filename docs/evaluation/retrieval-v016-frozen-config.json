@@ -1,0 +1,34 @@
+{
+  "freeze_version": "retrieval-v0.16.0-frozen-config-1",
+  "corpus_root_hash": "d12cdbd31c7b6eb5b4b122f5ed686dc08495b800bb90e16dfe2544347af032df",
+  "top_k": 4,
+  "dense": {
+    "embedding_model": "Qwen/Qwen3-Embedding-0.6B",
+    "dimensions": 1024,
+    "implementations": ["exact", "qdrant"]
+  },
+  "bm25": {
+    "index_version": "bm25_v1",
+    "analyzer_version": "bm25-analyzer-v1",
+    "k1": 1.2,
+    "b": 0.75,
+    "top_k": 4
+  },
+  "hybrid_rrf": {
+    "dense_candidate_depth": 8,
+    "bm25_candidate_depth": 8,
+    "rrf_k": 60,
+    "dense_weight": 1.0,
+    "bm25_weight": 1.0,
+    "top_k": 4
+  },
+  "rerank": {
+    "dense_candidate_depth": 8,
+    "bm25_candidate_depth": 8,
+    "provider": "siliconflow",
+    "model": "Qwen/Qwen3-Reranker-0.6B",
+    "instruction_version": "gaitlogic_rerank_v1",
+    "top_k": 4
+  },
+  "freeze_policy": "Holdout outcomes must not change this file. Future tuning belongs to a new versioned experiment."
+}

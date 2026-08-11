@@ -1,0 +1,8 @@
+{
+  "dataset_version": "retrieval-holdout-v2",
+  "case_count": 40,
+  "content_sha256": "ae54a34e6c72447f4ebfe441c04104cb708da295c812452a6e460ba4a950556b",
+  "corpus_root_hash": "d12cdbd31c7b6eb5b4b122f5ed686dc08495b800bb90e16dfe2544347af032df",
+  "label_source": "public curated corpus plus deterministic human-authored labels",
+  "freeze_policy": "Evaluation outcomes do not modify this dataset. A disputed label is recorded as LABEL_REVIEW_REQUIRED in a separate review record."
+}

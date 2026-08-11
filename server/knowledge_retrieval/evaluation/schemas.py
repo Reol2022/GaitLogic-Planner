@@ -33,12 +33,18 @@ class RetrievalEvaluationCase(StrictEvaluationModel):
     case_id: str = Field(pattern=r"^ret_[a-z0-9_]{3,80}$")
     query: str = Field(min_length=2, max_length=500)
     language: Literal["zh-CN", "en-US"] = "zh-CN"
+    # These fields are descriptive evaluation labels.  They are deliberately
+    # never passed to a retriever and therefore cannot become case-specific
+    # production behaviour.
+    category: str = Field(default="general", min_length=1, max_length=80)
+    difficulty: Literal["easy", "medium", "hard"] = "medium"
     filters: RetrievalFilters = Field(default_factory=RetrievalFilters)
     relevant_documents: list[RelevantDocument] = Field(default_factory=list)
     acceptable_chunk_ids: list[str] = Field(default_factory=list)
     forbidden_document_ids: list[str] = Field(default_factory=list)
     should_abstain: bool = False
     notes: str = Field(default="", max_length=500)
+    label_rationale: str = Field(default="", max_length=800)
 
     @model_validator(mode="after")
     def validate_labels(self) -> "RetrievalEvaluationCase":
@@ -55,7 +61,15 @@ class RetrievalEvaluationCase(StrictEvaluationModel):
 class RetrievalDataset(StrictEvaluationModel):
     dataset_version: str = RETRIEVAL_DATASET_VERSION
     content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    cases: list[RetrievalEvaluationCase] = Field(min_length=60)
+    cases: list[RetrievalEvaluationCase] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_dataset_size(self) -> "RetrievalDataset":
+        if self.dataset_version == RETRIEVAL_DATASET_VERSION and len(self.cases) < 60:
+            raise ValueError("legacy retrieval dataset must retain at least 60 cases")
+        if self.dataset_version == "retrieval-holdout-v2" and not 40 <= len(self.cases) <= 60:
+            raise ValueError("retrieval holdout v2 must contain 40 to 60 cases")
+        return self
 
 
 class RagAnswerEvaluationCase(StrictEvaluationModel):

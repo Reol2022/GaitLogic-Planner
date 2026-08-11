@@ -1,0 +1,12 @@
+{
+  "product_version": "0.16.0",
+  "dataset_version": "retrieval-holdout-v2",
+  "corpus_root_hash": "d12cdbd31c7b6eb5b4b122f5ed686dc08495b800bb90e16dfe2544347af032df",
+  "default_strategy": "dense",
+  "decision": "Dense Exact remains the default after the frozen Holdout v2: it tied Rerank at 33/40 case passes, had higher Recall@4, lower operational complexity, and did not require an external reranker at request time.",
+  "legacy_metrics_reference": "docs/evaluation/reports/retrieval-reranker-comparison-v1.json",
+  "holdout_metrics_reference": "docs/evaluation/reports/retrieval-holdout-v2.json",
+  "frozen_configuration": "docs/evaluation/retrieval-v016-frozen-config.json",
+  "reranker_status": "REAL_PROVIDER_EVALUATED_NON_DEFAULT",
+  "immutability": "This baseline is a release artifact and must not be overwritten by routine evaluation runs."
+}

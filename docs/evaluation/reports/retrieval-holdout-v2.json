@@ -1,0 +1,2568 @@
+{
+  "case_count": 40,
+  "dataset_sha256": "ae54a34e6c72447f4ebfe441c04104cb708da295c812452a6e460ba4a950556b",
+  "dataset_version": "retrieval-holdout-v2",
+  "decision_matrix": {
+    "criteria": [
+      "holdout_case_pass_rate",
+      "recall_at_4",
+      "mrr_at_4",
+      "ndcg_at_4",
+      "forbidden_document_rate",
+      "filter_violation_rate",
+      "latency",
+      "provider_dependency",
+      "fallback",
+      "operational_complexity"
+    ],
+    "safety_gates": {
+      "agent_safety_regression": 0,
+      "canonical_reference_violation": 0,
+      "filter_violation_rate": 0,
+      "sensitive_leakage": 0,
+      "source_hallucination": 0
+    },
+    "selection": "MANUAL_REVIEW_REQUIRED"
+  },
+  "evaluation_version": "retrieval-holdout-ablation-1.0.0",
+  "forbidden_analysis": {
+    "bm25": [
+      {
+        "case_id": "ret_holdout_036",
+        "document_id": "high-fatigue-intensity-adjustment",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 4
+      },
+      {
+        "case_id": "ret_holdout_038",
+        "document_id": "recovery-week-principles",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 1
+      }
+    ],
+    "dense_exact": [
+      {
+        "case_id": "ret_holdout_015",
+        "document_id": "threshold-control-signals",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 2
+      },
+      {
+        "case_id": "ret_holdout_030",
+        "document_id": "threshold-control-signals",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 4
+      },
+      {
+        "case_id": "ret_holdout_035",
+        "document_id": "threshold-control-signals",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 1
+      },
+      {
+        "case_id": "ret_holdout_035",
+        "document_id": "threshold-control-signals",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 2
+      },
+      {
+        "case_id": "ret_holdout_038",
+        "document_id": "recovery-week-principles",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 2
+      }
+    ],
+    "hybrid_rrf": [
+      {
+        "case_id": "ret_holdout_030",
+        "document_id": "threshold-control-signals",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 4
+      },
+      {
+        "case_id": "ret_holdout_035",
+        "document_id": "threshold-control-signals",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 1
+      },
+      {
+        "case_id": "ret_holdout_035",
+        "document_id": "threshold-control-signals",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 3
+      },
+      {
+        "case_id": "ret_holdout_038",
+        "document_id": "recovery-week-principles",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 1
+      }
+    ],
+    "rerank": [
+      {
+        "case_id": "ret_holdout_035",
+        "document_id": "threshold-control-signals",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 1
+      },
+      {
+        "case_id": "ret_holdout_035",
+        "document_id": "threshold-control-signals",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 4
+      },
+      {
+        "case_id": "ret_holdout_036",
+        "document_id": "high-fatigue-intensity-adjustment",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 4
+      },
+      {
+        "case_id": "ret_holdout_038",
+        "document_id": "recovery-week-principles",
+        "failure_category": "FORBIDDEN_DOCUMENT_RETRIEVED",
+        "rank": 2
+      }
+    ]
+  },
+  "generated_at": "2026-08-11T08:49:46.869429+00:00",
+  "pairwise_comparisons": {
+    "bm25_vs_dense_exact": {
+      "both_fail": [
+        "ret_holdout_015",
+        "ret_holdout_030",
+        "ret_holdout_035",
+        "ret_holdout_038",
+        "ret_holdout_040"
+      ],
+      "both_pass": [
+        "ret_holdout_001",
+        "ret_holdout_002",
+        "ret_holdout_003",
+        "ret_holdout_004",
+        "ret_holdout_005",
+        "ret_holdout_007",
+        "ret_holdout_008",
+        "ret_holdout_009",
+        "ret_holdout_010",
+        "ret_holdout_011",
+        "ret_holdout_013",
+        "ret_holdout_014",
+        "ret_holdout_016",
+        "ret_holdout_017",
+        "ret_holdout_018",
+        "ret_holdout_019",
+        "ret_holdout_021",
+        "ret_holdout_022",
+        "ret_holdout_024",
+        "ret_holdout_025",
+        "ret_holdout_026",
+        "ret_holdout_028",
+        "ret_holdout_029",
+        "ret_holdout_031",
+        "ret_holdout_032",
+        "ret_holdout_033",
+        "ret_holdout_034"
+      ],
+      "recovered_cases": [
+        "ret_holdout_006",
+        "ret_holdout_012",
+        "ret_holdout_020",
+        "ret_holdout_027",
+        "ret_holdout_036",
+        "ret_holdout_037"
+      ],
+      "regressed_cases": [
+        "ret_holdout_023",
+        "ret_holdout_039"
+      ]
+    },
+    "bm25_vs_hybrid_rrf": {
+      "both_fail": [
+        "ret_holdout_015",
+        "ret_holdout_020",
+        "ret_holdout_027",
+        "ret_holdout_030",
+        "ret_holdout_035",
+        "ret_holdout_038",
+        "ret_holdout_040"
+      ],
+      "both_pass": [
+        "ret_holdout_001",
+        "ret_holdout_002",
+        "ret_holdout_003",
+        "ret_holdout_004",
+        "ret_holdout_005",
+        "ret_holdout_007",
+        "ret_holdout_008",
+        "ret_holdout_009",
+        "ret_holdout_010",
+        "ret_holdout_011",
+        "ret_holdout_013",
+        "ret_holdout_014",
+        "ret_holdout_016",
+        "ret_holdout_017",
+        "ret_holdout_018",
+        "ret_holdout_019",
+        "ret_holdout_021",
+        "ret_holdout_022",
+        "ret_holdout_024",
+        "ret_holdout_025",
+        "ret_holdout_026",
+        "ret_holdout_028",
+        "ret_holdout_029",
+        "ret_holdout_031",
+        "ret_holdout_032",
+        "ret_holdout_033",
+        "ret_holdout_034",
+        "ret_holdout_039"
+      ],
+      "recovered_cases": [
+        "ret_holdout_006",
+        "ret_holdout_012",
+        "ret_holdout_036",
+        "ret_holdout_037"
+      ],
+      "regressed_cases": [
+        "ret_holdout_023"
+      ]
+    },
+    "bm25_vs_rerank": {
+      "both_fail": [
+        "ret_holdout_015",
+        "ret_holdout_030",
+        "ret_holdout_035",
+        "ret_holdout_036",
+        "ret_holdout_038",
+        "ret_holdout_040"
+      ],
+      "both_pass": [
+        "ret_holdout_001",
+        "ret_holdout_002",
+        "ret_holdout_003",
+        "ret_holdout_004",
+        "ret_holdout_005",
+        "ret_holdout_007",
+        "ret_holdout_008",
+        "ret_holdout_009",
+        "ret_holdout_010",
+        "ret_holdout_011",
+        "ret_holdout_013",
+        "ret_holdout_014",
+        "ret_holdout_016",
+        "ret_holdout_017",
+        "ret_holdout_018",
+        "ret_holdout_019",
+        "ret_holdout_021",
+        "ret_holdout_022",
+        "ret_holdout_024",
+        "ret_holdout_025",
+        "ret_holdout_026",
+        "ret_holdout_028",
+        "ret_holdout_029",
+        "ret_holdout_031",
+        "ret_holdout_032",
+        "ret_holdout_033",
+        "ret_holdout_034",
+        "ret_holdout_039"
+      ],
+      "recovered_cases": [
+        "ret_holdout_006",
+        "ret_holdout_012",
+        "ret_holdout_020",
+        "ret_holdout_027",
+        "ret_holdout_037"
+      ],
+      "regressed_cases": [
+        "ret_holdout_023"
+      ]
+    },
+    "dense_exact_vs_hybrid_rrf": {
+      "both_fail": [
+        "ret_holdout_015",
+        "ret_holdout_023",
+        "ret_holdout_030",
+        "ret_holdout_035",
+        "ret_holdout_038",
+        "ret_holdout_040"
+      ],
+      "both_pass": [
+        "ret_holdout_001",
+        "ret_holdout_002",
+        "ret_holdout_003",
+        "ret_holdout_004",
+        "ret_holdout_005",
+        "ret_holdout_006",
+        "ret_holdout_007",
+        "ret_holdout_008",
+        "ret_holdout_009",
+        "ret_holdout_010",
+        "ret_holdout_011",
+        "ret_holdout_012",
+        "ret_holdout_013",
+        "ret_holdout_014",
+        "ret_holdout_016",
+        "ret_holdout_017",
+        "ret_holdout_018",
+        "ret_holdout_019",
+        "ret_holdout_021",
+        "ret_holdout_022",
+        "ret_holdout_024",
+        "ret_holdout_025",
+        "ret_holdout_026",
+        "ret_holdout_028",
+        "ret_holdout_029",
+        "ret_holdout_031",
+        "ret_holdout_032",
+        "ret_holdout_033",
+        "ret_holdout_034",
+        "ret_holdout_036",
+        "ret_holdout_037"
+      ],
+      "recovered_cases": [
+        "ret_holdout_039"
+      ],
+      "regressed_cases": [
+        "ret_holdout_020",
+        "ret_holdout_027"
+      ]
+    },
+    "dense_exact_vs_rerank": {
+      "both_fail": [
+        "ret_holdout_015",
+        "ret_holdout_023",
+        "ret_holdout_030",
+        "ret_holdout_035",
+        "ret_holdout_038",
+        "ret_holdout_040"
+      ],
+      "both_pass": [
+        "ret_holdout_001",
+        "ret_holdout_002",
+        "ret_holdout_003",
+        "ret_holdout_004",
+        "ret_holdout_005",
+        "ret_holdout_006",
+        "ret_holdout_007",
+        "ret_holdout_008",
+        "ret_holdout_009",
+        "ret_holdout_010",
+        "ret_holdout_011",
+        "ret_holdout_012",
+        "ret_holdout_013",
+        "ret_holdout_014",
+        "ret_holdout_016",
+        "ret_holdout_017",
+        "ret_holdout_018",
+        "ret_holdout_019",
+        "ret_holdout_020",
+        "ret_holdout_021",
+        "ret_holdout_022",
+        "ret_holdout_024",
+        "ret_holdout_025",
+        "ret_holdout_026",
+        "ret_holdout_027",
+        "ret_holdout_028",
+        "ret_holdout_029",
+        "ret_holdout_031",
+        "ret_holdout_032",
+        "ret_holdout_033",
+        "ret_holdout_034",
+        "ret_holdout_037"
+      ],
+      "recovered_cases": [
+        "ret_holdout_039"
+      ],
+      "regressed_cases": [
+        "ret_holdout_036"
+      ]
+    },
+    "hybrid_rrf_vs_rerank": {
+      "both_fail": [
+        "ret_holdout_015",
+        "ret_holdout_023",
+        "ret_holdout_030",
+        "ret_holdout_035",
+        "ret_holdout_038",
+        "ret_holdout_040"
+      ],
+      "both_pass": [
+        "ret_holdout_001",
+        "ret_holdout_002",
+        "ret_holdout_003",
+        "ret_holdout_004",
+        "ret_holdout_005",
+        "ret_holdout_006",
+        "ret_holdout_007",
+        "ret_holdout_008",
+        "ret_holdout_009",
+        "ret_holdout_010",
+        "ret_holdout_011",
+        "ret_holdout_012",
+        "ret_holdout_013",
+        "ret_holdout_014",
+        "ret_holdout_016",
+        "ret_holdout_017",
+        "ret_holdout_018",
+        "ret_holdout_019",
+        "ret_holdout_021",
+        "ret_holdout_022",
+        "ret_holdout_024",
+        "ret_holdout_025",
+        "ret_holdout_026",
+        "ret_holdout_028",
+        "ret_holdout_029",
+        "ret_holdout_031",
+        "ret_holdout_032",
+        "ret_holdout_033",
+        "ret_holdout_034",
+        "ret_holdout_037",
+        "ret_holdout_039"
+      ],
+      "recovered_cases": [
+        "ret_holdout_020",
+        "ret_holdout_027"
+      ],
+      "regressed_cases": [
+        "ret_holdout_036"
+      ]
+    }
+  },
+  "safety": {
+    "case_specific_production_logic": false,
+    "chunk_text_saved": false,
+    "private_competition_data_used": false,
+    "provider_response_saved": false,
+    "raw_query_saved": false
+  },
+  "strategies": {
+    "bm25": {
+      "case_count": 40,
+      "cases": [
+        {
+          "case_id": "ret_holdout_001",
+          "duration_ms": 11.596,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_002",
+          "duration_ms": 10.479,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_003",
+          "duration_ms": 11.715,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_004",
+          "duration_ms": 11.273,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "intensity-density-management",
+            "intensity-density-management",
+            "intensity-density-management",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_005",
+          "duration_ms": 10.244,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "intensity-density-management",
+            "progressive-volume-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_006",
+          "duration_ms": 11.294,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "running-strength-basics",
+            "high-fatigue-intensity-adjustment",
+            "running-strength-basics"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_007",
+          "duration_ms": 10.599,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_008",
+          "duration_ms": 10.269,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_009",
+          "duration_ms": 11.306,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "intensity-density-management",
+            "threshold-session-placement",
+            "threshold-control-signals"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_010",
+          "duration_ms": 10.941,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_011",
+          "duration_ms": 10.103,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_012",
+          "duration_ms": 11.267,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "running-strength-basics",
+            "recovery-week-principles",
+            "running-strength-basics",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_013",
+          "duration_ms": 11.689,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_014",
+          "duration_ms": 10.599,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_015",
+          "duration_ms": 12.316,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "running-strength-basics",
+            "long-run-placement",
+            "threshold-session-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_016",
+          "duration_ms": 11.61,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_017",
+          "duration_ms": 10.205,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_018",
+          "duration_ms": 11.112,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_019",
+          "duration_ms": 11.052,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_020",
+          "duration_ms": 10.489,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "long-run-placement",
+            "threshold-session-placement",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_021",
+          "duration_ms": 11.4,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_022",
+          "duration_ms": 11.476,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "intensity-density-management",
+            "intensity-density-management",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_023",
+          "duration_ms": 10.426,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "recovery-week-principles",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_024",
+          "duration_ms": 11.628,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_025",
+          "duration_ms": 10.834,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_026",
+          "duration_ms": 10.058,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "running-strength-basics",
+            "running-strength-basics",
+            "running-strength-basics",
+            "running-strength-basics"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_027",
+          "duration_ms": 11.281,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "progressive-volume-adjustment",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_028",
+          "duration_ms": 10.364,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_029",
+          "duration_ms": 11.041,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_030",
+          "duration_ms": 11.645,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "intensity-density-management",
+            "running-strength-basics"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_031",
+          "duration_ms": 10.203,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "threshold-session-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_032",
+          "duration_ms": 11.526,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_033",
+          "duration_ms": 11.544,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_034",
+          "duration_ms": 9.877,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": []
+        },
+        {
+          "case_id": "ret_holdout_035",
+          "duration_ms": 11.38,
+          "failure_codes": [
+            "EXPECTED_ABSTENTION"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "progressive-volume-adjustment",
+            "interval-recovery-design",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_036",
+          "duration_ms": 11.637,
+          "failure_codes": [
+            "FORBIDDEN_DOCUMENT_RETRIEVED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_037",
+          "duration_ms": 11.438,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "interval-recovery-design",
+            "recovery-week-principles",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_038",
+          "duration_ms": 11.488,
+          "failure_codes": [
+            "FORBIDDEN_DOCUMENT_RETRIEVED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "pre-race-taper-principles",
+            "long-run-placement",
+            "progressive-volume-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_039",
+          "duration_ms": 11.786,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "intensity-density-management",
+            "threshold-session-placement",
+            "long-run-placement",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_040",
+          "duration_ms": 12.67,
+          "failure_codes": [
+            "EXPECTED_ABSTENTION"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "progressive-volume-adjustment",
+            "intensity-density-management",
+            "phase-transition-principles"
+          ]
+        }
+      ],
+      "failure_case_ids": [
+        "ret_holdout_006",
+        "ret_holdout_012",
+        "ret_holdout_015",
+        "ret_holdout_020",
+        "ret_holdout_027",
+        "ret_holdout_030",
+        "ret_holdout_035",
+        "ret_holdout_036",
+        "ret_holdout_037",
+        "ret_holdout_038",
+        "ret_holdout_040"
+      ],
+      "metrics": {
+        "abstention_precision": 0.333333,
+        "abstention_recall": 0.333333,
+        "case_pass_rate": 0.725,
+        "empty_result_accuracy": 0.95,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.05,
+        "hit_at_1": 0.837838,
+        "hit_at_3": 0.918919,
+        "hit_at_4": 0.918919,
+        "mrr_at_4": 0.878378,
+        "ndcg_at_4": 0.85333,
+        "p50_latency_ms": 11.281,
+        "p95_latency_ms": 11.786,
+        "recall_at_1": 0.747748,
+        "recall_at_3": 0.869369,
+        "recall_at_4": 0.869369
+      },
+      "passed_cases": 29,
+      "status": "COMPLETED",
+      "strategy": "bm25"
+    },
+    "dense_exact": {
+      "case_count": 40,
+      "cases": [
+        {
+          "case_id": "ret_holdout_001",
+          "duration_ms": 1847.443,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_002",
+          "duration_ms": 513.74,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_003",
+          "duration_ms": 589.841,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_004",
+          "duration_ms": 510.364,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "intensity-density-management",
+            "intensity-density-management",
+            "intensity-density-management",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_005",
+          "duration_ms": 742.458,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_006",
+          "duration_ms": 468.516,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "intensity-density-management",
+            "threshold-session-placement",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_007",
+          "duration_ms": 428.847,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_008",
+          "duration_ms": 450.966,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_009",
+          "duration_ms": 560.43,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "long-run-placement",
+            "running-strength-basics",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_010",
+          "duration_ms": 668.838,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_011",
+          "duration_ms": 442.228,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_012",
+          "duration_ms": 741.757,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "long-run-placement",
+            "intensity-density-management",
+            "running-strength-basics"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_013",
+          "duration_ms": 877.852,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_014",
+          "duration_ms": 823.861,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_015",
+          "duration_ms": 3653.088,
+          "failure_codes": [
+            "FORBIDDEN_DOCUMENT_RETRIEVED",
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "threshold-control-signals",
+            "interval-recovery-design",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_016",
+          "duration_ms": 544.19,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_017",
+          "duration_ms": 516.196,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_018",
+          "duration_ms": 525.22,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_019",
+          "duration_ms": 1151.463,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_020",
+          "duration_ms": 512.635,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_021",
+          "duration_ms": 533.402,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_022",
+          "duration_ms": 532.589,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_023",
+          "duration_ms": 597.892,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "intensity-density-management",
+            "long-run-placement",
+            "recovery-week-principles",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_024",
+          "duration_ms": 549.551,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_025",
+          "duration_ms": 825.928,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_026",
+          "duration_ms": 584.995,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "running-strength-basics",
+            "running-strength-basics",
+            "running-strength-basics",
+            "running-strength-basics"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_027",
+          "duration_ms": 457.985,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "running-strength-basics",
+            "pain-risk-boundaries",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_028",
+          "duration_ms": 526.646,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_029",
+          "duration_ms": 661.865,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_030",
+          "duration_ms": 570.076,
+          "failure_codes": [
+            "FORBIDDEN_DOCUMENT_RETRIEVED",
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "threshold-control-signals"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_031",
+          "duration_ms": 451.837,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "threshold-session-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_032",
+          "duration_ms": 949.463,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_033",
+          "duration_ms": 533.807,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_034",
+          "duration_ms": 529.119,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": []
+        },
+        {
+          "case_id": "ret_holdout_035",
+          "duration_ms": 619.355,
+          "failure_codes": [
+            "EXPECTED_ABSTENTION",
+            "FORBIDDEN_DOCUMENT_RETRIEVED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "progressive-volume-adjustment",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_036",
+          "duration_ms": 565.897,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_037",
+          "duration_ms": 743.068,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "recovery-week-principles",
+            "progressive-volume-adjustment",
+            "running-strength-basics"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_038",
+          "duration_ms": 545.45,
+          "failure_codes": [
+            "FORBIDDEN_DOCUMENT_RETRIEVED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "recovery-week-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_039",
+          "duration_ms": 910.351,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "long-run-placement",
+            "recovery-week-principles",
+            "threshold-session-placement",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_040",
+          "duration_ms": 527.159,
+          "failure_codes": [
+            "EXPECTED_ABSTENTION"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "recovery-week-principles"
+          ]
+        }
+      ],
+      "failure_case_ids": [
+        "ret_holdout_015",
+        "ret_holdout_023",
+        "ret_holdout_030",
+        "ret_holdout_035",
+        "ret_holdout_038",
+        "ret_holdout_039",
+        "ret_holdout_040"
+      ],
+      "metrics": {
+        "abstention_precision": 0.333333,
+        "abstention_recall": 0.333333,
+        "case_pass_rate": 0.825,
+        "empty_result_accuracy": 0.95,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.1,
+        "hit_at_1": 0.864865,
+        "hit_at_3": 0.972973,
+        "hit_at_4": 0.972973,
+        "mrr_at_4": 0.914414,
+        "ndcg_at_4": 0.890827,
+        "p50_latency_ms": 560.43,
+        "p95_latency_ms": 1151.463,
+        "recall_at_1": 0.774775,
+        "recall_at_3": 0.923423,
+        "recall_at_4": 0.936937
+      },
+      "passed_cases": 33,
+      "status": "COMPLETED",
+      "strategy": "dense_exact"
+    },
+    "dense_qdrant": {
+      "status": "ENVIRONMENT_SKIPPED",
+      "strategy": "dense_qdrant"
+    },
+    "hybrid_rrf": {
+      "case_count": 40,
+      "cases": [
+        {
+          "case_id": "ret_holdout_001",
+          "duration_ms": 121.327,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_002",
+          "duration_ms": 121.847,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_003",
+          "duration_ms": 121.716,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_004",
+          "duration_ms": 120.628,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "intensity-density-management",
+            "intensity-density-management",
+            "intensity-density-management",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_005",
+          "duration_ms": 125.372,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_006",
+          "duration_ms": 132.917,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "intensity-density-management",
+            "progressive-volume-adjustment",
+            "running-strength-basics"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_007",
+          "duration_ms": 123.855,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_008",
+          "duration_ms": 121.955,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_009",
+          "duration_ms": 137.563,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "long-run-placement",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_010",
+          "duration_ms": 123.467,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_011",
+          "duration_ms": 120.066,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_012",
+          "duration_ms": 133.433,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "running-strength-basics",
+            "threshold-session-placement",
+            "long-run-placement",
+            "running-strength-basics"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_013",
+          "duration_ms": 121.003,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_014",
+          "duration_ms": 122.008,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_015",
+          "duration_ms": 133.389,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "intensity-density-management",
+            "threshold-session-placement",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_016",
+          "duration_ms": 123.789,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_017",
+          "duration_ms": 120.598,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_018",
+          "duration_ms": 124.435,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_019",
+          "duration_ms": 120.259,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_020",
+          "duration_ms": 134.74,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_021",
+          "duration_ms": 120.236,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_022",
+          "duration_ms": 127.273,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "intensity-density-management",
+            "intensity-density-management",
+            "progressive-volume-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_023",
+          "duration_ms": 134.951,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "long-run-placement",
+            "high-fatigue-intensity-adjustment",
+            "intensity-density-management",
+            "progressive-volume-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_024",
+          "duration_ms": 121.429,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_025",
+          "duration_ms": 133.029,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_026",
+          "duration_ms": 128.289,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "running-strength-basics",
+            "running-strength-basics",
+            "running-strength-basics",
+            "running-strength-basics"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_027",
+          "duration_ms": 133.826,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "high-fatigue-intensity-adjustment",
+            "threshold-session-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_028",
+          "duration_ms": 118.986,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_029",
+          "duration_ms": 120.584,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_030",
+          "duration_ms": 133.63,
+          "failure_codes": [
+            "FORBIDDEN_DOCUMENT_RETRIEVED",
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "running-strength-basics",
+            "threshold-control-signals"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_031",
+          "duration_ms": 121.765,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "threshold-session-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_032",
+          "duration_ms": 124.139,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_033",
+          "duration_ms": 124.968,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_034",
+          "duration_ms": 120.201,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": []
+        },
+        {
+          "case_id": "ret_holdout_035",
+          "duration_ms": 135.751,
+          "failure_codes": [
+            "EXPECTED_ABSTENTION",
+            "FORBIDDEN_DOCUMENT_RETRIEVED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "threshold-control-signals",
+            "pain-risk-boundaries",
+            "threshold-control-signals",
+            "progressive-volume-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_036",
+          "duration_ms": 120.99,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_037",
+          "duration_ms": 137.163,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "interval-recovery-design",
+            "recovery-week-principles",
+            "progressive-volume-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_038",
+          "duration_ms": 133.784,
+          "failure_codes": [
+            "FORBIDDEN_DOCUMENT_RETRIEVED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_039",
+          "duration_ms": 135.052,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "intensity-density-management",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_040",
+          "duration_ms": 137.978,
+          "failure_codes": [
+            "EXPECTED_ABSTENTION"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "pain-risk-boundaries"
+          ]
+        }
+      ],
+      "failure_case_ids": [
+        "ret_holdout_015",
+        "ret_holdout_020",
+        "ret_holdout_023",
+        "ret_holdout_027",
+        "ret_holdout_030",
+        "ret_holdout_035",
+        "ret_holdout_038",
+        "ret_holdout_040"
+      ],
+      "metrics": {
+        "abstention_precision": 0.333333,
+        "abstention_recall": 0.333333,
+        "case_pass_rate": 0.8,
+        "empty_result_accuracy": 0.95,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.075,
+        "hit_at_1": 0.783784,
+        "hit_at_3": 0.945946,
+        "hit_at_4": 0.972973,
+        "mrr_at_4": 0.871622,
+        "ndcg_at_4": 0.85992,
+        "p50_latency_ms": 124.139,
+        "p95_latency_ms": 137.163,
+        "recall_at_1": 0.707207,
+        "recall_at_3": 0.896396,
+        "recall_at_4": 0.918919
+      },
+      "passed_cases": 32,
+      "status": "COMPLETED",
+      "strategy": "hybrid_rrf"
+    },
+    "rerank": {
+      "case_count": 40,
+      "cases": [
+        {
+          "case_id": "ret_holdout_001",
+          "duration_ms": 1312.949,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_002",
+          "duration_ms": 567.729,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "recovery-week-principles",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_003",
+          "duration_ms": 538.464,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_004",
+          "duration_ms": 542.111,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "intensity-density-management",
+            "intensity-density-management",
+            "intensity-density-management",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_005",
+          "duration_ms": 546.402,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "intensity-density-management",
+            "progressive-volume-adjustment",
+            "intensity-density-management",
+            "progressive-volume-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_006",
+          "duration_ms": 602.04,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "intensity-density-management",
+            "progressive-volume-adjustment",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_007",
+          "duration_ms": 502.938,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_008",
+          "duration_ms": 518.938,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_009",
+          "duration_ms": 637.0,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "long-run-placement",
+            "interval-recovery-design",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_010",
+          "duration_ms": 502.369,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_011",
+          "duration_ms": 666.239,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_012",
+          "duration_ms": 650.962,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "running-strength-basics",
+            "running-strength-basics",
+            "long-run-placement",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_013",
+          "duration_ms": 584.284,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_014",
+          "duration_ms": 513.95,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_015",
+          "duration_ms": 633.563,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "interval-recovery-design",
+            "long-run-placement",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_016",
+          "duration_ms": 508.256,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_017",
+          "duration_ms": 619.335,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles",
+            "phase-transition-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_018",
+          "duration_ms": 503.228,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_019",
+          "duration_ms": 498.951,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_020",
+          "duration_ms": 617.832,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "pre-race-taper-principles",
+            "running-strength-basics"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_021",
+          "duration_ms": 511.688,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_022",
+          "duration_ms": 592.179,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "progressive-volume-adjustment",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_023",
+          "duration_ms": 628.524,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "threshold-session-placement",
+            "long-run-placement",
+            "intensity-density-management"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_024",
+          "duration_ms": 497.502,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_025",
+          "duration_ms": 516.437,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_026",
+          "duration_ms": 517.441,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "running-strength-basics",
+            "running-strength-basics",
+            "running-strength-basics",
+            "running-strength-basics"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_027",
+          "duration_ms": 621.322,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "running-strength-basics",
+            "pain-risk-boundaries",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_028",
+          "duration_ms": 509.898,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_029",
+          "duration_ms": 506.565,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals",
+            "threshold-control-signals"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_030",
+          "duration_ms": 588.861,
+          "failure_codes": [
+            "RELEVANT_DOCUMENT_MISSED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_031",
+          "duration_ms": 512.265,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "threshold-session-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_032",
+          "duration_ms": 508.309,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries",
+            "pain-risk-boundaries"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_033",
+          "duration_ms": 631.093,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design",
+            "interval-recovery-design"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_034",
+          "duration_ms": 120.67,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": []
+        },
+        {
+          "case_id": "ret_holdout_035",
+          "duration_ms": 623.79,
+          "failure_codes": [
+            "EXPECTED_ABSTENTION",
+            "FORBIDDEN_DOCUMENT_RETRIEVED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "threshold-control-signals",
+            "pain-risk-boundaries",
+            "pre-race-taper-principles",
+            "threshold-control-signals"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_036",
+          "duration_ms": 554.844,
+          "failure_codes": [
+            "FORBIDDEN_DOCUMENT_RETRIEVED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "recovery-week-principles",
+            "high-fatigue-intensity-adjustment"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_037",
+          "duration_ms": 632.209,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "high-fatigue-intensity-adjustment",
+            "high-fatigue-intensity-adjustment",
+            "progressive-volume-adjustment",
+            "recovery-week-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_038",
+          "duration_ms": 581.686,
+          "failure_codes": [
+            "FORBIDDEN_DOCUMENT_RETRIEVED"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "pre-race-taper-principles",
+            "recovery-week-principles",
+            "pre-race-taper-principles",
+            "pre-race-taper-principles"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_039",
+          "duration_ms": 608.912,
+          "failure_codes": [],
+          "passed": true,
+          "ranked_document_ids": [
+            "intensity-density-management",
+            "threshold-session-placement",
+            "threshold-session-placement",
+            "long-run-placement"
+          ]
+        },
+        {
+          "case_id": "ret_holdout_040",
+          "duration_ms": 854.009,
+          "failure_codes": [
+            "EXPECTED_ABSTENTION"
+          ],
+          "passed": false,
+          "ranked_document_ids": [
+            "running-strength-basics",
+            "high-fatigue-intensity-adjustment",
+            "pre-race-taper-principles",
+            "recovery-week-principles"
+          ]
+        }
+      ],
+      "failure_case_ids": [
+        "ret_holdout_015",
+        "ret_holdout_023",
+        "ret_holdout_030",
+        "ret_holdout_035",
+        "ret_holdout_036",
+        "ret_holdout_038",
+        "ret_holdout_040"
+      ],
+      "metrics": {
+        "abstention_precision": 0.333333,
+        "abstention_recall": 0.333333,
+        "case_pass_rate": 0.825,
+        "empty_result_accuracy": 0.95,
+        "filter_violation_rate": 0.0,
+        "forbidden_document_rate": 0.075,
+        "hit_at_1": 0.918919,
+        "hit_at_3": 0.945946,
+        "hit_at_4": 0.945946,
+        "mrr_at_4": 0.932432,
+        "ndcg_at_4": 0.916592,
+        "p50_latency_ms": 567.729,
+        "p95_latency_ms": 666.239,
+        "recall_at_1": 0.828829,
+        "recall_at_3": 0.932432,
+        "recall_at_4": 0.932432
+      },
+      "passed_cases": 33,
+      "provider_reliability": {
+        "average_provider_latency_ms": 567.729,
+        "failure_count": 0,
+        "fallback_count": 0,
+        "provider_success_rate": 1.0,
+        "retry_count": 0,
+        "success_count": 40
+      },
+      "status": "COMPLETED",
+      "strategy": "rerank"
+    }
+  }
+}
