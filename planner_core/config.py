@@ -325,11 +325,56 @@ class Settings(BaseSettings):
         pattern=r"^(?:|knowledge-[0-9a-f]{24})$",
         validation_alias="COACH_AGENT_KNOWLEDGE_INDEX_ID",
     )
+    coach_agent_knowledge_bm25_index_id: str = Field(
+        default="",
+        max_length=80,
+        pattern=r"^(?:|bm25-[0-9a-f]{24})$",
+        validation_alias="COACH_AGENT_KNOWLEDGE_BM25_INDEX_ID",
+    )
+    knowledge_retrieval_strategy: Literal["dense", "bm25", "hybrid"] = Field(
+        default="dense",
+        validation_alias="KNOWLEDGE_RETRIEVAL_STRATEGY",
+    )
     knowledge_index_runtime_directory: str = Field(
         default="var/knowledge_indexes",
         min_length=1,
         max_length=240,
         validation_alias="KNOWLEDGE_INDEX_RUNTIME_DIRECTORY",
+    )
+    knowledge_bm25_index_runtime_directory: str = Field(
+        default="var/knowledge_bm25_indexes",
+        min_length=1,
+        max_length=240,
+        validation_alias="KNOWLEDGE_BM25_INDEX_RUNTIME_DIRECTORY",
+    )
+    knowledge_hybrid_fusion: Literal["rrf"] = Field(
+        default="rrf",
+        validation_alias="KNOWLEDGE_HYBRID_FUSION",
+    )
+    knowledge_hybrid_dense_candidates: int = Field(
+        default=8, ge=4, le=12,
+        validation_alias="KNOWLEDGE_HYBRID_DENSE_CANDIDATES",
+    )
+    knowledge_hybrid_bm25_candidates: int = Field(
+        default=8, ge=4, le=12,
+        validation_alias="KNOWLEDGE_HYBRID_BM25_CANDIDATES",
+    )
+    knowledge_vector_store: Literal["exact", "qdrant"] = Field(
+        default="exact",
+        validation_alias="KNOWLEDGE_VECTOR_STORE",
+    )
+    qdrant_url: str | None = Field(
+        default=None,
+        validation_alias="QDRANT_URL",
+    )
+    qdrant_api_key: str | None = Field(
+        default=None,
+        validation_alias="QDRANT_API_KEY",
+    )
+    qdrant_collection_prefix: str = Field(
+        default="gaitlogic",
+        pattern=r"^[a-z][a-z0-9_-]{0,40}$",
+        validation_alias="QDRANT_COLLECTION_PREFIX",
     )
     knowledge_index_max_age_days: int = Field(
         default=30,
@@ -448,6 +493,26 @@ class Settings(BaseSettings):
             or parsed.fragment
         ):
             raise ValueError("OTLP endpoint must be an http(s) URL without credentials or query data")
+        return value.rstrip("/")
+
+    @field_validator("qdrant_url")
+    @classmethod
+    def validate_qdrant_url(cls, value: str | None) -> str | None:
+        if value in (None, ""):
+            return None
+        parsed = urlparse(value)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.params
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError(
+                "Qdrant URL must be an http(s) URL without credentials or query data"
+            )
         return value.rstrip("/")
 
     @field_validator("mcp_allowed_origins")

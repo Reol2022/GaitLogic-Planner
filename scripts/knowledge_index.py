@@ -112,10 +112,15 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _service(args: argparse.Namespace) -> KnowledgeIndexService:
+    settings = get_settings()
     return KnowledgeIndexService(
         repository_root=REPOSITORY_ROOT,
         corpus_manifest_path=args.corpus_manifest,
         index_root=args.index_dir,
+        vector_store=settings.knowledge_vector_store,
+        qdrant_url=settings.qdrant_url,
+        qdrant_api_key=settings.qdrant_api_key,
+        qdrant_collection_prefix=settings.qdrant_collection_prefix,
     )
 
 
@@ -147,7 +152,8 @@ def _run_build(args: argparse.Namespace) -> None:
         print(
             f"Index dry-run: {result.chunk_count} chunks, "
             f"{result.estimated_batches} batches, provider={result.provider}, "
-            f"model={result.model}, dimensions={result.dimensions or 'provider-defined'}."
+            f"model={result.model}, store={result.vector_store}, "
+            f"dimensions={result.dimensions or 'provider-defined'}."
         )
         print(f"Corpus root hash: {result.corpus_root_hash}")
         return
@@ -176,10 +182,10 @@ def _run_list(args: argparse.Namespace) -> None:
     if args.json_output:
         _json([item.model_dump(mode="json") for item in items])
         return
-    print("INDEX ID | PROVIDER | MODEL | DIMENSIONS | CHUNKS | ROOT HASH")
+    print("INDEX ID | STORE | PROVIDER | MODEL | DIMENSIONS | CHUNKS | ROOT HASH")
     for item in items:
         print(
-            f"{item.index_id} | {item.embedding_provider} | "
+            f"{item.index_id} | {item.vector_store} | {item.embedding_provider} | "
             f"{item.embedding_model} | {item.embedding_dimensions} | "
             f"{item.chunk_count} | {item.root_hash}"
         )
@@ -191,6 +197,10 @@ def _run_query(args: argparse.Namespace) -> None:
         index_service=service,
         provider=_provider(args.provider, args.dimensions),
         index_id=args.index_id,
+        vector_store=get_settings().knowledge_vector_store,
+        qdrant_url=get_settings().qdrant_url,
+        qdrant_api_key=get_settings().qdrant_api_key,
+        qdrant_collection_prefix=get_settings().qdrant_collection_prefix,
     )
     response = retriever.retrieve(
         KnowledgeRetrievalRequest(

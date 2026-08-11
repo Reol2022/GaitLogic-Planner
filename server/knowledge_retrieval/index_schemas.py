@@ -115,6 +115,7 @@ class IndexManifest(StrictModel):
 class IndexBuildPlan(StrictModel):
     provider: str
     model: str
+    vector_store: str
     dimensions: int | None
     chunk_count: int = Field(ge=0)
     estimated_batches: int = Field(ge=0)

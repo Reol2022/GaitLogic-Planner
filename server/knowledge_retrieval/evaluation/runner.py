@@ -65,6 +65,10 @@ class TrainingKnowledgeEvaluationRunner:
         repository_root: Path,
         corpus_manifest_path: Path = Path("knowledge/manifests/corpus-v1.json"),
         index_root: Path = Path("var/knowledge_indexes"),
+        vector_store: str = "exact",
+        qdrant_url: str | None = None,
+        qdrant_api_key: str | None = None,
+        qdrant_collection_prefix: str = "gaitlogic",
     ) -> None:
         self.repository_root = repository_root.resolve()
         self.corpus_manifest_path = (
@@ -74,7 +78,15 @@ class TrainingKnowledgeEvaluationRunner:
             repository_root=self.repository_root,
             corpus_manifest_path=corpus_manifest_path,
             index_root=index_root,
+            vector_store=vector_store,
+            qdrant_url=qdrant_url,
+            qdrant_api_key=qdrant_api_key,
+            qdrant_collection_prefix=qdrant_collection_prefix,
         )
+        self.vector_store = vector_store
+        self.qdrant_url = qdrant_url
+        self.qdrant_api_key = qdrant_api_key
+        self.qdrant_collection_prefix = qdrant_collection_prefix
 
     def run_retrieval(
         self,
@@ -116,6 +128,10 @@ class TrainingKnowledgeEvaluationRunner:
                     index_service=self.index_service,
                     provider=provider,
                     index_id=resolved_index,
+                    vector_store=self.vector_store,
+                    qdrant_url=self.qdrant_url,
+                    qdrant_api_key=self.qdrant_api_key,
+                    qdrant_collection_prefix=self.qdrant_collection_prefix,
                 )
                 try:
                     response = retriever.retrieve(

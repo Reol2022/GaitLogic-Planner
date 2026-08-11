@@ -15,6 +15,10 @@ from server.knowledge_retrieval.manifest import canonical_json, sha256_json
 
 INDEX_SCHEMA_VERSION = "1.0.0"
 VECTOR_STORE_NAME = "exact_cosine_v1"
+QDRANT_VECTOR_STORE_NAME = "qdrant_dense_v1"
+SUPPORTED_VECTOR_STORE_NAMES = frozenset(
+    {VECTOR_STORE_NAME, QDRANT_VECTOR_STORE_NAME}
+)
 DISTANCE_METRIC = "cosine"
 INDEX_MANIFEST_FILENAME = "index-manifest.json"
 
@@ -92,6 +96,7 @@ def build_index_manifest(
     embedding_normalized: bool,
     records: list[VectorRecord],
     warnings: list[str],
+    vector_store: str = VECTOR_STORE_NAME,
     created_at: datetime | None = None,
 ) -> IndexManifest:
     ordered = sorted(records, key=lambda item: item.chunk_id)
@@ -100,6 +105,7 @@ def build_index_manifest(
         embedding_provider=embedding_provider,
         embedding_model=embedding_model,
         embedding_dimensions=embedding_dimensions,
+        vector_store=vector_store,
     )
     draft = IndexManifest(
         schema_version=INDEX_SCHEMA_VERSION,
@@ -110,7 +116,7 @@ def build_index_manifest(
         embedding_model=embedding_model,
         embedding_dimensions=embedding_dimensions,
         embedding_normalized=embedding_normalized,
-        vector_store=VECTOR_STORE_NAME,
+        vector_store=vector_store,
         distance_metric=DISTANCE_METRIC,
         chunk_count=len(ordered),
         chunk_ids=[record.chunk_id for record in ordered],
@@ -166,7 +172,7 @@ def validate_index_manifest(manifest: IndexManifest) -> None:
     if manifest.index_id != expected_id:
         raise KnowledgeIndexError("Index manifest identity is invalid.")
     if (
-        manifest.vector_store != VECTOR_STORE_NAME
+        manifest.vector_store not in SUPPORTED_VECTOR_STORE_NAMES
         or manifest.distance_metric != DISTANCE_METRIC
     ):
         raise KnowledgeIndexError("Index manifest store configuration is unsupported.")

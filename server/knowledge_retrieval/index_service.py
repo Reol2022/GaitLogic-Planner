@@ -30,8 +30,9 @@ from server.knowledge_retrieval.index_schemas import (
 from server.knowledge_retrieval.manifest import load_manifest
 from server.knowledge_retrieval.paths import ensure_within_root
 from server.knowledge_retrieval.validator import KnowledgeCorpusValidator
-from server.knowledge_retrieval.vector_stores.exact_cosine import (
-    ExactCosineVectorStore,
+from server.knowledge_retrieval.vector_stores.factory import (
+    create_vector_store,
+    vector_store_name,
 )
 
 
@@ -46,6 +47,10 @@ class KnowledgeIndexService:
         repository_root: Path | None = None,
         corpus_manifest_path: Path = DEFAULT_CORPUS_MANIFEST,
         index_root: Path = DEFAULT_INDEX_ROOT,
+        vector_store: str = "exact",
+        qdrant_url: str | None = None,
+        qdrant_api_key: str | None = None,
+        qdrant_collection_prefix: str = "gaitlogic",
     ) -> None:
         self.repository_root = (repository_root or Path.cwd()).resolve()
         self.corpus_manifest_path = self._resolve_repository_path(
@@ -55,6 +60,29 @@ class KnowledgeIndexService:
         self.index_root = self._resolve_repository_path(
             index_root,
             label="Index root",
+        )
+        self.vector_store = vector_store
+        self.vector_store_name = vector_store_name(vector_store)
+        self.qdrant_url = qdrant_url
+        self.qdrant_api_key = qdrant_api_key
+        self.qdrant_collection_prefix = qdrant_collection_prefix
+
+    def _store(
+        self,
+        directory: Path,
+        *,
+        index_id: str,
+        dimensions: int,
+        vector_store: str | None = None,
+    ):
+        return create_vector_store(
+            kind=vector_store or self.vector_store,
+            directory=directory,
+            index_id=index_id,
+            dimensions=dimensions,
+            qdrant_url=self.qdrant_url,
+            qdrant_api_key=self.qdrant_api_key,
+            qdrant_prefix=self.qdrant_collection_prefix,
         )
 
     def _resolve_repository_path(self, path: Path, *, label: str) -> Path:
@@ -93,6 +121,7 @@ class KnowledgeIndexService:
                 embedding_provider=provider.provider_name,
                 embedding_model=provider.model_name,
                 embedding_dimensions=identity_dimensions,
+                vector_store=self.vector_store_name,
             )
         )
         relative = (
@@ -101,6 +130,7 @@ class KnowledgeIndexService:
         return IndexBuildPlan(
             provider=provider.provider_name,
             model=provider.model_name,
+            vector_store=self.vector_store_name,
             dimensions=dimensions,
             chunk_count=len(chunks),
             estimated_batches=math.ceil(len(chunks) / provider.max_batch_size),
@@ -178,25 +208,17 @@ class KnowledgeIndexService:
                 embedding_normalized=provider.normalized,
                 records=records,
                 warnings=warnings,
+                vector_store=self.vector_store_name,
             )
             self.index_root.mkdir(parents=True, exist_ok=True)
             target = self.index_root / manifest.index_id
             staging = self.index_root / f".{manifest.index_id}.{uuid4().hex}.tmp"
             backup = self.index_root / f".{manifest.index_id}.{uuid4().hex}.bak"
             relative = target.relative_to(self.repository_root).as_posix()
-            staging.mkdir()
-            store = ExactCosineVectorStore(
-                staging / "store",
-                expected_dimensions=dimensions,
-            )
-            store.build(records)
-            write_index_manifest(staging / INDEX_MANIFEST_FILENAME, manifest)
-            self._validate_directory(staging, corpus.root_hash)
             if target.exists():
                 existing = load_index_manifest(target / INDEX_MANIFEST_FILENAME)
                 self._validate_directory(target, corpus.root_hash)
                 if existing.root_hash == manifest.root_hash:
-                    shutil.rmtree(staging)
                     return IndexBuildResult(
                         manifest=existing,
                         relative_path=relative,
@@ -208,6 +230,24 @@ class KnowledgeIndexService:
                         "Index already exists with different vectors; use --force "
                         "to replace only the derived index."
                     )
+                if self.vector_store_name != "exact_cosine_v1":
+                    raise KnowledgeIndexError(
+                        "Force-replacing a Qdrant index is intentionally unsupported; "
+                        "publish a new immutable index identity instead."
+                    )
+            staging.mkdir()
+            store = self._store(
+                staging,
+                index_id=manifest.index_id,
+                dimensions=dimensions,
+            )
+            try:
+                store.build(records)
+            finally:
+                store.close()
+            write_index_manifest(staging / INDEX_MANIFEST_FILENAME, manifest)
+            self._validate_directory(staging, corpus.root_hash)
+            if target.exists():
                 os.replace(target, backup)
             os.replace(staging, target)
             if backup.exists():
@@ -245,13 +285,17 @@ class KnowledgeIndexService:
             self.corpus_manifest_path
         ):
             raise KnowledgeIndexError("Index corpus manifest file hash is stale.")
-        store = ExactCosineVectorStore(
-            directory / "store",
-            expected_dimensions=manifest.embedding_dimensions,
+        store = self._store(
+            directory,
+            index_id=manifest.index_id,
+            dimensions=manifest.embedding_dimensions,
+            vector_store=manifest.vector_store,
         )
-        records = store.records()
-        validation = store.validate()
-        store.close()
+        try:
+            records = store.records()
+            validation = store.validate()
+        finally:
+            store.close()
         if validation.record_count != manifest.chunk_count:
             raise KnowledgeIndexError("Vector store record count is invalid.")
         ids = [record.chunk_id for record in records]
@@ -315,10 +359,14 @@ class KnowledgeIndexService:
 
     def load_records(self, index_id: str) -> tuple[IndexManifest, list[VectorRecord]]:
         manifest = self.validate(index_id)
-        store = ExactCosineVectorStore(
-            self.index_root / index_id / "store",
-            expected_dimensions=manifest.embedding_dimensions,
+        store = self._store(
+            self.index_root / index_id,
+            index_id=index_id,
+            dimensions=manifest.embedding_dimensions,
+            vector_store=manifest.vector_store,
         )
-        records = store.records()
-        store.close()
+        try:
+            records = store.records()
+        finally:
+            store.close()
         return manifest, records

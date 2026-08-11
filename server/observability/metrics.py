@@ -31,6 +31,9 @@ SAFE_METRIC_LABELS = frozenset(
         "auth_status",
         "primitive",
         "resource_type",
+        "vector_store",
+        "retrieval_strategy",
+        "fusion_method",
     }
 )
 _SAFE_LABEL_VALUE_TYPES = (str, int, float, bool)
@@ -125,7 +128,7 @@ class MetricsRecorder:
             "status": span.status,
             "fallback": str(span.fallback).lower(),
         }
-        for key in ("tool_name", "provider_kind", "failure_category", "transport", "auth_status", "primitive", "resource_type"):
+        for key in ("tool_name", "provider_kind", "failure_category", "transport", "auth_status", "primitive", "resource_type", "vector_store", "retrieval_strategy", "fusion_method"):
             value = span.metadata.get(key)
             if key in SAFE_METRIC_LABELS and isinstance(value, _SAFE_LABEL_VALUE_TYPES):
                 labels[key] = str(value)
@@ -176,6 +179,28 @@ class MetricsRecorder:
             self._record("retrieval_count", 1, labels)
             self._record("retrieval_success" if success else "retrieval_failure", 1, labels)
             self._record("retrieval_latency_ms", span.duration_ms, labels, kind="latency")
+        elif span.component == "knowledge" and span.operation == "vector_search":
+            self._record("vector_store_query_count", 1, labels)
+            self._record(
+                "vector_store_query_success" if success else "vector_store_query_failure",
+                1,
+                labels,
+            )
+            self._record(
+                "vector_store_query_latency_ms",
+                span.duration_ms,
+                labels,
+                kind="latency",
+            )
+        elif span.component == "knowledge" and span.operation == "sparse_search":
+            self._record("retrieval_query_count", 1, labels)
+            self._record("retrieval_success" if success else "retrieval_failure", 1, labels)
+            self._record("retrieval_latency_ms", span.duration_ms, labels, kind="latency")
+        elif span.component == "knowledge" and span.operation == "hybrid_retrieval":
+            self._record("retrieval_query_count", 1, labels)
+            self._record("retrieval_success" if success else "retrieval_failure", 1, labels)
+            self._record("retrieval_latency_ms", span.duration_ms, labels, kind="latency")
+            self._record("hybrid_fusion_latency_ms", span.duration_ms, labels, kind="latency")
         elif span.component == "provider" and span.operation == "generate":
             self._record("provider_request_count", 1, labels)
             self._record("provider_success" if success else "provider_failure", 1, labels)

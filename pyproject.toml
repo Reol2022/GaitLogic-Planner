@@ -25,6 +25,7 @@ dependencies = [
     "uvicorn[standard]>=0.30,<1.0",
     "langgraph==1.2.9",
     "mcp>=2.0,<3.0",
+    "qdrant-client>=1.19,<2.0",
 ]
 
 [project.optional-dependencies]

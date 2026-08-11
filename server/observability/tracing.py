@@ -50,6 +50,13 @@ SAFE_METADATA_KEYS = frozenset(
         "retried",
         "final_status",
         "retrieval_result_count",
+        "retrieval_strategy",
+        "fusion_method",
+        "dense_result_count",
+        "bm25_result_count",
+        "fused_result_count",
+        "vector_store",
+        "index_id",
         "proposal_id",
         "plan_count",
     }

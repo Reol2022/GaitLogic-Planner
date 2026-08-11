@@ -13,9 +13,11 @@ from server.knowledge_retrieval.retrieval_schemas import (
 from server.knowledge_retrieval.retrieval_validator import (
     validate_retrieval_binding,
 )
-from server.knowledge_retrieval.vector_stores.exact_cosine import (
-    ExactCosineVectorStore,
+from server.knowledge_retrieval.vector_stores.factory import (
+    create_vector_store,
+    vector_store_name,
 )
+from server.observability.tracing import active_trace_handle, active_tracer
 
 
 class TrainingKnowledgeRetriever:
@@ -25,10 +27,17 @@ class TrainingKnowledgeRetriever:
         index_service: KnowledgeIndexService,
         provider: EmbeddingProvider,
         index_id: str | None = None,
+        vector_store: str = "exact",
+        qdrant_url: str | None = None,
+        qdrant_api_key: str | None = None,
+        qdrant_collection_prefix: str = "gaitlogic",
     ) -> None:
         self.index_service = index_service
         self.provider = provider
         self.index_id = index_id or index_service.latest_index_id()
+        self.vector_store = vector_store
+        self.qdrant_url, self.qdrant_api_key = qdrant_url, qdrant_api_key
+        self.qdrant_collection_prefix = qdrant_collection_prefix
 
     def retrieve(
         self,
@@ -41,21 +50,49 @@ class TrainingKnowledgeRetriever:
             self.provider,
             corpus_root_hash=corpus.root_hash,
         )
+        if vector_store_name(self.vector_store) != manifest.vector_store:
+            raise KnowledgeRetrievalError(
+                "Configured vector store does not match the selected index."
+            )
         query_embedding = self.provider.embed_query(request.query)
         if query_embedding.dimensions != manifest.embedding_dimensions:
             raise KnowledgeRetrievalError(
                 "Query embedding dimensions do not match the index."
             )
-        store = ExactCosineVectorStore(
-            self.index_service.index_root / self.index_id / "store",
-            expected_dimensions=manifest.embedding_dimensions,
+        store = create_vector_store(
+            kind=manifest.vector_store,
+            directory=self.index_service.index_root / self.index_id,
+            index_id=self.index_id,
+            dimensions=manifest.embedding_dimensions,
+            qdrant_url=self.qdrant_url,
+            qdrant_api_key=self.qdrant_api_key,
+            qdrant_prefix=self.qdrant_collection_prefix,
         )
+        tracer = active_tracer()
+        handle = active_trace_handle()
         try:
-            matches = store.search(
-                query_embedding.vector,
-                top_k=request.top_k,
-                filters=request.filters(),
-            )
+            if tracer is None or handle is None:
+                matches = store.search(
+                    query_embedding.vector,
+                    top_k=request.top_k,
+                    filters=request.filters(),
+                )
+            else:
+                with tracer.span(
+                    handle,
+                    component="knowledge",
+                    operation="vector_search",
+                    metadata={
+                        "vector_store": manifest.vector_store,
+                        "index_id": manifest.index_id,
+                    },
+                ) as span:
+                    matches = store.search(
+                        query_embedding.vector,
+                        top_k=request.top_k,
+                        filters=request.filters(),
+                    )
+                    span.add_metadata(result_count=len(matches))
         finally:
             store.close()
             self.provider.close()
