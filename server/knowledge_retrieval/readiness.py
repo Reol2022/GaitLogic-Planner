@@ -184,7 +184,7 @@ class CoachRagReadinessService:
                 else ReadinessExitCode.READY
             )
         is_bm25_only = self.settings.knowledge_retrieval_strategy == "bm25"
-        uses_bm25 = self.settings.knowledge_retrieval_strategy in {"bm25", "hybrid"}
+        uses_bm25 = self.settings.knowledge_retrieval_strategy in {"bm25", "hybrid", "rerank"}
         embedding_enabled = self.settings.knowledge_embedding_enabled
         self._check(
             "embedding_feature",
@@ -208,6 +208,17 @@ class CoachRagReadinessService:
                 ReadinessExitCode.PROVIDER_CONFIGURATION_INVALID
             )
         self._check("thinking_mode", True, "THINKING_MODE_SAFE")
+        if self.settings.knowledge_retrieval_strategy == "rerank":
+            reranker_ready = bool(
+                self.settings.knowledge_reranker_enabled
+                and self.settings.knowledge_reranker_effective_api_key
+            )
+            if not self._check(
+                "reranker_configuration",
+                reranker_ready,
+                "RERANKER_CONFIGURED" if reranker_ready else "RERANKER_INCOMPLETE",
+            ):
+                return self._report(ReadinessExitCode.CONFIG_INCOMPLETE)
         if not self._provider_configuration_valid(requires_embedding=not is_bm25_only):
             if any(
                 item.code.endswith("INCOMPLETE")

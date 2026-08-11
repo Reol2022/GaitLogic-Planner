@@ -331,7 +331,7 @@ class Settings(BaseSettings):
         pattern=r"^(?:|bm25-[0-9a-f]{24})$",
         validation_alias="COACH_AGENT_KNOWLEDGE_BM25_INDEX_ID",
     )
-    knowledge_retrieval_strategy: Literal["dense", "bm25", "hybrid"] = Field(
+    knowledge_retrieval_strategy: Literal["dense", "bm25", "hybrid", "rerank"] = Field(
         default="dense",
         validation_alias="KNOWLEDGE_RETRIEVAL_STRATEGY",
     )
@@ -358,6 +358,54 @@ class Settings(BaseSettings):
     knowledge_hybrid_bm25_candidates: int = Field(
         default=8, ge=4, le=12,
         validation_alias="KNOWLEDGE_HYBRID_BM25_CANDIDATES",
+    )
+    knowledge_reranker_enabled: bool = Field(
+        default=False,
+        validation_alias="KNOWLEDGE_RERANKER_ENABLED",
+    )
+    knowledge_reranker_provider: Literal["siliconflow"] = Field(
+        default="siliconflow",
+        validation_alias="KNOWLEDGE_RERANKER_PROVIDER",
+    )
+    knowledge_reranker_api_key: str | None = Field(
+        default=None,
+        validation_alias="KNOWLEDGE_RERANKER_API_KEY",
+    )
+    knowledge_reranker_base_url: str = Field(
+        default="https://api.siliconflow.cn/v1",
+        max_length=2048,
+        validation_alias="KNOWLEDGE_RERANKER_BASE_URL",
+    )
+    knowledge_reranker_model: str = Field(
+        default="Qwen/Qwen3-Reranker-0.6B",
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+        validation_alias="KNOWLEDGE_RERANKER_MODEL",
+    )
+    knowledge_reranker_connect_timeout_seconds: float = Field(
+        default=5, gt=0, le=60,
+        validation_alias="KNOWLEDGE_RERANKER_CONNECT_TIMEOUT_SECONDS",
+    )
+    knowledge_reranker_read_timeout_seconds: float = Field(
+        default=20, gt=0, le=180,
+        validation_alias="KNOWLEDGE_RERANKER_READ_TIMEOUT_SECONDS",
+    )
+    knowledge_reranker_total_timeout_seconds: float = Field(
+        default=30, gt=0, le=300,
+        validation_alias="KNOWLEDGE_RERANKER_TOTAL_TIMEOUT_SECONDS",
+    )
+    knowledge_reranker_max_retries: int = Field(
+        default=1, ge=0, le=3,
+        validation_alias="KNOWLEDGE_RERANKER_MAX_RETRIES",
+    )
+    knowledge_reranker_retry_initial_backoff_seconds: float = Field(
+        default=0.25, ge=0, le=10,
+        validation_alias="KNOWLEDGE_RERANKER_RETRY_INITIAL_BACKOFF_SECONDS",
+    )
+    knowledge_reranker_retry_max_backoff_seconds: float = Field(
+        default=1.0, ge=0, le=30,
+        validation_alias="KNOWLEDGE_RERANKER_RETRY_MAX_BACKOFF_SECONDS",
     )
     knowledge_vector_store: Literal["exact", "qdrant"] = Field(
         default="exact",
@@ -575,6 +623,26 @@ class Settings(BaseSettings):
     @property
     def mcp_allowed_hosts_list(self) -> list[str]:
         return [item.strip() for item in self.mcp_allowed_hosts.split(",") if item.strip()]
+
+    @property
+    def knowledge_reranker_effective_api_key(self) -> str | None:
+        """Reuse the configured SiliconFlow embedding credential when safe.
+
+        Reranking is an explicit opt-in feature, but SiliconFlow's embedding and
+        rerank endpoints can share one account credential.  This avoids asking
+        operators to duplicate a secret while never borrowing credentials from
+        an unrelated embedding endpoint.
+        """
+
+        if self.knowledge_reranker_api_key:
+            return self.knowledge_reranker_api_key
+        embedding_host = (urlparse(self.knowledge_embedding_base_url).hostname or "").lower()
+        if (
+            self.knowledge_embedding_provider == "openai_compatible"
+            and embedding_host == "api.siliconflow.cn"
+        ):
+            return self.knowledge_embedding_api_key
+        return None
 
 
 @lru_cache

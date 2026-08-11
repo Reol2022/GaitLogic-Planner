@@ -27,6 +27,8 @@ from server.knowledge_retrieval.retriever import TrainingKnowledgeRetriever
 from server.knowledge_retrieval.sparse.index_service import Bm25IndexService
 from server.knowledge_retrieval.sparse.retriever import TrainingKnowledgeBm25Retriever
 from server.knowledge_retrieval.hybrid.retriever import HybridKnowledgeRetriever
+from server.knowledge_retrieval.reranking.retriever import RerankingKnowledgeRetriever
+from server.knowledge_retrieval.reranking.siliconflow import SiliconFlowReranker
 from server.knowledge_retrieval.schemas import ID_PATTERN
 from server.observability.tracing import active_trace_handle, active_tracer
 
@@ -258,7 +260,19 @@ def build_configured_knowledge_tool(
             index_id=settings.coach_agent_knowledge_bm25_index_id,
         )
 
-    if settings.knowledge_retrieval_strategy == "hybrid":
+    if settings.knowledge_retrieval_strategy == "rerank":
+        if not settings.knowledge_reranker_enabled:
+            raise ValueError("Knowledge reranker is disabled")
+        def factory() -> RerankingKnowledgeRetriever:
+            dense_retriever = dense()
+            return RerankingKnowledgeRetriever(
+                dense_retriever=dense_retriever,
+                bm25_retriever=bm25(),
+                reranker=SiliconFlowReranker(settings),
+                corpus_manifest_path=dense_retriever.index_service.corpus_manifest_path,
+            )
+        strategy_name = "rerank"
+    elif settings.knowledge_retrieval_strategy == "hybrid":
         def factory() -> HybridKnowledgeRetriever:
             return HybridKnowledgeRetriever(
                 dense_retriever=dense(), bm25_retriever=bm25(),

@@ -2074,7 +2074,7 @@
         "high-fatigue-intensity-adjustment#recommended-strategies#004"
       ],
       "document_id": "high-fatigue-intensity-adjustment",
-      "file_sha256": "68d9405b292883a491a20a8ff69aebd912cc7c6b46d84ce0819db385644d90f4",
+      "file_sha256": "6db7a4d4bed1ebbbe78ee1f7cf5c4fcd4c6eb0fb80077ae0a6efae4ae7899b96",
       "knowledge_version": "1.0.0",
       "relative_path": "documents/recovery/high-fatigue-intensity-adjustment.md",
       "source_id": "gaitlogic-original-training-principles",
@@ -2096,7 +2096,7 @@
         "intensity-density-management#recommended-strategies#004"
       ],
       "document_id": "intensity-density-management",
-      "file_sha256": "bad9a791ca151bea490551b761a43c2127f03a81284ee959523a4c381d5f605a",
+      "file_sha256": "1ea84b6c41f3abead7dd71021db1e903cdfbd996564e50b7ef66f9dd259afcb7",
       "knowledge_version": "1.0.0",
       "relative_path": "documents/load_management/intensity-density-management.md",
       "source_id": "gaitlogic-original-training-principles",
@@ -2118,7 +2118,7 @@
         "interval-recovery-design#recommended-strategies#004"
       ],
       "document_id": "interval-recovery-design",
-      "file_sha256": "33540d532d10b9f8029bae4ba8f8e9eb4c80da8aa2d93fef5312204f35f971cb",
+      "file_sha256": "c06d34f20522c428ba8889189a2ce64790f76ae7f322d0c55d7da4bc6a39abdf",
       "knowledge_version": "1.0.0",
       "relative_path": "documents/interval/interval-recovery-design.md",
       "source_id": "daniels-running-formula-summary",
@@ -2140,7 +2140,7 @@
         "long-run-placement#recommended-strategies#004"
       ],
       "document_id": "long-run-placement",
-      "file_sha256": "9fad77fb8405dedb437d042f5d8888e0b1a38da6b99fa9a097650efdabe7f638",
+      "file_sha256": "9d0666568f54913cb6f3b04ac0e52e9a44445f2185349c65abe2aef8a0838f0e",
       "knowledge_version": "1.0.0",
       "relative_path": "documents/long_run/long-run-placement.md",
       "source_id": "public-endurance-guidance-summary",
@@ -2162,7 +2162,7 @@
         "pain-risk-boundaries#recommended-strategies#004"
       ],
       "document_id": "pain-risk-boundaries",
-      "file_sha256": "c519c18c2a99d33d3b88de783e0ec2a1872b4eaae147e94adaadb3337ef79bae",
+      "file_sha256": "82422d4f3a05e9240a055d254a5e139bfe3ddc4f837436e6afca51e5a62ce3a3",
       "knowledge_version": "1.0.0",
       "relative_path": "documents/injury_prevention/pain-risk-boundaries.md",
       "source_id": "running-strength-consensus-summary",
@@ -2184,7 +2184,7 @@
         "phase-transition-principles#recommended-strategies#004"
       ],
       "document_id": "phase-transition-principles",
-      "file_sha256": "06b214638e17b77a25a51594416216e10cb1b3ec3700e746c98e5655c822f35b",
+      "file_sha256": "cab90c73fb73cda28074cb175eed697c3036310a36e5bced291483df99a270b7",
       "knowledge_version": "1.0.0",
       "relative_path": "documents/periodization/phase-transition-principles.md",
       "source_id": "gaitlogic-original-training-principles",
@@ -2206,7 +2206,7 @@
         "pre-race-taper-principles#recommended-strategies#004"
       ],
       "document_id": "pre-race-taper-principles",
-      "file_sha256": "57d84e2f1f07c3eb40cff0c9f1045df9a0218988bf67022783528ce7331404d4",
+      "file_sha256": "0fc2edfb1e4db30b59facc17a12e0257a20ddda59ca3cc098b9de79df9a2edde",
       "knowledge_version": "1.0.0",
       "relative_path": "documents/taper/pre-race-taper-principles.md",
       "source_id": "public-endurance-guidance-summary",
@@ -2228,7 +2228,7 @@
         "progressive-volume-adjustment#recommended-strategies#004"
       ],
       "document_id": "progressive-volume-adjustment",
-      "file_sha256": "c2398d0ab6cc0af2e79117c3a3ff5cc0ac559a9551c2946b4341f64eee0042e8",
+      "file_sha256": "81f48af9a899464ef5b028564d5864e98628e3c5cd4701b7c3bacfe69807a03f",
       "knowledge_version": "1.0.0",
       "relative_path": "documents/load_management/progressive-volume-adjustment.md",
       "source_id": "gaitlogic-original-training-principles",
@@ -2250,7 +2250,7 @@
         "recovery-week-principles#recommended-strategies#004"
       ],
       "document_id": "recovery-week-principles",
-      "file_sha256": "478a7665716119571d4bbc93a1103e69bf7bdab6e444683ff4b0e8f2ac8464dd",
+      "file_sha256": "2603e6a6ace5ba8e42bf6c577b2705aa021aef5ecfff53aac96c4352b9cd9924",
       "knowledge_version": "1.0.0",
       "relative_path": "documents/recovery/recovery-week-principles.md",
       "source_id": "public-endurance-guidance-summary",
@@ -2272,7 +2272,7 @@
         "running-strength-basics#recommended-strategies#004"
       ],
       "document_id": "running-strength-basics",
-      "file_sha256": "26f27e4591168b72dbfcfef27994b41d9e39eb426a0a416475e58a81556f30fd",
+      "file_sha256": "c69792eee297c1e9be5a9d0b131224ab224b9eea15153ac948733af7ec784f79",
       "knowledge_version": "1.0.0",
       "relative_path": "documents/strength/running-strength-basics.md",
       "source_id": "running-strength-consensus-summary",
@@ -2294,7 +2294,7 @@
         "threshold-control-signals#recommended-strategies#004"
       ],
       "document_id": "threshold-control-signals",
-      "file_sha256": "90195a5309148360facf9436093603062776a10b1a5e8dafdc60892da5d51f8c",
+      "file_sha256": "8041b3c70b7460a1446a9d2b10c01155c2df12ee6b2cdf704ac591731086968b",
       "knowledge_version": "1.0.0",
       "relative_path": "documents/threshold/threshold-control-signals.md",
       "source_id": "public-endurance-guidance-summary",
@@ -2316,7 +2316,7 @@
         "threshold-session-placement#recommended-strategies#004"
       ],
       "document_id": "threshold-session-placement",
-      "file_sha256": "37a927c08426eaa0449fb34d4e88270e656100d18c26a893eb3afa78bd2cae21",
+      "file_sha256": "4b4f824a9f7846c854fa70d30a59b710782391eaeaf159f1d69062f1f3819546",
       "knowledge_version": "1.0.0",
       "relative_path": "documents/threshold/threshold-session-placement.md",
       "source_id": "daniels-running-formula-summary",
@@ -2329,9 +2329,9 @@
       "title": "阈值训练的周内安排"
     }
   ],
-  "generated_at": "2026-07-23T09:40:29.869382Z",
+  "generated_at": "2026-08-11T07:34:08.028496Z",
   "generator_version": "knowledge-corpus-generator-1.0.0",
-  "root_hash": "58bae62329a833c7a2a2a79dc12d31ac8c1b8052144597c839700e4b18894a7b",
+  "root_hash": "d12cdbd31c7b6eb5b4b122f5ed686dc08495b800bb90e16dfe2544347af032df",
   "schema_version": "1.0.0",
   "sources": [
     {

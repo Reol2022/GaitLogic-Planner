@@ -34,6 +34,8 @@ SAFE_METRIC_LABELS = frozenset(
         "vector_store",
         "retrieval_strategy",
         "fusion_method",
+        "reranker",
+        "model_family",
     }
 )
 _SAFE_LABEL_VALUE_TYPES = (str, int, float, bool)
@@ -128,7 +130,7 @@ class MetricsRecorder:
             "status": span.status,
             "fallback": str(span.fallback).lower(),
         }
-        for key in ("tool_name", "provider_kind", "failure_category", "transport", "auth_status", "primitive", "resource_type", "vector_store", "retrieval_strategy", "fusion_method"):
+        for key in ("tool_name", "provider_kind", "failure_category", "transport", "auth_status", "primitive", "resource_type", "vector_store", "retrieval_strategy", "fusion_method", "reranker", "model_family"):
             value = span.metadata.get(key)
             if key in SAFE_METRIC_LABELS and isinstance(value, _SAFE_LABEL_VALUE_TYPES):
                 labels[key] = str(value)
@@ -201,6 +203,16 @@ class MetricsRecorder:
             self._record("retrieval_success" if success else "retrieval_failure", 1, labels)
             self._record("retrieval_latency_ms", span.duration_ms, labels, kind="latency")
             self._record("hybrid_fusion_latency_ms", span.duration_ms, labels, kind="latency")
+        elif span.component == "knowledge" and span.operation == "rerank":
+            self._record("reranker_request_count", 1, labels)
+            self._record("reranker_success" if success else "reranker_failure", 1, labels)
+            self._record("reranker_latency_ms", span.duration_ms, labels, kind="latency")
+            if span.fallback:
+                self._record("reranker_fallback_count", 1, labels)
+        elif span.component == "provider" and span.operation == "rerank":
+            attempts = span.metadata.get("attempt")
+            if isinstance(attempts, int) and attempts > 1:
+                self._record("reranker_retry_count", attempts - 1, labels)
         elif span.component == "provider" and span.operation == "generate":
             self._record("provider_request_count", 1, labels)
             self._record("provider_success" if success else "provider_failure", 1, labels)

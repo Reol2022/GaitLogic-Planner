@@ -59,6 +59,10 @@ SAFE_METADATA_KEYS = frozenset(
         "index_id",
         "proposal_id",
         "plan_count",
+        "reranker",
+        "model_family",
+        "candidate_count",
+        "top_n",
     }
 )
 # Kept as a public compatibility name for the v0.13 workflow integration.

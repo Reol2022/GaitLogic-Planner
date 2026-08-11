@@ -1,0 +1,1918 @@
+{
+  "benchmark": "legacy-public-60-case",
+  "bm25": {
+    "case_count": 60,
+    "cases": [
+      {
+        "case_id": "ret_single_001",
+        "duration_ms": 12.911,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_002",
+        "duration_ms": 10.301,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_003",
+        "duration_ms": 12.274,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_004",
+        "duration_ms": 13.536,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_005",
+        "duration_ms": 13.438,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_006",
+        "duration_ms": 11.605,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_007",
+        "duration_ms": 11.661,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_008",
+        "duration_ms": 12.468,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_009",
+        "duration_ms": 11.238,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_010",
+        "duration_ms": 11.203,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_011",
+        "duration_ms": 12.441,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_012",
+        "duration_ms": 10.992,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_013",
+        "duration_ms": 10.999,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_014",
+        "duration_ms": 12.502,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_015",
+        "duration_ms": 12.371,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_016",
+        "duration_ms": 10.745,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_017",
+        "duration_ms": 12.152,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_018",
+        "duration_ms": 12.327,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_019",
+        "duration_ms": 12.661,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_020",
+        "duration_ms": 12.602,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_021",
+        "duration_ms": 12.833,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_022",
+        "duration_ms": 11.94,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_023",
+        "duration_ms": 10.803,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_024",
+        "duration_ms": 11.213,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_025",
+        "duration_ms": 11.018,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_026",
+        "duration_ms": 9.968,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_027",
+        "duration_ms": 10.681,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_028",
+        "duration_ms": 10.734,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_029",
+        "duration_ms": 9.797,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_030",
+        "duration_ms": 10.241,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_001",
+        "duration_ms": 12.094,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_002",
+        "duration_ms": 10.455,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_003",
+        "duration_ms": 10.54,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_004",
+        "duration_ms": 10.219,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_005",
+        "duration_ms": 10.522,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_006",
+        "duration_ms": 11.308,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_007",
+        "duration_ms": 11.539,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_008",
+        "duration_ms": 12.264,
+        "failure_category": null,
+        "failure_codes": [
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_multi_009",
+        "duration_ms": 10.626,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_010",
+        "duration_ms": 10.791,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_011",
+        "duration_ms": 10.674,
+        "failure_category": null,
+        "failure_codes": [
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_multi_012",
+        "duration_ms": 12.137,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_001",
+        "duration_ms": 11.621,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_002",
+        "duration_ms": 12.997,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED",
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_003",
+        "duration_ms": 11.578,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_004",
+        "duration_ms": 12.13,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_005",
+        "duration_ms": 10.994,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_006",
+        "duration_ms": 11.928,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_007",
+        "duration_ms": 12.916,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_008",
+        "duration_ms": 13.295,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_abstain_001",
+        "duration_ms": 11.616,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_002",
+        "duration_ms": 10.69,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_003",
+        "duration_ms": 15.604,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_004",
+        "duration_ms": 10.869,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_005",
+        "duration_ms": 10.538,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_006",
+        "duration_ms": 10.684,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_007",
+        "duration_ms": 10.635,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_008",
+        "duration_ms": 12.329,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_009",
+        "duration_ms": 10.814,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_010",
+        "duration_ms": 10.814,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      }
+    ],
+    "failure_case_ids": [
+      "ret_multi_008",
+      "ret_multi_011",
+      "ret_hard_001",
+      "ret_hard_002",
+      "ret_hard_003",
+      "ret_hard_004",
+      "ret_hard_005",
+      "ret_hard_008"
+    ],
+    "metrics": {
+      "abstention_precision": 1.0,
+      "abstention_recall": 1.0,
+      "empty_result_accuracy": 1.0,
+      "filter_violation_rate": 0.0,
+      "forbidden_document_rate": 0.1,
+      "hit_at_1": 0.88,
+      "hit_at_3": 0.98,
+      "hit_at_4": 0.98,
+      "mrr_at_4": 0.923333,
+      "ndcg_at_4": 0.910589,
+      "recall_at_1": 0.78,
+      "recall_at_3": 0.946667,
+      "recall_at_4": 0.956667
+    },
+    "passed_cases": 52,
+    "strategy": "bm25"
+  },
+  "chunk_text_saved": false,
+  "comparison_version": "retrieval-reranker-comparison-1.0.0",
+  "configuration": {
+    "candidate_depth": 8,
+    "instruction_version": "gaitlogic_rerank_v1",
+    "reranker_model": "Qwen/Qwen3-Reranker-0.6B",
+    "reranker_provider": "siliconflow",
+    "top_k": 4
+  },
+  "dense": {
+    "case_count": 60,
+    "cases": [
+      {
+        "case_id": "ret_single_001",
+        "duration_ms": 1452.948,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_002",
+        "duration_ms": 4448.824,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_003",
+        "duration_ms": 6908.56,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_004",
+        "duration_ms": 1249.077,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_005",
+        "duration_ms": 2283.076,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_006",
+        "duration_ms": 7696.044,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_007",
+        "duration_ms": 10434.368,
+        "failure_category": "PROVIDER_TIMEOUT",
+        "failure_codes": [
+          "PROVIDER_TIMEOUT",
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_single_008",
+        "duration_ms": 7084.062,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_009",
+        "duration_ms": 1419.447,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_010",
+        "duration_ms": 1420.465,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_011",
+        "duration_ms": 1305.028,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_012",
+        "duration_ms": 2157.025,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_013",
+        "duration_ms": 1503.881,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_014",
+        "duration_ms": 3796.329,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_015",
+        "duration_ms": 1887.182,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_016",
+        "duration_ms": 1496.939,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_017",
+        "duration_ms": 1970.822,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_018",
+        "duration_ms": 1246.87,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_019",
+        "duration_ms": 1462.37,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_020",
+        "duration_ms": 1724.55,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_021",
+        "duration_ms": 1262.568,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_022",
+        "duration_ms": 1348.01,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_023",
+        "duration_ms": 2790.725,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_024",
+        "duration_ms": 1450.75,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_025",
+        "duration_ms": 1436.644,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_026",
+        "duration_ms": 1340.604,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_027",
+        "duration_ms": 1594.24,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_028",
+        "duration_ms": 1266.84,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_029",
+        "duration_ms": 1331.358,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_030",
+        "duration_ms": 1987.574,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_001",
+        "duration_ms": 1480.657,
+        "failure_category": null,
+        "failure_codes": [
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_multi_002",
+        "duration_ms": 1839.55,
+        "failure_category": null,
+        "failure_codes": [
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_multi_003",
+        "duration_ms": 1642.403,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_004",
+        "duration_ms": 1432.439,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_005",
+        "duration_ms": 6455.891,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_006",
+        "duration_ms": 1722.627,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_007",
+        "duration_ms": 10412.096,
+        "failure_category": "PROVIDER_CONNECTION_ERROR",
+        "failure_codes": [
+          "PROVIDER_CONNECTION_ERROR",
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_multi_008",
+        "duration_ms": 2371.532,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_009",
+        "duration_ms": 1483.266,
+        "failure_category": null,
+        "failure_codes": [
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_multi_010",
+        "duration_ms": 1446.806,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_011",
+        "duration_ms": 1293.141,
+        "failure_category": null,
+        "failure_codes": [
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_multi_012",
+        "duration_ms": 2458.035,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_001",
+        "duration_ms": 2074.985,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_002",
+        "duration_ms": 2303.945,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_003",
+        "duration_ms": 5460.428,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_004",
+        "duration_ms": 9928.756,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_005",
+        "duration_ms": 9734.494,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_006",
+        "duration_ms": 6636.616,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_007",
+        "duration_ms": 6715.204,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_008",
+        "duration_ms": 1340.956,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_abstain_001",
+        "duration_ms": 1384.258,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_002",
+        "duration_ms": 1387.165,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_003",
+        "duration_ms": 1243.732,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_004",
+        "duration_ms": 8039.824,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_005",
+        "duration_ms": 4337.315,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_006",
+        "duration_ms": 1386.622,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_007",
+        "duration_ms": 7059.25,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_008",
+        "duration_ms": 1626.671,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_009",
+        "duration_ms": 1287.024,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_010",
+        "duration_ms": 1411.658,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      }
+    ],
+    "failure_case_ids": [
+      "ret_single_007",
+      "ret_multi_001",
+      "ret_multi_002",
+      "ret_multi_007",
+      "ret_multi_009",
+      "ret_multi_011",
+      "ret_hard_003",
+      "ret_hard_004",
+      "ret_hard_005",
+      "ret_hard_006",
+      "ret_hard_008"
+    ],
+    "metrics": {
+      "abstention_precision": 1.0,
+      "abstention_recall": 1.0,
+      "empty_result_accuracy": 0.966667,
+      "filter_violation_rate": 0.0,
+      "forbidden_document_rate": 0.083333,
+      "hit_at_1": 0.8,
+      "hit_at_3": 0.96,
+      "hit_at_4": 0.96,
+      "mrr_at_4": 0.873333,
+      "ndcg_at_4": 0.857873,
+      "recall_at_1": 0.686667,
+      "recall_at_3": 0.923333,
+      "recall_at_4": 0.923333
+    },
+    "passed_cases": 49,
+    "strategy": "dense"
+  },
+  "hybrid_rrf": {
+    "case_count": 60,
+    "cases": [
+      {
+        "case_id": "ret_single_001",
+        "duration_ms": 1636.493,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_002",
+        "duration_ms": 7108.588,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_003",
+        "duration_ms": 1189.984,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_004",
+        "duration_ms": 1297.88,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_005",
+        "duration_ms": 3564.012,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_006",
+        "duration_ms": 2500.784,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_007",
+        "duration_ms": 1623.629,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_008",
+        "duration_ms": 1706.11,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_009",
+        "duration_ms": 1568.156,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_010",
+        "duration_ms": 10469.763,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_011",
+        "duration_ms": 6491.637,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_012",
+        "duration_ms": 1247.553,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_013",
+        "duration_ms": 1739.133,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_014",
+        "duration_ms": 2373.537,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_015",
+        "duration_ms": 2861.113,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_016",
+        "duration_ms": 1447.753,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_017",
+        "duration_ms": 3755.059,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_018",
+        "duration_ms": 16440.381,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_019",
+        "duration_ms": 2865.669,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_020",
+        "duration_ms": 10459.603,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_021",
+        "duration_ms": 6576.928,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_022",
+        "duration_ms": 1262.758,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_023",
+        "duration_ms": 2320.709,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_024",
+        "duration_ms": 7287.603,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_025",
+        "duration_ms": 2767.152,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_026",
+        "duration_ms": 1574.585,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_027",
+        "duration_ms": 6690.411,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_028",
+        "duration_ms": 6974.541,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_029",
+        "duration_ms": 10361.789,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_030",
+        "duration_ms": 5039.724,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_001",
+        "duration_ms": 1534.999,
+        "failure_category": null,
+        "failure_codes": [
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_multi_002",
+        "duration_ms": 1411.852,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_003",
+        "duration_ms": 2029.376,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_004",
+        "duration_ms": 6781.415,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_005",
+        "duration_ms": 3287.191,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_006",
+        "duration_ms": 6487.972,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_007",
+        "duration_ms": 1964.116,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_008",
+        "duration_ms": 1339.704,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_009",
+        "duration_ms": 10423.623,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_010",
+        "duration_ms": 2109.595,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_011",
+        "duration_ms": 2608.447,
+        "failure_category": null,
+        "failure_codes": [
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_multi_012",
+        "duration_ms": 5047.151,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_001",
+        "duration_ms": 10433.665,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_002",
+        "duration_ms": 1442.817,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_003",
+        "duration_ms": 5730.67,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_004",
+        "duration_ms": 3723.095,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_005",
+        "duration_ms": 10060.353,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_006",
+        "duration_ms": 7795.837,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_007",
+        "duration_ms": 1592.591,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_008",
+        "duration_ms": 1281.752,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_abstain_001",
+        "duration_ms": 1370.926,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_002",
+        "duration_ms": 1699.127,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_003",
+        "duration_ms": 1606.157,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_004",
+        "duration_ms": 1710.858,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_005",
+        "duration_ms": 6922.78,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_006",
+        "duration_ms": 6969.989,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_007",
+        "duration_ms": 1431.578,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_008",
+        "duration_ms": 1263.406,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_009",
+        "duration_ms": 1458.764,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_010",
+        "duration_ms": 6509.423,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      }
+    ],
+    "failure_case_ids": [
+      "ret_multi_001",
+      "ret_multi_011",
+      "ret_hard_001",
+      "ret_hard_003",
+      "ret_hard_004",
+      "ret_hard_005",
+      "ret_hard_006",
+      "ret_hard_008"
+    ],
+    "metrics": {
+      "abstention_precision": 1.0,
+      "abstention_recall": 1.0,
+      "empty_result_accuracy": 1.0,
+      "filter_violation_rate": 0.0,
+      "forbidden_document_rate": 0.1,
+      "hit_at_1": 0.88,
+      "hit_at_3": 1.0,
+      "hit_at_4": 1.0,
+      "mrr_at_4": 0.933333,
+      "ndcg_at_4": 0.924215,
+      "recall_at_1": 0.77,
+      "recall_at_3": 0.976667,
+      "recall_at_4": 0.983333
+    },
+    "passed_cases": 52,
+    "strategy": "hybrid_rrf"
+  },
+  "provider_reliability": {
+    "failure_categories": {},
+    "failure_count": 0,
+    "fallback_count": 0,
+    "retry_count": 5,
+    "success_count": 60
+  },
+  "provider_response_saved": false,
+  "raw_query_saved": false,
+  "rerank": {
+    "case_count": 60,
+    "cases": [
+      {
+        "case_id": "ret_single_001",
+        "duration_ms": 2626.861,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_002",
+        "duration_ms": 2109.152,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_003",
+        "duration_ms": 2406.999,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_004",
+        "duration_ms": 2118.781,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_005",
+        "duration_ms": 2422.891,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_006",
+        "duration_ms": 1759.222,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_007",
+        "duration_ms": 1728.861,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_008",
+        "duration_ms": 1652.37,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_009",
+        "duration_ms": 1800.357,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_010",
+        "duration_ms": 1682.413,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_011",
+        "duration_ms": 2438.261,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_012",
+        "duration_ms": 1584.24,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_013",
+        "duration_ms": 1955.558,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_014",
+        "duration_ms": 2797.65,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_015",
+        "duration_ms": 1941.487,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_016",
+        "duration_ms": 10994.26,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_017",
+        "duration_ms": 1791.7,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_018",
+        "duration_ms": 2462.105,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_019",
+        "duration_ms": 4829.796,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_020",
+        "duration_ms": 1673.083,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_021",
+        "duration_ms": 2754.655,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_022",
+        "duration_ms": 1914.35,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_023",
+        "duration_ms": 2884.683,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_024",
+        "duration_ms": 1813.731,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_025",
+        "duration_ms": 10743.121,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_026",
+        "duration_ms": 2117.107,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_027",
+        "duration_ms": 1858.685,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_028",
+        "duration_ms": 12021.54,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_029",
+        "duration_ms": 1813.773,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_single_030",
+        "duration_ms": 1681.568,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_001",
+        "duration_ms": 1793.181,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_002",
+        "duration_ms": 4965.815,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_003",
+        "duration_ms": 1882.924,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_004",
+        "duration_ms": 2753.686,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_005",
+        "duration_ms": 1949.525,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_006",
+        "duration_ms": 13659.366,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_007",
+        "duration_ms": 1886.989,
+        "failure_category": null,
+        "failure_codes": [
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_multi_008",
+        "duration_ms": 2228.941,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_009",
+        "duration_ms": 2130.228,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_010",
+        "duration_ms": 10733.496,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_multi_011",
+        "duration_ms": 14370.243,
+        "failure_category": null,
+        "failure_codes": [
+          "RELEVANT_DOCUMENT_MISSED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_multi_012",
+        "duration_ms": 4661.181,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_001",
+        "duration_ms": 2973.831,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_002",
+        "duration_ms": 15332.292,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_hard_003",
+        "duration_ms": 2495.727,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_004",
+        "duration_ms": 13198.776,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_005",
+        "duration_ms": 19064.283,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_006",
+        "duration_ms": 3331.545,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_007",
+        "duration_ms": 2697.337,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_hard_008",
+        "duration_ms": 8080.205,
+        "failure_category": null,
+        "failure_codes": [
+          "FORBIDDEN_DOCUMENT_RETRIEVED"
+        ],
+        "passed": false
+      },
+      {
+        "case_id": "ret_abstain_001",
+        "duration_ms": 4220.516,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_002",
+        "duration_ms": 1489.745,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_003",
+        "duration_ms": 4250.611,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_004",
+        "duration_ms": 5484.552,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_005",
+        "duration_ms": 2389.235,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_006",
+        "duration_ms": 6869.955,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_007",
+        "duration_ms": 1930.065,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_008",
+        "duration_ms": 1285.957,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_009",
+        "duration_ms": 1258.291,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      },
+      {
+        "case_id": "ret_abstain_010",
+        "duration_ms": 1359.984,
+        "failure_category": null,
+        "failure_codes": [],
+        "passed": true
+      }
+    ],
+    "failure_case_ids": [
+      "ret_multi_007",
+      "ret_multi_011",
+      "ret_hard_003",
+      "ret_hard_004",
+      "ret_hard_005",
+      "ret_hard_006",
+      "ret_hard_007",
+      "ret_hard_008"
+    ],
+    "metrics": {
+      "abstention_precision": 1.0,
+      "abstention_recall": 1.0,
+      "empty_result_accuracy": 1.0,
+      "filter_violation_rate": 0.0,
+      "forbidden_document_rate": 0.1,
+      "hit_at_1": 0.82,
+      "hit_at_3": 0.98,
+      "hit_at_4": 1.0,
+      "mrr_at_4": 0.901667,
+      "ndcg_at_4": 0.902217,
+      "recall_at_1": 0.72,
+      "recall_at_3": 0.96,
+      "recall_at_4": 0.976667
+    },
+    "passed_cases": 52,
+    "strategy": "rerank"
+  },
+  "rerank_vs_bm25": {
+    "recovered": 3,
+    "regressed": 3
+  },
+  "rerank_vs_dense": {
+    "recovered": 4,
+    "regressed": 1
+  },
+  "rerank_vs_hybrid": {
+    "recovered": 2,
+    "regressed": 2
+  },
+  "status": "COMPLETED"
+}

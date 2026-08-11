@@ -218,3 +218,16 @@ def test_bm25_strategy_is_ready_without_embedding_configuration(tmp_path: Path) 
     report = CoachRagReadinessService(settings, repository_root=tmp_path).run(require_enabled=True)
     assert report.ready is True
     assert "EMBEDDING_NOT_REQUIRED" in {item.code for item in report.checks}
+
+
+def test_rerank_strategy_requires_an_explicit_reranker_configuration(tmp_path: Path) -> None:
+    settings, root = _ready_repository(tmp_path)
+    settings = _settings(
+        COACH_AGENT_KNOWLEDGE_INDEX_ID=settings.coach_agent_knowledge_index_id,
+        KNOWLEDGE_RETRIEVAL_STRATEGY="rerank",
+        COACH_AGENT_KNOWLEDGE_BM25_INDEX_ID="",
+        KNOWLEDGE_RERANKER_ENABLED=False,
+    )
+    report = CoachRagReadinessService(settings, repository_root=root).run(require_enabled=True)
+    assert report.ready is False
+    assert "RERANKER_INCOMPLETE" in {item.code for item in report.checks}
