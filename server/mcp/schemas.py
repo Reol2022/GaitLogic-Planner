@@ -136,3 +136,31 @@ class McpRunnerStateResult(_McpToolResult):
         if (self.status == "SUCCEEDED") != (self.data is not None):
             raise ValueError("result data must match status")
         return self
+
+
+class McpKnowledgeReference(McpContractModel):
+    reference_id: str = Field(pattern=r"^knowledge_[1-9][0-9]*$", max_length=32)
+    document_id: str = Field(min_length=1, max_length=160)
+    title: str = Field(min_length=1, max_length=200)
+    section: str = Field(min_length=1, max_length=200)
+    source: str = Field(min_length=1, max_length=300)
+    version: str = Field(min_length=1, max_length=80)
+    evidence_level: str = Field(min_length=1, max_length=40)
+    excerpt: str = Field(min_length=1, max_length=600)
+    limitations: list[str] = Field(default_factory=list, max_length=20)
+
+
+class McpKnowledgeRetrieval(McpContractModel):
+    query_status: Literal["SUCCEEDED", "EMPTY"]
+    references: list[McpKnowledgeReference] = Field(default_factory=list, max_length=6)
+    limitations: list[str] = Field(default_factory=list, max_length=20)
+
+
+class McpKnowledgeRetrievalResult(_McpToolResult):
+    data: McpKnowledgeRetrieval | None = None
+
+    @model_validator(mode="after")
+    def validate_data(self) -> "McpKnowledgeRetrievalResult":
+        if (self.status == "SUCCEEDED") != (self.data is not None):
+            raise ValueError("result data must match status")
+        return self

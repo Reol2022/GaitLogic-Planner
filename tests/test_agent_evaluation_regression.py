@@ -95,7 +95,7 @@ def fake_registry(result: EvaluationSuiteResult) -> EvaluationRegistry:
 
 def test_registry_lists_only_public_suites() -> None:
     registry = EvaluationRegistry()
-    assert registry.suite_names == ("coach", "rag", "retrieval", "weekly_adaptive")
+    assert registry.suite_names == ("coach", "rag", "retrieval", "weekly_adaptive", "mcp")
     assert "competition" not in registry.suite_names
     with pytest.raises(KeyError, match="Unknown public evaluation suite"):
         registry.get("private")
@@ -213,8 +213,9 @@ def test_public_registry_runs_all_existing_suites() -> None:
         "rag",
         "retrieval",
         "weekly_adaptive",
+        "mcp",
     ]
-    assert sum(item.total_cases for item in run.suites) == 160
+    assert sum(item.total_cases for item in run.suites) == 205
     assert run.status == EvaluationRunStatus.PARTIAL
     assert not any(
         not gate.passed and gate.safety_critical

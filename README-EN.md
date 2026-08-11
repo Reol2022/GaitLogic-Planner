@@ -9,7 +9,7 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.14.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.15.0-1976d2?style=for-the-badge" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?style=for-the-badge&logo=vue.js&logoColor=white" />
@@ -937,3 +937,6 @@ See [更新历史](docs/更新历史.md) for detailed version history.
 GaitLogic Planner is still under active development and is currently closer to a personal training management and beta testing tool.
 
 If you are a runner, coach, sports tech developer, or simply interested in running software and AI-assisted training plans, feedback and contributions are welcome.
+### v0.15.0 MCP Read-only Interoperability
+
+GaitLogic provides both internal Tool Calling and MCP over stdio / Streamable HTTP. MCP exposes four read-only Tools, public training-knowledge Resources, and safe Prompt templates. Clients cannot select a `user_id`; runner data remains isolated through authenticated identity and the existing Service boundary. MCP cannot bypass Rules, Validators, or canonical knowledge-reference controls.

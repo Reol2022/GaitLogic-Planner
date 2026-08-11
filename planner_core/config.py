@@ -19,6 +19,34 @@ class Settings(BaseSettings):
         default=7,
         validation_alias="ACCESS_TOKEN_EXPIRE_DAYS",
     )
+    mcp_http_enabled: bool = Field(default=False, validation_alias="MCP_HTTP_ENABLED")
+    mcp_http_host: str = Field(default="127.0.0.1", validation_alias="MCP_HTTP_HOST")
+    mcp_allowed_origins: str = Field(
+        default="http://localhost:5173,http://127.0.0.1:5173",
+        validation_alias="MCP_ALLOWED_ORIGINS",
+    )
+    mcp_allowed_hosts: str = Field(
+        default="localhost:8000,127.0.0.1:8000",
+        validation_alias="MCP_ALLOWED_HOSTS",
+    )
+    mcp_token_issuer: str = Field(
+        default="gaitlogic-planner",
+        min_length=1,
+        max_length=128,
+        validation_alias="MCP_TOKEN_ISSUER",
+    )
+    mcp_token_audience: str = Field(
+        default="gaitlogic-mcp",
+        min_length=1,
+        max_length=128,
+        validation_alias="MCP_TOKEN_AUDIENCE",
+    )
+    mcp_token_expire_minutes: int = Field(
+        default=30,
+        ge=1,
+        le=120,
+        validation_alias="MCP_TOKEN_EXPIRE_MINUTES",
+    )
     backend_cors_origins: str = Field(
         default=(
             "http://localhost:5173,"
@@ -422,6 +450,32 @@ class Settings(BaseSettings):
             raise ValueError("OTLP endpoint must be an http(s) URL without credentials or query data")
         return value.rstrip("/")
 
+    @field_validator("mcp_allowed_origins")
+    @classmethod
+    def validate_mcp_allowed_origins(cls, value: str) -> str:
+        for origin in (item.strip() for item in value.split(",") if item.strip()):
+            parsed = urlparse(origin)
+            if (
+                "*" in origin
+                or parsed.scheme not in {"http", "https"}
+                or not parsed.netloc
+                or parsed.path not in {"", "/"}
+                or parsed.params
+                or parsed.query
+                or parsed.fragment
+                or parsed.username
+                or parsed.password
+            ):
+                raise ValueError("MCP origins must be exact http(s) origins without wildcard or path")
+        return value
+
+    @field_validator("mcp_allowed_hosts")
+    @classmethod
+    def validate_mcp_allowed_hosts(cls, value: str) -> str:
+        if any("*" in host for host in value.split(",")):
+            raise ValueError("MCP allowed hosts must not contain wildcard values")
+        return value
+
     @property
     def database_url(self) -> str:
         user = quote_plus(self.mysql_user)
@@ -448,6 +502,14 @@ class Settings(BaseSettings):
             for item in (self.backend_cors_origins or "").split(",")
             if item.strip()
         ]
+
+    @property
+    def mcp_allowed_origins_list(self) -> list[str]:
+        return [item.strip().rstrip("/") for item in self.mcp_allowed_origins.split(",") if item.strip()]
+
+    @property
+    def mcp_allowed_hosts_list(self) -> list[str]:
+        return [item.strip() for item in self.mcp_allowed_hosts.split(",") if item.strip()]
 
 
 @lru_cache

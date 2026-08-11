@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.14.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.15.0-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -1208,3 +1208,6 @@ GaitLogic Planner Community 是可独立运行的开源社区版。未来可能�
 GaitLogic Planner 仍处于持续开发阶段，当前版本更偏向个人训练管理和内测使用。
 
 如果你也是跑者、教练、体育科技开发者，或者对“跑步 + 软件系统 + AI 辅助训练”感兴趣，欢迎提出建议、提交 issue 或参与改进。
+### v0.15.0 MCP 只读互操作层
+
+GaitLogic 同时提供内部 Tool Calling 与 MCP stdio / Streamable HTTP。MCP 暴露四个只读 Tool、公开训练知识 Resources 与安全 Prompt 模板；客户端不能指定 `user_id`，用户训练数据仍通过认证身份和现有 Service 边界隔离。MCP 不绕过 Rules、Validator 或 canonical knowledge reference 控制。

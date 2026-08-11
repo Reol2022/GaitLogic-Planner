@@ -828,3 +828,6 @@ Readiness 不访问网络，只输出布尔状态、非敏感模式名和稳定�
 3. 若索引异常，先设置 `COACH_AGENT_KNOWLEDGE_RETRIEVAL_ENABLED=false`，保留不依赖知识检索的 Coach 能力；
 4. 若 Chat Provider 异常，设置 `COACH_AGENT_ENABLED=false`，使用确定性降级；
 5. 本版本没有数据库迁移，不执行数据库 downgrade。
+## v0.15.0 MCP deployment boundary
+
+MCP stdio is for a local trusted Host. Streamable HTTP remains disabled unless explicitly configured, and must use the scoped MCP token endpoint, the configured origin allowlist, and the existing authenticated application deployment. Do not expose corpus/index runtime paths through Nginx. MCP Tools are read-only; Resources contain only public knowledge projections and never runner data.

@@ -23,7 +23,12 @@ from tests.agent_tool_fakes import FakeDependencies, NOW
 from tests.test_agent_training_integration import agent_context, make_database
 
 
-EXPECTED_TOOLS = {"get_today_plan", "get_recent_training", "get_runner_state"}
+EXPECTED_TOOLS = {
+    "get_today_plan",
+    "get_recent_training",
+    "get_runner_state",
+    "retrieve_training_knowledge",
+}
 
 
 def _context(
@@ -70,7 +75,7 @@ def _list(server):
     return asyncio.run(run())
 
 
-def test_mcp_server_lists_only_three_strict_read_only_tools() -> None:
+def test_mcp_server_lists_only_four_strict_read_only_tools() -> None:
     server, _fake, _session = _server()
     tools = _list(server).tools
     assert {tool.name for tool in tools} == EXPECTED_TOOLS
@@ -78,6 +83,9 @@ def test_mcp_server_lists_only_three_strict_read_only_tools() -> None:
     assert schemas["get_today_plan"].get("properties", {}) == {}
     assert schemas["get_runner_state"].get("properties", {}) == {}
     assert set(schemas["get_recent_training"]["properties"]) == {"days", "limit"}
+    assert set(schemas["retrieve_training_knowledge"]["properties"]) == {
+        "query", "top_k", "categories", "tags", "language"
+    }
     assert all("user_id" not in str(schema) and "email" not in str(schema) for schema in schemas.values())
 
 

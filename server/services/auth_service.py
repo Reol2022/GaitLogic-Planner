@@ -17,6 +17,15 @@ from server.schemas.auth import TokenResponse, UserLogin, UserRegister
 
 JWT_ALGORITHM = "HS256"
 PASSWORD_ITERATIONS = 260_000
+MCP_TOKEN_PURPOSE = "mcp"
+
+
+class McpTokenValidationError(ValueError):
+    """Safe classification for a token that cannot authenticate an MCP request."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
 
 
 def b64url_encode(data: bytes) -> str:
@@ -103,6 +112,63 @@ def create_access_token(user: UserAccount) -> str:
     message = f"{header_part}.{payload_part}".encode("ascii")
     signature = hmac.new(signing_key(), message, hashlib.sha256).digest()
     return f"{header_part}.{payload_part}.{b64url_encode(signature)}"
+
+
+def _sign_jwt_payload(payload: dict) -> str:
+    header = {"typ": "JWT", "alg": JWT_ALGORITHM}
+    header_part = b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+    payload_part = b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    message = f"{header_part}.{payload_part}".encode("ascii")
+    signature = hmac.new(signing_key(), message, hashlib.sha256).digest()
+    return f"{header_part}.{payload_part}.{b64url_encode(signature)}"
+
+
+def create_mcp_access_token(user: UserAccount) -> str:
+    """Issue a short-lived JWT that is bound only to the MCP resource server."""
+
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    return _sign_jwt_payload(
+        {
+            "sub": str(user.id),
+            "iss": settings.mcp_token_issuer,
+            "aud": settings.mcp_token_audience,
+            "purpose": MCP_TOKEN_PURPOSE,
+            "iat": int(now.timestamp()),
+            "exp": int((now + timedelta(minutes=settings.mcp_token_expire_minutes)).timestamp()),
+        }
+    )
+
+
+def decode_mcp_access_token(token: str) -> dict:
+    """Validate a GaitLogic MCP token without accepting the web JWT namespace."""
+
+    try:
+        header_part, payload_part, signature_part = token.split(".", 2)
+        header = json.loads(b64url_decode(header_part))
+        if header.get("typ") != "JWT" or header.get("alg") != JWT_ALGORITHM:
+            raise McpTokenValidationError("INVALID_TOKEN")
+        message = f"{header_part}.{payload_part}".encode("ascii")
+        expected_signature = hmac.new(signing_key(), message, hashlib.sha256).digest()
+        if not hmac.compare_digest(b64url_encode(expected_signature), signature_part):
+            raise McpTokenValidationError("INVALID_TOKEN")
+        payload = json.loads(b64url_decode(payload_part))
+        if int(payload.get("exp", 0)) < int(datetime.now(timezone.utc).timestamp()):
+            raise McpTokenValidationError("TOKEN_EXPIRED")
+        settings = get_settings()
+        if payload.get("iss") != settings.mcp_token_issuer:
+            raise McpTokenValidationError("INVALID_TOKEN")
+        if payload.get("aud") != settings.mcp_token_audience:
+            raise McpTokenValidationError("INVALID_TOKEN")
+        if payload.get("purpose") != MCP_TOKEN_PURPOSE:
+            raise McpTokenValidationError("INVALID_TOKEN")
+        if int(payload.get("sub", 0)) <= 0:
+            raise McpTokenValidationError("INVALID_TOKEN")
+        return payload
+    except McpTokenValidationError:
+        raise
+    except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise McpTokenValidationError("INVALID_TOKEN") from exc
 
 
 def authenticate_user(db: Session, payload: UserLogin) -> TokenResponse:

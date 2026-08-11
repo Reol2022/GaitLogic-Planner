@@ -7,7 +7,9 @@ derived from tool arguments.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
@@ -17,6 +19,9 @@ from server.observability.tracing import NOOP_TRACER, SafeTracer
 
 SessionFactory = Callable[[], Session]
 IdentityProvider = Callable[[], "McpRequestIdentity | None"]
+_ACTIVE_IDENTITY: ContextVar["McpRequestIdentity | None"] = ContextVar(
+    "active_mcp_identity", default=None
+)
 
 
 @dataclass(frozen=True)
@@ -28,6 +33,23 @@ class McpRequestIdentity:
     def __post_init__(self) -> None:
         if self.user_id <= 0:
             raise ValueError("MCP_IDENTITY_INVALID")
+
+
+def get_active_mcp_identity() -> McpRequestIdentity | None:
+    """Return request-scoped identity injected only by a trusted transport."""
+
+    return _ACTIVE_IDENTITY.get()
+
+
+@contextmanager
+def activate_mcp_identity(identity: McpRequestIdentity) -> Iterator[None]:
+    """Keep remote identity scoped to the current HTTP MCP request."""
+
+    token = _ACTIVE_IDENTITY.set(identity)
+    try:
+        yield
+    finally:
+        _ACTIVE_IDENTITY.reset(token)
 
 
 @dataclass(frozen=True)
@@ -49,4 +71,3 @@ class McpExecutionContext:
         """
 
         return cls(identity_provider=lambda: None)
-

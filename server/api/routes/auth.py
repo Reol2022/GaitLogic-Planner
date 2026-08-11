@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from planner_core.database.models import UserAccount
 from server.api.deps import get_current_user, get_db
 from server.common.response import MessageResponse
-from server.schemas.auth import TokenResponse, UserLogin, UserRead, UserRegister
+from server.schemas.auth import McpTokenResponse, TokenResponse, UserLogin, UserRead, UserRegister
 from server.services import admin_system_settings_service, auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -28,6 +28,23 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserRead)
 def me(current_user: UserAccount = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/mcp-token", response_model=McpTokenResponse)
+def issue_mcp_token(current_user: UserAccount = Depends(get_current_user)):
+    """Mint a short-lived MCP-only token for the already authenticated user.
+
+    This endpoint is a GaitLogic provisioning helper, not an OAuth discovery or
+    authorization-code flow.
+    """
+
+    from planner_core.config import get_settings
+
+    settings = get_settings()
+    return McpTokenResponse(
+        access_token=auth_service.create_mcp_access_token(current_user),
+        expires_in=settings.mcp_token_expire_minutes * 60,
+    )
 
 
 @router.post("/logout", response_model=MessageResponse)

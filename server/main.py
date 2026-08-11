@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="Gaitlogic Planner API",
-        version="0.14.0",
+        version="0.15.0",
         description="Backend API for training plans, logs, dashboard stats, and pace rules.",
     )
     app.add_middleware(
@@ -120,6 +120,13 @@ def create_app() -> FastAPI:
             openapi_url="/api/openapi.json",
             title="Gaitlogic Planner API - Docs",
         )
+
+    # Mount last: the SDK sub-application handles only /mcp, while existing
+    # REST routes retain their original order and behavior.
+    if settings.mcp_http_enabled:
+        from server.mcp.http import create_mcp_http_app
+
+        app.mount("", create_mcp_http_app(), name="gaitlogic-mcp-http")
 
     return app
 

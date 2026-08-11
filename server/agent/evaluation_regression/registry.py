@@ -21,6 +21,7 @@ from server.knowledge_retrieval.embeddings.deterministic import DeterministicEmb
 from server.knowledge_retrieval.evaluation.runner import TrainingKnowledgeEvaluationRunner
 from server.knowledge_retrieval.evaluation.schemas import EvaluationMode
 from server.knowledge_retrieval.index_service import KnowledgeIndexService
+from server.mcp.evaluation import run_mcp_evaluation
 from server.weekly_review_evaluation import load_cases as load_weekly_cases
 from server.weekly_review_evaluation import run_evaluation
 
@@ -97,6 +98,7 @@ class EvaluationRegistry:
             "weekly_adaptive": RegisteredEvaluationSuite(
                 "weekly_adaptive", self._run_weekly_adaptive
             ),
+            "mcp": RegisteredEvaluationSuite("mcp", self._run_mcp),
         }
 
     @property
@@ -269,3 +271,6 @@ class EvaluationRegistry:
             cases=results,
             limitations=report["limitations"],
         )
+
+    def _run_mcp(self) -> EvaluationSuiteResult:
+        return run_mcp_evaluation(self.repository_root)

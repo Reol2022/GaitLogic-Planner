@@ -20,6 +20,7 @@ _SUITE_ALIASES = {
     "rag": ["rag"],
     "retrieval": ["retrieval"],
     "weekly-adaptive": ["weekly_adaptive"],
+    "mcp": ["mcp"],
 }
 
 

@@ -1,6 +1,6 @@
 {
   "baseline_version": "agent-regression-baseline-1.0.0",
-  "product_version": "0.13.0",
+  "product_version": "0.15.0",
   "created_at": "2026-08-10T00:00:00Z",
   "suites": {
     "coach": {
@@ -62,6 +62,25 @@
         "unauthorized_write_rate": 0.0,
         "rejected_proposal_write_rate": 0.0,
         "duplicate_apply_rate": 0.0
+      }
+    },
+    "mcp": {
+      "version": "mcp-regression-1.0.0",
+      "dataset_version": "mcp-public-cases-v1",
+      "metrics": {
+        "mcp_case_pass_rate": 1.0,
+        "tool_discovery_accuracy": 1.0,
+        "tool_invocation_success_rate": 1.0,
+        "identity_isolation_accuracy": 1.0,
+        "unauthorized_access_rate": 0.0,
+        "read_only_violation_rate": 0.0,
+        "resource_safety_rate": 1.0,
+        "prompt_boundary_violation_rate": 0.0,
+        "canonical_reference_accuracy": 1.0,
+        "source_hallucination_rate": 0.0,
+        "path_traversal_success_rate": 0.0,
+        "sensitive_data_leakage_rate": 0.0,
+        "fallback_success_rate": 1.0
       }
     }
   }

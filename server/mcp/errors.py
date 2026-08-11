@@ -12,6 +12,11 @@ class McpErrorCode(str, Enum):
     DATA_UNAVAILABLE = "DATA_UNAVAILABLE"
     SERVICE_FAILURE = "SERVICE_FAILURE"
     INTERNAL_SAFE_ERROR = "INTERNAL_SAFE_ERROR"
+    UNAUTHENTICATED = "UNAUTHENTICATED"
+    INVALID_TOKEN = "INVALID_TOKEN"
+    TOKEN_EXPIRED = "TOKEN_EXPIRED"
+    INSUFFICIENT_PERMISSION = "INSUFFICIENT_PERMISSION"
+    INVALID_ORIGIN = "INVALID_ORIGIN"
 
 
 class McpSafeError(Exception):
@@ -20,4 +25,3 @@ class McpSafeError(Exception):
     def __init__(self, code: McpErrorCode) -> None:
         super().__init__(code.value)
         self.code = code
-

@@ -216,6 +216,48 @@ class KnowledgeCorpusService:
             ],
         }
 
+    def public_catalog(self) -> list[dict[str, object]]:
+        """Return only published corpus metadata, never repository paths or hashes."""
+
+        self.validate()
+        documents, sources, _ = self._current_corpus()
+        source_by_id = {source.source_id: source for source in sources}
+        return [
+            {
+                "document_key": document.metadata.document_id,
+                "title": document.metadata.title,
+                "category": document.metadata.category.value,
+                "version": document.metadata.knowledge_version,
+                "evidence_level": document.metadata.evidence_level.value,
+                "source": source_by_id[document.metadata.source_id].title,
+                "limitations": document.metadata.limitations,
+            }
+            for document in documents
+        ]
+
+    def read_public_document(self, document_key: str) -> dict[str, object]:
+        """Read one allowlisted active corpus document without exposing file metadata."""
+
+        self.validate()
+        documents, sources, _ = self._current_corpus()
+        document = next(
+            (item for item in documents if item.metadata.document_id == document_key), None
+        )
+        if document is None:
+            raise KnowledgeNotFoundError("Published knowledge document was not found.")
+        source_by_id = {source.source_id: source for source in sources}
+        source = source_by_id[document.metadata.source_id]
+        return {
+            "document_key": document.metadata.document_id,
+            "title": document.metadata.title,
+            "category": document.metadata.category.value,
+            "version": document.metadata.knowledge_version,
+            "evidence_level": document.metadata.evidence_level.value,
+            "source": source.title,
+            "content": document.body,
+            "limitations": document.metadata.limitations,
+        }
+
     def inspect_chunk(
         self,
         chunk_id: str,

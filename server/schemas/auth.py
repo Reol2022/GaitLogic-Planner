@@ -29,6 +29,14 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class McpTokenResponse(BaseModel):
+    """A short-lived bearer token limited to the GaitLogic MCP endpoint."""
+
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+
 class UserRead(BaseModel):
     id: int
     username: str
