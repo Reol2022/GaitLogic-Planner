@@ -46,7 +46,7 @@ class WeeklyReviewNodes:
         return {
             "rule_results": classification.rule_codes,
             "warnings": classification.warnings,
-            "limitations": classification.limitations,
+            "limitations": list(dict.fromkeys(classification.limitations)),
             "status": WeeklyReviewGraphStatus.RULES_READY,
         }
 
@@ -133,7 +133,10 @@ class WeeklyReviewNodes:
             )
         else:
             draft = WeeklyReviewDraft(
-                overview=f"本周确定性分类为 {facts.classification.primary_status.value}。",
+                overview=(
+                    f"本周确定性分类为 {facts.classification.primary_status.value}；"
+                    f"数据准备度为 {facts.classification.overall_readiness or 'UNKNOWN'}。"
+                ),
                 completion_summary=(
                     f"计划 {facts.planned.planned_running_session_count} 次，"
                     f"完成 {facts.completed.completed_running_session_count} 次。"
@@ -147,7 +150,14 @@ class WeeklyReviewNodes:
                     f"疲劳状态 {facts.runner_state_trend.fatigue_level}；"
                     "不根据缺失恢复数据推断医学风险。"
                 ),
-                next_week_focus=["结合已记录偏差和数据限制进行人工复核。"],
+                next_week_focus=[
+                    "结合已记录偏差和数据限制进行人工复核。",
+                    *(
+                        ["部分决策域数据不完整，未对其生成确定性结论。"]
+                        if facts.classification.overall_readiness == "PARTIAL"
+                        else []
+                    ),
+                ],
             )
         return {
             "validated_review": draft,

@@ -108,6 +108,11 @@ class GetRunnerStateTool(AgentTool):
                 for flag in snapshot.risk_flags[:20]
             ],
             limitations=limitations,
+            overall_readiness=(snapshot.inference_metadata.overall_readiness if snapshot.inference_metadata else None),
+            domain_readiness=(snapshot.inference_metadata.domain_readiness if snapshot.inference_metadata else []),
+            hard_blockers=(snapshot.inference_metadata.hard_blockers if snapshot.inference_metadata else []),
+            data_limitations=(snapshot.inference_metadata.data_limitations if snapshot.inference_metadata else []),
+            capability_limitations=(snapshot.inference_metadata.capability_limitations if snapshot.inference_metadata else []),
         )
 
 

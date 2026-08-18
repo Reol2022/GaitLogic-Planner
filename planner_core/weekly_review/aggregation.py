@@ -38,6 +38,13 @@ from planner_core.weekly_review.schemas import (
     WeeklyPlannedMetrics,
     WorkoutSessionFact,
 )
+from server.domain.decision_readiness import (
+    DecisionReadiness,
+    DomainReadiness,
+    LimitationClass,
+    classify_limitation,
+    overall_readiness,
+)
 
 
 def _round(value: float | None, digits: int = 4) -> float | None:
@@ -412,10 +419,12 @@ def build_weekly_facts(
     rules: list[str] = []
     warnings: list[str] = []
     limitations: list[str] = []
-    if not running_plans:
+    # A missing plan limits plan-adherence only; completed training facts can
+    # still support a partial weekly review.
+    if not running_plans and not logs:
         statuses.append(WeeklyClassificationStatus.INSUFFICIENT_DATA)
         rules.append("NO_PLANNED_RUNNING_SESSIONS")
-    elif quality == WeeklyDataQualityLevel.INSUFFICIENT:
+    elif quality == WeeklyDataQualityLevel.INSUFFICIENT and not logs:
         statuses.append(WeeklyClassificationStatus.INSUFFICIENT_DATA)
         rules.append("WEEKLY_DATA_INSUFFICIENT")
     if (
@@ -463,6 +472,18 @@ def build_weekly_facts(
         limitations.append("PLANNED_DURATION_NOT_STRUCTURED")
     if missing_fields:
         limitations.append("SOME_METRICS_EXCLUDE_MISSING_VALUES")
+
+    domains = [
+        DomainReadiness(domain="plan_execution", readiness=DecisionReadiness.READY if running_plans else DecisionReadiness.BLOCKED),
+        DomainReadiness(domain="training_volume", readiness=DecisionReadiness.READY if logs else DecisionReadiness.BLOCKED),
+        DomainReadiness(domain="training_frequency", readiness=DecisionReadiness.READY if logs else DecisionReadiness.BLOCKED),
+        DomainReadiness(domain="key_session_completion", readiness=DecisionReadiness.READY if planned_keys or completed_keys else DecisionReadiness.NOT_APPLICABLE),
+        DomainReadiness(domain="intensity_distribution", readiness=DecisionReadiness.PARTIAL if missing_fields else DecisionReadiness.READY),
+        DomainReadiness(domain="long_run", readiness=DecisionReadiness.READY if planned_longs or completed_longs else DecisionReadiness.NOT_APPLICABLE),
+        DomainReadiness(domain="recovery", readiness=DecisionReadiness.PARTIAL if missing_fields else DecisionReadiness.NOT_APPLICABLE),
+        DomainReadiness(domain="subjective_fatigue", readiness=DecisionReadiness.BLOCKED),
+        DomainReadiness(domain="training_phase", readiness=DecisionReadiness.BLOCKED if not period.training_phase else DecisionReadiness.READY),
+    ]
 
     missed_plan_ids = {
         item.plan_id
@@ -540,6 +561,23 @@ def build_weekly_facts(
             evidence_codes=evidence_codes,
             warnings=warnings,
             limitations=limitations,
+            overall_readiness=overall_readiness(domains).value,
+            domain_readiness=[item.model_dump(mode="json") for item in domains],
+            hard_blockers=(
+                []
+                if logs or running_plans
+                else ["WEEKLY_CORE_FACTS_UNAVAILABLE"]
+            ),
+            data_limitations=[
+                item
+                for item in limitations
+                if classify_limitation(item) == LimitationClass.SOFT_LIMITATION
+            ],
+            capability_limitations=[
+                item
+                for item in limitations
+                if classify_limitation(item) == LimitationClass.CAPABILITY_LIMITATION
+            ],
         ),
         weekly_facts_version=WEEKLY_FACTS_VERSION,
         rules_version=WEEKLY_RULES_VERSION,

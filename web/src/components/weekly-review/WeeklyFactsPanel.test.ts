@@ -29,4 +29,28 @@ describe("WeeklyFactsPanel", () => {
     const missing = { ...facts, completed: { ...facts.completed, actual_distance_km: null } };
     expect(mount(WeeklyFactsPanel, { props: { facts: missing } }).text()).toContain("暂无数据");
   });
+
+  it("shows partial and blocked domains without treating the entire review as unavailable", () => {
+    const partial = {
+      ...facts,
+      classification: {
+        ...facts.classification,
+        overall_readiness: "PARTIAL",
+        domain_readiness: [
+          { domain: "training_volume", readiness: "READY", limitations: [] },
+          { domain: "recovery", readiness: "PARTIAL", limitations: ["heart_rate_incomplete_7d"] },
+          { domain: "training_phase", readiness: "BLOCKED", limitations: ["training_phase_unavailable_no_structured_cycle_phase"] },
+        ],
+      },
+    } satisfies WeeklyFacts;
+    const wrapper = mount(WeeklyFactsPanel, {
+      props: { facts: partial },
+      global: { stubs: { "el-tag": { template: "<span><slot /></span>" } } },
+    });
+
+    expect(wrapper.text()).toContain("分析准备度");
+    expect(wrapper.text()).toContain("训练负荷：可分析");
+    expect(wrapper.text()).toContain("恢复状态：部分数据");
+    expect(wrapper.text()).toContain("训练阶段：数据不足");
+  });
 });

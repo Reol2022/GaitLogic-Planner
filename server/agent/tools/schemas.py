@@ -46,6 +46,11 @@ class RunnerStateToolOutput(AgentContractModel):
     evidence: list[AgentEvidenceRead] = Field(default_factory=list, max_length=20)
     warnings: list[AgentNotice] = Field(default_factory=list, max_length=20)
     limitations: list[AgentNotice] = Field(default_factory=list, max_length=20)
+    overall_readiness: str | None = None
+    domain_readiness: list[dict[str, object]] = Field(default_factory=list, max_length=20)
+    hard_blockers: list[str] = Field(default_factory=list, max_length=20)
+    data_limitations: list[str] = Field(default_factory=list, max_length=20)
+    capability_limitations: list[str] = Field(default_factory=list, max_length=20)
 
 
 class RunnerStateHistoryInput(AgentContractModel):

@@ -163,6 +163,11 @@ class WeeklyClassification(StrictModel):
     evidence_codes: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
+    overall_readiness: str | None = None
+    domain_readiness: list[dict[str, object]] = Field(default_factory=list)
+    hard_blockers: list[str] = Field(default_factory=list)
+    data_limitations: list[str] = Field(default_factory=list)
+    capability_limitations: list[str] = Field(default_factory=list)
 
 
 class WeeklyFacts(StrictModel):

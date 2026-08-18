@@ -43,6 +43,18 @@ class AdaptivePlanProposalService:
             WeeklyDataQualityLevel.CONFLICTED,
         } and candidates:
             raise BadRequestError("Insufficient or conflicted facts cannot produce deterministic adjustments.")
+        blocked_domains = {
+            item.get("domain")
+            for item in weekly_facts.classification.domain_readiness
+            if item.get("readiness") == "BLOCKED"
+        }
+        if "recovery" in blocked_domains:
+            for candidate in candidates:
+                target = by_id.get(candidate.plan_id)
+                if target is not None and self._increases_training_load_or_intensity(target, candidate):
+                    raise BadRequestError(
+                        "Blocked recovery facts cannot support a deterministic load or intensity increase."
+                    )
 
         changes: list[PlanAdjustmentChange] = []
         seen: set[int] = set()
@@ -109,6 +121,18 @@ class AdaptivePlanProposalService:
                 raise BadRequestError("Elevated fatigue cannot increase planned distance.")
             if INTENSITY_RANK.get(after.main_type, 99) > INTENSITY_RANK.get(before.main_type, 99):
                 raise BadRequestError("Elevated fatigue cannot increase workout intensity.")
+
+    @staticmethod
+    def _increases_training_load_or_intensity(
+        target: TargetPlanFact,
+        candidate: ProposalCandidateChange,
+    ) -> bool:
+        """Keep write safety independent from whether weekly analysis was partial."""
+        before = target.value
+        after = candidate.after
+        return (after.distance_km or 0) > (before.distance_km or 0) or (
+            INTENSITY_RANK.get(after.main_type, 99) > INTENSITY_RANK.get(before.main_type, 99)
+        )
 
     @staticmethod
     def _validate_resulting_week(

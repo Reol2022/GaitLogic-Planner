@@ -42,6 +42,8 @@ function warningTitle(code: string): string {
 function limitationTitle(code: string): string {
   if (code.includes("MODEL") || code.includes("PROVIDER")) return "模型解释限制";
   if (code.includes("CONTEXT") || code.includes("TRIMMED")) return "上下文已裁剪";
+  if (code.includes("RULE_DISABLED") || code.includes("NOT_DEFINED") || code.includes("CAPABILITY")) return "当前能力限制";
+  if (code.includes("RPE_INCOMPLETE") || code.includes("PHASE_UNAVAILABLE") || code.includes("SEGMENT") || code.includes("COVERAGE")) return "分析范围受限";
   if (code.includes("TOOL")) return "部分数据不可用";
   if (code.includes("DATA") || code.includes("UNKNOWN")) return "数据不足";
   return "适用范围说明";

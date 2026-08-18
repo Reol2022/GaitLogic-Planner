@@ -6,6 +6,7 @@ from statistics import mean, pstdev
 from planner_core.database.models import PlannedWorkout, TrainingCycle, WorkoutLog
 from server.domain.review_thresholds import HIGH_INTENSITY_TYPES
 from server.domain.runner_state_rules import RunnerStateRules
+from server.domain.decision_readiness import assess_runner_state_domains, classify_limitation, overall_readiness
 from server.schemas.runner_state import (
     FatigueInference,
     FatigueState,
@@ -508,6 +509,10 @@ class RunnerStateInferenceService:
             "training_phase": training_phase,
             # fitness_state, load_trend, weaknesses and legacy risk_flags remain unchanged.
         })
+        domain_readiness = assess_runner_state_domains(
+            valid_workouts=snapshot.data_quality.valid_workout_count_28d,
+            limitations=sorted(limitations),
+        )
         return snapshot.model_copy(update={
             "inferred_state": inferred_state,
             "derived_metrics": derived,
@@ -520,5 +525,14 @@ class RunnerStateInferenceService:
                 calculated_at=snapshot.identity.generated_at,
                 reason_codes=reason_codes,
                 limitations=sorted(limitations),
+                overall_readiness=overall_readiness(domain_readiness).value,
+                domain_readiness=[item.model_dump(mode="json") for item in domain_readiness],
+                hard_blockers=[
+                    item
+                    for item in sorted(limitations)
+                    if classify_limitation(item).value == "HARD_BLOCKER"
+                ],
+                data_limitations=[item for item in sorted(limitations) if classify_limitation(item).value == "SOFT_LIMITATION"],
+                capability_limitations=[item for item in sorted(limitations) if classify_limitation(item).value == "CAPABILITY_LIMITATION"],
             ),
         })

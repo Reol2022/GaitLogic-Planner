@@ -217,13 +217,17 @@ def build_authoritative_today_facts(
             ],
         ]
     )
-    if context.missing_reasons:
+    # Missing optional recovery/RPE/context tools constrain only their domain.
+    # TODAY is globally blocked only when no core training fact source survived.
+    core_sources = {"get_today_workout", "get_recent_training", "get_runner_state"}
+    missing_sources = set(context.missing_reasons)
+    if core_sources.issubset(missing_sources):
         limitations = _unique_notices(
             [
                 *limitations,
                 AgentNotice(
                     code="TODAY_CONTEXT_INCOMPLETE",
-                    message="One or more required TODAY data sources are unavailable.",
+                    message="Core TODAY training fact sources are unavailable.",
                 ),
             ]
         )

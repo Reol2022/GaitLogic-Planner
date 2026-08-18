@@ -38,6 +38,11 @@ export interface WeeklyFacts {
     evidence_codes: string[];
     warnings: string[];
     limitations: string[];
+    overall_readiness?: "READY" | "PARTIAL" | "BLOCKED" | "NOT_APPLICABLE" | null;
+    domain_readiness?: Array<{ domain: string; readiness: "READY" | "PARTIAL" | "BLOCKED" | "NOT_APPLICABLE"; limitations?: string[] }>;
+    hard_blockers?: string[];
+    data_limitations?: string[];
+    capability_limitations?: string[];
   };
   result_hash: string;
 }
