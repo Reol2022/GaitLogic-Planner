@@ -36,6 +36,15 @@ Training knowledge retrieval supports Dense Exact, optional Qdrant, deterministi
 
 See the [v0.16.0 release note](docs/release/v0.16.0.md) and [Holdout report](docs/evaluation/reports/retrieval-holdout-v2.md). Retrieval supplies knowledge explanation only; it cannot change Runner State, deterministic TODAY advice, or training plans.
 
+### v0.16.1 / v0.16.2 Development Snapshot
+
+The formal release remains **v0.16.0**. The current development line also contains two capabilities that have not been released independently:
+
+- **v0.16.1 Garmin Recovery Data Sync** normalizes daily sleep, resting heart rate, HRV, stress, Body Battery, and respiration facts through the existing Garmin Pipeline. Missing provider fields remain absent and become limitations; explicit manual recovery input takes precedence.
+- **v0.16.2 Partial Facts & Decision Readiness** distinguishes `PARTIAL` analysis from `BLOCKED` core facts. Missing RPE, for example, no longer invalidates an entire Coach TODAY result; the affected load rule is reported as unevaluable instead of treating missing data as normal.
+
+Neither capability changes server ownership of deterministic TODAY facts, warnings, limitations, or Evidence. See the [change history](docs/更新历史.md) for details.
+
 ---
 
 ## 🧭 At a Glance

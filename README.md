@@ -40,6 +40,15 @@
 
 详见 [v0.16.0 发布说明](docs/release/v0.16.0.md) 与 [Holdout 报告](docs/evaluation/reports/retrieval-holdout-v2.md)。检索只提供知识解释，不修改 Runner State、TODAY 确定性建议或训练计划。
 
+### v0.16.1 / v0.16.2 开发快照
+
+正式版本仍为 **v0.16.0**。当前开发线继续完善两个尚未独立发版的能力：
+
+- **v0.16.1 Garmin Recovery Data Sync**：在既有 Garmin Pipeline 中归一化睡眠、静息心率、HRV、压力、Body Battery 和呼吸率等日级恢复事实；字段缺失保持为空并形成 limitation，用户手动填写的恢复信息优先保留。
+- **v0.16.2 Partial Facts & Decision Readiness**：将“缺少部分指标”和“核心数据不可用”区分为 `PARTIAL` 与 `BLOCKED`。例如缺 RPE 不再让 Coach TODAY 整体失效；相关负荷规则显示为“未参与判断”，而不是把缺失数据误当作正常值。
+
+这两项都不改变 TODAY 的确定性决策所有权：训练事实、规则结论、warning、limitation 和 Evidence 继续由服务端控制。详情见 [更新历史](docs/更新历史.md)。
+
 ---
 
 ## 🧭 一屏看懂
