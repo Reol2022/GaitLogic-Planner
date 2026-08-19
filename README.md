@@ -2,7 +2,7 @@
 
 # GaitLogic Planner
 
-### 跑者的训练计划、训练日志、配速计算与复盘工作台
+### 面向严肃跑者的训练管理、确定性决策与可解释 AI 工作台
 
 从训练计划到每日执行，从 AI 草稿到 Excel 导入，从 VDOT 配速到训练日历，GaitLogic Planner 希望把跑者分散在表格、手表、聊天记录和笔记里的训练信息，整理成一个可维护、可复盘、可继续推进的系统。
 
@@ -51,6 +51,18 @@ GaitLogic Planner 不是一个简单的跑步打卡工具。它更关注训练�
 ```
 
 AI 生成内容仅作为训练计划草稿，不构成医疗建议、康复建议或专业教练处方。请结合自身恢复、伤病情况、天气、地形和实际训练反馈调整。
+
+### 当前能力主线
+
+| 能力 | 解决的问题 | 安全边界 |
+| --- | --- | --- |
+| 训练管理闭环 | 计划、执行、日志、日历、统计与复盘分散 | 多用户隔离，正式计划变更需要用户确认 |
+| Runner State 与 Training Readiness | 近期负荷、恢复和数据质量难以统一理解 | 确定性计算；部分数据可分析但会显式标注限制 |
+| Coach Agent | 模型容易脱离训练事实自由回答 | 只读工具提供事实，规则确定边界，Validator 拦截越权 |
+| Training Knowledge RAG | 训练解释缺少可核验依据 | 引用由服务端还原；知识检索不能覆盖 TODAY 决策 |
+| Weekly Review 与 Proposal | 周复盘结论难以转化为可审查调整 | Proposal、HITL、版本校验、事务和回滚共同保护写入 |
+| Garmin 与 Data Sync | 外部活动导入、去重和关联链路复杂 | 统一 Pipeline、稳定运行标识、事务隔离与非阻塞快照 |
+| MCP 与可观测性 | 外部客户端接入和 Agent 故障定位困难 | MCP 默认只读；Trace/Metric 采用白名单且不记录业务正文 |
 
 ### v0.11.0 Coach Agent
 
@@ -162,32 +174,7 @@ v0.12.0 当前按邀请制 Alpha 发布。界面、状态和安全边界见 [Tra
 - `get_training_data_quality`
 - `retrieve_training_knowledge`
 
-```mermaid
-flowchart TD
-    UI[Vue Coach UI] --> API[POST /api/coach/query]
-    API --> QS[CoachAgentQueryService]
-    QS --> AGENT[GaitLogicCoachAgent]
-    AGENT --> CTX[Context Builder]
-    AGENT --> REG[Read-only Tool Registry]
-    AGENT --> LLM[OpenAI-compatible Gateway]
-    CTX --> REG
-    REG --> SERVICES[Training Services]
-    REG --> KTOOL[Training Knowledge Tool]
-    KTOOL --> RETRIEVER[Retriever]
-    RETRIEVER --> INDEX[(Versioned Vector Index)]
-    INDEX --> CORPUS[Versioned Corpus]
-    SERVICES --> RULES[Runner State and Rule Engine]
-    SERVICES --> DB[(MySQL)]
-    LLM --> VAL[Deterministic Validator]
-    RETRIEVER --> REF[Canonical Reference Materializer]
-    REF --> VAL
-    VAL -->|accepted| QS
-    VAL -->|rejected or unavailable| FALLBACK[Deterministic Fallback]
-    FALLBACK --> QS
-    QS --> UI
-```
-
-完整架构说明见 [Coach Agent Architecture v1](docs/agent/coach-agent-architecture-v1.md)。
+Agent 调用链遵循“前端请求 → 服务端身份与 Intent Policy → 只读工具/知识检索 → Provider → Canonical Materializer → Validator → 正常响应或确定性 Fallback”。业务代码不直接把数据库、Prompt 或任意工具权限交给模型。完整关系见下方[系统架构图](#-系统架构)和 [Coach Agent Architecture v1](docs/agent/coach-agent-architecture-v1.md)。
 
 ### Evaluation
 
@@ -224,7 +211,7 @@ python scripts/smoke_coach_rag.py
 
 Readiness 不访问网络且不输出凭据；Smoke 使用固定虚构只读 Fixture，不保存 Provider 原始回答。Alpha 使用、隐私与故障处理见 [v0.12.0 Alpha Onboarding](docs/alpha/gaitlogic-v0120-alpha-onboarding.md) 和 [Incident Runbook](docs/alpha/gaitlogic-v0120-alpha-incident-runbook.md)。
 
-当前没有 Hybrid Retrieval、Reranker、Weekly Review Agent、写工具、长期记忆、Streaming 或多 Agent；Quota 暂为进程内限制。训练知识库规模有限，Provider 可能短暂失败，系统会保留确定性建议并安全降级。本功能不构成医疗诊断；私有检索标签确认和人工盲评仍在完善。
+当前已经实现 Dense Exact、可选 Qdrant、BM25、Hybrid RRF 和可选 Reranker，但生产默认策略仍以独立 Holdout 结果和运行复杂度为依据，不会因为组件更多就自动启用。当前仍没有长期记忆、Streaming 或多 Agent；Coach 公共工具保持只读，周计划写入只允许经 Proposal、人工确认和服务端复核完成；Quota 暂为进程内限制。训练知识库覆盖仍有限，Provider 或索引不可用时系统会保留确定性建议并安全降级。本功能不构成医疗诊断；竞赛私有标签确认和人工盲评仍需独立完成。
 
 | 你可能正在遇到的问题 | GaitLogic Planner 的处理方式 |
 | --- | --- |
@@ -489,7 +476,7 @@ GaitLogic Planner 采用前后端分离架构：
 - AI：OpenAI-compatible SDK；
 - 部署：Nginx 反向代理前端静态资源和后端 API。
 
-![GaitLogic Planner 系统架构图](docs/images/architecture.png)
+![GaitLogic Planner 系统架构图](docs/images/architecture1.png)
 
 ```text
 GaitLogic Planner
