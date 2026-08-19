@@ -252,7 +252,8 @@ class AgentValidationResult(AgentContractModel):
 
 
 class AgentLimits(AgentContractModel):
-    max_model_calls: int = Field(default=2, ge=1, le=2)
+    max_model_calls: int = Field(default=4, ge=1, le=8)
+    max_tool_rounds: int = Field(default=3, ge=0, le=7)
     max_tool_calls: int = Field(default=6, ge=0, le=20)
     max_same_tool_calls: int = Field(default=2, ge=1, le=6)
     max_message_length: int = Field(default=MAX_MESSAGE_LENGTH, ge=1, le=12000)

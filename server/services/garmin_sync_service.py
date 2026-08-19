@@ -46,6 +46,7 @@ from server.schemas.garmin_sync import (
 from server.services.runner_state_snapshot_receipt_query_service import (
     RunnerStateSnapshotReceiptQueryService,
 )
+from server.services.garmin_daily_state_sync_service import apply_garmin_daily_health
 from server.services.training_cycle_lifecycle_service import resolve_cycle_for_date
 from server.services.token_encryption_service import decrypt_token_payload, encrypt_token_payload
 
@@ -404,6 +405,7 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
         fetched_count = len(activities)
         job.fetched_count = fetched_count
         activity_errors: list[str] = []
+        health_warning_codes: list[str] = []
         for provider_activity in activities:
             activity_tracker = WorkoutLogMaterialChangeTracker()
             try:
@@ -432,6 +434,20 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
                 failed_count += 1
                 job.failed_count = failed_count
                 activity_errors.append(f"{provider_activity.external_activity_id}: {_safe_activity_error(exc)}")
+
+        # Health data belongs to the same logical Garmin sync, but it is not a
+        # prerequisite for preserving successfully imported training activity.
+        # Use activity-local dates rather than the wall-clock sync date.
+        health_dates = sorted({activity.start_time_local.date() for activity in activities})
+        if health_dates:
+            try:
+                health_by_date = provider.fetch_recovery(health_dates[0], health_dates[-1])
+                for health in health_by_date:
+                    if health.recovery_date in health_dates:
+                        apply_garmin_daily_health(db, user_id=job.user_id, health=health)
+            except ProviderError as exc:
+                health_warning_codes.append(f"HEALTH_{exc.code}")
+                logger.warning("Garmin daily health sync unavailable job_id=%s error_code=%s", job_id, exc.code)
 
         if fetched_count > 0 and successful_activity_count == 0:
             db.rollback()
@@ -479,7 +495,9 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
                 fetched_count=fetched_count,
                 failed_count=failed_count,
             )
-        warning_codes = ("ACTIVITY_PROCESSING_PARTIAL_FAILURE",) if activity_errors else ()
+        warning_codes = tuple(
+            (["ACTIVITY_PROCESSING_PARTIAL_FAILURE"] if activity_errors else []) + health_warning_codes
+        )
         return _outcome_from_job(job, claimed=True, warning_codes=warning_codes)
     except ProviderError as exc:
         db.rollback()

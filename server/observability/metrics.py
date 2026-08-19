@@ -36,6 +36,8 @@ SAFE_METRIC_LABELS = frozenset(
         "fusion_method",
         "reranker",
         "model_family",
+        "task_type",
+        "model_profile",
     }
 )
 _SAFE_LABEL_VALUE_TYPES = (str, int, float, bool)
@@ -130,7 +132,7 @@ class MetricsRecorder:
             "status": span.status,
             "fallback": str(span.fallback).lower(),
         }
-        for key in ("tool_name", "provider_kind", "failure_category", "transport", "auth_status", "primitive", "resource_type", "vector_store", "retrieval_strategy", "fusion_method", "reranker", "model_family"):
+        for key in ("tool_name", "provider_kind", "failure_category", "transport", "auth_status", "primitive", "resource_type", "vector_store", "retrieval_strategy", "fusion_method", "reranker", "model_family", "task_type", "model_profile"):
             value = span.metadata.get(key)
             if key in SAFE_METRIC_LABELS and isinstance(value, _SAFE_LABEL_VALUE_TYPES):
                 labels[key] = str(value)
@@ -175,6 +177,7 @@ class MetricsRecorder:
             self._record("mcp_prompt_get_count", 1, labels)
         elif span.component == "tool" and span.operation == "invoke":
             self._record("tool_call_count", 1, labels)
+            self._record("coach_tool_round_count", 1, labels)
             self._record("tool_success_count" if success else "tool_failure_count", 1, labels)
             self._record("tool_latency_ms", span.duration_ms, labels, kind="latency")
         elif span.component == "knowledge" and span.operation == "retrieve":
@@ -227,6 +230,20 @@ class MetricsRecorder:
                 self._record("provider_timeout_count", 1, labels)
             elif category == "PROVIDER_RATE_LIMIT":
                 self._record("provider_rate_limit_count", 1, labels)
+        elif span.component == "provider" and span.metadata.get("task_type"):
+            self._record("provider_task_request", 1, labels)
+            self._record("provider_task_success" if success else "provider_task_failure", 1, labels)
+            if span.metadata.get("task_type") == "WEEKLY_REVIEW_ANALYSIS" and success:
+                self._record("weekly_analysis_success", 1, labels)
+            if span.metadata.get("task_type") == "PLAN_DESIGN" and success:
+                self._record("plan_design_success", 1, labels)
+            category = span.metadata.get("failure_category")
+            if category == "PROVIDER_OUTPUT_TRUNCATED":
+                self._record("provider_output_truncated", 1, labels)
+                if span.metadata.get("content_length") == 0 and (span.metadata.get("reasoning_length") or 0) > 0:
+                    self._record("provider_reasoning_budget_exhausted", 1, labels)
+            elif category == "PROVIDER_EMPTY_CONTENT":
+                self._record("provider_empty_content", 1, labels)
         elif span.component == "validator":
             self._record("validator_pass" if success else "validator_reject", 1, labels)
         elif span.component == "fallback" or span.fallback:

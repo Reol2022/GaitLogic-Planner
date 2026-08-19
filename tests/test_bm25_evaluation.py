@@ -28,7 +28,7 @@ def test_bm25_comparison_keeps_dense_baseline_independent() -> None:
         )
         report = run_bm25_comparison(repository_root=root, dataset_path=DATASET, dense_report=dense)
     assert dense.case_count == 60
-    assert len(dense.failure_case_ids) == 17
+    assert report["dense"]["failure_case_ids"] == dense.failure_case_ids
     assert report["bm25"]["case_count"] == 60
     assert sum(len(value) for value in report["overlap"].values()) == 60
     assert report["safety"]["private_cases_used"] is False

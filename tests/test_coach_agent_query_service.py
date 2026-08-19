@@ -7,7 +7,9 @@ import pytest
 from planner_core.config import Settings
 from planner_core.enums import WorkoutMainTypeNormalized
 from server.agent.enums import AgentIntent, AgentRiskLevel
+from server.agent.errors import AgentErrorCode
 from server.agent.gateway import MockAgentLLMGateway
+from server.agent.providers.errors import AgentProviderError
 from server.agent.schemas import (
     AgentModelOutput,
     AgentNotice,
@@ -134,6 +136,25 @@ def test_provider_failure_and_disabled_provider_use_deterministic_fallback(monke
     )
     assert disabled.status == "DEGRADED"
     assert disabled.provider_status == "DISABLED"
+
+
+def test_provider_safe_error_code_is_retained_in_degraded_response(monkeypatch) -> None:
+    result = service(
+        monkeypatch,
+        gateway=MockAgentLLMGateway(
+            model_output(),
+            error=AgentProviderError(AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE),
+        ),
+    ).query(
+        user_id=1304,
+        payload=CoachQueryRequest(message="fictional", intent=AgentIntent.EXPLAIN_RUNNER_STATE),
+    )
+
+    assert result.status == "DEGRADED"
+    assert {item.code for item in result.limitations} >= {
+        "MODEL_EXPLANATION_UNAVAILABLE",
+        AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE.value,
+    }
 
 
 def test_query_trace_contains_request_tool_provider_and_fallback_without_content(monkeypatch) -> None:

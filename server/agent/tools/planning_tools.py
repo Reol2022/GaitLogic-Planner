@@ -60,13 +60,13 @@ class GetTodayWorkoutTool(AgentTool):
             limitations.append(
                 _notice(
                     "ADDITIONAL_TODAY_SESSIONS_OMITTED",
-                    f"{len(workouts) - 1} additional planned session(s) were omitted from the compact result.",
+                    f"精简结果中省略了另外 {len(workouts) - 1} 项今日计划训练。",
                 )
             )
         limitations.append(
             _notice(
                 "STRUCTURED_SEGMENTS_UNAVAILABLE",
-                "The current plan stores workout content as text, so structured segments were not invented.",
+                "当前训练计划以文本保存训练内容，系统不会推测或虚构结构化训练分段。",
             )
         )
         distance_target = (
@@ -128,12 +128,12 @@ class GetCurrentTrainingCycleTool(AgentTool):
         limitations = [
             _notice(
                 "CYCLE_PROGRESS_UNAVAILABLE",
-                "No existing deterministic cycle-progress metric is exposed, so progress is null.",
+                "当前尚无可公开的确定性周期进度指标，因此不展示推测进度。",
             )
         ]
         if len(blocks) > self.block_limit:
             limitations.append(
-                _notice("WEEKLY_STRUCTURE_TRIMMED", "The cycle block structure was truncated.")
+                _notice("WEEKLY_STRUCTURE_TRIMMED", "训练周期块结构已按展示上限截取。")
             )
         return CurrentTrainingCycleOutput(
             data_status=TrainingDataStatus.AVAILABLE,
@@ -146,7 +146,7 @@ class GetCurrentTrainingCycleTool(AgentTool):
             progress=None,
             weekly_structure=[
                 TrainingCycleBlockRead(
-                    name=_clean(block.block_name, 128) or "Unnamed block",
+                    name=_clean(block.block_name, 128) or "未命名训练块",
                     start_date=block.start_date,
                     end_date=block.end_date,
                     phase=_clean(block.phase_name, 128),

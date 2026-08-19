@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
+from planner_core.config import get_settings
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -32,6 +33,7 @@ from server.services.ai_coach_preference_service import (
     preference_to_prompt_dict,
 )
 from server.services.ai_plan_prompt import build_ai_plan_system_prompt, build_ai_plan_user_prompt
+from server.model_tasks import ModelTaskType, task_model_profile
 
 MAX_INPUT_JSON_CHARS = 20000
 ALLOWED_MAIN_TYPES = {"REC", "E", "LSD", "M", "T1", "T2", "I", "R", "Rest", "Mixed"}
@@ -44,6 +46,8 @@ class DeepSeekResult:
     input_tokens: int | None = None
     output_tokens: int | None = None
     total_tokens: int | None = None
+    finish_reason: str | None = None
+    reasoning_length: int = 0
 
 
 def canonical_input(payload: AIPlanGenerateRequest) -> dict[str, Any]:
@@ -144,7 +148,8 @@ def save_job(db: Session, user_id: int, model_name: str, prompt_hash: str, input
 
 
 def calculate_max_tokens(plan_weeks: int, runtime: EffectiveAISettings) -> int:
-    return min(max(4096, plan_weeks * runtime.max_tokens_per_week), runtime.max_tokens_cap)
+    del plan_weeks, runtime
+    return task_model_profile(get_settings(), ModelTaskType.AI_PLAN_GENERATION).max_output_tokens
 
 
 def call_ai_model(
@@ -166,6 +171,7 @@ def call_ai_model(
         base_url=runtime.ai_base_url,
         timeout=runtime.ai_timeout_seconds,
     )
+    profile = task_model_profile(get_settings(), ModelTaskType.AI_PLAN_GENERATION)
     response = client.chat.completions.create(
         model=runtime.ai_model,
         messages=[
@@ -175,14 +181,20 @@ def call_ai_model(
         temperature=runtime.temperature,
         top_p=runtime.top_p,
         max_tokens=calculate_max_tokens(plan_weeks, runtime),
+        response_format={"type": "json_object"},
+        extra_body={"thinking": {"type": "enabled" if profile.thinking_enabled else "disabled"}},
     )
-    content = response.choices[0].message.content if response.choices else ""
+    choice = response.choices[0] if response.choices else None
+    content = choice.message.content if choice else ""
+    reasoning = getattr(choice.message, "reasoning_content", None) if choice else ""
     usage = getattr(response, "usage", None)
     return DeepSeekResult(
         content=content or "",
         input_tokens=getattr(usage, "prompt_tokens", None),
         output_tokens=getattr(usage, "completion_tokens", None),
         total_tokens=getattr(usage, "total_tokens", None),
+        finish_reason=getattr(choice, "finish_reason", None),
+        reasoning_length=len(reasoning or ""),
     )
 
 
@@ -361,6 +373,10 @@ def generate_ai_plan(db: Session, user_id: int, payload: AIPlanGenerateRequest) 
     user_prompt = build_ai_plan_user_prompt(payload, preference_json)
     try:
         result = call_deepseek(system_prompt, user_prompt, payload.plan_weeks, runtime)
+        if result.finish_reason == "length":
+            raise BadRequestError("模型输出达到长度限制，最终正文未完整生成。")
+        if not result.content.strip():
+            raise BadRequestError("模型没有返回可用的最终正文。")
         output = validate_ai_output(result.content, expected_plan_weeks=payload.plan_weeks)
         job.output_json = output
         job.input_tokens = result.input_tokens

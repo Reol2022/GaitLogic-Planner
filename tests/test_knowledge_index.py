@@ -35,15 +35,15 @@ def test_index_build_plan_does_not_write(tmp_path: Path) -> None:
         DeterministicEmbeddingProvider(dimensions=32),
         dry_run=True,
     )
-    assert plan.chunk_count == 60
-    assert plan.estimated_batches == 1
+    assert plan.chunk_count == 304
+    assert plan.estimated_batches == 5
     assert not (tmp_path / "var/knowledge_indexes").exists()
 
 
 def test_index_build_validate_list_and_inspect(tmp_path: Path) -> None:
     service, index_id = build_test_index(tmp_path)
     manifest = service.validate(index_id)
-    assert manifest.chunk_count == 60
+    assert manifest.chunk_count == 304
     assert manifest.embedding_dimensions == 32
     assert service.list_indexes()[0].index_id == index_id
     inspected = service.inspect(index_id)

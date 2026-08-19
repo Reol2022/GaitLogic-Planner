@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import copy
 import logging
 import re
 from collections.abc import Callable
@@ -13,7 +14,8 @@ from pydantic import ValidationError
 from planner_core.config import Settings
 from server.agent.enums import AgentIntent, AgentRiskLevel, AgentTraceEventType, AgentTraceStatus
 from server.agent.errors import AgentErrorCode
-from server.agent.gateway import AgentLLMGateway
+from server.agent.gateway import AgentExecutionState, AgentLLMGateway
+from server.model_tasks import ModelTaskType, task_model_profile
 from server.agent.knowledge_references import build_knowledge_reference_catalog
 from server.agent.providers.errors import AgentProviderError
 from server.agent.providers.schemas import (
@@ -39,6 +41,7 @@ from server.provider_reliability import (
     ProviderFailureCategory,
     RetryPolicy,
     classify_provider_exception,
+    provider_failure,
 )
 
 logger = logging.getLogger(__name__)
@@ -148,6 +151,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
             retried=False,
             final_status="NOT_CALLED",
         )
+        self.last_response_metadata: dict[str, Any] = {}
 
     @staticmethod
     def _default_client(settings: Settings, base_url: str) -> Any:
@@ -182,6 +186,9 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
             ProviderFailureCategory.PROVIDER_INVALID_RESPONSE,
             ProviderFailureCategory.PROVIDER_SCHEMA_ERROR,
             ProviderFailureCategory.PROVIDER_TOOL_PROTOCOL_ERROR,
+            ProviderFailureCategory.PROVIDER_OUTPUT_TRUNCATED,
+            ProviderFailureCategory.PROVIDER_EMPTY_CONTENT,
+            ProviderFailureCategory.PROVIDER_INVALID_JSON,
         }:
             return AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID
         return AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE
@@ -217,28 +224,22 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
     def _request(
         self,
         *,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
         intent: AgentIntent,
+        max_output_tokens: int | None = None,
     ) -> Any:
-        if self.settings.coach_agent_thinking_mode == "enabled":
-            # DeepSeek requires reasoning_content replay across thinking-mode
-            # tool-call sub-turns. v0.11.0 intentionally does not implement
-            # that chain, so fail closed instead of sending an unsafe partial
-            # thinking request.
-            raise AgentProviderError(
-                AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE,
-                category=ProviderFailureCategory.PROVIDER_TOOL_PROTOCOL_ERROR,
-            )
+        profile = task_model_profile(self.settings, ModelTaskType.COACH_ANALYSIS)
         request: dict[str, Any] = {
-            "model": self.settings.coach_agent_model,
-            "messages": messages,
+            "model": profile.model,
+            "messages": copy.deepcopy(messages),
             "response_format": self._response_format(intent),
-            "max_tokens": self.settings.coach_agent_max_output_tokens,
+            "max_tokens": max_output_tokens or profile.max_output_tokens,
             "temperature": 0.2,
         }
-        if self.settings.coach_agent_thinking_mode == "disabled":
-            request["extra_body"] = {"thinking": {"type": "disabled"}}
+        request["extra_body"] = {
+            "thinking": {"type": "enabled" if profile.thinking_enabled else "disabled"}
+        }
         if tools:
             request["tools"] = tools
             request["tool_choice"] = "auto"
@@ -249,6 +250,15 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
             close = getattr(self._client, "close", None)
             if callable(close):
                 close()
+
+    @staticmethod
+    def _response_lengths(choice: Any) -> tuple[str | None, str, str]:
+        message = choice.message
+        return (
+            getattr(choice, "finish_reason", None),
+            getattr(message, "content", None) or "",
+            getattr(message, "reasoning_content", None) or "",
+        )
 
     @staticmethod
     def _parse_response(
@@ -263,10 +273,14 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                 category=ProviderFailureCategory.PROVIDER_INVALID_RESPONSE,
             )
         choice = response.choices[0]
-        if getattr(choice, "finish_reason", None) == "length":
+        finish_reason, content_text, reasoning_text = OpenAICompatibleAgentGateway._response_lengths(choice)
+        if finish_reason == "length":
             raise AgentProviderError(
                 AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID,
-                category=ProviderFailureCategory.PROVIDER_INVALID_RESPONSE,
+                category=ProviderFailureCategory.PROVIDER_OUTPUT_TRUNCATED,
+                finish_reason=finish_reason,
+                reasoning_length=len(reasoning_text),
+                content_length=len(content_text),
             )
         message = choice.message
         native_calls = getattr(message, "tool_calls", None) or []
@@ -295,10 +309,13 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     category=ProviderFailureCategory.PROVIDER_TOOL_PROTOCOL_ERROR,
                 ) from exc
         content = getattr(message, "content", None)
-        if not isinstance(content, str):
+        if not isinstance(content, str) or not content.strip():
             raise AgentProviderError(
                 AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID,
-                category=ProviderFailureCategory.PROVIDER_INVALID_RESPONSE,
+                category=ProviderFailureCategory.PROVIDER_EMPTY_CONTENT,
+                finish_reason=finish_reason,
+                reasoning_length=len(reasoning_text),
+                content_length=len(content_text),
             )
         stripped = content.strip()
         if stripped.startswith("```"):
@@ -335,8 +352,54 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         except (ValidationError, ValueError) as exc:
             raise AgentProviderError(
                 AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID,
-                category=ProviderFailureCategory.PROVIDER_SCHEMA_ERROR,
+                category=ProviderFailureCategory.PROVIDER_INVALID_JSON,
             ) from exc
+
+    @staticmethod
+    def _assistant_turn(message: Any, execution_state: AgentExecutionState) -> dict[str, Any]:
+        turn: dict[str, Any] = {"role": "assistant", "content": getattr(message, "content", None)}
+        reasoning = getattr(message, "reasoning_content", None)
+        if isinstance(reasoning, str):
+            turn["reasoning_content"] = reasoning
+        native_calls = getattr(message, "tool_calls", None) or []
+        if native_calls:
+            serialized = []
+            for item in native_calls:
+                provider_id = getattr(item, "id", None) or f"call_{uuid4().hex}"
+                serialized.append(
+                    {
+                        "id": provider_id,
+                        "type": getattr(item, "type", None) or "function",
+                        "function": {
+                            "name": item.function.name,
+                            "arguments": item.function.arguments or "{}",
+                        },
+                    }
+                )
+            turn["tool_calls"] = serialized
+        return turn
+
+    @staticmethod
+    def _sync_tool_results(execution_state: AgentExecutionState, context: AgentContext) -> None:
+        for result in context.tool_results:
+            if result.tool_call_id in execution_state.sent_tool_result_ids:
+                continue
+            provider_id = execution_state.provider_call_ids.get(result.tool_call_id)
+            if provider_id is None:
+                continue
+            payload = {
+                "status": result.status.value,
+                "data": _redact_tree(result.data),
+                "safe_error_code": result.safe_error_code.value if result.safe_error_code else None,
+            }
+            execution_state.messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": provider_id,
+                    "content": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+                }
+            )
+            execution_state.sent_tool_result_ids.add(result.tool_call_id)
 
     def generate(
         self,
@@ -346,27 +409,59 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         context: AgentContext,
         tools: list[AgentToolDefinition],
         trace: AgentTrace,
+        execution_state: AgentExecutionState | None = None,
     ) -> AgentModelOutput:
         if not self.settings.coach_agent_enabled:
             raise AgentProviderError(AgentErrorCode.AGENT_PROVIDER_DISABLED)
         if not self.settings.coach_agent_api_key:
             raise AgentProviderError(AgentErrorCode.AGENT_PROVIDER_UNCONFIGURED)
         safe_context = provider_context_payload(context)
-        messages = [
-            {"role": "system", "content": system_instructions},
-            {
-                "role": "user",
-                "content": json.dumps(
+        provider_request: dict[str, Any] = {
+            "request": redact_provider_text(user_message),
+            "context": safe_context,
+        }
+        if context.intent == AgentIntent.TODAY_RECOMMENDATION:
+            # Keep the most failure-prone TODAY constraints adjacent to the
+            # request payload. These are server-owned and cannot be changed by
+            # the client.
+            provider_request["response_constraints"] = {
+                "required_top_level_fields": [
+                    "answer",
+                    "summary",
+                    "key_evidence_ids",
+                    "knowledge_reference_ids",
+                ],
+                "narrative_style": "qualitative_only",
+                "forbid_new_distance_or_duration_numbers": True,
+                "forbid_plan_mutation_claims": True,
+                "forbid_absolute_safety_claims": True,
+            }
+        elif context.intent == AgentIntent.EXPLAIN_RUNNER_STATE:
+            provider_request["response_constraints"] = {
+                "use_only_supplied_runner_state_facts": True,
+                "forbid_calculated_or_inferred_training_numbers": True,
+                "forbid_source_titles_and_knowledge_excerpts": True,
+                "knowledge_reference_ids_must_match_available_ids": True,
+            }
+        state = execution_state or AgentExecutionState()
+        tool_round = sum(1 for item in state.messages if item.get("role") == "assistant") + 1
+        if not state.messages:
+            state.messages.extend(
+                [
+                    {"role": "system", "content": system_instructions},
                     {
-                        "request": redact_provider_text(user_message),
-                        "context": safe_context,
+                        "role": "user",
+                        "content": json.dumps(
+                            provider_request,
+                            ensure_ascii=False,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ),
                     },
-                    ensure_ascii=False,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                ),
-            },
-        ]
+                ]
+            )
+        self._sync_tool_results(state, context)
+        messages = state.messages
         safe_tools = [provider_tool_schema(tool) for tool in tools if tool.read_only]
         started = perf_counter()
         trace.add_event(
@@ -383,6 +478,9 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     messages=messages,
                     tools=safe_tools,
                     intent=context.intent,
+                    max_output_tokens=task_model_profile(
+                        self.settings, ModelTaskType.COACH_ANALYSIS
+                    ).tokens_for_attempt(attempt),
                 )
                 output = self._parse_response(
                     response,
@@ -390,6 +488,26 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     context,
                     user_message,
                 )
+                finish_reason, content_text, reasoning_text = self._response_lengths(response.choices[0])
+                self.last_response_metadata = {
+                    "task_type": ModelTaskType.COACH_ANALYSIS.value,
+                    "model_profile": ModelTaskType.COACH_ANALYSIS.value,
+                    "thinking_enabled": True,
+                    "tool_round": tool_round,
+                    "finish_reason": finish_reason,
+                    "reasoning_length": len(reasoning_text),
+                    "content_length": len(content_text),
+                    "max_output_tokens": task_model_profile(
+                        self.settings, ModelTaskType.COACH_ANALYSIS
+                    ).tokens_for_attempt(attempt),
+                    "retry_count": attempt,
+                }
+                if output.tool_calls:
+                    assistant_turn = self._assistant_turn(response.choices[0].message, state)
+                    native_calls = assistant_turn.get("tool_calls", [])
+                    for invocation, native in zip(output.tool_calls, native_calls, strict=True):
+                        state.provider_call_ids[invocation.tool_call_id] = native["id"]
+                    state.messages.append(assistant_turn)
                 usage = getattr(response, "usage", None)
                 duration = (perf_counter() - started) * 1000
                 self.last_usage = AgentProviderUsage(
@@ -423,6 +541,34 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                 )
                 return output
             except AgentProviderError as exc:
+                self.last_response_metadata = {
+                    "task_type": ModelTaskType.COACH_ANALYSIS.value,
+                    "model_profile": ModelTaskType.COACH_ANALYSIS.value,
+                    "thinking_enabled": True,
+                    "tool_round": tool_round,
+                    "finish_reason": exc.finish_reason,
+                    "reasoning_length": exc.reasoning_length,
+                    "content_length": exc.content_length,
+                    "failure_category": exc.category.value,
+                    "retry_count": attempt,
+                }
+                failure = provider_failure(exc.category)
+                if policy.can_retry(attempt=attempt, failure=failure):
+                    trace.add_event(
+                        AgentTraceEventType.PROVIDER_CALL_FAILED,
+                        AgentTraceStatus.FAILED,
+                        provider_alias=self.settings.coach_agent_provider,
+                        model_alias=self.settings.coach_agent_model,
+                        response_format_mode=self.settings.coach_agent_response_format_mode,
+                        provider_kind="chat",
+                        attempt=attempt + 1,
+                        max_attempts=policy.max_attempts,
+                        failure_category=exc.category.value,
+                        retried=True,
+                        final_status="RETRYING",
+                    )
+                    policy.wait(attempt=attempt, sleeper=self._sleeper)
+                    continue
                 duration = (perf_counter() - started) * 1000
                 self.last_usage = AgentProviderUsage(
                     duration_ms=duration,

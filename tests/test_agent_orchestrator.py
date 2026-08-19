@@ -12,14 +12,21 @@ from server.agent.enums import (
 from server.agent.errors import AgentErrorCode
 from server.agent.gateway import MockAgentLLMGateway
 from server.agent.orchestrator import GaitLogicCoachAgent
+from server.agent.providers.errors import AgentProviderError
 from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import (
     AgentLimits,
     AgentContext,
+    AgentContextSeed,
     AgentModelOutput,
+    AgentNotice,
     AgentRequest,
+    AgentTodayRecommendation,
+    AgentToolResult,
     AgentToolInvocation,
 )
+from server.agent.context import AgentContextBuilder
+from server.agent.trace import AgentTrace
 from server.agent.tool import AgentTool
 
 
@@ -95,6 +102,162 @@ def test_safe_direct_answer_uses_one_model_call() -> None:
     assert response.status == AgentRunStatus.SUCCEEDED
     assert response.answer == "这是基于完全虚构数据的解释。"
     assert gateway.call_count == 1
+
+
+def test_completed_context_tools_are_not_reoffered_to_model() -> None:
+    request = make_request()
+    initial_context = AgentContextBuilder().build(request)
+    completed_context = initial_context.model_copy(
+        update={
+            "tool_results": [
+                AgentToolResult(
+                    tool_call_id=AgentToolInvocation(
+                        tool_name="read_metric", arguments={"value": 1}
+                    ).tool_call_id,
+                    tool_name="read_metric",
+                    status=AgentToolStatus.SUCCEEDED,
+                    data={"doubled": 2},
+                )
+            ]
+        }
+    )
+
+
+def today_output(answer: str) -> AgentModelOutput:
+    return AgentModelOutput(
+        intent=AgentIntent.TODAY_RECOMMENDATION,
+        answer=answer,
+        summary="Fictional today summary.",
+        risk_level=AgentRiskLevel.LOW,
+        limitations=[AgentNotice(code="DEMO_LIMIT", message="Fictional limitation.")],
+        today_recommendation=AgentTodayRecommendation(
+            decision="PROCEED",
+            planned_workout_status="PLANNED",
+            headline="Proceed with the existing plan.",
+            key_evidence=["distance_7d_km"],
+            data_quality="AVAILABLE",
+        ),
+    )
+    gateway = MockAgentLLMGateway(direct_output())
+    agent = GaitLogicCoachAgent(
+        gateway=gateway,
+        registry=make_registry(MetricTool()),
+    )
+
+    agent._call_model_untraced(
+        request=request,
+        context=completed_context,
+        trace=AgentTrace(request_id=request.request_id),
+    )
+
+    assert gateway.exposed_tool_names == [[]]
+
+
+def test_today_never_offers_model_initiated_tools() -> None:
+    request = make_request(AgentIntent.TODAY_RECOMMENDATION)
+    context = AgentContextBuilder().build(request)
+    gateway = MockAgentLLMGateway(direct_output(AgentIntent.TODAY_RECOMMENDATION))
+    agent = GaitLogicCoachAgent(
+        gateway=gateway,
+        registry=make_registry(MetricTool()),
+    )
+
+    agent._call_model_untraced(
+        request=request,
+        context=context,
+        trace=AgentTrace(request_id=request.request_id),
+    )
+
+    assert gateway.exposed_tool_names == [[]]
+
+
+def test_fully_preloaded_explain_never_offers_additional_tools() -> None:
+    request = make_request(AgentIntent.EXPLAIN_RUNNER_STATE)
+    context = AgentContextBuilder().build(request).model_copy(
+        update={
+            "tool_results": [
+                AgentToolResult(
+                    tool_call_id=AgentToolInvocation(
+                        tool_name=name,
+                        arguments={},
+                    ).tool_call_id,
+                    tool_name=name,
+                    status=AgentToolStatus.SUCCEEDED,
+                    data={},
+                )
+                for name in (
+                    "get_runner_state",
+                    "get_runner_state_history",
+                    "get_training_data_quality",
+                )
+            ]
+        }
+    )
+    gateway = MockAgentLLMGateway(direct_output())
+    agent = GaitLogicCoachAgent(
+        gateway=gateway,
+        registry=make_registry(MetricTool()),
+    )
+
+    agent._call_model_untraced(
+        request=request,
+        context=context,
+        trace=AgentTrace(request_id=request.request_id),
+    )
+
+    assert gateway.exposed_tool_names == [[]]
+
+
+def test_explain_retries_validator_rejected_narrative_without_tools() -> None:
+    request = make_request(AgentIntent.EXPLAIN_RUNNER_STATE)
+    gateway = MockAgentLLMGateway(
+        [
+            AgentModelOutput(
+                intent=AgentIntent.EXPLAIN_RUNNER_STATE,
+                answer="The model invented 83.67 km.",
+            ),
+            AgentModelOutput(
+                intent=AgentIntent.EXPLAIN_RUNNER_STATE,
+                answer="The current state follows the supplied evidence.",
+            ),
+        ]
+    )
+    agent = GaitLogicCoachAgent(gateway=gateway)
+
+    response = agent.run(request)
+
+    assert response.status == AgentRunStatus.SUCCEEDED
+    assert gateway.call_count == 2
+    assert gateway.exposed_tool_names == [[], []]
+    assert "83.67" not in (response.answer or "")
+
+
+def test_today_retries_only_a_validator_rejected_narrative_without_tools() -> None:
+    request = make_request(AgentIntent.TODAY_RECOMMENDATION)
+    gateway = MockAgentLLMGateway(
+        [
+            today_output("This is absolutely safe."),
+            today_output("Proceed with the existing plan and monitor the supplied facts."),
+        ]
+    )
+    agent = GaitLogicCoachAgent(gateway=gateway)
+    seed = AgentContextSeed(
+        today_workout={"workout_status": "PLANNED"},
+        today_evaluation={
+            "data_status": "AVAILABLE",
+            "decision": "passed",
+            "risk_level": "LOW",
+            "evidence": ["distance_7d_km"],
+        },
+        data_quality={"data_status": "AVAILABLE"},
+        limitations=[AgentNotice(code="DEMO_LIMIT", message="Fictional limitation.")],
+    )
+
+    response = agent.run(request, context_seed=seed)
+
+    assert response.status == AgentRunStatus.SUCCEEDED
+    assert gateway.call_count == 2
+    assert gateway.exposed_tool_names == [[], []]
 
 
 def test_tool_augmented_answer_uses_exactly_two_model_calls() -> None:
@@ -288,6 +451,19 @@ def test_gateway_exception_becomes_safe_model_failure() -> None:
     assert response.status == AgentRunStatus.MODEL_FAILED
     assert "private upstream detail" not in response.model_dump_json()
     assert response.limitations[0].code == AgentErrorCode.AGENT_MODEL_FAILED.value
+
+
+def test_provider_error_preserves_its_safe_category() -> None:
+    gateway = MockAgentLLMGateway(
+        [],
+        error=AgentProviderError(AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE),
+    )
+    agent = GaitLogicCoachAgent(gateway=gateway)
+
+    response = agent.run(make_request())
+
+    assert response.status == AgentRunStatus.MODEL_FAILED
+    assert response.limitations[0].code == AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE.value
 
 
 def test_invalid_model_mapping_becomes_validation_failure() -> None:

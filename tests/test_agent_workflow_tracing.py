@@ -46,7 +46,8 @@ def test_weekly_graph_emits_rooted_safe_spans_with_graph_nodes() -> None:
     assert result["final_review"] is not None
     assert {item.name for item in sink.spans} == {
         "langgraph.weekly_review",
-        "weekly_facts", "rules.evaluate", "rag.retrieve", "llm.generate", "validator", "finalize"
+        "weekly_facts", "rules.evaluate", "rag.retrieve", "llm.generate", "validator",
+        "provider.plan_design", "proposal.materialize", "finalize"
     }
     assert len({item.span_id for item in sink.spans}) == len(sink.spans)
     assert len({item.trace_id for item in sink.spans}) == 1

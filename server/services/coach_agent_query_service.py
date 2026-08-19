@@ -97,6 +97,7 @@ class CoachAgentQueryService:
     def _limits(self) -> AgentLimits:
         return AgentLimits(
             max_model_calls=self.settings.agent_max_model_calls,
+            max_tool_rounds=self.settings.agent_max_tool_rounds,
             max_tool_calls=self.settings.agent_max_tool_calls,
             max_same_tool_calls=self.settings.agent_max_same_tool_calls,
             max_message_length=self.settings.agent_max_message_length,
@@ -136,7 +137,7 @@ class CoachAgentQueryService:
             limitations=[
                 AgentNotice(
                     code=AgentErrorCode.AGENT_UNSUPPORTED_INTENT.value,
-                    message="This Coach intent is not available in the current release.",
+                    message="当前版本尚未开放该教练能力。",
                 )
             ],
             provider_status="NOT_CALLED",
@@ -266,7 +267,7 @@ class CoachAgentQueryService:
                 limitations=[
                     AgentNotice(
                         code=AgentErrorCode.AGENT_INTERNAL_ERROR.value,
-                        message="Coach context could not be built safely.",
+                        message="教练上下文未能安全构建。",
                     )
                 ],
                 provider_status=provider_status,
@@ -295,6 +296,17 @@ class CoachAgentQueryService:
                     context=context,
                     trace=agent.last_trace,
                 )
+        failure_notices = [
+            notice
+            for notice in agent_response.limitations
+            if notice.code != "MODEL_EXPLANATION_UNAVAILABLE"
+        ]
+        limitations = list(
+            {
+                notice.code: notice
+                for notice in [*fallback.limitations, *failure_notices]
+            }.values()
+        )
         return CoachQueryResponse(
             request_id=agent_response.request_id,
             trace_id=agent_response.trace_id,
@@ -306,7 +318,7 @@ class CoachAgentQueryService:
             today_recommendation=fallback.today_recommendation,
             tool_calls=tool_calls,
             warnings=fallback.warnings,
-            limitations=fallback.limitations,
+            limitations=limitations,
             provider_status=provider_status,
             generated_at=self.clock(),
         )

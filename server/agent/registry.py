@@ -104,7 +104,7 @@ class AgentToolRegistry:
                 tool_name=name,
                 status=AgentToolStatus.NOT_FOUND,
                 code=AgentErrorCode.AGENT_TOOL_NOT_FOUND,
-                message="The requested tool is not registered.",
+                message="请求的数据工具尚未注册。",
             )
 
         definition = tool.definition
@@ -114,7 +114,7 @@ class AgentToolRegistry:
                 tool_name=name,
                 status=AgentToolStatus.NOT_ALLOWED,
                 code=AgentErrorCode.AGENT_TOOL_NOT_ALLOWED,
-                message="The requested tool is not allowed for this agent run.",
+                message="当前教练请求不允许使用该数据工具。",
             )
 
         try:
@@ -125,7 +125,7 @@ class AgentToolRegistry:
                 tool_name=name,
                 status=AgentToolStatus.INVALID_ARGUMENTS,
                 code=AgentErrorCode.AGENT_TOOL_ARGUMENTS_INVALID,
-                message="The tool arguments are invalid.",
+                message="数据工具参数无效。",
             )
 
         try:
@@ -141,7 +141,7 @@ class AgentToolRegistry:
                 tool_name=name,
                 status=AgentToolStatus.FAILED,
                 code=AgentErrorCode.AGENT_TOOL_EXECUTION_FAILED,
-                message="The tool could not return a safe validated result.",
+                message="数据工具未能返回通过安全校验的结果。",
             )
 
         return AgentToolResult(

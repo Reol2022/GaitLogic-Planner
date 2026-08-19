@@ -25,6 +25,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.mysql import LONGTEXT
 
 from planner_core.database.base import Base, IdMixin, MYSQL_TABLE_ARGS, TimestampMixin
 from planner_core.enums import (
@@ -1576,6 +1577,32 @@ class AIPlanQuota(IdMixin, TimestampMixin, Base):
     last_generated_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     user: Mapped[UserAccount] = relationship(back_populates="ai_plan_quotas")
+
+
+class ProviderReasoningRecord(IdMixin, TimestampMixin, Base):
+    """Internal diagnostic record; never part of public business schemas."""
+
+    __tablename__ = "provider_reasoning_records"
+    __table_args__ = (
+        Index("ix_provider_reasoning_user_task_created", "user_id", "task_type", "created_at"),
+        Index("ix_provider_reasoning_related", "related_record_type", "related_record_id"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    task_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    model_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    reasoning_content: Mapped[str] = mapped_column(
+        Text().with_variant(LONGTEXT(), "mysql"), nullable=False
+    )
+    reasoning_token_count: Mapped[int | None] = mapped_column(Integer)
+    content_token_count: Mapped[int | None] = mapped_column(Integer)
+    finish_reason: Mapped[str | None] = mapped_column(String(32))
+    related_record_type: Mapped[str | None] = mapped_column(String(64))
+    related_record_id: Mapped[int | None] = mapped_column(Integer)
 
 
 class AdminAISettings(IdMixin, TimestampMixin, Base):

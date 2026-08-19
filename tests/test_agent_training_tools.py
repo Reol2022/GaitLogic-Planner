@@ -59,6 +59,7 @@ def test_data_quality_is_completeness_not_risk() -> None:
     output = GetTrainingDataQualityTool(FakeDependencies()).execute(TrainingDataQualityInput(), context())
     assert output.data_status == TrainingDataStatus.UNKNOWN
     assert all("risk" not in item.message.lower() for item in output.limitations)
+    assert output.limitations[0].message == "数据完整度只表示当前字段的可用情况，不代表医疗风险或模型置信度。"
 
 
 @pytest.mark.parametrize("days", [6, 29])

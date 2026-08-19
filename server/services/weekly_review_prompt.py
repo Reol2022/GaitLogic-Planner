@@ -5,7 +5,7 @@ from typing import Any
 
 from planner_core.config import get_settings
 
-WEEKLY_REVIEW_PROMPT_VERSION = "community-v1"
+WEEKLY_REVIEW_PROMPT_VERSION = "community-v2-structured-zh"
 
 
 def get_weekly_review_system_prompt() -> str:

@@ -1,3 +1,4 @@
+from server.agent.enums import AgentIntent
 from server.agent.prompts import COACH_AGENT_PROMPT_VERSION, build_coach_agent_system_prompt
 
 
@@ -40,3 +41,15 @@ def test_prompt_contains_no_credentials_or_user_data() -> None:
     assert "bearer " not in lowered
     assert "@example" not in lowered
     assert "runner_id" not in lowered
+
+
+def test_explain_retry_prompt_forbids_new_numbers_and_tool_calls() -> None:
+    prompt = build_coach_agent_system_prompt(
+        final_retry=True,
+        retry_intent=AgentIntent.EXPLAIN_RUNNER_STATE,
+    )
+
+    assert "final EXPLAIN_RUNNER_STATE narrative retry" in prompt
+    assert "do not call tools" in prompt
+    assert "Do not calculate, round, total, infer or add" in prompt
+    assert "context.available_knowledge_references" in prompt

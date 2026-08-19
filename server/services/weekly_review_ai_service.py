@@ -23,7 +23,7 @@ from planner_core.enums import (
     TrainingStatus,
     WeeklyReviewStatus,
 )
-from server.common.exceptions import BadRequestError, NotFoundError, ServiceUnavailableError, TooManyRequestsError
+from server.common.exceptions import AppError, BadRequestError, NotFoundError, ServiceUnavailableError, TooManyRequestsError
 from server.schemas.weekly_review import (
     PlanAdjustmentDraftRead,
     PlanAdjustmentItemRead,
@@ -52,10 +52,45 @@ from server.services.weekly_review_prompt import (
     build_weekly_review_user_prompt,
     get_weekly_review_system_prompt,
 )
-from server.services.weekly_review_stats_service import build_weekly_review_metrics, save_block_review_metrics
+from server.services.weekly_review_stats_service import (
+    COMPLETED_STATUSES,
+    build_weekly_review_metrics,
+    save_block_review_metrics,
+)
 from server.services.weekly_review_stats_service import local_today
+from planner_core.config import get_settings
+from server.model_tasks import ModelTaskType, task_model_profile
+from server.services.provider_reasoning_service import persist_reasoning
+from server.structured_task_provider import StructuredTaskProvider, StructuredTaskProviderError
+from server.weekly_review_graph.schemas import PlanDesignAnalysis, WeeklyReviewAnalysis
+from server.provider_reliability import ProviderFailureCategory
 
 ALGORITHM_VERSION = "weekly-review-rules-v1"
+
+
+def _provider_error(exc: StructuredTaskProviderError) -> AppError:
+    if exc.category == ProviderFailureCategory.PROVIDER_OUTPUT_TRUNCATED:
+        return BadRequestError("模型输出达到长度限制，最终正文未完整生成。")
+    if exc.category == ProviderFailureCategory.PROVIDER_EMPTY_CONTENT:
+        return BadRequestError("模型没有返回可用的最终正文。")
+    if exc.category == ProviderFailureCategory.PROVIDER_INVALID_JSON:
+        return BadRequestError("模型返回的正文不是合法 JSON。")
+    if exc.category == ProviderFailureCategory.PROVIDER_SCHEMA_ERROR:
+        return BadRequestError("模型返回结果未通过结构校验。")
+    if exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT:
+        return ServiceUnavailableError("AI 周复盘模型请求超时，请稍后重试。")
+    if exc.category == ProviderFailureCategory.PROVIDER_RATE_LIMIT:
+        return TooManyRequestsError("AI 服务当前请求较多，请稍后重试。")
+    if exc.category == ProviderFailureCategory.PROVIDER_AUTH_ERROR:
+        return ServiceUnavailableError("AI 服务认证配置无效，请联系管理员检查 Provider 配置。")
+    if exc.category in {
+        ProviderFailureCategory.PROVIDER_CONNECTION_ERROR,
+        ProviderFailureCategory.PROVIDER_SERVER_ERROR,
+    }:
+        return ServiceUnavailableError("AI Provider 暂时不可用，请稍后重试。")
+    if exc.category == ProviderFailureCategory.PROVIDER_BAD_REQUEST:
+        return BadRequestError("AI Provider 拒绝了周复盘请求，请联系管理员检查模型配置。")
+    return BadRequestError("AI 周复盘服务暂时不可用。")
 
 
 def _target_block(db: Session, user_id: int, cycle_id: int, source: TrainingBlock, target_id: int | None):
@@ -87,6 +122,28 @@ def _target_workouts(db: Session, user_id: int, target_block_id: int | None) -> 
             .order_by(PlannedWorkout.workout_date, PlannedWorkout.sort_order, PlannedWorkout.id)
         )
     )
+
+
+def _is_adjustable_target_workout(item: PlannedWorkout) -> bool:
+    if item.is_locked:
+        return False
+    if item.workout_date is not None and item.workout_date < local_today():
+        return False
+    return not (
+        item.workout_log
+        and item.workout_log.status_normalized in COMPLETED_STATUSES
+    )
+
+
+def _filter_adjustable_candidates(candidates, next_week_plan: list[dict]):
+    adjustable_ids = {item["planned_workout_id"] for item in next_week_plan}
+    accepted = [item for item in candidates if item.plan_id in adjustable_ids]
+    warnings = (
+        ["模型返回了不可调整的历史、已完成、锁定或越界课表，相关建议已被安全忽略。"]
+        if len(accepted) != len(candidates)
+        else []
+    )
+    return accepted, warnings
 
 
 def _subjective_notes(metrics, workouts: list[PlannedWorkout]) -> list[dict]:
@@ -142,6 +199,9 @@ def build_source_snapshot(db: Session, user_id: int, cycle_id: int, source_block
         )
     )
     target_workouts = _target_workouts(db, user_id, target.id if target else None)
+    adjustable_target_workouts = [
+        item for item in target_workouts if _is_adjustable_target_workout(item)
+    ]
     preference = preference_to_prompt_dict(get_or_create_preference(db, user_id))
     snapshot = {
         "metrics": metrics.model_dump(mode="json"),
@@ -160,7 +220,7 @@ def build_source_snapshot(db: Session, user_id: int, cycle_id: int, source_block
                 "main_type": item.main_type_normalized.value,
                 "target_pace_text": item.target_pace_text,
             }
-            for item in target_workouts
+            for item in adjustable_target_workouts
         ],
         "training_preference": preference,
         "algorithm_version": ALGORITHM_VERSION,
@@ -192,6 +252,8 @@ def _cached_report(db: Session, user_id: int, source_block_id: int, target_block
             WeeklyReviewReport.source_block_id == source_block_id,
             WeeklyReviewReport.target_block_id == target_block_id,
             WeeklyReviewReport.snapshot_hash == digest,
+            WeeklyReviewReport.algorithm_version == ALGORITHM_VERSION,
+            WeeklyReviewReport.prompt_version == WEEKLY_REVIEW_PROMPT_VERSION,
             WeeklyReviewReport.status == WeeklyReviewStatus.success,
         )
         .order_by(WeeklyReviewReport.version.desc())
@@ -205,7 +267,7 @@ def _create_draft(
     output: WeeklyReviewAIOutput,
     target_workouts: list[PlannedWorkout],
 ) -> PlanAdjustmentDraft | None:
-    if report.target_block_id is None:
+    if report.target_block_id is None or not output.adjustments:
         return None
     by_id = {item.id: item for item in target_workouts}
     original_total = sum(float(item.planned_distance_km or 0) for item in target_workouts)
@@ -248,14 +310,19 @@ def _create_draft(
 
 
 def generate_weekly_review(
-    db: Session, user_id: int, cycle_id: int, source_block_id: int, target_block_id: int | None
+    db: Session,
+    user_id: int,
+    cycle_id: int,
+    source_block_id: int,
+    target_block_id: int | None,
+    force_regenerate: bool = False,
 ) -> WeeklyReviewDetailResponse:
     metrics, status_result, source, target, target_workouts, snapshot = build_source_snapshot(
         db, user_id, cycle_id, source_block_id, target_block_id
     )
     digest = snapshot_hash(snapshot)
     cached = _cached_report(db, user_id, source_block_id, target.id if target else None, digest)
-    if cached:
+    if cached and not force_regenerate:
         return get_weekly_review_detail(db, user_id, cached.id)
     if target is None:
         raise BadRequestError("No next training block is available for adjustment.")
@@ -293,13 +360,92 @@ def generate_weekly_review(
     db.commit()
     db.refresh(report)
     try:
-        result = call_deepseek(
-            get_weekly_review_system_prompt(), build_weekly_review_user_prompt(snapshot), 1, runtime
+        provider_settings = get_settings().model_copy(
+            update={
+                "ai_api_key": runtime.ai_api_key,
+                "deepseek_base_url": runtime.ai_base_url,
+                "deepseek_model": runtime.ai_model,
+                "deepseek_timeout_seconds": runtime.ai_timeout_seconds,
+            }
         )
-        try:
-            output = WeeklyReviewAIOutput.model_validate(load_ai_json(result.content))
-        except ValidationError as exc:
-            raise BadRequestError("AI weekly review output failed schema validation.") from exc
+        provider = StructuredTaskProvider(provider_settings)
+        weekly_profile = task_model_profile(provider_settings, ModelTaskType.WEEKLY_REVIEW_ANALYSIS)
+        weekly_result = provider.generate(
+            profile=weekly_profile,
+            schema=WeeklyReviewAnalysis,
+            system_prompt=(
+                "Analyze the supplied deterministic weekly running snapshot. Do not design or modify the "
+                "next-week plan in this task. Treat rule results and missing data as authoritative. Return JSON only."
+            ),
+            input_payload={"snapshot": snapshot},
+        )
+        analysis = WeeklyReviewAnalysis.model_validate(weekly_result.value)
+        persist_reasoning(
+            db,
+            user_id=user_id,
+            provider="openai-compatible",
+            profile=weekly_profile,
+            result=weekly_result,
+            related_record_type="weekly_review_report",
+            related_record_id=report.id,
+        )
+        plan_profile = task_model_profile(provider_settings, ModelTaskType.PLAN_DESIGN)
+        plan_result = provider.generate(
+            profile=plan_profile,
+            schema=PlanDesignAnalysis,
+            system_prompt=(
+                "Design conservative candidate adjustments for the supplied existing next-week plan. Use only "
+                "supplied workout IDs and deterministic rule codes. Partial or blocked recovery data cannot justify "
+                "an increase. Return JSON only; the server will materialize and validate changes."
+            ),
+            input_payload={
+                "weekly_review_analysis": analysis.model_dump(mode="json"),
+                "next_week_plan": snapshot["next_week_plan"],
+                "rule_result": snapshot["rule_result"],
+                "training_preference": snapshot["training_preference"],
+            },
+        )
+        design = PlanDesignAnalysis.model_validate(plan_result.value)
+        persist_reasoning(
+            db,
+            user_id=user_id,
+            provider="openai-compatible",
+            profile=plan_profile,
+            result=plan_result,
+            related_record_type="weekly_review_report",
+            related_record_id=report.id,
+        )
+        accepted_adjustments, materialize_warnings = _filter_adjustable_candidates(
+            design.candidate_adjustments,
+            snapshot["next_week_plan"],
+        )
+        output = WeeklyReviewAIOutput.model_validate(
+            {
+                "summary": analysis.overall_assessment,
+                "positive_points": analysis.positive_signals,
+                "attention_points": analysis.risk_signals,
+                "training_status": status_result.status,
+                "status_explanation": analysis.recovery_assessment,
+                "next_week_strategy": design.reason_summary,
+                "adjustments": [
+                    {
+                        "planned_workout_id": item.plan_id,
+                        "action": item.action,
+                        "suggested_content": item.after.content,
+                        "suggested_distance_km": item.after.distance_km or 0,
+                        "suggested_main_type": item.after.main_type,
+                        "suggested_target_pace_text": item.after.target_pace_text,
+                        "reason": item.reason,
+                    }
+                    for item in accepted_adjustments
+                ],
+                "risk_notes": list(
+                    dict.fromkeys(
+                        [*analysis.warnings, *design.warnings, *materialize_warnings]
+                    )
+                ),
+            }
+        )
         validate_ai_adjustments(
             db, user_id, target.id, output, status_result.status, metrics.max_pain_level
         )
@@ -311,9 +457,9 @@ def generate_weekly_review(
         report.status = WeeklyReviewStatus.success
         report.generated_at = datetime.utcnow()
         job.output_json = output.model_dump(mode="json")
-        job.input_tokens = result.input_tokens
-        job.output_tokens = result.output_tokens
-        job.total_tokens = result.total_tokens
+        job.input_tokens = (weekly_result.prompt_tokens or 0) + (plan_result.prompt_tokens or 0)
+        job.output_tokens = (weekly_result.completion_tokens or 0) + (plan_result.completion_tokens or 0)
+        job.total_tokens = job.input_tokens + job.output_tokens
         job.status = AIPlanJobStatus.success
         job.finished_at = datetime.utcnow()
         quota.used_count += 1
@@ -328,12 +474,20 @@ def generate_weekly_review(
         job = db.get(AIPlanJob, job.id)
         if report:
             report.status = WeeklyReviewStatus.failed
-            report.error_message = f"Weekly review generation failed: {type(exc).__name__}"
+            failure_name = (
+                exc.category.value if isinstance(exc, StructuredTaskProviderError) else type(exc).__name__
+            )
+            report.error_message = f"Weekly review generation failed: {failure_name}"
         if job:
             job.status = AIPlanJobStatus.failed
-            job.error_message = f"Weekly review generation failed: {type(exc).__name__}"
+            failure_name = (
+                exc.category.value if isinstance(exc, StructuredTaskProviderError) else type(exc).__name__
+            )
+            job.error_message = f"Weekly review generation failed: {failure_name}"
             job.finished_at = datetime.utcnow()
         db.commit()
+        if isinstance(exc, StructuredTaskProviderError):
+            raise _provider_error(exc) from exc
         if isinstance(exc, (BadRequestError, TooManyRequestsError, ServiceUnavailableError)):
             raise
         raise normalize_ai_generation_exception(exc) from exc

@@ -25,7 +25,7 @@
           <article v-for="item in review.knowledge_references" :key="`${item.document_id}-${item.section}`" class="reference">
             <strong>{{ item.title }} · {{ item.section }}</strong><p>{{ item.excerpt }}</p><small>{{ item.source_title }} · {{ item.knowledge_version }}</small>
           </article>
-          <ul><li v-for="item in review.limitations" :key="item">{{ item }}</li></ul>
+          <ul><li v-for="item in review.limitations" :key="item">{{ limitationMessage(item) }}</li></ul>
         </el-collapse-item>
       </el-collapse>
     </section>
@@ -48,6 +48,7 @@ import {
   rejectAdaptiveProposal,
 } from "@/api/adaptivePlan";
 import type { AdaptiveProposal, LangGraphWeeklyReview } from "@/types/adaptivePlan";
+import { limitationMessage } from "@/utils/limitationDisplay";
 
 const route = useRoute();
 const range = ref<[string, string] | null>(null);
@@ -75,6 +76,9 @@ async function generate() {
       week_end: range.value[1],
       timezone: "Asia/Shanghai",
     });
+    proposal.value = review.value.proposal_record_id
+      ? await getAdaptiveProposal(review.value.proposal_record_id)
+      : null;
   } finally {
     loading.value = false;
   }

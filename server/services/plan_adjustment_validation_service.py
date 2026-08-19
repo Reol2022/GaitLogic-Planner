@@ -55,6 +55,8 @@ def _assert_workout_can_change(workout: PlannedWorkout, user_id: int, target_blo
         raise BadRequestError("Adjustment item does not belong to the current user's target block.")
     if workout.workout_date and workout.workout_date < local_today():
         raise BadRequestError("Historical workouts cannot be adjusted.")
+    if workout.is_locked:
+        raise BadRequestError("Locked workouts cannot be adjusted.")
     if workout.workout_log and workout.workout_log.status_normalized in COMPLETED_STATUSES:
         raise BadRequestError("Completed workouts cannot be adjusted.")
 

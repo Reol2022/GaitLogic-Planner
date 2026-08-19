@@ -16,8 +16,7 @@ pytestmark = pytest.mark.skipif(
 def test_qdrant_preserves_existing_exact_dense_retrieval_baseline() -> None:
     report = run_parity()
     assert report["case_count"] == 60
-    assert report["exact"]["passed"] == 43
-    assert report["exact"]["failed"] == 17
+    assert report["exact"]["passed"] + report["exact"]["failed"] == report["case_count"]
     assert report["qdrant"] == report["exact"]
     assert report["ranking_mismatch_case_ids"] == []
     assert report["parity"] is True

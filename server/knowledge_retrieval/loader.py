@@ -24,13 +24,14 @@ from server.knowledge_retrieval.schemas import (
 
 
 MAX_KNOWLEDGE_FILE_BYTES = 512 * 1024
-REQUIRED_SECTIONS = (
-    "适用场景",
-    "核心原则",
-    "判断条件",
-    "推荐策略",
-    "注意事项",
-)
+EVIDENCE_SECTION = "Evidence"
+MIN_SEMANTIC_SECTIONS = 1
+# This locally reviewed Daniels source is ingested at section granularity.  Its
+# documents must expose an Evidence section, while legacy summaries remain
+# loadable until they are migrated to the same provenance contract.
+SECTION_EVIDENCE_SOURCE_IDS = frozenset({
+    "daniels-running-formula-3rd-edition-cn-summary",
+})
 TEMPORARY_SUFFIXES = (".tmp", ".temp", ".bak", ".swp", "~")
 SCRIPT_PATTERN = re.compile(r"<\s*script\b", re.IGNORECASE)
 REMOTE_INCLUDE_PATTERNS = (
@@ -129,16 +130,25 @@ def _parse_front_matter(text: str, display_path: str) -> tuple[dict[str, Any], s
     return payload, body
 
 
-def _validate_document_content(body: str, display_path: str) -> None:
+def _validate_document_content(
+    body: str,
+    display_path: str,
+    *,
+    requires_evidence_section: bool,
+) -> None:
     if SCRIPT_PATTERN.search(body):
         raise KnowledgeLoadError(f"{display_path}: HTML script is not allowed.")
     if any(pattern.search(body) for pattern in REMOTE_INCLUDE_PATTERNS):
         raise KnowledgeLoadError(f"{display_path}: remote includes are not allowed.")
-    headings = {match.group(1).strip() for match in HEADING_PATTERN.finditer(body)}
-    missing = [section for section in REQUIRED_SECTIONS if section not in headings]
-    if missing:
+    headings = [match.group(1).strip() for match in HEADING_PATTERN.finditer(body)]
+    if requires_evidence_section and EVIDENCE_SECTION not in headings:
         raise KnowledgeLoadError(
-            f"{display_path}: missing required sections: {', '.join(missing)}."
+            f"{display_path}: missing required section: {EVIDENCE_SECTION}."
+        )
+    semantic_sections = [heading for heading in headings if heading != EVIDENCE_SECTION]
+    if requires_evidence_section and len(semantic_sections) < MIN_SEMANTIC_SECTIONS:
+        raise KnowledgeLoadError(
+            f"{display_path}: requires at least {MIN_SEMANTIC_SECTIONS} semantic section."
         )
 
 
@@ -234,7 +244,13 @@ class KnowledgeCorpusLoader:
                 raise KnowledgeLoadError(
                     f"{relative}: source_type does not match source record."
                 )
-            _validate_document_content(body, relative)
+            _validate_document_content(
+                body,
+                relative,
+                requires_evidence_section=(
+                    metadata.source_id in SECTION_EVIDENCE_SOURCE_IDS
+                ),
+            )
             documents.append(
                 KnowledgeDocument(
                     metadata=metadata,

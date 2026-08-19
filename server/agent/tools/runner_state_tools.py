@@ -22,6 +22,18 @@ _INTENTS = (
     AgentIntent.GENERAL_TRAINING_QUESTION,
 )
 
+_LIMITATION_MESSAGES_ZH = {
+    "intensity_distance_uses_main_workout_type": "强度距离按训练主类型统计。",
+    "composite_workout_intensity_segments_not_split": "复合训练暂时无法可靠拆分强度分段。",
+    "high_intensity_composite_segments_use_main_workout_type": "复合训练的高强度判断使用主训练类型。",
+    "training_phase_unavailable_no_structured_cycle_phase": "训练周期缺少结构化阶段信息，暂时无法判断当前训练阶段。",
+    "recovery_day_fatigue_rule_disabled_v1": "当前版本尚未启用基于无恢复日与疲劳组合的判断规则。",
+    "near_zero_volume_baseline_cutoff_not_defined": "当前版本尚未定义接近零跑量基线的统一判定阈值。",
+    "days_since_last_quality_session_unavailable": "最近一次关键训练课的日期暂无可用数据。",
+    "rpe_incomplete_7d": "近 7 天部分训练缺少主观用力程度（RPE）记录。",
+    "rpe_incomplete_28d": "近 28 天部分训练缺少主观用力程度（RPE）记录。",
+}
+
 
 def _value(value: object) -> str:
     return str(getattr(value, "value", value))
@@ -29,6 +41,18 @@ def _value(value: object) -> str:
 
 def _notice(code: str, message: str) -> AgentNotice:
     return AgentNotice(code=code, message=message[:300])
+
+
+def _limitation_message(value: str) -> str:
+    if value in _LIMITATION_MESSAGES_ZH:
+        return _LIMITATION_MESSAGES_ZH[value]
+    if value.startswith("rpe_incomplete_"):
+        return "部分训练缺少主观用力程度（RPE）记录。"
+    if value.startswith("heart_rate_incomplete_"):
+        return "部分训练缺少心率记录。"
+    if value.startswith("completion_rate_") and "no_planned_sessions" in value:
+        return "当前统计窗口没有可用的计划训练数据。"
+    return "当前存在一项尚未支持中文说明的分析限制。"
 
 
 class GetRunnerStateTool(AgentTool):
@@ -85,7 +109,7 @@ class GetRunnerStateTool(AgentTool):
             "training_phase": _value(snapshot.inferred_state.training_phase),
         }
         limitations = [
-            _notice("RUNNER_STATE_LIMITATION", item)
+            _notice("RUNNER_STATE_LIMITATION", _limitation_message(item))
             for item in [
                 *quality.limitations,
                 *(snapshot.inference_metadata.limitations if snapshot.inference_metadata else []),
@@ -156,14 +180,14 @@ class GetRunnerStateHistoryTool(AgentTool):
             limitations.append(
                 _notice(
                     "HISTORY_RISK_SEVERITY_UNAVAILABLE",
-                    "History summaries store risk counts but not risk severity; no severity was inferred.",
+                    "历史摘要只保存风险标记数量，不包含风险严重程度，因此系统不会推测其等级。",
                 )
             )
         return RunnerStateHistoryOutput(
             data_status=(TrainingDataStatus.AVAILABLE if items else TrainingDataStatus.NOT_FOUND),
             items=items,
             trend_summary=(
-                f"Returned {len(items)} saved snapshots in descending capture order."
+                f"已按保存时间倒序返回 {len(items)} 条历史快照。"
                 if items
                 else None
             ),

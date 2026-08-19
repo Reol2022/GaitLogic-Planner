@@ -17,11 +17,9 @@ from server.agent.enums import (
     AgentTraceStatus,
 )
 from server.agent.errors import AgentErrorCode
-from server.agent.gateway import AgentLLMGateway
-from server.agent.knowledge_references import (
-    KNOWLEDGE_TOOL_NAME,
-    materialize_knowledge_references,
-)
+from server.agent.gateway import AgentExecutionState, AgentLLMGateway
+from server.agent.providers.errors import AgentProviderError
+from server.agent.knowledge_references import materialize_knowledge_references
 from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import (
     AgentContext,
@@ -42,17 +40,21 @@ from server.observability.tracing import NOOP_TRACER, SafeTracer, active_trace_h
 logger = logging.getLogger(__name__)
 
 _ERROR_MESSAGES = {
-    AgentErrorCode.AGENT_INVALID_REQUEST: "The agent request is invalid.",
-    AgentErrorCode.AGENT_UNKNOWN_INTENT: "The request intent is not supported.",
-    AgentErrorCode.AGENT_TOOL_NOT_FOUND: "A requested tool is unavailable.",
-    AgentErrorCode.AGENT_TOOL_NOT_ALLOWED: "A requested action is not allowed.",
-    AgentErrorCode.AGENT_TOOL_ARGUMENTS_INVALID: "Tool arguments are invalid.",
-    AgentErrorCode.AGENT_TOOL_EXECUTION_FAILED: "A tool could not provide validated data.",
-    AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID: "The model returned an invalid structured result.",
-    AgentErrorCode.AGENT_MODEL_FAILED: "The model gateway could not complete the request.",
-    AgentErrorCode.AGENT_VALIDATION_FAILED: "The response did not pass safety validation.",
-    AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED: "The agent call limit was exceeded.",
-    AgentErrorCode.AGENT_INTERNAL_ERROR: "The agent could not complete the request safely.",
+    AgentErrorCode.AGENT_INVALID_REQUEST: "教练请求格式无效。",
+    AgentErrorCode.AGENT_UNKNOWN_INTENT: "当前不支持该教练请求类型。",
+    AgentErrorCode.AGENT_TOOL_NOT_FOUND: "请求所需的数据工具暂不可用。",
+    AgentErrorCode.AGENT_TOOL_NOT_ALLOWED: "当前请求不允许执行该操作。",
+    AgentErrorCode.AGENT_TOOL_ARGUMENTS_INVALID: "数据工具参数无效。",
+    AgentErrorCode.AGENT_TOOL_EXECUTION_FAILED: "数据工具未能返回通过校验的结果。",
+    AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID: "模型返回的结构化结果无效。",
+    AgentErrorCode.AGENT_MODEL_FAILED: "模型服务未能完成本次请求。",
+    AgentErrorCode.AGENT_PROVIDER_DISABLED: "模型解释功能当前未启用。",
+    AgentErrorCode.AGENT_PROVIDER_UNCONFIGURED: "模型解释服务尚未完成配置。",
+    AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE: "模型解释服务暂时不可用。",
+    AgentErrorCode.AGENT_PROVIDER_RATE_LIMITED: "模型解释请求过于频繁，请稍后再试。",
+    AgentErrorCode.AGENT_VALIDATION_FAILED: "模型回答未通过安全校验。",
+    AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED: "本次教练请求已达到调用次数上限。",
+    AgentErrorCode.AGENT_INTERNAL_ERROR: "教练服务未能安全完成本次请求。",
 }
 
 
@@ -88,6 +90,7 @@ class GaitLogicCoachAgent:
         settings = get_settings()
         return AgentLimits(
             max_model_calls=settings.agent_max_model_calls,
+            max_tool_rounds=settings.agent_max_tool_rounds,
             max_tool_calls=settings.agent_max_tool_calls,
             max_same_tool_calls=settings.agent_max_same_tool_calls,
             max_message_length=settings.agent_max_message_length,
@@ -189,10 +192,18 @@ class GaitLogicCoachAgent:
         request: AgentRequest,
         context: AgentContext,
         trace: AgentTrace,
+        final_retry: bool = False,
+        execution_state: AgentExecutionState | None = None,
     ) -> AgentModelOutput:
         handle = active_trace_handle()
         if handle is None:
-            return self._call_model_untraced(request=request, context=context, trace=trace)
+            return self._call_model_untraced(
+                request=request,
+                context=context,
+                trace=trace,
+                final_retry=final_retry,
+                execution_state=execution_state,
+            )
         with self.tracer.span(
             handle,
             component="provider",
@@ -200,7 +211,13 @@ class GaitLogicCoachAgent:
             metadata={"provider_status": "STARTED", "operation_type": "llm"},
         ) as span:
             try:
-                output = self._call_model_untraced(request=request, context=context, trace=trace)
+                output = self._call_model_untraced(
+                    request=request,
+                    context=context,
+                    trace=trace,
+                    final_retry=final_retry,
+                    execution_state=execution_state,
+                )
             except Exception:
                 reliability = getattr(self.gateway, "last_reliability", None)
                 metadata = {"provider_status": "FAILED", "final_status": "FAILED"}
@@ -218,6 +235,7 @@ class GaitLogicCoachAgent:
                             ),
                         }
                     )
+                metadata.update(getattr(self.gateway, "last_response_metadata", {}))
                 span.add_metadata(**metadata)
                 span.mark_error(AgentErrorCode.AGENT_MODEL_FAILED.value)
                 raise
@@ -232,6 +250,7 @@ class GaitLogicCoachAgent:
                         "retried": reliability.retried,
                     }
                 )
+            metadata.update(getattr(self.gateway, "last_response_metadata", {}))
             span.add_metadata(**metadata)
             return output
 
@@ -241,19 +260,51 @@ class GaitLogicCoachAgent:
         request: AgentRequest,
         context: AgentContext,
         trace: AgentTrace,
+        final_retry: bool = False,
+        execution_state: AgentExecutionState | None = None,
     ) -> AgentModelOutput:
         started = perf_counter()
         trace.add_event(AgentTraceEventType.MODEL_CALL, AgentTraceStatus.STARTED)
-        tools = self.registry.list_tools(request.intent)
-        if any(result.tool_name == KNOWLEDGE_TOOL_NAME for result in context.tool_results):
-            tools = [definition for definition in tools if definition.name != KNOWLEDGE_TOOL_NAME]
+        # Context construction deterministically preloads the facts required by
+        # each intent. A completed result is already authoritative context, so
+        # offering its tool again invites redundant provider calls and can
+        # exhaust the bounded tool-call budget.
+        completed_tool_names = {
+            result.tool_name
+            for result in context.tool_results
+            if result.status == AgentToolStatus.SUCCEEDED
+        }
+        explain_context_complete = {
+            "get_runner_state",
+            "get_runner_state_history",
+            "get_training_data_quality",
+        }.issubset(completed_tool_names)
+        if request.intent == AgentIntent.TODAY_RECOMMENDATION or (
+            request.intent == AgentIntent.EXPLAIN_RUNNER_STATE
+            and explain_context_complete
+        ):
+            # TODAY and a fully preloaded Runner State explanation are
+            # narrative generations over deterministic facts. Additional
+            # model-initiated tools cannot change those server-owned facts and
+            # make provider tool-call loops more likely.
+            tools = []
+        else:
+            tools = [
+                definition
+                for definition in self.registry.list_tools(request.intent)
+                if definition.name not in completed_tool_names
+            ]
         try:
             output = self.gateway.generate(
-                system_instructions=build_coach_agent_system_prompt(),
+                system_instructions=build_coach_agent_system_prompt(
+                    final_retry=final_retry,
+                    retry_intent=request.intent if final_retry else None,
+                ),
                 user_message=request.message,
                 context=context,
                 tools=tools,
                 trace=trace,
+                execution_state=execution_state,
             )
         except Exception:
             trace.add_event(
@@ -269,6 +320,71 @@ class GaitLogicCoachAgent:
             duration_ms=(perf_counter() - started) * 1000,
         )
         return output
+
+    def _retry_safe_narrative(
+        self,
+        *,
+        request: AgentRequest,
+        context: AgentContext,
+        trace: AgentTrace,
+        execution_state: AgentExecutionState | None = None,
+    ) -> AgentResponse | None:
+        """Use the remaining bounded call only for a rejected safe narrative.
+
+        The retry has no tools and cannot change canonical facts. It is not a
+        parser repair: the returned output must pass the same validator.
+        """
+
+        try:
+            output = self._call_model(
+                request=request,
+                context=context,
+                trace=trace,
+                execution_state=execution_state,
+                final_retry=True,
+            )
+        except AgentProviderError as exc:
+            return self._finish(
+                request=request,
+                trace=trace,
+                status=AgentRunStatus.MODEL_FAILED,
+                context=context,
+                errors=[exc.code],
+            )
+        except ValidationError:
+            return self._finish(
+                request=request,
+                trace=trace,
+                status=AgentRunStatus.VALIDATION_FAILED,
+                context=context,
+                errors=[AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID],
+            )
+        except Exception:
+            return self._finish(
+                request=request,
+                trace=trace,
+                status=AgentRunStatus.MODEL_FAILED,
+                context=context,
+                errors=[AgentErrorCode.AGENT_MODEL_FAILED],
+            )
+
+        result = self._validate_output(output, context=context, final=True)
+        if not result.valid:
+            return self._validation_failure(
+                request=request,
+                trace=trace,
+                context=context,
+                result=result,
+                output=output,
+            )
+        trace.add_event(AgentTraceEventType.RESPONSE_VALIDATED, AgentTraceStatus.SUCCEEDED)
+        return self._finish(
+            request=request,
+            trace=trace,
+            status=AgentRunStatus.SUCCEEDED,
+            context=context,
+            output=output,
+        )
 
     def _validate_request(self, request: AgentRequest) -> AgentValidationResult:
         handle = active_trace_handle()
@@ -412,159 +528,152 @@ class GaitLogicCoachAgent:
             )
         trace.add_event(AgentTraceEventType.CONTEXT_BUILT, AgentTraceStatus.SUCCEEDED)
 
-        try:
-            first_output = self._call_model(request=request, context=context, trace=trace)
-        except ValidationError:
-            return self._finish(
-                request=request,
-                trace=trace,
-                status=AgentRunStatus.VALIDATION_FAILED,
-                context=context,
-                errors=[AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID],
-            )
-        except Exception:
-            return self._finish(
-                request=request,
-                trace=trace,
-                status=AgentRunStatus.MODEL_FAILED,
-                context=context,
-                errors=[AgentErrorCode.AGENT_MODEL_FAILED],
-            )
+        execution_state = AgentExecutionState()
+        tool_name_counts: Counter[str] = Counter()
+        total_tool_calls = 0
+        tool_rounds = 0
+        failed_results: list[AgentToolResult] = []
 
-        first_validation = self._validate_output(
-            first_output, context=context, final=not first_output.tool_calls
-        )
-        if not first_validation.valid:
-            return self._validation_failure(
-                request=request,
-                trace=trace,
-                context=context,
-                result=first_validation,
-                output=first_output,
-            )
-        trace.add_event(AgentTraceEventType.RESPONSE_VALIDATED, AgentTraceStatus.SUCCEEDED)
-        if not first_output.tool_calls:
-            return self._finish(
-                request=request,
-                trace=trace,
-                status=AgentRunStatus.SUCCEEDED,
-                context=context,
-                output=first_output,
-            )
+        for model_round in range(self.limits.max_model_calls):
+            try:
+                output = self._call_model(
+                    request=request,
+                    context=context,
+                    trace=trace,
+                    execution_state=execution_state,
+                )
+            except AgentProviderError as exc:
+                return self._finish(
+                    request=request,
+                    trace=trace,
+                    status=AgentRunStatus.MODEL_FAILED,
+                    context=context,
+                    errors=[exc.code],
+                )
+            except ValidationError:
+                return self._finish(
+                    request=request,
+                    trace=trace,
+                    status=AgentRunStatus.VALIDATION_FAILED,
+                    context=context,
+                    errors=[AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID],
+                )
+            except Exception:
+                return self._finish(
+                    request=request,
+                    trace=trace,
+                    status=AgentRunStatus.MODEL_FAILED,
+                    context=context,
+                    errors=[AgentErrorCode.AGENT_MODEL_FAILED],
+                )
 
-        repeated = Counter(call.tool_name for call in first_output.tool_calls)
-        if (
-            len(first_output.tool_calls) > self.limits.max_tool_calls
-            or any(count > self.limits.max_same_tool_calls for count in repeated.values())
-            or self.limits.max_model_calls < 2
-        ):
-            return self._finish(
-                request=request,
-                trace=trace,
-                status=AgentRunStatus.REJECTED,
-                context=context,
-                errors=[AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED],
-            )
+            if not output.tool_calls and failed_results and not output.warnings and not output.limitations:
+                output = output.model_copy(
+                    update={"limitations": [self._notice(AgentErrorCode.AGENT_TOOL_EXECUTION_FAILED)]}
+                )
 
-        results = []
-        for call in first_output.tool_calls:
-            started = perf_counter()
-            trace.add_event(
-                AgentTraceEventType.TOOL_CALL,
-                AgentTraceStatus.STARTED,
-                tool_name=call.tool_name,
+            validation = self._validate_output(
+                output, context=context, final=not output.tool_calls
             )
-            trace.add_event(
-                AgentTraceEventType.MODEL_TOOL_STARTED,
-                AgentTraceStatus.STARTED,
-                tool_name=call.tool_name,
-            )
-            result = self.registry.invoke(
-                call.tool_name,
-                call.arguments,
-                context,
-                tool_call_id=call.tool_call_id,
-            )
-            results.append(result)
-            trace.add_event(
-                AgentTraceEventType.TOOL_CALL,
-                AgentTraceStatus.SUCCEEDED
-                if result.status == AgentToolStatus.SUCCEEDED
-                else AgentTraceStatus.FAILED,
-                tool_name=call.tool_name,
-                safe_error_code=result.safe_error_code,
-                duration_ms=(perf_counter() - started) * 1000,
-            )
-            trace.add_event(
-                AgentTraceEventType.MODEL_TOOL_COMPLETED,
-                AgentTraceStatus.SUCCEEDED
-                if result.status == AgentToolStatus.SUCCEEDED
-                else AgentTraceStatus.FAILED,
-                tool_name=call.tool_name,
-                safe_error_code=result.safe_error_code,
-            )
+            if not validation.valid:
+                if (
+                    model_round + 1 < self.limits.max_model_calls
+                    and not output.tool_calls
+                    and request.intent in {
+                        AgentIntent.TODAY_RECOMMENDATION,
+                        AgentIntent.EXPLAIN_RUNNER_STATE,
+                    }
+                    and AgentErrorCode.AGENT_VALIDATION_FAILED in validation.errors
+                ):
+                    retry = self._retry_safe_narrative(
+                        request=request,
+                        context=context,
+                        trace=trace,
+                        execution_state=execution_state,
+                    )
+                    if retry is not None:
+                        return retry
+                return self._validation_failure(
+                    request=request,
+                    trace=trace,
+                    context=context,
+                    result=validation,
+                    output=output,
+                )
+            trace.add_event(AgentTraceEventType.RESPONSE_VALIDATED, AgentTraceStatus.SUCCEEDED)
 
-        try:
-            context = AgentContext.model_validate(
-                {
-                    **context.model_dump(mode="python"),
-                    "tool_results": [*context.tool_results, *results],
-                }
-            )
-        except ValidationError:
-            return self._finish(
-                request=request,
-                trace=trace,
-                status=AgentRunStatus.REJECTED,
-                context=context,
-                errors=[AgentErrorCode.AGENT_INVALID_REQUEST],
-            )
+            if not output.tool_calls:
+                return self._finish(
+                    request=request,
+                    trace=trace,
+                    status=AgentRunStatus.TOOL_FAILED if failed_results else AgentRunStatus.SUCCEEDED,
+                    context=context,
+                    output=output,
+                    errors=([AgentErrorCode.AGENT_TOOL_EXECUTION_FAILED] if failed_results else []),
+                )
 
-        try:
-            final_output = self._call_model(request=request, context=context, trace=trace)
-        except ValidationError:
-            return self._finish(
-                request=request,
-                trace=trace,
-                status=AgentRunStatus.VALIDATION_FAILED,
-                context=context,
-                errors=[AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID],
-            )
-        except Exception:
-            return self._finish(
-                request=request,
-                trace=trace,
-                status=AgentRunStatus.MODEL_FAILED,
-                context=context,
-                errors=[AgentErrorCode.AGENT_MODEL_FAILED],
-            )
+            tool_rounds += 1
+            total_tool_calls += len(output.tool_calls)
+            tool_name_counts.update(call.tool_name for call in output.tool_calls)
+            if (
+                tool_rounds > self.limits.max_tool_rounds
+                or model_round + 1 >= self.limits.max_model_calls
+                or total_tool_calls > self.limits.max_tool_calls
+                or any(count > self.limits.max_same_tool_calls for count in tool_name_counts.values())
+            ):
+                return self._finish(
+                    request=request,
+                    trace=trace,
+                    status=AgentRunStatus.REJECTED,
+                    context=context,
+                    errors=[AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED],
+                )
 
-        failed_results = [item for item in results if item.status != AgentToolStatus.SUCCEEDED]
-        if failed_results and not final_output.warnings and not final_output.limitations:
-            final_output = final_output.model_copy(
-                update={
-                    "limitations": [
-                        self._notice(AgentErrorCode.AGENT_TOOL_EXECUTION_FAILED)
-                    ]
-                }
-            )
-        final_validation = self._validate_output(final_output, context=context, final=True)
-        if not final_validation.valid:
-            return self._validation_failure(
-                request=request,
-                trace=trace,
-                context=context,
-                result=final_validation,
-                output=final_output,
-            )
-        trace.add_event(AgentTraceEventType.RESPONSE_VALIDATED, AgentTraceStatus.SUCCEEDED)
+            round_results: list[AgentToolResult] = []
+            for call in output.tool_calls:
+                started = perf_counter()
+                trace.add_event(AgentTraceEventType.TOOL_CALL, AgentTraceStatus.STARTED, tool_name=call.tool_name)
+                trace.add_event(AgentTraceEventType.MODEL_TOOL_STARTED, AgentTraceStatus.STARTED, tool_name=call.tool_name)
+                result = self.registry.invoke(
+                    call.tool_name, call.arguments, context, tool_call_id=call.tool_call_id
+                )
+                round_results.append(result)
+                if result.status != AgentToolStatus.SUCCEEDED:
+                    failed_results.append(result)
+                status = AgentTraceStatus.SUCCEEDED if result.status == AgentToolStatus.SUCCEEDED else AgentTraceStatus.FAILED
+                trace.add_event(
+                    AgentTraceEventType.TOOL_CALL,
+                    status,
+                    tool_name=call.tool_name,
+                    safe_error_code=result.safe_error_code,
+                    duration_ms=(perf_counter() - started) * 1000,
+                )
+                trace.add_event(
+                    AgentTraceEventType.MODEL_TOOL_COMPLETED,
+                    status,
+                    tool_name=call.tool_name,
+                    safe_error_code=result.safe_error_code,
+                )
+            try:
+                context = AgentContext.model_validate(
+                    {
+                        **context.model_dump(mode="python"),
+                        "tool_results": [*context.tool_results, *round_results],
+                    }
+                )
+            except ValidationError:
+                return self._finish(
+                    request=request,
+                    trace=trace,
+                    status=AgentRunStatus.REJECTED,
+                    context=context,
+                    errors=[AgentErrorCode.AGENT_INVALID_REQUEST],
+                )
+
         return self._finish(
             request=request,
             trace=trace,
-            status=AgentRunStatus.TOOL_FAILED if failed_results else AgentRunStatus.SUCCEEDED,
+            status=AgentRunStatus.REJECTED,
             context=context,
-            output=final_output,
-            errors=(
-                [AgentErrorCode.AGENT_TOOL_EXECUTION_FAILED] if failed_results else []
-            ),
+            errors=[AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED],
         )

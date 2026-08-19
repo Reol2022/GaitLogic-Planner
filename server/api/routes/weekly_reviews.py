@@ -1,9 +1,11 @@
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from planner_core.database.models import UserAccount
+from planner_core.database.models import PlannedWorkout, UserAccount
+from planner_core.adaptive_plan.schemas import PlanValue, TargetPlanFact
+from planner_core.enums import WorkoutStatusNormalized
 from server.api.deps import get_current_user, get_db
 from server.schemas.weekly_review import (
     PlanAdjustmentApplyRequest,
@@ -39,11 +41,16 @@ from server.agent.tools.knowledge_tools import build_configured_knowledge_tool
 from server.services.weekly_facts_service import WeeklyFactsService
 from server.weekly_review_graph.adapters import (
     AgentGatewayWeeklyReviewGenerator,
+    DeterministicProposalMaterializer,
     KnowledgeToolWeeklyRetriever,
+    StructuredPlanDesigner,
+    StructuredWeeklyReviewGenerator,
 )
 from server.weekly_review_graph.schemas import WeeklyReviewResult, WeeklyReviewState
 from server.weekly_review_graph.workflow import build_weekly_review_graph
 from server.observability.factory import get_configured_tracer
+from server.structured_task_provider import StructuredTaskProvider
+from server.services.admin_ai_settings_service import get_effective_ai_settings
 
 router = APIRouter(tags=["weekly reviews"])
 adaptive_approval_service = AdaptivePlanApprovalService(tracer=get_configured_tracer())
@@ -83,6 +90,7 @@ def generate_weekly_review(
         payload.cycle_id,
         payload.source_block_id,
         payload.target_block_id,
+        payload.force_regenerate,
     )
 
 
@@ -266,6 +274,15 @@ def generate_langgraph_weekly_review(
     current_user: UserAccount = Depends(get_current_user),
 ):
     settings = get_settings()
+    runtime = get_effective_ai_settings(db)
+    provider_settings = settings.model_copy(
+        update={
+            "ai_api_key": runtime.ai_api_key,
+            "deepseek_base_url": runtime.ai_base_url,
+            "deepseek_model": runtime.ai_model,
+            "deepseek_timeout_seconds": runtime.ai_timeout_seconds,
+        }
+    )
     request = WeeklyFactsRequest(
         user_id=current_user.id,
         week_start=payload.week_start,
@@ -285,15 +302,66 @@ def generate_langgraph_weekly_review(
         del state
         raise RuntimeError("Coach Provider is disabled or incomplete")
 
+    structured_provider = StructuredTaskProvider(
+        provider_settings, tracer=get_configured_tracer()
+    ) if provider_settings.ai_api_key else None
     generator = (
-        AgentGatewayWeeklyReviewGenerator(OpenAICompatibleAgentGateway(settings))
-        if provider_configured
-        else provider_unavailable
+        StructuredWeeklyReviewGenerator(structured_provider, provider_settings, db=db)
+        if structured_provider is not None
+        else (
+            AgentGatewayWeeklyReviewGenerator(OpenAICompatibleAgentGateway(settings))
+            if provider_configured
+            else provider_unavailable
+        )
     )
+    next_week_start = payload.week_end + timedelta(days=1)
+    next_week_end = next_week_start + timedelta(days=6)
+    planned = list(
+        db.scalars(
+            select(PlannedWorkout).where(
+                PlannedWorkout.user_id == current_user.id,
+                PlannedWorkout.workout_date >= next_week_start,
+                PlannedWorkout.workout_date <= next_week_end,
+                *(
+                    (PlannedWorkout.cycle_id == payload.cycle_id,)
+                    if payload.cycle_id is not None
+                    else ()
+                ),
+            ).order_by(PlannedWorkout.workout_date, PlannedWorkout.sort_order, PlannedWorkout.id)
+        )
+    )
+    completed = {
+        WorkoutStatusNormalized.completed_high,
+        WorkoutStatusNormalized.completed_normal,
+        WorkoutStatusNormalized.completed_adjusted,
+    }
+    target_plans = [
+        TargetPlanFact(
+            plan_id=item.id,
+            user_id=current_user.id,
+            workout_date=item.workout_date,
+            value=PlanValue(
+                content=item.planned_content,
+                distance_km=float(item.planned_distance_km) if item.planned_distance_km is not None else None,
+                main_type=item.main_type_normalized.value,
+                target_pace_text=item.target_pace_text,
+            ),
+            is_locked=item.is_locked,
+            is_completed=bool(item.workout_log and item.workout_log.status_normalized in completed),
+            plan_version=item.plan_version,
+        )
+        for item in planned
+    ]
     knowledge_tool = build_configured_knowledge_tool(settings)
     graph = build_weekly_review_graph(
         facts_loader=lambda facts_request: weekly_facts_service.build_weekly_facts(db, facts_request),
         generator=generator,
+        plan_designer=(
+            StructuredPlanDesigner(structured_provider, provider_settings, db=db)
+            if structured_provider is not None
+            else None
+        ),
+        proposal_materializer=DeterministicProposalMaterializer(),
         knowledge_retriever=(
             KnowledgeToolWeeklyRetriever(knowledge_tool, timezone=payload.timezone)
             if knowledge_tool is not None
@@ -302,8 +370,25 @@ def generate_langgraph_weekly_review(
         tracer=get_configured_tracer(),
     )
     result = WeeklyReviewState.model_validate(
-        graph.invoke(WeeklyReviewState(user_id=current_user.id, request=request).model_dump(mode="python"))
+        graph.invoke(
+            WeeklyReviewState(
+                user_id=current_user.id,
+                request=request,
+                target_plans=target_plans,
+            ).model_dump(mode="python")
+        )
     )
     if result.final_review is None:
         raise RuntimeError("Weekly review graph did not produce a final result")
-    return result.final_review
+    review = result.final_review
+    if result.proposal is not None:
+        record = adaptive_approval_service.persist_proposal(
+            db,
+            user_id=current_user.id,
+            proposal=result.proposal,
+            cycle_id=payload.cycle_id,
+        )
+        review = review.model_copy(update={"proposal_record_id": record.id})
+    else:
+        db.commit()
+    return review

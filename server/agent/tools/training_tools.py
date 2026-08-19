@@ -129,14 +129,14 @@ class GetTrainingDataQualityTool(AgentTool):
             source_mix=quality.source_mix,
             freshness=freshness,
             warnings=(
-                [_notice("TRAINING_DATA_STALE", "The latest completed workout is more than two days old.")]
+                [_notice("TRAINING_DATA_STALE", "最近一次已完成训练距今超过两天。")]
                 if freshness == "STALE"
                 else []
             ),
             limitations=[
                 _notice(
                     "DATA_QUALITY_IS_COMPLETENESS",
-                    "Coverage describes available fields and is not a medical or model confidence score.",
+                    "数据完整度只表示当前字段的可用情况，不代表医疗风险或模型置信度。",
                 )
             ],
         )

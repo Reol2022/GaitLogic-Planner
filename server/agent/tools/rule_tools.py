@@ -60,11 +60,11 @@ class GetTrainingRulesTool(AgentTool):
             limitations.append(
                 _notice(
                     "RUNNER_STATE_RULE_SCOPE_UNAVAILABLE",
-                    "No enabled public rule package uses the runner_state scope.",
+                    "当前没有已启用的公开规则包使用跑者状态规则范围。",
                 )
             )
         if total > self.rule_limit:
-            limitations.append(_notice("RULE_LIST_TRIMMED", "Rule summaries were truncated."))
+            limitations.append(_notice("RULE_LIST_TRIMMED", "训练规则摘要已按展示上限截取。"))
         return TrainingRulesOutput(
             data_status=(TrainingDataStatus.AVAILABLE if rules else TrainingDataStatus.NOT_FOUND),
             rules=[
@@ -119,11 +119,11 @@ class EvaluateTodayWorkoutTool(AgentTool):
             limitations.append(
                 _notice(
                     "DAILY_EVALUATION_DATA_LIMITED",
-                    "The existing daily facts report insufficient data; no decision was inferred.",
+                    "当前每日训练事实不足，系统没有推测训练结论。",
                 )
             )
         if len(response.evaluation.matched_rules) > self.item_limit:
-            limitations.append(_notice("RULE_HITS_TRIMMED", "Rule hits were truncated."))
+            limitations.append(_notice("RULE_HITS_TRIMMED", "命中的训练规则已按展示上限截取。"))
         return TodayEvaluationOutput(
             data_status=data_status,
             decision=decision,
@@ -133,13 +133,13 @@ class EvaluateTodayWorkoutTool(AgentTool):
                     rule_code=hit.rule_code,
                     severity=hit.severity,
                     action=hit.action,
-                    explanation=_clean(hit.explanation) or "Rule matched.",
+                    explanation=_clean(hit.explanation) or "该训练规则已命中。",
                 )
                 for hit in hits
             ],
             evidence=[item for hit in hits for item in [*(hit.output.get("evidence", []) or [])] if isinstance(item, str)][: self.item_limit],
             warnings=(
-                [_notice("TRAINING_REVIEW_RECOMMENDED", _clean(response.message) or "Review the current training context.")]
+                [_notice("TRAINING_REVIEW_RECOMMENDED", _clean(response.message) or "建议人工复核当前训练情况。")]
                 if risk_level in {"MODERATE", "HIGH"}
                 else []
             ),

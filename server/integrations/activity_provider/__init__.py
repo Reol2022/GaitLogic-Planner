@@ -4,6 +4,7 @@ from server.integrations.activity_provider.base import (
     ProviderAuthResult,
     ProviderError,
     ProviderLap,
+    ProviderRecoverySnapshot,
 )
 from server.integrations.activity_provider.garmin import GarminActivityProvider
 from server.integrations.activity_provider.mock import MockActivityProvider
@@ -16,4 +17,5 @@ __all__ = [
     "ProviderAuthResult",
     "ProviderError",
     "ProviderLap",
+    "ProviderRecoverySnapshot",
 ]

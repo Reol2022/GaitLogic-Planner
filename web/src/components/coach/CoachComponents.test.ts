@@ -123,6 +123,25 @@ describe("CoachSafetyNotices", () => {
   it("renders no empty cards", () => {
     expect(mount(CoachSafetyNotices).html()).toBe("<!--v-if-->");
   });
+
+  it("translates legacy English and internal limitation messages", () => {
+    const wrapper = mount(CoachSafetyNotices, {
+      props: {
+        limitations: [
+          { code: "DATA_QUALITY_IS_COMPLETENESS", message: "Coverage describes available fields and is not a medical or model confidence score." },
+          { code: "STRUCTURED_SEGMENTS_UNAVAILABLE", message: "The current plan stores workout content as text, so structured segments were not invented." },
+          { code: "RUNNER_STATE_LIMITATION", message: "rpe_incomplete_7d" },
+          { code: "RUNNER_STATE_LIMITATION", message: "training_phase_unavailable_no_structured_cycle_phase" },
+        ],
+      },
+    });
+    expect(wrapper.text()).toContain("数据完整度只表示当前字段的可用情况");
+    expect(wrapper.text()).toContain("系统不会推测或虚构结构化训练分段");
+    expect(wrapper.text()).toContain("近 7 天部分训练缺少主观用力程度");
+    expect(wrapper.text()).toContain("暂时无法判断当前训练阶段");
+    expect(wrapper.text()).not.toContain("Coverage describes");
+    expect(wrapper.text()).not.toContain("rpe_incomplete_7d");
+  });
 });
 
 describe("CoachToolSummary", () => {

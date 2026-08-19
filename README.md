@@ -150,6 +150,10 @@ v0.13.0 新增确定性 Weekly Facts、LangGraph 周复盘、训练知识引用�
 
 前端入口为 `/adaptive-weekly-review`。公开虚构评测与复现命令见 [Weekly/Adaptive Evaluation](docs/weekly-review/evaluation/weekly-adaptive-eval-v1.md)，实现复习见 [v0.13.0 Learning Docs](docs/learning/v0.13.0/01-v0.13.0-architecture.md)。本能力不构成医疗诊断，也不会把通用数据库写权限交给 LLM。
 
+![周复盘1](docs/images/weekly-review1.png)
+
+![周复盘2](docs/images/weekly-review2.png)
+
 ### v0.12.0 训练知识 RAG 与可信引用
 
 Coach Agent 通过只读 `retrieve_training_knowledge` 工具检索版本化训练知识。模型只选择本次请求内的临时 Reference ID，服务端负责校验并物化标题、来源、版本、证据等级和摘录，避免模型伪造来源。知识用于解释，不参与或覆盖 TODAY 的确定性 Decision。

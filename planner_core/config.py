@@ -1,9 +1,14 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 from urllib.parse import quote_plus, urlparse
 
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -79,10 +84,16 @@ class Settings(BaseSettings):
     ai_plan_daily_limit: int = Field(default=3, validation_alias="AI_PLAN_DAILY_LIMIT")
     ai_plan_cooldown_seconds: int = Field(default=60, validation_alias="AI_PLAN_COOLDOWN_SECONDS")
     agent_max_model_calls: int = Field(
-        default=2,
+        default=4,
         ge=1,
-        le=2,
+        le=8,
         validation_alias="AGENT_MAX_MODEL_CALLS",
+    )
+    agent_max_tool_rounds: int = Field(
+        default=3,
+        ge=0,
+        le=7,
+        validation_alias="AGENT_MAX_TOOL_ROUNDS",
     )
     agent_max_tool_calls: int = Field(
         default=6,
@@ -218,8 +229,56 @@ class Settings(BaseSettings):
     coach_agent_max_output_tokens: int = Field(
         default=2000,
         ge=256,
-        le=8000,
+        le=65536,
         validation_alias="COACH_AGENT_MAX_OUTPUT_TOKENS",
+    )
+    coach_fact_query_model: str | None = Field(
+        default=None, validation_alias="COACH_FACT_QUERY_MODEL"
+    )
+    coach_fact_query_max_output_tokens: int = Field(
+        default=2048, ge=256, le=65536, validation_alias="COACH_FACT_QUERY_MAX_OUTPUT_TOKENS"
+    )
+    coach_analysis_model: str | None = Field(
+        default=None, validation_alias="COACH_ANALYSIS_MODEL"
+    )
+    coach_analysis_max_output_tokens: int = Field(
+        default=8192, ge=256, le=65536, validation_alias="COACH_ANALYSIS_MAX_OUTPUT_TOKENS"
+    )
+    weekly_review_model: str | None = Field(
+        default=None, validation_alias="WEEKLY_REVIEW_MODEL"
+    )
+    weekly_review_max_output_tokens: int = Field(
+        default=16384, ge=1024, le=65536, validation_alias="WEEKLY_REVIEW_MAX_OUTPUT_TOKENS"
+    )
+    weekly_review_timeout_seconds: int = Field(
+        default=300, ge=30, le=600, validation_alias="WEEKLY_REVIEW_TIMEOUT_SECONDS"
+    )
+    plan_design_model: str | None = Field(
+        default=None, validation_alias="PLAN_DESIGN_MODEL"
+    )
+    plan_design_max_output_tokens: int = Field(
+        default=16384, ge=1024, le=65536, validation_alias="PLAN_DESIGN_MAX_OUTPUT_TOKENS"
+    )
+    plan_design_timeout_seconds: int = Field(
+        default=300, ge=30, le=600, validation_alias="PLAN_DESIGN_TIMEOUT_SECONDS"
+    )
+    ai_plan_generation_model: str | None = Field(
+        default=None, validation_alias="AI_PLAN_GENERATION_MODEL"
+    )
+    ai_plan_generation_max_output_tokens: int = Field(
+        default=24000, ge=4096, le=65536, validation_alias="AI_PLAN_GENERATION_MAX_OUTPUT_TOKENS"
+    )
+    provider_task_max_retries: int = Field(
+        default=2, ge=0, le=2, validation_alias="PROVIDER_TASK_MAX_RETRIES"
+    )
+    provider_task_retry_token_multiplier: float = Field(
+        default=1.5, ge=1.0, le=2.0, validation_alias="PROVIDER_TASK_RETRY_TOKEN_MULTIPLIER"
+    )
+    weekly_reasoning_persistence_enabled: bool = Field(
+        default=True, validation_alias="WEEKLY_REASONING_PERSISTENCE_ENABLED"
+    )
+    plan_design_reasoning_persistence_enabled: bool = Field(
+        default=True, validation_alias="PLAN_DESIGN_REASONING_PERSISTENCE_ENABLED"
     )
     coach_agent_daily_limit: int = Field(
         default=30,
@@ -520,7 +579,9 @@ class Settings(BaseSettings):
     enable_competition_demo_data: bool = Field(default=False, validation_alias="ENABLE_COMPETITION_DEMO_DATA")
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Resolve the development env file independently from the shell's cwd.
+        # Uvicorn/reload workers may otherwise silently fall back to localhost.
+        env_file=PROJECT_ENV_FILE,
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

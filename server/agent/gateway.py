@@ -2,10 +2,21 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from typing import Any
+from uuid import UUID
 
 from server.agent.schemas import AgentContext, AgentModelOutput, AgentToolDefinition
 from server.agent.trace import AgentTrace
+
+
+@dataclass
+class AgentExecutionState:
+    """One HTTP request's native Provider conversation; never persisted."""
+
+    messages: list[dict[str, Any]] = field(default_factory=list)
+    provider_call_ids: dict[UUID, str] = field(default_factory=dict)
+    sent_tool_result_ids: set[UUID] = field(default_factory=set)
 
 
 class AgentLLMGateway(ABC):
@@ -20,6 +31,7 @@ class AgentLLMGateway(ABC):
         context: AgentContext,
         tools: list[AgentToolDefinition],
         trace: AgentTrace,
+        execution_state: AgentExecutionState | None = None,
     ) -> AgentModelOutput:
         """Return validated structured output without exposing reasoning."""
 
@@ -49,7 +61,9 @@ class MockAgentLLMGateway(AgentLLMGateway):
         context: AgentContext,
         tools: list[AgentToolDefinition],
         trace: AgentTrace,
+        execution_state: AgentExecutionState | None = None,
     ) -> AgentModelOutput:
+        del execution_state
         self.call_count += 1
         self.exposed_tool_names.append([item.name for item in tools])
         if self._error is not None:

@@ -32,6 +32,7 @@ def test_evidence_is_bounded() -> None:
     deps = FakeDependencies()
     output = GetRunnerStateTool(deps, evidence_limit=1).execute(EmptyToolInput(), context())
     assert len(output.evidence) <= 3
+    assert all("_" not in item.message for item in output.limitations)
 
 
 def test_history_is_summary_only_and_bounded() -> None:

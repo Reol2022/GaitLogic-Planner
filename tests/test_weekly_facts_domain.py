@@ -203,12 +203,13 @@ def test_cancelled_plan_is_excluded_from_denominators() -> None:
     }
 
 
-def test_logs_without_plan_are_insufficient_for_plan_adherence() -> None:
+def test_logs_without_plan_keep_observed_domains_and_block_plan_adherence_only() -> None:
     result = facts([], [log(11, 6)])
-    assert (
-        result.classification.primary_status
-        == WeeklyClassificationStatus.INSUFFICIENT_DATA
-    )
+    domains = {item["domain"]: item["readiness"] for item in result.classification.domain_readiness}
+    assert result.classification.overall_readiness == "PARTIAL"
+    assert domains["plan_execution"] == "BLOCKED"
+    assert domains["training_volume"] == "READY"
+    assert "COMPLETED_WITHOUT_PLAN" in result.classification.evidence_codes
     assert result.adherence.session_completion_rate is None
     assert result.data_quality.missing_plan_days == [date(2026, 7, 6)]
 

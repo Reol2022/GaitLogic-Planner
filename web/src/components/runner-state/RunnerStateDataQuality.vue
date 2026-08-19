@@ -30,6 +30,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { RunnerStateDataQuality } from "@/types/runnerState";
+import { limitationMessage } from "@/utils/limitationDisplay";
 import { formatPercent } from "@/utils/runnerStateFormat";
 
 const props = withDefaults(defineProps<{ quality: RunnerStateDataQuality; inferenceLimitations?: string[] }>(), {
@@ -41,26 +42,12 @@ const qualityLabel = computed(() => qualityLabels[props.quality.data_quality_lev
 const qualityTagType = computed(() => props.quality.data_quality_level === "HIGH" ? "success" : props.quality.data_quality_level === "MEDIUM" ? "primary" : "info");
 const limitations = computed(() => Array.from(new Set([...props.quality.limitations, ...props.inferenceLimitations])));
 
-const limitationLabels: Record<string, string> = {
-  intensity_distance_uses_main_workout_type: "强度距离按训练主类型统计",
-  composite_workout_intensity_segments_not_split: "复合训练暂不能可靠拆分强度分段",
-  high_intensity_composite_segments_use_main_workout_type: "复合训练的高强度判断使用主训练类型",
-  training_phase_unavailable_no_structured_cycle_phase: "训练周期没有结构化阶段信息",
-  recovery_day_fatigue_rule_disabled_v1: "本版本未启用无恢复日规则",
-  near_zero_volume_baseline_cutoff_not_defined: "接近零的跑量基线边界尚未定义",
-  days_since_last_quality_session_unavailable: "最近关键课日期暂无数据",
-};
-
 function availability(field: string) {
   return props.quality.available_fields.includes(field) ? "可用" : "暂无数据";
 }
 
 function limitationLabel(value: string) {
-  if (limitationLabels[value]) return limitationLabels[value];
-  if (value.startsWith("rpe_incomplete_")) return "部分训练缺少 RPE";
-  if (value.startsWith("heart_rate_incomplete_")) return "部分训练缺少心率";
-  if (value.startsWith("completion_rate_") && value.includes("no_planned_sessions")) return "当前窗口没有可用计划数据";
-  return value;
+  return limitationMessage(value);
 }
 </script>
 

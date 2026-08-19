@@ -25,7 +25,7 @@ from server.agent.evaluation.schemas import (
     EvaluationCaseResult,
 )
 from server.agent.fallback import DeterministicCoachFallback
-from server.agent.gateway import AgentLLMGateway
+from server.agent.gateway import AgentExecutionState, AgentLLMGateway
 from server.agent.orchestrator import GaitLogicCoachAgent
 from server.agent.prompts import COACH_AGENT_PROMPT_VERSION
 from server.agent.schemas import (
@@ -58,8 +58,9 @@ class DeterministicEvaluationGateway(AgentLLMGateway):
         context: AgentContext,
         tools: list[AgentToolDefinition],
         trace: AgentTrace,
+        execution_state: AgentExecutionState | None = None,
     ) -> AgentModelOutput:
-        del system_instructions, tools, trace
+        del system_instructions, tools, trace, execution_state
         self.call_count += 1
         if self.fixture.provider_mode in {"disabled", "timeout"}:
             raise RuntimeError(f"fictional {self.fixture.provider_mode}")

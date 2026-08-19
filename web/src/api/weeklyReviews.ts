@@ -19,7 +19,11 @@ export function generateWeeklyReview(payload: {
   target_block_id?: number | null;
   force_regenerate?: boolean;
 }) {
-  return request.post<WeeklyReviewDetail>("/weekly-reviews/generate", payload);
+  return request.post<WeeklyReviewDetail>("/weekly-reviews/generate", payload, {
+    // Weekly analysis and plan design are two independent Thinking requests.
+    // Their combined wall-clock time can legitimately exceed the global 120s budget.
+    timeout: 900000,
+  });
 }
 
 export function listWeeklyReviews(cycleId?: number | null) {

@@ -136,6 +136,8 @@ class PainTrend(str, Enum):
 
 class RecoveryCheckinSource(str, Enum):
     manual = "manual"
+    garmin = "garmin"
+    mixed = "mixed"
 
 
 class PainScaleVersion(str, Enum):

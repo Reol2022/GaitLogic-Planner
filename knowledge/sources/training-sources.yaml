@@ -21,6 +21,18 @@ sources:
     usage_policy: SELF_WRITTEN_SUMMARY
     notes: Bibliographic reference plus an independently written summary; no book text is stored.
 
+  - source_id: daniels-running-formula-3rd-edition-cn-summary
+    title: 丹尼尔斯经典跑步训练法：世界最佳跑步教练的跑步公式
+    source_type: BOOK_SUMMARY
+    authors:
+      - Jack Daniels
+    edition: Third Edition; Simplified Chinese electronic edition
+    publication_year: 2014
+    publisher: 浙江人民出版社 / 湛庐文化
+    license_status: SUMMARY_ONLY
+    usage_policy: SELF_WRITTEN_SUMMARY
+    notes: Independently written Chinese summaries of a locally reviewed third-edition electronic book. The PDF is not stored in this repository; source-page references identify the reviewed content without reproducing book text.
+
   - source_id: public-endurance-guidance-summary
     title: Public Endurance Training Guidance — GaitLogic Summary
     source_type: GUIDELINE_SUMMARY

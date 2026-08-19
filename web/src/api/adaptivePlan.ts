@@ -18,7 +18,11 @@ export function getCanonicalWeeklyFacts(params: WeeklyFactsQuery) {
 }
 
 export function generateLangGraphWeeklyReview(payload: WeeklyFactsQuery) {
-  return request.post<LangGraphWeeklyReview>("/weekly-reviews/graph", payload);
+  return request.post<LangGraphWeeklyReview>("/weekly-reviews/graph", payload, {
+    // Weekly analysis and plan design are two independent Thinking requests.
+    // Their combined wall-clock time can legitimately exceed the global 120s budget.
+    timeout: 900000,
+  });
 }
 
 export function getAdaptiveProposal(proposalId: number) {

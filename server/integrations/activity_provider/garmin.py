@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -11,6 +11,7 @@ from server.integrations.activity_provider.base import (
     ProviderAuthResult,
     ProviderError,
     ProviderLap,
+    ProviderRecoverySnapshot,
 )
 
 MFA_STATE_CACHE: dict[str, dict[str, Any]] = {}
@@ -165,6 +166,65 @@ class GarminActivityProvider(ActivityProvider):
     def fetch_activity_details(self, external_activity_id: str) -> ProviderActivity:
         return self.fetch_activity_summary(external_activity_id)
 
+    def fetch_recovery(self, start: date, end: date) -> list[ProviderRecoverySnapshot]:
+        """Read the SDK's documented health summaries without retaining raw JSON.
+
+        Garmin Connect can return a different subset for each account, device
+        and calendar day. Missing endpoint data remains ``None`` and becomes a
+        canonical missing-field limitation later; it is never substituted with
+        zero or inferred from another metric.
+        """
+
+        if end < start:
+            raise ProviderError("INVALID_ARGUMENT", "Recovery date range is invalid.")
+        if (end - start).days > 31:
+            raise ProviderError("INVALID_ARGUMENT", "Recovery date range exceeds 31 days.")
+        client = self._require_client()
+        snapshots: list[ProviderRecoverySnapshot] = []
+        current = start
+        while current <= end:
+            day = current.isoformat()
+            unavailable: list[str] = []
+            sleep = self._health_call(client, "get_sleep_data", (day,), "sleep", unavailable)
+            heart = self._health_call(client, "get_heart_rates", (day,), "resting_heart_rate", unavailable)
+            hrv = self._health_call(client, "get_hrv_data", (day,), "hrv", unavailable)
+            stress = self._health_call(client, "get_all_day_stress", (day,), "stress", unavailable)
+            battery = self._health_call(client, "get_body_battery", (day, day), "body_battery", unavailable)
+            respiration = self._health_call(client, "get_respiration_data", (day,), "respiration", unavailable)
+            snapshots.append(
+                _recovery_from_garmin_payloads(
+                    current,
+                    sleep=sleep,
+                    heart=heart,
+                    hrv=hrv,
+                    stress=stress,
+                    body_battery=battery,
+                    respiration=respiration,
+                    endpoint_limitations=unavailable,
+                )
+            )
+            current = date.fromordinal(current.toordinal() + 1)
+        return snapshots
+
+    def _health_call(
+        self,
+        client: Any,
+        method_name: str,
+        arguments: tuple[Any, ...],
+        field_name: str,
+        limitations: list[str],
+    ) -> Any:
+        try:
+            return getattr(client, method_name)(*arguments)
+        except Exception as exc:
+            # Authentication and rate-limit errors are real provider failures;
+            # a per-field missing response is only a partial recovery result.
+            text = str(exc).lower()
+            if any(token in text for token in ("401", "unauthorized", "authentication", "login failed", "429", "rate")):
+                _raise_safe_provider_error(exc, reauth="401" in text or "unauthorized" in text)
+            limitations.append(f"garmin_{field_name}_unavailable")
+            return None
+
     def disconnect(self) -> None:
         self._client = None
 
@@ -201,6 +261,122 @@ def _raise_safe_provider_error(exc: Exception, *, reauth: bool = False) -> None:
     if "401" in text or "unauthorized" in text or "authentication" in text or "login failed" in text:
         raise ProviderError("AUTHENTICATION_REQUIRED", "Garmin 认证失败，请检查账号、密码和账号区域。") from exc
     raise ProviderError("PROVIDER_UNAVAILABLE", "Garmin 服务暂时不可用，请稍后再试。") from exc
+
+
+def _recovery_from_garmin_payloads(
+    recovery_date: date,
+    *,
+    sleep: Any,
+    heart: Any,
+    hrv: Any,
+    stress: Any,
+    body_battery: Any,
+    respiration: Any,
+    endpoint_limitations: list[str],
+) -> ProviderRecoverySnapshot:
+    """Convert Garmin's heterogeneous health responses into canonical facts.
+
+    Garmin Connect's private endpoints vary by device and region.  Missing data
+    remains absent rather than being converted into a misleading zero.
+    """
+    sleep_data = _mapping(_first_mapping(sleep, "dailySleepDTO", "sleepDTO", "sleep"))
+    heart_data = _mapping(_first_mapping(heart, "heartRateValues", "summary", "heartRate"))
+    hrv_data = _mapping(_first_mapping(hrv, "hrvSummary", "summary", "hrv"))
+    stress_data = _mapping(_first_mapping(stress, "summary", "allDayStress", "stress"))
+    respiration_data = _mapping(_first_mapping(respiration, "summary", "respiration"))
+
+    sleep_seconds = _number(_first(sleep_data, "sleepTimeSeconds", "sleepSeconds", "durationSeconds"))
+    sleep_minutes = round(sleep_seconds / 60) if sleep_seconds is not None else None
+    body_battery_values = _body_battery_values(body_battery)
+
+    values = {
+        "sleep_duration_minutes": sleep_minutes,
+        "resting_heart_rate_bpm": _integer(_first(heart_data, "restingHeartRate", "restingHeartRateBpm")),
+        "hrv_value": _number(_first(hrv_data, "lastNightAvg", "weeklyAvg", "hrvValue", "value")),
+        "average_stress": _integer(_first(stress_data, "avgStressLevel", "averageStressLevel", "avgStress")),
+        "body_battery_end": body_battery_values[-1] if body_battery_values else None,
+        "respiration_rate": _number(_first(respiration_data, "avgWakingRespirationValue", "avgRespirationValue", "averageRespiration")),
+    }
+    missing = [name for name, value in values.items() if value is None]
+    limitations = sorted(set(endpoint_limitations))
+
+    return ProviderRecoverySnapshot(
+        recovery_date=normalize_garmin_daily_health_date(sleep_data, fallback=recovery_date),
+        provider="garmin",
+        sleep_duration_minutes=values["sleep_duration_minutes"],
+        sleep_start=_parse_datetime(_first(sleep_data, "sleepStartTimestampGMT", "sleepStartTimestampLocal")),
+        sleep_end=_parse_datetime(_first(sleep_data, "sleepEndTimestampGMT", "sleepEndTimestampLocal")),
+        sleep_score=_integer(_first(sleep_data, "overallSleepScore", "sleepScore")),
+        resting_heart_rate_bpm=values["resting_heart_rate_bpm"],
+        hrv_value=values["hrv_value"],
+        hrv_metric="MS" if values["hrv_value"] is not None else None,
+        hrv_status=_string(_first(hrv_data, "status", "hrvStatus")),
+        average_stress=values["average_stress"],
+        max_stress=_integer(_first(stress_data, "maxStressLevel", "maximumStressLevel", "maxStress")),
+        body_battery_start=body_battery_values[0] if body_battery_values else None,
+        body_battery_end=values["body_battery_end"],
+        body_battery_high=max(body_battery_values) if body_battery_values else None,
+        body_battery_low=min(body_battery_values) if body_battery_values else None,
+        respiration_rate=values["respiration_rate"],
+        pulse_ox=_number(_first(sleep_data, "averageSpO2Value", "avgSpO2", "pulseOx")),
+        missing_fields=missing,
+        limitations=limitations,
+    )
+
+
+def _first_mapping(payload: Any, *keys: str) -> dict[str, Any]:
+    source = _mapping(payload)
+    for key in keys:
+        value = source.get(key)
+        if isinstance(value, dict):
+            return value
+    return source
+
+
+def normalize_garmin_daily_health_date(payload: dict[str, Any], *, fallback: date) -> date:
+    """Prefer Garmin's calendar/summary date over the time the sync ran."""
+    raw = _first(payload, "calendarDate", "summaryDate", "date")
+    if isinstance(raw, str):
+        try:
+            return date.fromisoformat(raw[:10])
+        except ValueError:
+            pass
+    return fallback
+
+
+def _mapping(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _number(value: Any) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _integer(value: Any) -> int | None:
+    number = _number(value)
+    return int(number) if number is not None else None
+
+
+def _string(value: Any) -> str | None:
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _body_battery_values(payload: Any) -> list[int]:
+    rows = payload if isinstance(payload, list) else _first(_mapping(payload), "bodyBatteryValuesArray", "values")
+    if not isinstance(rows, list):
+        return []
+    values: list[int] = []
+    for row in rows:
+        candidate = row[-1] if isinstance(row, list) and row else _first(_mapping(row), "value", "bodyBattery")
+        value = _integer(candidate)
+        if value is not None:
+            values.append(value)
+    return values
 
 
 def _activity_from_payload(payload: dict[str, Any], client: Any | None = None) -> ProviderActivity:

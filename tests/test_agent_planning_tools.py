@@ -37,6 +37,7 @@ def test_today_rest_and_plan_are_read_without_inventing_segments() -> None:
     output = GetTodayWorkoutTool(deps).execute(EmptyToolInput(), context())
     assert output.workout_status == "REST_DAY"
     assert output.segments == []
+    assert output.limitations[0].message == "当前训练计划以文本保存训练内容，系统不会推测或虚构结构化训练分段。"
 
     rest.main_type_normalized = WorkoutMainTypeNormalized.easy
     rest.workout_log = SimpleNamespace(status_normalized=WorkoutStatusNormalized.completed_normal)

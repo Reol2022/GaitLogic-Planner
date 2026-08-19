@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import cast
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -14,6 +15,13 @@ from server.agent.tools.knowledge_tools import (
 )
 from server.agent.trace import AgentTrace
 from server.weekly_review_graph.schemas import WeeklyReviewDraft, WeeklyReviewState
+from planner_core.config import Settings
+from sqlalchemy.orm import Session
+from server.model_tasks import ModelTaskType, task_model_profile
+from server.services.adaptive_plan_proposal_service import AdaptivePlanProposalService
+from server.services.provider_reasoning_service import persist_reasoning
+from server.structured_task_provider import StructuredTaskProvider
+from server.weekly_review_graph.schemas import PlanDesignAnalysis, WeeklyReviewAnalysis
 
 
 class AgentGatewayWeeklyReviewGenerator:
@@ -105,4 +113,116 @@ class KnowledgeToolWeeklyRetriever:
         return self.tool.execute(
             RetrieveTrainingKnowledgeInput(query=query, top_k=min(4, self.tool.maximum_top_k)),
             context,
+        )
+
+
+class StructuredWeeklyReviewGenerator:
+    def __init__(
+        self,
+        provider: StructuredTaskProvider,
+        settings: Settings,
+        *,
+        db: Session | None = None,
+    ) -> None:
+        self.provider = provider
+        self.profile = task_model_profile(settings, ModelTaskType.WEEKLY_REVIEW_ANALYSIS)
+        self.db = db
+
+    def __call__(self, state: WeeklyReviewState) -> WeeklyReviewAnalysis:
+        if state.weekly_facts is None:
+            raise ValueError("Weekly facts are required")
+        references = [
+            {
+                "id": item.knowledge_reference_id,
+                "title": item.title,
+                "section": item.section,
+                "excerpt": item.excerpt,
+                "limitations": item.limitations,
+            }
+            for item in state.knowledge_results
+        ]
+        result = self.provider.generate(
+            profile=self.profile,
+            schema=WeeklyReviewAnalysis,
+            system_prompt=(
+                "Analyze canonical running facts without changing any plan. Treat deterministic rules, "
+                "decision readiness, warnings and limitations as authoritative. Return only the requested "
+                "JSON schema. Do not diagnose injury or invent missing recovery facts."
+            ),
+            input_payload={
+                "weekly_facts": state.weekly_facts.model_dump(mode="json"),
+                "deterministic_rules": state.rule_results,
+                "warnings": state.warnings,
+                "limitations": state.limitations,
+                "knowledge_references": references,
+            },
+        )
+        if self.db is not None:
+            persist_reasoning(
+                self.db,
+                user_id=state.user_id,
+                provider="openai-compatible",
+                profile=self.profile,
+                result=result,
+                related_record_type="weekly_facts",
+            )
+        return cast(WeeklyReviewAnalysis, result.value)
+
+
+class StructuredPlanDesigner:
+    def __init__(
+        self,
+        provider: StructuredTaskProvider,
+        settings: Settings,
+        *,
+        db: Session | None = None,
+    ) -> None:
+        self.provider = provider
+        self.profile = task_model_profile(settings, ModelTaskType.PLAN_DESIGN)
+        self.db = db
+
+    def __call__(self, state: WeeklyReviewState) -> PlanDesignAnalysis:
+        if state.weekly_facts is None or state.weekly_analysis is None:
+            raise ValueError("Validated weekly analysis is required")
+        result = self.provider.generate(
+            profile=self.profile,
+            schema=PlanDesignAnalysis,
+            system_prompt=(
+                "Design conservative candidate changes for the supplied existing plan. Use only supplied "
+                "plan IDs and rule codes. Do not mutate data. Partial readiness never authorizes an increase. "
+                "Return only the requested JSON schema for deterministic server materialization."
+            ),
+            input_payload={
+                "weekly_review_analysis": state.weekly_analysis.model_dump(mode="json"),
+                "weekly_classification": state.weekly_facts.classification.model_dump(mode="json"),
+                "runner_state": state.weekly_facts.runner_state_trend.model_dump(mode="json"),
+                "target_plans": [item.model_dump(mode="json") for item in state.target_plans],
+                "deterministic_rules": state.rule_results,
+                "knowledge_reference_ids": state.weekly_analysis.knowledge_reference_ids,
+            },
+        )
+        if self.db is not None:
+            persist_reasoning(
+                self.db,
+                user_id=state.user_id,
+                provider="openai-compatible",
+                profile=self.profile,
+                result=result,
+                related_record_type="weekly_facts",
+            )
+        return cast(PlanDesignAnalysis, result.value)
+
+
+class DeterministicProposalMaterializer:
+    def __init__(self, service: AdaptivePlanProposalService | None = None) -> None:
+        self.service = service or AdaptivePlanProposalService()
+
+    def __call__(self, state: WeeklyReviewState):
+        if state.weekly_facts is None or state.plan_design is None:
+            raise ValueError("Weekly facts and plan design are required")
+        return self.service.create_proposal(
+            user_id=state.user_id,
+            weekly_facts=state.weekly_facts,
+            target_plans=state.target_plans,
+            candidates=state.plan_design.candidate_adjustments,
         )

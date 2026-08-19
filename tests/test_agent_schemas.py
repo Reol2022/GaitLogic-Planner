@@ -125,9 +125,9 @@ def test_model_output_requires_unique_uuid_tool_call_ids() -> None:
         )
 
 
-def test_agent_limits_enforce_two_model_call_hard_cap() -> None:
+def test_agent_limits_enforce_bounded_multi_round_model_call_cap() -> None:
     with pytest.raises(ValidationError):
-        AgentLimits(max_model_calls=3)
+        AgentLimits(max_model_calls=9)
 
 
 def test_public_agent_response_has_no_identity_prompt_or_exception_fields() -> None:

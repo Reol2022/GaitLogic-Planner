@@ -144,6 +144,15 @@ class AgentResponseValidator:
             errors.append(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED)
 
         for invocation in output.tool_calls:
+            if any(
+                result.tool_name == invocation.tool_name
+                and result.status == AgentToolStatus.SUCCEEDED
+                for result in context.tool_results
+            ):
+                # A completed context tool is immutable request-local fact
+                # data, not a retryable model action.
+                errors.append(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED)
+                continue
             tool = registry.get(invocation.tool_name)
             if tool is None:
                 errors.append(AgentErrorCode.AGENT_TOOL_NOT_FOUND)

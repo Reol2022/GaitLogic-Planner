@@ -30,6 +30,7 @@ from server.agent.tool import AgentTool
 from server.agent.today_recommendation import TodayRecommendationValidator
 from server.agent.trace import AgentTrace
 from tests.agent_tool_fakes import NOW
+from server.provider_reliability import ProviderFailureCategory
 
 
 class FakeCompletions:
@@ -122,6 +123,74 @@ def today_context() -> AgentContext:
         },
         data_quality={"data_status": "AVAILABLE"},
     )
+
+
+def test_today_request_includes_server_owned_qualitative_constraints() -> None:
+    fake = FakeClient(
+        [
+            response(
+                content=json.dumps(
+                    {
+                        "answer": "Use the existing plan qualitatively.",
+                        "summary": "Proceed with the plan.",
+                        "key_evidence_ids": ["evidence_1"],
+                        "knowledge_reference_ids": [],
+                    }
+                )
+            )
+        ]
+    )
+    gateway = OpenAICompatibleAgentGateway(
+        settings(coach_agent_response_format_mode="json_object"),
+        client_factory=lambda *_args: fake,
+    )
+
+    gateway.generate(
+        system_instructions="safe",
+        user_message="fictional today question",
+        context=today_context(),
+        tools=[],
+        trace=AgentTrace(request_id=today_context().request_id),
+    )
+
+    payload = json.loads(fake.completions.calls[0]["messages"][1]["content"])
+    constraints = payload["response_constraints"]
+    assert constraints["narrative_style"] == "qualitative_only"
+    assert constraints["forbid_new_distance_or_duration_numbers"] is True
+    assert "user_id" not in payload["context"]
+
+
+def test_explain_request_includes_server_owned_fact_constraints() -> None:
+    fake = FakeClient(
+        [
+            response(
+                content=json.dumps(
+                    {
+                        "answer": "Explain only supplied state.",
+                        "intent": "EXPLAIN_RUNNER_STATE",
+                    }
+                )
+            )
+        ]
+    )
+    gateway = OpenAICompatibleAgentGateway(
+        settings(coach_agent_response_format_mode="json_object"),
+        client_factory=lambda *_args: fake,
+    )
+
+    gateway.generate(
+        system_instructions="safe",
+        user_message="fictional state question",
+        context=context(),
+        tools=[],
+        trace=AgentTrace(request_id=context().request_id),
+    )
+
+    payload = json.loads(fake.completions.calls[0]["messages"][1]["content"])
+    constraints = payload["response_constraints"]
+    assert constraints["use_only_supplied_runner_state_facts"] is True
+    assert constraints["forbid_calculated_or_inferred_training_numbers"] is True
+    assert constraints["knowledge_reference_ids_must_match_available_ids"] is True
 
 
 def response(
@@ -242,13 +311,14 @@ def test_json_object_request_is_exact_and_ignores_unknown_provider_settings() ->
     )
     call = fake.completions.calls[0]
     assert call["response_format"] == {"type": "json_object"}
-    assert "extra_body" not in call
+    assert call["extra_body"] == {"thinking": {"type": "enabled"}}
     assert set(call) == {
         "model",
         "messages",
         "response_format",
         "max_tokens",
         "temperature",
+        "extra_body",
     }
     provider_events = [
         event for event in trace.events if event.provider_alias is not None
@@ -333,15 +403,15 @@ def test_invalid_today_evidence_protocol_is_rejected(
     assert len(fake.completions.calls) == 1
 
 
-def test_thinking_mode_unset_preserves_generic_provider_request() -> None:
+def test_task_profile_enables_thinking_even_when_legacy_mode_is_unset() -> None:
     fake = FakeClient(
         [response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "safe"}))]
     )
     run_gateway(fake, configured=settings(COACH_AGENT_THINKING_MODE="unset"))
-    assert "extra_body" not in fake.completions.calls[0]
+    assert fake.completions.calls[0]["extra_body"] == {"thinking": {"type": "enabled"}}
 
 
-def test_thinking_mode_disabled_adds_only_controlled_extra_body() -> None:
+def test_analysis_task_profile_supersedes_legacy_disabled_mode() -> None:
     fake = FakeClient(
         [response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "safe"}))]
     )
@@ -352,9 +422,7 @@ def test_thinking_mode_disabled_adds_only_controlled_extra_body() -> None:
             COACH_AGENT_EXTRA_BODY='{"unsafe":true}',
         ),
     )
-    assert fake.completions.calls[0]["extra_body"] == {
-        "thinking": {"type": "disabled"}
-    }
+    assert fake.completions.calls[0]["extra_body"] == {"thinking": {"type": "enabled"}}
 
 
 def test_json_object_and_thinking_disabled_are_combined_without_other_fields() -> None:
@@ -370,18 +438,17 @@ def test_json_object_and_thinking_disabled_are_combined_without_other_fields() -
     )
     call = fake.completions.calls[0]
     assert call["response_format"] == {"type": "json_object"}
-    assert call["extra_body"] == {"thinking": {"type": "disabled"}}
+    assert call["extra_body"] == {"thinking": {"type": "enabled"}}
 
 
-def test_thinking_mode_enabled_fails_closed_before_provider_call() -> None:
-    fake = FakeClient([])
-    with pytest.raises(AgentProviderError) as exc:
-        run_gateway(
-            fake,
-            configured=settings(COACH_AGENT_THINKING_MODE="enabled"),
-        )
-    assert exc.value.code == AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE
-    assert fake.completions.calls == []
+def test_thinking_mode_enabled_calls_provider() -> None:
+    fake = FakeClient([response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "safe"}))])
+    _gateway, output, _trace = run_gateway(
+        fake,
+        configured=settings(COACH_AGENT_THINKING_MODE="enabled"),
+    )
+    assert output.answer == "safe"
+    assert fake.completions.calls[0]["extra_body"] == {"thinking": {"type": "enabled"}}
 
 
 def test_reasoning_content_is_not_exposed_or_replayed_in_non_thinking_mode() -> None:
@@ -457,19 +524,21 @@ def test_invalid_output_is_rejected_without_retry(content: str) -> None:
     assert len(fake.completions.calls) == 1
 
 
-def test_length_finish_reason_is_rejected_without_parsing_or_retry() -> None:
+def test_length_finish_reason_is_classified_and_retried_once() -> None:
     fake = FakeClient(
         [
             response(
                 content='{"intent":"EXPLAIN_RUNNER_STATE","answer":"truncated"}',
                 finish_reason="length",
-            )
+            ),
+            response(content="", reasoning_content="still thinking", finish_reason="length"),
         ]
     )
     with pytest.raises(AgentProviderError) as exc:
         run_gateway(fake)
     assert exc.value.code == AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID
-    assert len(fake.completions.calls) == 1
+    assert exc.value.category == ProviderFailureCategory.PROVIDER_OUTPUT_TRUNCATED
+    assert len(fake.completions.calls) == 2
 
 
 def test_retryable_429_and_500_retry_once() -> None:
@@ -601,6 +670,10 @@ class MetricTool(AgentTool):
         return MetricOutput(doubled=arguments.value * 2)
 
 
+class OtherMetricTool(MetricTool):
+    name = "read_other_metric"
+
+
 def test_json_object_tool_call_then_final_response_uses_same_safe_contract() -> None:
     native_call = SimpleNamespace(
         function=SimpleNamespace(name="read_metric", arguments='{"value":4}')
@@ -644,15 +717,78 @@ def test_json_object_tool_call_then_final_response_uses_same_safe_contract() -> 
     assert len(fake.completions.calls) == 2
     assert all(
         call["response_format"] == {"type": "json_object"}
-        and call["extra_body"] == {"thinking": {"type": "disabled"}}
+        and call["extra_body"] == {"thinking": {"type": "enabled"}}
         for call in fake.completions.calls
     )
     assert [
         [message["role"] for message in call["messages"]]
         for call in fake.completions.calls
-    ] == [["system", "user"], ["system", "user"]]
-    assert '"doubled":8' in fake.completions.calls[1]["messages"][1]["content"]
+    ] == [["system", "user"], ["system", "user", "assistant", "tool"]]
+    assert '"doubled":8' in fake.completions.calls[1]["messages"][3]["content"]
     assert all(
         "reasoning_content" not in json.dumps(call, ensure_ascii=False)
-        for call in fake.completions.calls
+        for call in fake.completions.calls[:1]
     )
+
+
+def test_thinking_tool_turn_replays_reasoning_provider_id_and_order() -> None:
+    native_call = SimpleNamespace(
+        id="provider-call-1",
+        type="function",
+        function=SimpleNamespace(name="read_metric", arguments='{"value":4}'),
+    )
+    fake = FakeClient(
+        [
+            response(tool_calls=[native_call], reasoning_content="private request-local reasoning"),
+            response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "safe"})),
+        ]
+    )
+    gateway = OpenAICompatibleAgentGateway(settings(), client_factory=lambda _settings, _url: fake)
+    registry = AgentToolRegistry()
+    registry.register(MetricTool())
+    result = GaitLogicCoachAgent(gateway=gateway, registry=registry).run(
+        AgentRequest(user_id=1001, message="fictional", intent=AgentIntent.EXPLAIN_RUNNER_STATE)
+    )
+    assert result.status == AgentRunStatus.SUCCEEDED
+    messages = fake.completions.calls[1]["messages"]
+    assert [item["role"] for item in messages] == ["system", "user", "assistant", "tool"]
+    assert messages[2]["reasoning_content"] == "private request-local reasoning"
+    assert messages[2]["tool_calls"][0]["id"] == "provider-call-1"
+    assert messages[3]["tool_call_id"] == "provider-call-1"
+    assert "reasoning_content" not in result.model_dump_json()
+
+
+def test_two_tool_rounds_keep_complete_request_local_protocol() -> None:
+    calls = [
+        SimpleNamespace(
+            id=f"provider-call-{index}",
+            type="function",
+            function=SimpleNamespace(
+                name="read_metric" if index == 1 else "read_other_metric",
+                arguments='{"value":4}',
+            ),
+        )
+        for index in (1, 2)
+    ]
+    fake = FakeClient(
+        [
+            response(tool_calls=[calls[0]], reasoning_content="round one reasoning"),
+            response(tool_calls=[calls[1]], reasoning_content="round two reasoning"),
+            response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "done"})),
+        ]
+    )
+    gateway = OpenAICompatibleAgentGateway(settings(), client_factory=lambda _settings, _url: fake)
+    registry = AgentToolRegistry()
+    registry.register(MetricTool())
+    registry.register(OtherMetricTool())
+    result = GaitLogicCoachAgent(gateway=gateway, registry=registry).run(
+        AgentRequest(user_id=1001, message="fictional", intent=AgentIntent.EXPLAIN_RUNNER_STATE)
+    )
+    assert result.status == AgentRunStatus.SUCCEEDED
+    assert [item["role"] for item in fake.completions.calls[2]["messages"]] == [
+        "system", "user", "assistant", "tool", "assistant", "tool"
+    ]
+    assert fake.completions.calls[2]["messages"][2]["reasoning_content"] == "round one reasoning"
+    assert fake.completions.calls[2]["messages"][4]["reasoning_content"] == "round two reasoning"
+    assert "messages" not in gateway.__dict__
+    assert "reasoning_content" not in result.model_dump_json()

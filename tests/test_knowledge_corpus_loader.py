@@ -71,13 +71,54 @@ def test_rejects_missing_front_matter(tmp_path: Path) -> None:
         loader_for(tmp_path, root).load()
 
 
-def test_rejects_missing_required_section(tmp_path: Path) -> None:
+def test_rejects_missing_evidence_section(tmp_path: Path) -> None:
     root = write_corpus(
         tmp_path,
-        body=SECTIONS.replace("## 注意事项", "## 其他"),
+        metadata=document_metadata(
+            source_id="daniels-running-formula-3rd-edition-cn-summary",
+            source_type="BOOK_SUMMARY",
+        ),
+        sources=[
+            source_record(
+                source_id="daniels-running-formula-3rd-edition-cn-summary",
+                source_type="BOOK_SUMMARY",
+                license_status="SUMMARY_ONLY",
+                usage_policy="SELF_WRITTEN_SUMMARY",
+            )
+        ],
+        body=SECTIONS.replace("## Evidence", "## 来源"),
     )
-    with pytest.raises(KnowledgeLoadError, match="missing required sections"):
+    with pytest.raises(KnowledgeLoadError, match="missing required section: Evidence"):
         loader_for(tmp_path, root).load()
+
+
+def test_accepts_semantic_sections_without_a_fixed_template(tmp_path: Path) -> None:
+    body = """## 训练问题
+
+这是一段可独立检索的训练知识。
+
+## Evidence
+
+- Source: 虚构测试来源。
+"""
+    root = write_corpus(
+        tmp_path,
+        metadata=document_metadata(
+            source_id="daniels-running-formula-3rd-edition-cn-summary",
+            source_type="BOOK_SUMMARY",
+        ),
+        sources=[
+            source_record(
+                source_id="daniels-running-formula-3rd-edition-cn-summary",
+                source_type="BOOK_SUMMARY",
+                license_status="SUMMARY_ONLY",
+                usage_policy="SELF_WRITTEN_SUMMARY",
+            )
+        ],
+        body=body,
+    )
+    documents, _ = loader_for(tmp_path, root).load()
+    assert documents[0].metadata.document_id == "test-training-document"
 
 
 def test_rejects_missing_source_and_source_type_mismatch(tmp_path: Path) -> None:

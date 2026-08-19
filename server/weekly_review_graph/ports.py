@@ -4,7 +4,13 @@ from typing import Protocol
 
 from planner_core.weekly_review.schemas import WeeklyFacts, WeeklyFactsRequest
 from server.agent.tools.knowledge_tools import RetrieveTrainingKnowledgeOutput
-from server.weekly_review_graph.schemas import WeeklyReviewDraft, WeeklyReviewState
+from planner_core.adaptive_plan.schemas import PlanAdjustmentProposal
+from server.weekly_review_graph.schemas import (
+    PlanDesignAnalysis,
+    WeeklyReviewAnalysis,
+    WeeklyReviewDraft,
+    WeeklyReviewState,
+)
 
 
 class WeeklyFactsLoader(Protocol):
@@ -18,4 +24,12 @@ class WeeklyKnowledgeRetriever(Protocol):
 
 
 class WeeklyReviewGenerator(Protocol):
-    def __call__(self, state: WeeklyReviewState) -> WeeklyReviewDraft: ...
+    def __call__(self, state: WeeklyReviewState) -> WeeklyReviewAnalysis | WeeklyReviewDraft: ...
+
+
+class PlanDesigner(Protocol):
+    def __call__(self, state: WeeklyReviewState) -> PlanDesignAnalysis: ...
+
+
+class ProposalMaterializer(Protocol):
+    def __call__(self, state: WeeklyReviewState) -> PlanAdjustmentProposal: ...

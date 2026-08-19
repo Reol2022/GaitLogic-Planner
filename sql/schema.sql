@@ -166,6 +166,28 @@ CREATE TABLE IF NOT EXISTS `weekly_review_report` (
   CONSTRAINT `fk_weekly_review_target_block` FOREIGN KEY (`target_block_id`) REFERENCES `training_blocks` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `provider_reasoning_records` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `task_type` VARCHAR(64) NOT NULL,
+  `provider` VARCHAR(64) NOT NULL,
+  `model_name` VARCHAR(128) NOT NULL,
+  `reasoning_content` LONGTEXT NOT NULL,
+  `reasoning_token_count` INT NULL,
+  `content_token_count` INT NULL,
+  `finish_reason` VARCHAR(32) NULL,
+  `related_record_type` VARCHAR(64) NULL,
+  `related_record_id` BIGINT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_provider_reasoning_user_id` (`user_id`),
+  KEY `ix_provider_reasoning_user_task_created` (`user_id`, `task_type`, `created_at`),
+  KEY `ix_provider_reasoning_related` (`related_record_type`, `related_record_id`),
+  CONSTRAINT `fk_provider_reasoning_user`
+    FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `plan_adjustment_draft` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `user_id` BIGINT NOT NULL,

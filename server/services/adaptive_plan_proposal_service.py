@@ -85,10 +85,12 @@ class AdaptivePlanProposalService:
         limitations = list(weekly_facts.classification.limitations)
         if not changes:
             limitations.append("NO_RULE_VALIDATED_PLAN_CHANGE")
+        proposal_start = min((item.workout_date for item in target_plans), default=weekly_facts.period.week_start)
+        proposal_end = max((item.workout_date for item in target_plans), default=weekly_facts.period.week_end)
         return PlanAdjustmentProposal(
             user_id=user_id,
-            week_start=weekly_facts.period.week_start,
-            week_end=weekly_facts.period.week_end,
+            week_start=proposal_start,
+            week_end=proposal_end,
             reason_codes=weekly_facts.classification.rule_codes,
             changes=changes,
             warnings=weekly_facts.classification.warnings,

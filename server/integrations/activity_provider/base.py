@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Protocol
 
@@ -88,6 +88,37 @@ class ProviderActivity:
     laps: list[ProviderLap] = field(default_factory=list)
 
 
+@dataclass(slots=True)
+class ProviderRecoverySnapshot:
+    """Normalized provider result before it becomes a persisted canonical fact.
+
+    Fields stay nullable: an unavailable Garmin metric is never converted to
+    zero. Raw provider payloads deliberately do not cross this boundary.
+    """
+
+    recovery_date: date
+    provider: str
+    sleep_duration_minutes: int | None = None
+    sleep_start: datetime | None = None
+    sleep_end: datetime | None = None
+    sleep_score: int | None = None
+    resting_heart_rate_bpm: int | None = None
+    hrv_value: Decimal | None = None
+    hrv_metric: str | None = None
+    hrv_status: str | None = None
+    average_stress: int | None = None
+    max_stress: int | None = None
+    body_battery_start: int | None = None
+    body_battery_end: int | None = None
+    body_battery_high: int | None = None
+    body_battery_low: int | None = None
+    respiration_rate: Decimal | None = None
+    pulse_ox: Decimal | None = None
+    provider_updated_at: datetime | None = None
+    missing_fields: list[str] = field(default_factory=list)
+    limitations: list[str] = field(default_factory=list)
+
+
 class ActivityProvider(Protocol):
     connector_version: str
 
@@ -110,6 +141,8 @@ class ActivityProvider(Protocol):
     def fetch_activity_split_summaries(self, external_activity_id: str) -> list[ProviderLap]: ...
 
     def fetch_activity_details(self, external_activity_id: str) -> ProviderActivity: ...
+
+    def fetch_recovery(self, start: date, end: date) -> list[ProviderRecoverySnapshot]: ...
 
     def disconnect(self) -> None: ...
 

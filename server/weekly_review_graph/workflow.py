@@ -9,6 +9,8 @@ from server.weekly_review_graph.ports import (
     WeeklyFactsLoader,
     WeeklyKnowledgeRetriever,
     WeeklyReviewGenerator,
+    PlanDesigner,
+    ProposalMaterializer,
 )
 from server.weekly_review_graph.schemas import WeeklyReviewGraphStatus, WeeklyReviewState
 from server.observability.tracing import NOOP_TRACER, SafeTracer, TraceHandle
@@ -46,7 +48,7 @@ class _TracedWeeklyReviewGraph:
 
 def _after_validation(state: WeeklyReviewState | dict) -> str:
     value = state if isinstance(state, WeeklyReviewState) else WeeklyReviewState.model_validate(state)
-    return "fallback_weekly_review" if value.status == WeeklyReviewGraphStatus.FALLBACK else "finalize_weekly_review"
+    return "fallback_weekly_review" if value.status == WeeklyReviewGraphStatus.FALLBACK else "generate_plan_design"
 
 
 def build_weekly_review_graph(
@@ -54,6 +56,8 @@ def build_weekly_review_graph(
     facts_loader: WeeklyFactsLoader,
     generator: WeeklyReviewGenerator,
     knowledge_retriever: WeeklyKnowledgeRetriever | None = None,
+    plan_designer: PlanDesigner | None = None,
+    proposal_materializer: ProposalMaterializer | None = None,
     tracer: SafeTracer | None = None,
 ):
     tracer = tracer or NOOP_TRACER
@@ -61,6 +65,8 @@ def build_weekly_review_graph(
         facts_loader=facts_loader,
         generator=generator,
         knowledge_retriever=knowledge_retriever,
+        plan_designer=plan_designer,
+        proposal_materializer=proposal_materializer,
     )
     def traced(name, function):
         def run(raw):
@@ -96,6 +102,8 @@ def build_weekly_review_graph(
     graph.add_node("generate_weekly_review", traced("llm.generate", nodes.generate_weekly_review))
     graph.add_node("validate_weekly_review", traced("validator", nodes.validate_weekly_review))
     graph.add_node("fallback_weekly_review", traced("fallback", nodes.fallback_weekly_review))
+    graph.add_node("generate_plan_design", traced("provider.plan_design", nodes.generate_plan_design))
+    graph.add_node("materialize_proposal", traced("proposal.materialize", nodes.materialize_proposal))
     graph.add_node("finalize_weekly_review", traced("finalize", nodes.finalize_weekly_review))
     graph.add_edge(START, "load_weekly_facts")
     graph.add_edge("load_weekly_facts", "evaluate_weekly_rules")
@@ -107,9 +115,11 @@ def build_weekly_review_graph(
         _after_validation,
         {
             "fallback_weekly_review": "fallback_weekly_review",
-            "finalize_weekly_review": "finalize_weekly_review",
+            "generate_plan_design": "generate_plan_design",
         },
     )
     graph.add_edge("fallback_weekly_review", "finalize_weekly_review")
+    graph.add_edge("generate_plan_design", "materialize_proposal")
+    graph.add_edge("materialize_proposal", "finalize_weekly_review")
     graph.add_edge("finalize_weekly_review", END)
     return _TracedWeeklyReviewGraph(graph.compile(), tracer)

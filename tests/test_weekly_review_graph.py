@@ -10,6 +10,10 @@ from planner_core.weekly_review.schemas import (
     WorkoutSessionFact,
 )
 from server.weekly_review_graph.schemas import WeeklyReviewDraft, WeeklyReviewState
+from server.weekly_review_graph.schemas import PlanDesignAnalysis, WeeklyReviewAnalysis
+from planner_core.adaptive_plan.schemas import PlanValue, ProposalCandidateChange, TargetPlanFact
+from planner_core.enums import PlanAdjustmentAction
+from server.weekly_review_graph.adapters import DeterministicProposalMaterializer
 from server.weekly_review_graph.workflow import build_weekly_review_graph
 
 
@@ -156,4 +160,63 @@ def test_graph_contains_named_nodes_edges_and_conditional_branch() -> None:
         "validate_weekly_review",
         "fallback_weekly_review",
         "finalize_weekly_review",
+        "generate_plan_design",
+        "materialize_proposal",
     }.issubset(names)
+
+
+def test_weekly_analysis_then_independent_plan_design_and_materialize() -> None:
+    calls = []
+
+    def analyze(state):
+        calls.append(("weekly", state.plan_design))
+        return WeeklyReviewAnalysis(
+            overall_assessment="稳定",
+            execution_assessment="完成",
+            load_assessment="负荷稳定",
+            key_session_assessment="关键课完成",
+            recovery_assessment="恢复事实有限",
+            intensity_assessment="强度稳定",
+            next_week_constraints=["不增加负荷"],
+            recommended_direction=["维持"],
+        )
+
+    def design(state):
+        calls.append(("plan", state.weekly_analysis.overall_assessment))
+        return PlanDesignAnalysis(
+            volume_direction="reduce",
+            intensity_direction="maintain",
+            quality_session_count=0,
+            key_session_strategy="维持结构",
+            long_run_strategy="保守",
+            recovery_spacing="留出恢复间隔",
+            reason_summary="依据结构化周复盘减量",
+            candidate_adjustments=[
+                ProposalCandidateChange(
+                    plan_id=10,
+                    action=PlanAdjustmentAction.reduce,
+                    after=PlanValue(content="轻松跑", distance_km=6, main_type="easy"),
+                    reason="保守调整",
+                    rule_evidence=["NO_MATERIAL_WEEKLY_DEVIATION"],
+                )
+            ],
+        )
+
+    target = TargetPlanFact(
+        plan_id=10,
+        user_id=7,
+        workout_date=date(2026, 7, 13),
+        value=PlanValue(content="轻松跑", distance_km=8, main_type="easy"),
+    )
+    graph = build_weekly_review_graph(
+        facts_loader=lambda request: weekly_facts(),
+        generator=analyze,
+        plan_designer=design,
+        proposal_materializer=DeterministicProposalMaterializer(),
+    )
+    state = initial_state().model_copy(update={"target_plans": [target]})
+    result = WeeklyReviewState.model_validate(graph.invoke(state.model_dump(mode="python")))
+    assert calls == [("weekly", None), ("plan", "稳定")]
+    assert result.plan_design is not None
+    assert result.proposal.changes[0].after.distance_km == 6
+    assert result.proposal.week_start == date(2026, 7, 13)

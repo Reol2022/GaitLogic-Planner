@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from server.integrations.activity_provider.base import ProviderActivity, ProviderAuthResult, ProviderLap
+from server.integrations.activity_provider.base import (
+    ProviderActivity,
+    ProviderAuthResult,
+    ProviderLap,
+    ProviderRecoverySnapshot,
+)
 
 
 class MockActivityProvider:
@@ -74,6 +79,25 @@ class MockActivityProvider:
 
     def fetch_activity_details(self, external_activity_id: str) -> ProviderActivity:
         return self.fetch_activity_summary(external_activity_id)
+
+    def fetch_recovery(self, start: date, end: date) -> list[ProviderRecoverySnapshot]:
+        return [
+            ProviderRecoverySnapshot(
+                recovery_date=start,
+                provider="mock",
+                sleep_duration_minutes=450,
+                resting_heart_rate_bpm=52,
+                hrv_value=Decimal("58.2"),
+                hrv_metric="nightly_rmssd",
+                average_stress=26,
+                max_stress=58,
+                body_battery_start=43,
+                body_battery_end=78,
+                body_battery_high=84,
+                body_battery_low=31,
+                limitations=["FIXTURE_ONLY"],
+            )
+        ]
 
     def disconnect(self) -> None:
         self._token_payload = None

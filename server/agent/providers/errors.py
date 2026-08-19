@@ -12,7 +12,13 @@ class AgentProviderError(Exception):
         code: AgentErrorCode,
         *,
         category: ProviderFailureCategory = ProviderFailureCategory.PROVIDER_UNKNOWN_ERROR,
+        finish_reason: str | None = None,
+        reasoning_length: int = 0,
+        content_length: int = 0,
     ) -> None:
         super().__init__(code.value)
         self.code = code
         self.category = category
+        self.finish_reason = finish_reason
+        self.reasoning_length = reasoning_length
+        self.content_length = content_length

@@ -1,6 +1,23 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+
+CapabilityStatus = Literal["SUPPORTED", "PARTIAL", "UNSUPPORTED", "NOT_VERIFIED"]
+
+
+class RecoveryCapabilities(BaseModel):
+    """Provider-declared health-data capabilities, not user-data availability."""
+
+    sleep: CapabilityStatus = "UNSUPPORTED"
+    resting_heart_rate: CapabilityStatus = "UNSUPPORTED"
+    hrv: CapabilityStatus = "UNSUPPORTED"
+    stress: CapabilityStatus = "UNSUPPORTED"
+    body_battery: CapabilityStatus = "UNSUPPORTED"
+    respiration: CapabilityStatus = "UNSUPPORTED"
+    pulse_ox: CapabilityStatus = "UNSUPPORTED"
 
 
 class ProviderCapabilities(BaseModel):
@@ -16,6 +33,7 @@ class ProviderCapabilities(BaseModel):
     activity_restore: bool = True
     auto_import_setting: bool = True
     webhooks: bool = False
+    recovery: RecoveryCapabilities = Field(default_factory=RecoveryCapabilities)
 
 
 class ProviderDescriptor(BaseModel):

@@ -49,6 +49,8 @@ def upsert_today_checkin(
     data = payload.model_dump(exclude_unset=True)
     for key, value in data.items():
         setattr(checkin, key, value)
+    # A later Garmin refresh may fill genuinely missing objective values, but
+    # never replaces an explicit user update for this daily record.
     checkin.source = RecoveryCheckinSource.manual
     db.commit()
     db.refresh(checkin)

@@ -72,6 +72,7 @@ export interface LangGraphWeeklyReview {
   limitations: string[];
   knowledge_references: WeeklyKnowledgeReference[];
   fallback_used: boolean;
+  proposal_record_id?: number | null;
 }
 
 export interface AdaptivePlanValue {

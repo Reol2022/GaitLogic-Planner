@@ -110,7 +110,7 @@ def test_enum_values_are_correct() -> None:
     assert [item.value for item in FeatureKey] == ["training_readiness", "workout_import", "garmin_sync", "simplified_workflow"]
     assert [item.value for item in PainScaleVersion] == ["normalized_0_10", "native_0_10"]
     assert [item.value for item in PainTrend] == ["improving", "stable", "worsening", "unknown"]
-    assert [item.value for item in RecoveryCheckinSource] == ["manual"]
+    assert [item.value for item in RecoveryCheckinSource] == ["manual", "garmin", "mixed"]
     assert [item.value for item in ReadinessDataQuality] == ["low", "medium", "high"]
     assert UsageEventName.ai_plan_applied.value == "ai_plan_applied"
 
