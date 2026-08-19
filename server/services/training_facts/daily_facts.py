@@ -58,10 +58,13 @@ def build_daily_facts(db: Session, user_id: int, target_date: date) -> dict[str,
             "baseline_28d_weekly_distance_km": load.baseline_28d_weekly_distance_km,
             "recent_to_baseline_load_ratio": load.recent_to_baseline_load_ratio,
             "load_change_percentage": load.load_change_percentage,
-            "data_limited": bool(load.missing_data),
+            # Preserve individual missing reasons.  RPE and recovery coverage
+            # constrain their own analyses but are not automatically a global
+            # TODAY decision blocker.
+            "missing_data": list(load.missing_data),
         }
     except Exception:
-        facts["recent_training"] = {"data_limited": True}
+        facts["recent_training"] = {"core_data_unavailable": True}
     facts["system"]["context_type"] = "daily_adjustment"
     facts["system"]["target_date"] = target_date.isoformat()
     facts["system"]["data_limited"] = _data_limited(facts)
@@ -118,5 +121,13 @@ def _recovery_facts(checkin: DailyRecoveryCheckin | None) -> dict[str, Any]:
 
 
 def _data_limited(facts: dict[str, Any]) -> bool:
-    recovery = facts.get("recovery") or {}
-    return any(recovery.get(key) is None for key in ["sleep_hours", "leg_feel", "subjective_fatigue"])
+    """Return whether deterministic TODAY core facts are unavailable.
+
+    Recovery fields are intentionally excluded: missing sleep, leg feel, or
+    subjective fatigue limits recovery-specific conclusions, but historical
+    load and the planned workout can still support a constrained TODAY result.
+    """
+    recent = facts.get("recent_training") or {}
+    if recent.get("core_data_unavailable"):
+        return True
+    return "training_logs" in set(recent.get("missing_data") or [])
