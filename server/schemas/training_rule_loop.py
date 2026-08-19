@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from server.domain.decision_readiness import DecisionReadiness
 from server.schemas.training_rules import TrainingRuleEvaluateResponse
 
 
@@ -21,6 +22,8 @@ class RuleLoopEvaluationResponse(BaseModel):
     title: str
     message: str
     data_limited: bool = False
+    decision_readiness: DecisionReadiness = DecisionReadiness.READY
+    data_limitations: list[str] = Field(default_factory=list)
     summary: RuleLoopSummary
     evaluation: TrainingRuleEvaluateResponse
     facts_hash: str | None = None

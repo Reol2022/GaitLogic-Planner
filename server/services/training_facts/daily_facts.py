@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from planner_core.database.models import DailyRecoveryCheckin, PlannedWorkout, WorkoutLog
+from server.domain.decision_readiness import DecisionReadiness
 from server.services.training_facts.common import base_facts, date_text, decimal_float, enum_value, is_high_intensity, workout_type_bucket
 from server.services.training_load_service import build_training_load_summary
 
@@ -68,6 +69,8 @@ def build_daily_facts(db: Session, user_id: int, target_date: date) -> dict[str,
     facts["system"]["context_type"] = "daily_adjustment"
     facts["system"]["target_date"] = target_date.isoformat()
     facts["system"]["data_limited"] = _data_limited(facts)
+    facts["system"]["decision_readiness"] = _decision_readiness(facts).value
+    facts["system"]["data_limitations"] = _data_limitations(facts)
     facts["system"]["training_alert"] = bool(facts["recovery"].get("training_alert"))
     recovery = facts["recovery"]
     recent = facts["recent_training"]
@@ -79,9 +82,9 @@ def build_daily_facts(db: Session, user_id: int, target_date: date) -> dict[str,
         and recovery.get("subjective_fatigue") is not None
         and recovery.get("subjective_fatigue") >= 4
     )
-    facts["system"]["recent_high_load"] = bool(
-        recent.get("recent_to_baseline_load_ratio") is not None and recent.get("recent_to_baseline_load_ratio") >= 1.25
-    )
+    load_ratio = recent.get("recent_to_baseline_load_ratio")
+    if load_ratio is not None:
+        facts["system"]["recent_high_load"] = bool(load_ratio >= 1.25)
     return facts
 
 
@@ -131,3 +134,16 @@ def _data_limited(facts: dict[str, Any]) -> bool:
     if recent.get("core_data_unavailable"):
         return True
     return "training_logs" in set(recent.get("missing_data") or [])
+
+
+def _data_limitations(facts: dict[str, Any]) -> list[str]:
+    recent = facts.get("recent_training") or {}
+    return sorted({str(item) for item in recent.get("missing_data") or []})
+
+
+def _decision_readiness(facts: dict[str, Any]) -> DecisionReadiness:
+    if _data_limited(facts):
+        return DecisionReadiness.BLOCKED
+    if _data_limitations(facts):
+        return DecisionReadiness.PARTIAL
+    return DecisionReadiness.READY

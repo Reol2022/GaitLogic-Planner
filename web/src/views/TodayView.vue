@@ -40,10 +40,18 @@
         <span>{{ ruleDataLimitedText }}</span>
         <span>评估时间：{{ formatDateTime(todayRuleEvaluation?.evaluated_at) }}</span>
         <span>命中规则：{{ todayRuleEvaluation?.evaluation.matched_rules.length || 0 }}</span>
+        <span v-if="insufficientRuleCount">受限规则：{{ insufficientRuleCount }}</span>
       </div>
       <el-alert
         v-if="todayRuleEvaluation?.data_limited"
         title="当前建议基于有限数据，系统不会根据缺失数据推测恢复状态。"
+        type="info"
+        :closable="false"
+        show-icon
+      />
+      <el-alert
+        v-else-if="todayRuleEvaluation?.decision_readiness === 'PARTIAL'"
+        :title="partialRuleEvaluationText"
         type="info"
         :closable="false"
         show-icon
@@ -370,7 +378,23 @@ const ruleStatusTagType = computed(() => {
   if (action === "keep_plan" || action === "no_action") return "success";
   return "info";
 });
-const ruleDataLimitedText = computed(() => (todayRuleEvaluation.value?.data_limited ? "数据完整度：有限" : "数据完整度：可评估"));
+const ruleDataLimitedText = computed(() => {
+  const readiness = todayRuleEvaluation.value?.decision_readiness;
+  if (readiness === "BLOCKED" || todayRuleEvaluation.value?.data_limited) return "核心数据不足";
+  if (readiness === "PARTIAL") return "核心数据可评估 · 部分指标受限";
+  return "数据完整度：可评估";
+});
+const insufficientRuleCount = computed(
+  () => todayRuleEvaluation.value?.evaluation.rule_status_counts?.insufficient_data || 0,
+);
+const partialRuleEvaluationText = computed(() => {
+  const labels: Record<string, string> = {
+    duration_or_rpe: "部分训练缺少时长或主观强度（RPE），相关负荷指标未参与判断",
+    recovery_checkins: "部分日期缺少恢复记录，恢复趋势结论受到限制",
+  };
+  const limitations = (todayRuleEvaluation.value?.data_limitations || []).map((item) => labels[item] || "部分指标数据不完整");
+  return [...new Set(limitations)].join("；") || "当前结论仍可使用，但部分指标未参与判断。";
+});
 const painLevel = computed({
   get: () => quickForm.pain_level ?? 0,
   set: (value: number) => {

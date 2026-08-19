@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 from sqlalchemy import func, select
@@ -17,6 +17,7 @@ from server.services.training_facts.daily_facts import build_daily_facts
 from server.services.training_facts.plan_facts import build_ai_draft_plan_facts, build_cycle_plan_facts, build_plan_import_facts
 from server.services.training_facts.weekly_facts import build_weekly_facts
 from server.services.training_facts.workout_facts import build_workout_facts
+from server.services.weekly_review_stats_service import APP_TIMEZONE
 
 
 def status_from_action(action: str) -> str:
@@ -63,15 +64,20 @@ def _summary(evaluation: TrainingRuleEvaluateResponse) -> RuleLoopSummary:
 def _message(evaluation: TrainingRuleEvaluateResponse) -> str:
     if evaluation.matched_rules:
         return evaluation.matched_rules[0].explanation
+    if evaluation.rule_status_counts.get("insufficient_data", 0) > 0:
+        return "已完成可用数据范围内的评估，未触发需要调整的规则；部分指标因数据不足未参与判断。"
     return "根据当前已记录的数据，暂未触发需要调整的规则。该结果用于训练管理参考，不构成医疗诊断。"
 
 
 def _wrap(evaluation: TrainingRuleEvaluateResponse, facts: dict[str, Any], draft_id: int | None = None) -> RuleLoopEvaluationResponse:
+    system = facts.get("system", {})
     return RuleLoopEvaluationResponse(
         validation_status=status_from_action(evaluation.final_action),
         title=title_from_action(evaluation.final_action),
         message=_message(evaluation),
-        data_limited=bool(facts.get("system", {}).get("data_limited")),
+        data_limited=bool(system.get("data_limited")),
+        decision_readiness=system.get("decision_readiness", "READY"),
+        data_limitations=list(system.get("data_limitations") or []),
         summary=_summary(evaluation),
         evaluation=evaluation,
         facts_hash=hash_facts(facts),
@@ -129,8 +135,16 @@ def evaluate_today(db: Session, user_id: int, target_date: date, *, force: bool 
         force=force,
     )
     response = _wrap(evaluation, facts)
-    response.evaluated_at = model.created_at if model else None  # type: ignore[attr-defined]
+    response.evaluated_at = _as_app_timezone(model.created_at) if model else None
     return response
+
+
+def _as_app_timezone(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(APP_TIMEZONE)
 
 
 def evaluate_today_readonly(

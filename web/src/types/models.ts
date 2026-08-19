@@ -1062,6 +1062,8 @@ export interface RuleEvaluationResult {
   matched_rules: RuleMatchedItem[];
   conflict_resolution: Record<string, unknown>;
   recommendations: string[];
+  rule_status_counts: Record<string, number>;
+  rule_traces: Array<Record<string, unknown>>;
   engine_version: string;
   ruleset_version: string;
 }
@@ -1079,6 +1081,8 @@ export interface RuleLoopEvaluation {
   title: string;
   message: string;
   data_limited: boolean;
+  decision_readiness: "READY" | "PARTIAL" | "BLOCKED" | "NOT_APPLICABLE";
+  data_limitations: string[];
   summary: RuleLoopSummary;
   evaluation: RuleEvaluationResult;
   facts_hash?: string | null;
