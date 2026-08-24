@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gaitlogic-planner"
-version = "0.16.0"
+version = "0.16.3"
 description = "Training plan and log database layer for serious runners."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -26,6 +26,8 @@ dependencies = [
     "langgraph==1.2.9",
     "mcp==2.0.0",
     "qdrant-client>=1.19,<2.0",
+    "garminconnect==0.2.36",
+    "garth==0.5.20",
 ]
 
 [project.optional-dependencies]

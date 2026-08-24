@@ -40,6 +40,10 @@ export function retryGarminSyncJob(jobId: number) {
   return request.post<ExternalSyncJobRead>(`/integrations/garmin/sync-jobs/${jobId}/retry`);
 }
 
+export function cancelGarminSyncJob(jobId: number) {
+  return request.post<ExternalSyncJobRead>(`/integrations/garmin/sync-jobs/${jobId}/cancel`);
+}
+
 export function listGarminActivities() {
   return request.get<ExternalActivityRead[]>("/integrations/garmin/activities");
 }

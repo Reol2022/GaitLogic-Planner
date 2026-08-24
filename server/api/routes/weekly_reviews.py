@@ -37,12 +37,16 @@ from server.common.exceptions import NotFoundError
 from planner_core.config import get_settings
 from planner_core.weekly_review.schemas import WeeklyFacts, WeeklyFactsRequest
 from server.agent.providers.openai_compatible import OpenAICompatibleAgentGateway
+from server.agent.schemas import AgentLimits
+from server.agent.tools.dependencies import CoachAgentToolDependencies
+from server.agent.tools.factory import build_coach_agent_tool_registry
 from server.agent.tools.knowledge_tools import build_configured_knowledge_tool
 from server.services.weekly_facts_service import WeeklyFactsService
 from server.weekly_review_graph.adapters import (
     AgentGatewayWeeklyReviewGenerator,
     DeterministicProposalMaterializer,
     KnowledgeToolWeeklyRetriever,
+    RegistryWeeklyEvidenceReacquirer,
     StructuredPlanDesigner,
     StructuredWeeklyReviewGenerator,
 )
@@ -51,6 +55,7 @@ from server.weekly_review_graph.workflow import build_weekly_review_graph
 from server.observability.factory import get_configured_tracer
 from server.structured_task_provider import StructuredTaskProvider
 from server.services.admin_ai_settings_service import get_effective_ai_settings
+from server.services import approval_workflow_service
 
 router = APIRouter(tags=["weekly reviews"])
 adaptive_approval_service = AdaptivePlanApprovalService(tracer=get_configured_tracer())
@@ -84,7 +89,7 @@ def generate_weekly_review(
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user),
 ):
-    return weekly_review_ai_service.generate_weekly_review(
+    result = weekly_review_ai_service.generate_weekly_review(
         db,
         current_user.id,
         payload.cycle_id,
@@ -92,6 +97,13 @@ def generate_weekly_review(
         payload.target_block_id,
         payload.force_regenerate,
     )
+    if result.adjustment_draft is not None and result.adjustment_draft.status.value == "draft":
+        approval_workflow_service.ensure_pending(
+            kind="weekly-draft",
+            user_id=current_user.id,
+            record_id=result.adjustment_draft.id,
+        )
+    return result
 
 
 @router.get("/weekly-reviews", response_model=WeeklyReviewListResponse)
@@ -142,9 +154,20 @@ def apply_adjustment_draft(
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user),
 ):
-    return plan_adjustment_apply_service.apply_adjustment_draft(
-        db, current_user.id, draft_id, payload.selected_item_ids
+    owned_draft = db.scalar(
+        select(TrainingAdjustmentDraft.id).where(
+            TrainingAdjustmentDraft.id == draft_id,
+            TrainingAdjustmentDraft.user_id == current_user.id,
+        )
     )
+    if owned_draft is None:
+        raise NotFoundError("Plan adjustment draft not found.")
+    result = approval_workflow_service.approve_weekly_draft(
+        user_id=current_user.id,
+        draft_id=draft_id,
+        selected_item_ids=payload.selected_item_ids,
+    )
+    return result
 
 
 @router.post(
@@ -156,8 +179,22 @@ def reject_adjustment_draft(
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user),
 ):
-    draft = plan_adjustment_apply_service.reject_adjustment_draft(db, current_user.id, draft_id)
-    return weekly_review_ai_service.get_weekly_review_detail(db, current_user.id, draft.review_report_id)
+    draft = db.scalar(
+        select(TrainingAdjustmentDraft).where(
+            TrainingAdjustmentDraft.id == draft_id,
+            TrainingAdjustmentDraft.user_id == current_user.id,
+        )
+    )
+    if draft is None or draft.review_report_id is None:
+        raise NotFoundError("Plan adjustment draft not found.")
+    review_report_id = draft.review_report_id
+    approval_workflow_service.reject_weekly_draft(
+        user_id=current_user.id, draft_id=draft_id
+    )
+    db.rollback()
+    return weekly_review_ai_service.get_weekly_review_detail(
+        db, current_user.id, review_report_id
+    )
 
 
 @router.get("/adaptive-plan/proposals/{proposal_id}", response_model=AdaptiveProposalRead)
@@ -194,8 +231,17 @@ def approve_adaptive_proposal(
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user),
 ):
-    return adaptive_approval_service.approve(
-        db, user_id=current_user.id, proposal_id=proposal_id
+    owned_proposal = db.scalar(
+        select(TrainingAdjustmentDraft.id).where(
+            TrainingAdjustmentDraft.id == proposal_id,
+            TrainingAdjustmentDraft.user_id == current_user.id,
+            TrainingAdjustmentDraft.source_type == "weekly_review_v0130",
+        )
+    )
+    if owned_proposal is None:
+        raise NotFoundError("Adaptive proposal not found.")
+    return approval_workflow_service.approve_adaptive_proposal(
+        user_id=current_user.id, proposal_id=proposal_id
     )
 
 
@@ -208,8 +254,17 @@ def reject_adaptive_proposal(
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user),
 ):
-    return adaptive_approval_service.reject(
-        db, user_id=current_user.id, proposal_id=proposal_id
+    owned_proposal = db.scalar(
+        select(TrainingAdjustmentDraft.id).where(
+            TrainingAdjustmentDraft.id == proposal_id,
+            TrainingAdjustmentDraft.user_id == current_user.id,
+            TrainingAdjustmentDraft.source_type == "weekly_review_v0130",
+        )
+    )
+    if owned_proposal is None:
+        raise NotFoundError("Adaptive proposal not found.")
+    return approval_workflow_service.reject_adaptive_proposal(
+        user_id=current_user.id, proposal_id=proposal_id
     )
 
 
@@ -353,6 +408,18 @@ def generate_langgraph_weekly_review(
         for item in planned
     ]
     knowledge_tool = build_configured_knowledge_tool(settings)
+    evidence_limits = AgentLimits(
+        max_recent_training_items=settings.agent_max_recent_training_items,
+        max_history_items=settings.agent_max_history_items,
+        max_evidence_items=settings.agent_max_evidence_items,
+        max_rule_items=settings.agent_max_rule_items,
+        max_reflect_rounds=settings.evidence_max_reflect_rounds,
+    )
+    evidence_registry = build_coach_agent_tool_registry(
+        CoachAgentToolDependencies.from_session(db),
+        limits=evidence_limits,
+        knowledge_tool=knowledge_tool,
+    )
     graph = build_weekly_review_graph(
         facts_loader=lambda facts_request: weekly_facts_service.build_weekly_facts(db, facts_request),
         generator=generator,
@@ -367,6 +434,12 @@ def generate_langgraph_weekly_review(
             if knowledge_tool is not None
             else None
         ),
+        evidence_reacquirer=RegistryWeeklyEvidenceReacquirer(
+            evidence_registry,
+            timezone=payload.timezone,
+            max_actions=2,
+        ),
+        max_reflect_rounds=settings.evidence_max_reflect_rounds,
         tracer=get_configured_tracer(),
     )
     result = WeeklyReviewState.model_validate(
@@ -389,6 +462,11 @@ def generate_langgraph_weekly_review(
             cycle_id=payload.cycle_id,
         )
         review = review.model_copy(update={"proposal_record_id": record.id})
+        approval_workflow_service.ensure_pending(
+            kind="adaptive-proposal",
+            user_id=current_user.id,
+            record_id=record.id,
+        )
     else:
         db.commit()
     return review

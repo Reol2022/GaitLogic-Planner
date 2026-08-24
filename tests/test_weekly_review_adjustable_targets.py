@@ -1,7 +1,9 @@
 from datetime import timedelta
 from types import SimpleNamespace
 
+from planner_core.adaptive_plan.schemas import PlanValue, ProposalCandidateChange
 from planner_core.database.models import PlannedWorkout, WorkoutLog
+from planner_core.enums import PlanAdjustmentAction
 from planner_core.enums import WorkoutStatusNormalized
 from server.services.weekly_review_ai_service import (
     _filter_adjustable_candidates,
@@ -45,3 +47,32 @@ def test_materialize_does_not_warn_for_valid_candidates():
     )
     assert [item.plan_id for item in accepted] == [11]
     assert warnings == []
+
+
+def test_keep_candidate_is_normalized_to_the_canonical_plan():
+    candidate = ProposalCandidateChange(
+        plan_id=11,
+        action=PlanAdjustmentAction.keep,
+        after=PlanValue(content="stale content", distance_km=6, main_type="tempo"),
+        reason="Keep the session.",
+        rule_evidence=["normal"],
+    )
+
+    accepted, warnings = _filter_adjustable_candidates(
+        [candidate],
+        [{
+            "planned_workout_id": 11,
+            "planned_content": "Easy run 8 km",
+            "planned_distance_km": 8,
+            "main_type": "easy",
+            "target_pace_text": "5:00/km",
+        }],
+    )
+
+    assert accepted[0].after == PlanValue(
+        content="Easy run 8 km",
+        distance_km=8,
+        main_type="easy",
+        target_pace_text="5:00/km",
+    )
+    assert warnings

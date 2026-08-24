@@ -70,7 +70,7 @@ def provider(values, configured=None):
     return StructuredTaskProvider(configured or settings(), client=client, sleeper=lambda _: None), client
 
 
-def test_weekly_profile_is_thinking_and_independent_from_ai_plan_budget():
+def test_weekly_profile_honours_thinking_policy_and_is_independent_from_ai_plan_budget():
     configured = settings(
         WEEKLY_REVIEW_MAX_OUTPUT_TOKENS=15000,
         WEEKLY_REVIEW_TIMEOUT_SECONDS=310,
@@ -80,7 +80,12 @@ def test_weekly_profile_is_thinking_and_independent_from_ai_plan_budget():
     weekly = task_model_profile(configured, ModelTaskType.WEEKLY_REVIEW_ANALYSIS)
     plan = task_model_profile(configured, ModelTaskType.PLAN_DESIGN)
     ai_plan = task_model_profile(configured, ModelTaskType.AI_PLAN_GENERATION)
-    assert weekly.thinking_enabled and plan.thinking_enabled
+    assert not weekly.thinking_enabled and not plan.thinking_enabled
+    enabled = task_model_profile(
+        settings(COACH_AGENT_THINKING_MODE="enabled"),
+        ModelTaskType.WEEKLY_REVIEW_ANALYSIS,
+    )
+    assert enabled.thinking_enabled
     assert weekly.max_output_tokens == 15000
     assert weekly.max_output_tokens != ai_plan.max_output_tokens
     assert weekly.request_timeout_seconds == 310
@@ -98,7 +103,7 @@ def test_reasoning_only_length_is_retried_with_bounded_larger_budget():
     assert result.attempts == 2
     assert [item["max_tokens"] for item in client.chat.completions.calls] == [16384, 24576]
     assert [item["timeout"] for item in client.chat.completions.calls] == [300, 300]
-    assert all(item["extra_body"] == {"thinking": {"type": "enabled"}} for item in client.chat.completions.calls)
+    assert all(item["extra_body"] == {"thinking": {"type": "disabled"}} for item in client.chat.completions.calls)
     assert all(
         "Simplified Chinese" in item["messages"][0]["content"]
         for item in client.chat.completions.calls
@@ -127,7 +132,22 @@ def test_weekly_timeout_has_specific_safe_public_message():
     )
     assert isinstance(error, ServiceUnavailableError)
     assert error.status_code == 503
+    assert error.error_code == "AI_PROVIDER_TIMEOUT"
     assert error.message == "AI 周复盘模型请求超时，请稍后重试。"
+
+
+@pytest.mark.parametrize(
+    ("category", "error_code"),
+    [
+        (ProviderFailureCategory.PROVIDER_CONNECTION_ERROR, "AI_PROVIDER_CONNECTION_ERROR"),
+        (ProviderFailureCategory.PROVIDER_SERVER_ERROR, "AI_PROVIDER_SERVER_ERROR"),
+    ],
+)
+def test_weekly_provider_transport_failures_have_distinct_safe_codes(category, error_code):
+    error = _provider_error(StructuredTaskProviderError(category))
+
+    assert isinstance(error, ServiceUnavailableError)
+    assert error.error_code == error_code
 
 
 def test_owned_sdk_client_is_released_after_task_call():

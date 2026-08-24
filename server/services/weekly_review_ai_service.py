@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import datetime
 from decimal import Decimal
 
@@ -19,10 +20,12 @@ from planner_core.database.models import (
 )
 from planner_core.enums import (
     AIPlanJobStatus,
+    PlanAdjustmentAction,
     PlanAdjustmentDraftStatus,
     TrainingStatus,
     WeeklyReviewStatus,
 )
+from planner_core.adaptive_plan.schemas import PlanValue
 from server.common.exceptions import AppError, BadRequestError, NotFoundError, ServiceUnavailableError, TooManyRequestsError
 from server.schemas.weekly_review import (
     PlanAdjustmentDraftRead,
@@ -66,9 +69,11 @@ from server.weekly_review_graph.schemas import PlanDesignAnalysis, WeeklyReviewA
 from server.provider_reliability import ProviderFailureCategory
 
 ALGORITHM_VERSION = "weekly-review-rules-v1"
+logger = logging.getLogger(__name__)
 
 
 def _provider_error(exc: StructuredTaskProviderError) -> AppError:
+    logger.warning("Weekly review provider failed category=%s", exc.category.value)
     if exc.category == ProviderFailureCategory.PROVIDER_OUTPUT_TRUNCATED:
         return BadRequestError("模型输出达到长度限制，最终正文未完整生成。")
     if exc.category == ProviderFailureCategory.PROVIDER_EMPTY_CONTENT:
@@ -78,16 +83,24 @@ def _provider_error(exc: StructuredTaskProviderError) -> AppError:
     if exc.category == ProviderFailureCategory.PROVIDER_SCHEMA_ERROR:
         return BadRequestError("模型返回结果未通过结构校验。")
     if exc.category == ProviderFailureCategory.PROVIDER_TIMEOUT:
-        return ServiceUnavailableError("AI 周复盘模型请求超时，请稍后重试。")
+        return ServiceUnavailableError(
+            "AI 周复盘模型请求超时，请稍后重试。",
+            error_code="AI_PROVIDER_TIMEOUT",
+        )
     if exc.category == ProviderFailureCategory.PROVIDER_RATE_LIMIT:
         return TooManyRequestsError("AI 服务当前请求较多，请稍后重试。")
     if exc.category == ProviderFailureCategory.PROVIDER_AUTH_ERROR:
         return ServiceUnavailableError("AI 服务认证配置无效，请联系管理员检查 Provider 配置。")
-    if exc.category in {
-        ProviderFailureCategory.PROVIDER_CONNECTION_ERROR,
-        ProviderFailureCategory.PROVIDER_SERVER_ERROR,
-    }:
-        return ServiceUnavailableError("AI Provider 暂时不可用，请稍后重试。")
+    if exc.category == ProviderFailureCategory.PROVIDER_CONNECTION_ERROR:
+        return ServiceUnavailableError(
+            "AI Provider 连接失败，请检查网络后重试。",
+            error_code="AI_PROVIDER_CONNECTION_ERROR",
+        )
+    if exc.category == ProviderFailureCategory.PROVIDER_SERVER_ERROR:
+        return ServiceUnavailableError(
+            "AI Provider 上游服务暂时异常，请稍后重试。",
+            error_code="AI_PROVIDER_SERVER_ERROR",
+        )
     if exc.category == ProviderFailureCategory.PROVIDER_BAD_REQUEST:
         return BadRequestError("AI Provider 拒绝了周复盘请求，请联系管理员检查模型配置。")
     return BadRequestError("AI 周复盘服务暂时不可用。")
@@ -143,7 +156,29 @@ def _filter_adjustable_candidates(candidates, next_week_plan: list[dict]):
         if len(accepted) != len(candidates)
         else []
     )
-    return accepted, warnings
+    return _normalize_keep_candidates(accepted, next_week_plan, warnings)
+
+
+def _normalize_keep_candidates(candidates, next_week_plan: list[dict], warnings: list[str]):
+    plans_by_id = {item["planned_workout_id"]: item for item in next_week_plan}
+    normalized = []
+    for candidate in candidates:
+        # A keep item is informational rather than a modification. Providers can
+        # occasionally pair it with fields from another candidate, so restore
+        # the canonical plan instead of failing the whole weekly review.
+        if getattr(candidate, "action", None) == PlanAdjustmentAction.keep:
+            plan = plans_by_id[candidate.plan_id]
+            canonical_after = PlanValue(
+                content=plan["planned_content"],
+                distance_km=plan["planned_distance_km"],
+                main_type=plan["main_type"],
+                target_pace_text=plan.get("target_pace_text"),
+            )
+            if candidate.after != canonical_after:
+                candidate = candidate.model_copy(update={"after": canonical_after})
+                warnings.append("已将不一致的“保持原计划”建议还原为原课表。")
+        normalized.append(candidate)
+    return normalized, warnings
 
 
 def _subjective_notes(metrics, workouts: list[PlannedWorkout]) -> list[dict]:
@@ -286,6 +321,8 @@ def _create_draft(
         summary=output.next_week_strategy,
         original_week_distance_km=Decimal(str(original_total)),
         suggested_week_distance_km=Decimal(str(suggested_total)),
+        source_type="weekly_review_v0163",
+        parser_version="plan-adjustment-proposal-1.0.0",
     )
     for adjustment in output.adjustments:
         workout = by_id[adjustment.planned_workout_id]
@@ -303,6 +340,12 @@ def _create_draft(
                 suggested_target_pace_text=adjustment.suggested_target_pace_text,
                 reason=adjustment.reason,
                 is_selected=adjustment.action.value != "keep",
+                base_plan_version=workout.plan_version,
+                normalized_item_json={
+                    "plan_id": workout.id,
+                    "base_plan_version": workout.plan_version,
+                    "action": adjustment.action.value,
+                },
             )
         )
     db.add(draft)
@@ -358,7 +401,14 @@ def generate_weekly_review(
     )
     db.add(report)
     db.commit()
-    db.refresh(report)
+    report_id = report.id
+    job_id = job.id
+
+    # A weekly review performs two potentially slow provider calls. Do not keep
+    # a checked-out MySQL connection alive while waiting for either response:
+    # MySQL can close that idle connection, turning a successful model response
+    # into DATABASE_CONNECTION_ERROR during the final persistence step.
+    db.close()
     try:
         provider_settings = get_settings().model_copy(
             update={
@@ -380,15 +430,6 @@ def generate_weekly_review(
             input_payload={"snapshot": snapshot},
         )
         analysis = WeeklyReviewAnalysis.model_validate(weekly_result.value)
-        persist_reasoning(
-            db,
-            user_id=user_id,
-            provider="openai-compatible",
-            profile=weekly_profile,
-            result=weekly_result,
-            related_record_type="weekly_review_report",
-            related_record_id=report.id,
-        )
         plan_profile = task_model_profile(provider_settings, ModelTaskType.PLAN_DESIGN)
         plan_result = provider.generate(
             profile=plan_profile,
@@ -406,12 +447,25 @@ def generate_weekly_review(
             },
         )
         design = PlanDesignAnalysis.model_validate(plan_result.value)
+        report = db.get(WeeklyReviewReport, report_id)
+        job = db.get(AIPlanJob, job_id)
+        if report is None or job is None:
+            raise RuntimeError("Weekly review persistence records are unavailable.")
         persist_reasoning(
             db,
             user_id=user_id,
             provider="openai-compatible",
             profile=plan_profile,
             result=plan_result,
+            related_record_type="weekly_review_report",
+            related_record_id=report.id,
+        )
+        persist_reasoning(
+            db,
+            user_id=user_id,
+            provider="openai-compatible",
+            profile=weekly_profile,
+            result=weekly_result,
             related_record_type="weekly_review_report",
             related_record_id=report.id,
         )

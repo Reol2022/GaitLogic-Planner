@@ -81,6 +81,7 @@ def apply_adjustment_draft(
                 )
                 workout.main_type_raw = workout.main_type_normalized.value
                 workout.target_pace_text = item.suggested_target_pace_text
+                workout.plan_version += 1
             item.is_applied = True
             item.applied_at = now
             applied_ids.append(item.id)

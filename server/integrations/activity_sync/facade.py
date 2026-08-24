@@ -144,6 +144,15 @@ class DataSyncFacade:
             return garmin_sync_service.retry_sync_job(self.db, self.current_user.id, job_id)
         raise BadRequestError("该平台暂不支持重试。", error_code="PROVIDER_CAPABILITY_NOT_SUPPORTED")
 
+    def cancel_sync_job(self, job_id: int) -> ExternalSyncJobRead:
+        job = self.db.scalar(select(ExternalSyncJob).where(ExternalSyncJob.id == job_id, ExternalSyncJob.user_id == self.current_user.id))
+        if job is None:
+            raise NotFoundError("同步任务不存在或不属于当前用户。")
+        self.registry.get(job.provider)
+        if job.provider == "garmin":
+            return garmin_sync_service.cancel_sync_job(self.db, self.current_user.id, job_id)
+        raise BadRequestError("该平台暂不支持取消。", error_code="PROVIDER_CAPABILITY_NOT_SUPPORTED")
+
     def list_activities(self, limit: int = 50, provider_key: str | None = None) -> list[ExternalActivityRead]:
         if provider_key:
             provider = self.registry.get(provider_key)

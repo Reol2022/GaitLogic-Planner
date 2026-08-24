@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import threading
+import time
 from collections import Counter
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -53,6 +55,25 @@ from server.services.token_encryption_service import decrypt_token_payload, encr
 PROVIDER = "garmin"
 ACTIVE_STATUSES = {"connected", "reauthentication_required", "temporarily_unavailable"}
 RUNNING_JOB_STATUSES = {"queued", "running"}
+_CANCELLATION_LOCK = threading.Lock()
+_CANCELLATION_REQUESTS: set[int] = set()
+
+
+def _register_sync_job_cancellation(job_id: int) -> None:
+    with _CANCELLATION_LOCK:
+        _CANCELLATION_REQUESTS.add(job_id)
+
+
+def _clear_sync_job_cancellation(job_id: int) -> None:
+    with _CANCELLATION_LOCK:
+        _CANCELLATION_REQUESTS.discard(job_id)
+
+
+def _has_local_sync_job_cancellation(job_id: int) -> bool:
+    with _CANCELLATION_LOCK:
+        return job_id in _CANCELLATION_REQUESTS
+
+
 SUPPORTED_ACTIVITY_TYPES = {
     "outdoor_running",
     "track_running",
@@ -245,6 +266,56 @@ def retry_sync_job(db: Session, user_id: int, job_id: int) -> ExternalSyncJobRea
     )
 
 
+def cancel_sync_job(db: Session, user_id: int, job_id: int) -> ExternalSyncJobRead:
+    """Cancel a queued or running job atomically.
+
+    A running provider request cannot be interrupted safely from another
+    thread. The worker observes this persisted state at cooperative checkpoints
+    and rolls back all uncommitted activity changes before returning.
+    """
+    existing = _get_user_job(db, user_id, job_id)
+    if existing.status == "cancelled":
+        return _job_read(db, user_id, existing)
+    if existing.status not in RUNNING_JOB_STATUSES:
+        raise BadRequestError("只有排队中或同步中的任务可以取消。")
+
+    # Register only after ownership and state validation. Otherwise a user who
+    # guesses another job ID could signal cancellation across user boundaries.
+    _register_sync_job_cancellation(job_id)
+    try:
+        now = datetime.utcnow()
+        result = db.execute(
+            update(ExternalSyncJob)
+            .where(
+                ExternalSyncJob.id == job_id,
+                ExternalSyncJob.user_id == user_id,
+                ExternalSyncJob.status.in_(RUNNING_JOB_STATUSES),
+            )
+            .values(
+                status="cancelled",
+                error_code="CANCELLED_BY_USER",
+                safe_error_message="已由用户取消同步任务。",
+                finished_at=now,
+                locked_at=None,
+                is_committed=False,
+                committed_at=None,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        if result.rowcount != 1:
+            db.rollback()
+            job = _get_user_job(db, user_id, job_id)
+            if job.status == "cancelled":
+                return _job_read(db, user_id, job)
+            raise BadRequestError("只有排队中或同步中的任务可以取消。")
+        db.commit()
+        db.expire_all()
+        job = _get_user_job(db, user_id, job_id)
+        return _job_read(db, user_id, job)
+    finally:
+        _clear_sync_job_cancellation(job_id)
+
+
 def list_activities(db: Session, user_id: int, limit: int = 50) -> list[ExternalActivityRead]:
     activities = db.scalars(
         select(ExternalActivity)
@@ -372,6 +443,49 @@ def claim_sync_job(db: Session, job_id: int) -> bool:
     return claimed
 
 
+def _is_sync_job_cancelled(db: Session, job_id: int) -> bool:
+    """Read cancellation from a separate transaction while a worker is busy."""
+    if _has_local_sync_job_cancellation(job_id):
+        return True
+
+    try:
+        with Session(bind=db.get_bind()) as cancellation_db:
+            status = cancellation_db.scalar(
+                select(ExternalSyncJob.status).where(ExternalSyncJob.id == job_id)
+            )
+            return status == "cancelled"
+    except Exception:
+        logger.exception("Failed to check Garmin sync cancellation id=%s", job_id)
+        return False
+
+
+def _cancelled_sync_outcome(db: Session, job_id: int) -> GarminSyncRunOutcome:
+    db.rollback()
+    db.expire_all()
+    job = db.get(ExternalSyncJob, job_id)
+    if job is None:
+        raise NotFoundError("同步任务不存在。")
+    return _outcome_from_job(job, claimed=True, warning_codes=("CANCELLED_BY_USER",))
+
+
+def _publish_fetched_count(db: Session, job_id: int, fetched_count: int) -> None:
+    """Expose list-fetch progress without committing activity import work."""
+    try:
+        with Session(bind=db.get_bind()) as progress_db:
+            progress_db.execute(
+                update(ExternalSyncJob)
+                .where(
+                    ExternalSyncJob.id == job_id,
+                    ExternalSyncJob.status == "running",
+                )
+                .values(fetched_count=fetched_count)
+                .execution_options(synchronize_session=False)
+            )
+            progress_db.commit()
+    except Exception:
+        logger.exception("Failed to publish Garmin fetched count id=%s", job_id)
+
+
 def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
     if not claim_sync_job(db, job_id):
         existing = db.get(ExternalSyncJob, job_id)
@@ -393,20 +507,39 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
     fetched_count = 0
     failed_count = 0
     try:
+        sync_started = time.monotonic()
         connection = job.connection
         token_payload = decrypt_token_payload(connection.encrypted_token_payload)
         provider = _provider_for_connection(connection)
+        restore_started = time.monotonic()
         provider.restore_session(token_payload)
+        logger.info(
+            "Garmin sync session restored job_id=%s elapsed=%.2fs",
+            job_id,
+            time.monotonic() - restore_started,
+        )
+        fetch_started = time.monotonic()
         activities = provider.fetch_activities(
             job.requested_start or datetime.utcnow() - timedelta(days=90),
             job.requested_end or datetime.utcnow(),
         )
+        logger.info(
+            "Garmin sync activity list ready job_id=%s count=%s elapsed=%.2fs",
+            job_id,
+            len(activities),
+            time.monotonic() - fetch_started,
+        )
+        if _is_sync_job_cancelled(db, job_id):
+            return _cancelled_sync_outcome(db, job_id)
         same_day_counts = Counter(activity.start_time_local.date() for activity in activities)
         fetched_count = len(activities)
         job.fetched_count = fetched_count
+        _publish_fetched_count(db, job_id, fetched_count)
         activity_errors: list[str] = []
         health_warning_codes: list[str] = []
         for provider_activity in activities:
+            if _is_sync_job_cancelled(db, job_id):
+                return _cancelled_sync_outcome(db, job_id)
             activity_tracker = WorkoutLogMaterialChangeTracker()
             try:
                 with db.begin_nested():
@@ -435,6 +568,9 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
                 job.failed_count = failed_count
                 activity_errors.append(f"{provider_activity.external_activity_id}: {_safe_activity_error(exc)}")
 
+        if _is_sync_job_cancelled(db, job_id):
+            return _cancelled_sync_outcome(db, job_id)
+
         # Health data belongs to the same logical Garmin sync, but it is not a
         # prerequisite for preserving successfully imported training activity.
         # Use activity-local dates rather than the wall-clock sync date.
@@ -448,6 +584,9 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
             except ProviderError as exc:
                 health_warning_codes.append(f"HEALTH_{exc.code}")
                 logger.warning("Garmin daily health sync unavailable job_id=%s error_code=%s", job_id, exc.code)
+
+        if _is_sync_job_cancelled(db, job_id):
+            return _cancelled_sync_outcome(db, job_id)
 
         if fetched_count > 0 and successful_activity_count == 0:
             db.rollback()
@@ -482,6 +621,8 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
         job.is_committed = True
         job.committed_at = datetime.utcnow()
         job.finished_at = datetime.utcnow()
+        if _is_sync_job_cancelled(db, job_id):
+            return _cancelled_sync_outcome(db, job_id)
         try:
             db.commit()
         except Exception:
@@ -495,11 +636,19 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
                 fetched_count=fetched_count,
                 failed_count=failed_count,
             )
+        logger.info(
+            "Garmin sync completed job_id=%s fetched=%s elapsed=%.2fs",
+            job_id,
+            fetched_count,
+            time.monotonic() - sync_started,
+        )
         warning_codes = tuple(
             (["ACTIVITY_PROCESSING_PARTIAL_FAILURE"] if activity_errors else []) + health_warning_codes
         )
         return _outcome_from_job(job, claimed=True, warning_codes=warning_codes)
     except ProviderError as exc:
+        if _is_sync_job_cancelled(db, job_id):
+            return _cancelled_sync_outcome(db, job_id)
         db.rollback()
         return _mark_job_failed(
             db,
@@ -510,6 +659,8 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
             failed_count=failed_count,
         )
     except BadRequestError as exc:
+        if _is_sync_job_cancelled(db, job_id):
+            return _cancelled_sync_outcome(db, job_id)
         db.rollback()
         return _mark_job_failed(
             db,
@@ -520,6 +671,8 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
             failed_count=failed_count,
         )
     except Exception:
+        if _is_sync_job_cancelled(db, job_id):
+            return _cancelled_sync_outcome(db, job_id)
         logger.exception("Garmin sync job failed unexpectedly id=%s", job_id)
         db.rollback()
         return _mark_job_failed(
@@ -579,7 +732,7 @@ def _process_provider_activity(
     else:
         _update_external_activity(activity, job, raw, provider_activity, payload_hash, connector_version)
         result = "duplicate" if is_duplicate else "updated"
-    _replace_laps(activity, provider_activity)
+    _replace_laps(db, activity, provider_activity)
     if job.connection.auto_import_enabled:
         _match_and_apply(
             db,
@@ -690,19 +843,32 @@ def _copy_activity_metrics(activity: ExternalActivity, provider_activity: Provid
     activity.field_sources_json = {field: PROVIDER for field in ["distance_m", "duration_seconds", "average_heart_rate_bpm"]}
 
 
-def _replace_laps(activity: ExternalActivity, provider_activity: ProviderActivity) -> None:
-    activity.laps.clear()
+def _replace_laps(db: Session, activity: ExternalActivity, provider_activity: ProviderActivity) -> None:
+    # Do not replace laps with ``activity.laps.clear()`` followed by appends in
+    # one unit-of-work flush. SQLAlchemy may INSERT the replacement rows before
+    # DELETE-ing the orphans, which violates (external_activity_id, lap_index)
+    # when an activity is synchronized again. Delete and flush first so the
+    # operation is idempotent for both unchanged and updated Garmin activities.
+    db.execute(
+        delete(ExternalActivityLap).where(
+            ExternalActivityLap.external_activity_id == activity.id
+        )
+    )
+    db.flush()
+
     high_distance = Decimal("0")
     has_high_segments = False
     used_lap_indices: set[int] = set()
+    replacement_laps: list[ExternalActivityLap] = []
     for lap in provider_activity.laps:
         lap_index = _unique_lap_index(lap.lap_index, used_lap_indices)
         pace = _pace(lap.average_speed_mps)
         if lap.segment_role in {"threshold", "interval", "repetition"} and lap.classification_confidence == "high" and lap.distance_m is not None:
             high_distance += lap.distance_m
             has_high_segments = True
-        activity.laps.append(
+        replacement_laps.append(
             ExternalActivityLap(
+                external_activity_id=activity.id,
                 lap_index=lap_index,
                 external_lap_id=lap.external_lap_id,
                 start_time=lap.start_time,
@@ -725,6 +891,7 @@ def _replace_laps(activity: ExternalActivity, provider_activity: ProviderActivit
                 data_quality=lap.data_quality,
             )
         )
+    db.add_all(replacement_laps)
     activity.high_intensity_distance_m = high_distance if has_high_segments else None
 
 

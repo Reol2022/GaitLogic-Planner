@@ -65,7 +65,15 @@
         <template v-if="syncForm.sync_mode === 'custom_range'">
           <el-date-picker v-model="customRange" type="datetimerange" start-placeholder="开始" end-placeholder="结束" />
         </template>
-        <el-button type="primary" :icon="Upload" :loading="syncing" @click="handleSync">开始同步</el-button>
+        <el-button
+          type="primary"
+          :icon="Upload"
+          :loading="syncing"
+          :disabled="hasActiveJob"
+          @click="handleSync"
+        >
+          {{ hasActiveJob ? "已有同步任务运行中" : "开始同步" }}
+        </el-button>
       </div>
     </section>
 
@@ -94,8 +102,18 @@
           </template>
         </el-table-column>
         <el-table-column prop="safe_error_message" label="错误" min-width="180" show-overflow-tooltip />
-        <el-table-column label="操作" min-width="90" class-name="action-column">
+        <el-table-column label="操作" min-width="150" class-name="action-column">
           <template #default="{ row }">
+            <el-button
+              v-if="row.status === 'queued' || row.status === 'running'"
+              size="small"
+              type="danger"
+              text
+              :loading="isCancellingJob(row.id)"
+              @click="cancelJob(row.id)"
+            >
+              取消
+            </el-button>
             <el-button
               v-if="row.status === 'failed' || row.status === 'partially_succeeded'"
               size="small"
@@ -169,6 +187,7 @@ import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { Close, Connection, Refresh, Upload } from "@element-plus/icons-vue";
 import {
+  cancelGarminSyncJob,
   connectGarmin,
   disconnectGarmin,
   getGarminStatus,
@@ -204,6 +223,11 @@ const connectError = ref("");
 const customRange = ref<[Date, Date] | null>(null);
 let pollTimer: ReturnType<typeof window.setTimeout> | null = null;
 let receiptPollCount = 0;
+let activeJobPollCount = 0;
+let pollGeneration = 0;
+const cancelingJobIds = ref<Set<number>>(new Set());
+const GARMIN_JOB_POLL_INTERVAL_MS = 8000;
+const MAX_ACTIVE_JOB_POLLS = 30;
 
 const connectForm = reactive({
   username: "",
@@ -230,6 +254,7 @@ const statusText = computed(() => {
   }
   return status.value.last_error_code ? `最近错误：${status.value.last_error_code}` : "等待连接";
 });
+const hasActiveJob = computed(() => hasActiveSyncJobs(jobs.value));
 
 async function loadAll(options: { silent?: boolean } = {}) {
   if (!options.silent) loading.value = true;
@@ -241,6 +266,7 @@ async function loadAll(options: { silent?: boolean } = {}) {
       activities.value = activityRows;
       if (hasActiveSyncJobs(jobRows)) {
         receiptPollCount = 0;
+        activeJobPollCount = 0;
         schedulePolling();
       } else if (shouldContinueGarminPolling(jobRows, receiptPollCount)) {
         receiptPollCount += 1;
@@ -328,6 +354,26 @@ async function retryJob(jobId: number) {
   ElMessage.success("已重新加入同步队列");
 }
 
+function isCancellingJob(jobId: number) {
+  return cancelingJobIds.value.has(jobId);
+}
+
+async function cancelJob(jobId: number) {
+  cancelingJobIds.value = new Set(cancelingJobIds.value).add(jobId);
+  try {
+    const cancelledJob = await cancelGarminSyncJob(jobId);
+    jobs.value = jobs.value.map((job) => job.id === jobId ? cancelledJob : job);
+    activeJobPollCount = 0;
+    receiptPollCount = 0;
+    stopPolling();
+    ElMessage.success("同步任务已取消");
+  } finally {
+    const next = new Set(cancelingJobIds.value);
+    next.delete(jobId);
+    cancelingJobIds.value = next;
+  }
+}
+
 async function markUnplanned(activityId: number) {
   await resolveGarminActivity(activityId, { action: "mark_unplanned" });
   await loadAll();
@@ -385,13 +431,53 @@ function activityTagType(value: string) {
 }
 
 function schedulePolling() {
-  stopPolling();
+  if (pollTimer !== null) window.clearTimeout(pollTimer);
+  const generation = pollGeneration;
   pollTimer = window.setTimeout(async () => {
-    await loadAll({ silent: true });
-  }, 2500);
+    pollTimer = null;
+    await pollSyncJobs(generation);
+  }, GARMIN_JOB_POLL_INTERVAL_MS);
+}
+
+async function pollSyncJobs(generation: number) {
+  try {
+    const jobRows = await listGarminSyncJobs();
+    if (generation !== pollGeneration) return;
+    jobs.value = jobRows;
+    if (hasActiveSyncJobs(jobRows)) {
+      receiptPollCount = 0;
+      activeJobPollCount += 1;
+      if (activeJobPollCount < MAX_ACTIVE_JOB_POLLS) {
+        schedulePolling();
+      } else {
+        stopPolling();
+        ElMessage.info("同步任务仍在后台运行，已暂停自动刷新，可手动刷新或取消任务");
+      }
+      return;
+    }
+    if (shouldContinueGarminPolling(jobRows, receiptPollCount)) {
+      receiptPollCount += 1;
+      schedulePolling();
+      return;
+    }
+
+    receiptPollCount = 0;
+    activeJobPollCount = 0;
+    const [nextStatus, activityRows] = await Promise.all([
+      getGarminStatus(true),
+      listGarminActivities(),
+    ]);
+    status.value = nextStatus;
+    activities.value = activityRows;
+  } catch {
+    // Stop automatic polling on a network error. The user can refresh manually,
+    // avoiding an endless request loop while the backend or Garmin is unavailable.
+    stopPolling();
+  }
 }
 
 function stopPolling() {
+  pollGeneration += 1;
   if (pollTimer !== null) {
     window.clearTimeout(pollTimer);
     pollTimer = null;

@@ -67,6 +67,16 @@ class _Facade:
     def create_sync_job(self, *_args, **_kwargs) -> ExternalSyncJobRead:
         return self.row
 
+    def cancel_sync_job(self, _job_id: int) -> ExternalSyncJobRead:
+        return self.row.model_copy(
+            update={
+                "status": "cancelled",
+                "error_code": "CANCELLED_BY_USER",
+                "safe_error_message": "已由用户取消同步任务。",
+                "is_committed": False,
+            }
+        )
+
 
 def _with_overrides(monkeypatch, row: ExternalSyncJobRead) -> TestClient:
     current_user = UserAccount(
@@ -147,3 +157,16 @@ def test_queued_create_has_null_snapshot_result(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["runner_state_snapshot"] is None
+
+
+def test_running_job_can_be_cancelled(monkeypatch) -> None:
+    client = _with_overrides(monkeypatch, _job(snapshot=None, status="running"))
+    try:
+        response = client.post("/api/integrations/garmin/sync-jobs/44/cancel")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "cancelled"
+    assert response.json()["error_code"] == "CANCELLED_BY_USER"
+    assert response.json()["is_committed"] is False

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, TypedDict
+
+from typing_extensions import NotRequired
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
@@ -13,6 +16,8 @@ class AdaptiveApprovalState(TypedDict):
     proposal_id: int
     decision: str | None
     trace_context: dict[str, str]
+    selected_item_ids: NotRequired[list[int]]
+    result: NotRequired[dict[str, Any]]
 
 
 class _TracedAdaptiveApprovalGraph:
@@ -70,22 +75,61 @@ class _TracedAdaptiveApprovalGraph:
     def get_graph(self, *args: Any, **kwargs: Any):
         return self._graph.get_graph(*args, **kwargs)
 
+    def get_state(self, config: dict):
+        return self._graph.get_state(config)
+
 
 def request_human_approval(state: AdaptiveApprovalState) -> dict:
-    decision = interrupt(
+    resume_value = interrupt(
         {
             "proposal_id": state["proposal_id"],
             "allowed_actions": ["approve", "reject"],
         }
     )
+    if isinstance(resume_value, dict):
+        decision = resume_value.get("decision")
+        selected_item_ids = resume_value.get("selected_item_ids")
+    else:
+        decision = resume_value
+        selected_item_ids = None
     if decision not in {"approve", "reject"}:
         raise ValueError("Human decision must be approve or reject")
-    return {"decision": decision}
+    update: dict[str, Any] = {"decision": decision}
+    if selected_item_ids is not None:
+        update["selected_item_ids"] = [int(item) for item in selected_item_ids]
+    return update
 
 
-def build_adaptive_approval_graph(*, checkpointer, tracer: SafeTracer | None = None):
+def _route_decision(state: AdaptiveApprovalState) -> str:
+    return str(state.get("decision") or "reject")
+
+
+def build_adaptive_approval_graph(
+    *,
+    checkpointer,
+    tracer: SafeTracer | None = None,
+    approval_handler: Callable[[AdaptiveApprovalState], dict[str, Any]] | None = None,
+    rejection_handler: Callable[[AdaptiveApprovalState], dict[str, Any]] | None = None,
+):
     graph = StateGraph(AdaptiveApprovalState)
     graph.add_node("human_interrupt", request_human_approval)
     graph.add_edge(START, "human_interrupt")
-    graph.add_edge("human_interrupt", END)
+    if approval_handler is None and rejection_handler is None:
+        graph.add_edge("human_interrupt", END)
+    else:
+        def approve(state: AdaptiveApprovalState) -> dict[str, Any]:
+            return {"result": (approval_handler or (lambda _: {}))(state)}
+
+        def reject(state: AdaptiveApprovalState) -> dict[str, Any]:
+            return {"result": (rejection_handler or (lambda _: {}))(state)}
+
+        graph.add_node("approve", approve)
+        graph.add_node("reject", reject)
+        graph.add_conditional_edges(
+            "human_interrupt",
+            _route_decision,
+            {"approve": "approve", "reject": "reject"},
+        )
+        graph.add_edge("approve", END)
+        graph.add_edge("reject", END)
     return _TracedAdaptiveApprovalGraph(graph.compile(checkpointer=checkpointer), tracer or NOOP_TRACER)

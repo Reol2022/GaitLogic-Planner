@@ -82,6 +82,10 @@ Systemd 托管后端时：
 -RunInitDb
 ```
 
+> 升级包含 LangGraph 人工审批工作流的后端时必须执行一次 `-RunInitDb`，以创建
+> `adaptive_workflow_checkpoints` 和 `adaptive_workflow_checkpoint_writes`。该初始化仅补建缺失表，
+> 不会删除已有业务数据。
+
 ---
 
 ## 运行前服务器需要具备

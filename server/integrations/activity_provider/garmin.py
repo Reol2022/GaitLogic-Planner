@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import secrets
+import time
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -15,10 +17,31 @@ from server.integrations.activity_provider.base import (
 )
 
 MFA_STATE_CACHE: dict[str, dict[str, Any]] = {}
+GARTH_TOKEN_FORMAT = "garth_oauth_v1"
+GARTH_TIMEOUT_SECONDS = 120
+GARMIN_API_TIMEOUT_SECONDS = 120
+ACTIVITY_PAGE_SIZE = 100
+MAX_ACTIVITY_PAGES = 20
+
+logger = logging.getLogger(__name__)
+
+
+def _garth_token_payload(client: Any, region: str | None) -> dict[str, Any]:
+    garth_client = getattr(client, "garth", None)
+    if garth_client is None or not callable(getattr(garth_client, "dumps", None)):
+        raise ProviderError("PROVIDER_UNAVAILABLE", "Garmin 连接器版本不兼容。")
+    tokenstore = garth_client.dumps()
+    if not isinstance(tokenstore, str) or not tokenstore:
+        raise ProviderError("AUTHENTICATION_REQUIRED", "Garmin 认证未返回可保存的会话。")
+    return {
+        "token_format": GARTH_TOKEN_FORMAT,
+        "tokenstore": tokenstore,
+        "region": region or "global",
+    }
 
 
 class GarminActivityProvider(ActivityProvider):
-    connector_version = "garminconnect-provider-v1"
+    connector_version = "garminconnect-garth-provider-v2"
 
     def __init__(self) -> None:
         self._client: Any | None = None
@@ -37,6 +60,7 @@ class GarminActivityProvider(ActivityProvider):
             is_cn=_is_cn_region(region),
             return_on_mfa=True,
         )
+        client.garth.timeout = GARTH_TIMEOUT_SECONDS
         try:
             token1, token2 = client.login()
         except Exception as exc:
@@ -56,10 +80,9 @@ class GarminActivityProvider(ActivityProvider):
                 safe_message="Garmin 账号需要 MFA 验证。",
             )
         self._client = client
-        tokenstore = client.garth.dumps()
         return ProviderAuthResult(
             status="connected",
-            token_payload={"tokenstore": tokenstore, "region": region or "global"},
+            token_payload=_garth_token_payload(client, region),
             account_identifier=username,
             masked_account_identifier=_mask_account(username),
             provider_user_id=None,
@@ -68,6 +91,7 @@ class GarminActivityProvider(ActivityProvider):
     def submit_mfa(self, mfa_token: str, mfa_code: str) -> ProviderAuthResult:
         try:
             import garth.sso
+            from garminconnect import Garmin
         except Exception as exc:
             raise ProviderError(
                 "PROVIDER_UNAVAILABLE",
@@ -78,13 +102,17 @@ class GarminActivityProvider(ActivityProvider):
             raise ProviderError("AUTHENTICATION_REQUIRED", "Garmin MFA 会话已过期，请重新连接。")
         try:
             garth.sso.resume_login(state["client_state"], mfa_code)
-            client = state["client_state"]["client"]
+            garth_client = state["client_state"]["client"]
+            tokenstore = garth_client.dumps()
+            client = Garmin(is_cn=_is_cn_region(state.get("region")))
+            client.garth.timeout = GARTH_TIMEOUT_SECONDS
+            client.login(tokenstore=tokenstore)
         except Exception as exc:
             _raise_safe_provider_error(exc)
         self._client = client
         return ProviderAuthResult(
             status="connected",
-            token_payload={"tokenstore": client.dumps(), "region": state.get("region") or "global"},
+            token_payload=_garth_token_payload(client, state.get("region")),
             account_identifier=state.get("account_identifier"),
             masked_account_identifier=_mask_account(state.get("account_identifier") or ""),
             provider_user_id=None,
@@ -99,9 +127,11 @@ class GarminActivityProvider(ActivityProvider):
                 "当前部署未安装 Garmin 连接器，无法恢复会话。",
             ) from exc
         tokenstore = token_payload.get("tokenstore")
-        if not tokenstore:
+        token_format = token_payload.get("token_format")
+        if token_format not in {None, GARTH_TOKEN_FORMAT} or not isinstance(tokenstore, str) or not tokenstore:
             raise ProviderError("REAUTHENTICATION_REQUIRED", "Garmin 连接需要重新认证。")
         client = Garmin(is_cn=_is_cn_region(token_payload.get("region")))
+        client.garth.timeout = GARTH_TIMEOUT_SECONDS
         try:
             client.login(tokenstore=tokenstore)
         except Exception as exc:
@@ -111,24 +141,60 @@ class GarminActivityProvider(ActivityProvider):
     def refresh_session(self) -> dict[str, Any] | None:
         if self._client is None:
             return None
-        return {"tokenstore": self._client.garth.dumps(), "region": "cn" if self._client.is_cn else "global"}
+        return _garth_token_payload(self._client, "cn" if self._client.is_cn else "global")
 
     def fetch_activities(self, start: datetime, end: datetime) -> list[ProviderActivity]:
         client = self._require_client()
-        try:
-            rows = client.get_activities_by_date(
-                start.date().isoformat(),
-                end.date().isoformat(),
-                activitytype="running",
-            )
-        except Exception as exc:
-            raise ProviderError("ACTIVITY_FETCH_FAILED", "Garmin 活动列表拉取失败。") from exc
+        client.garth.timeout = GARMIN_API_TIMEOUT_SECONDS
         activities: list[ProviderActivity] = []
-        for row in rows:
-            try:
-                activities.append(_activity_from_payload(row, client))
-            except ProviderError:
-                continue
+        try:
+            for page in range(MAX_ACTIVITY_PAGES):
+                # Keep this call identical to the proven China-region script.
+                # The optional activitytype query changes the request Garmin CN
+                # receives and has shown substantially slower/unreliable
+                # behaviour for this account. Filter running activities locally.
+                page_started = time.monotonic()
+                offset = page * ACTIVITY_PAGE_SIZE
+                rows = client.get_activities(offset, ACTIVITY_PAGE_SIZE)
+                logger.info(
+                    "Garmin activity page fetched offset=%s count=%s elapsed=%.2fs",
+                    offset,
+                    len(rows) if isinstance(rows, list) else -1,
+                    time.monotonic() - page_started,
+                )
+                if not isinstance(rows, list) or not rows:
+                    break
+                reached_older_activity = False
+                for row in rows:
+                    try:
+                        # The list payload already contains the summary needed
+                        # for synchronization. Passing the client here used to
+                        # trigger get_activity_splits() once per row before the
+                        # date filter, turning one page into up to 101 provider
+                        # requests and leaving jobs at fetched_count=0 for a
+                        # long time. Split enrichment must not block ingestion.
+                        activity = _activity_from_payload(row)
+                    except ProviderError:
+                        continue
+                    activity_time = activity.start_time_local.replace(tzinfo=None)
+                    range_start = start.replace(tzinfo=None)
+                    range_end = end.replace(tzinfo=None)
+                    if activity_time < range_start:
+                        reached_older_activity = True
+                        continue
+                    if activity_time <= range_end and _is_running_activity_payload(row):
+                        activities.append(activity)
+                if reached_older_activity or len(rows) < ACTIVITY_PAGE_SIZE:
+                    break
+        except Exception as exc:
+            detail = str(exc).strip()
+            logger.warning("Garmin activity list fetch failed: %s", detail[:500])
+            lowered = detail.lower()
+            if "401" in lowered or "unauthorized" in lowered or "authentication" in lowered:
+                raise ProviderError("REAUTHENTICATION_REQUIRED", "Garmin 会话已失效，请重新连接。") from exc
+            if "429" in lowered or "rate" in lowered:
+                raise ProviderError("RATE_LIMITED", "Garmin 请求过于频繁，请稍后再试。") from exc
+            raise ProviderError("ACTIVITY_FETCH_FAILED", "Garmin 活动列表拉取失败。") from exc
         return activities
 
     def fetch_activity_summary(self, external_activity_id: str) -> ProviderActivity:
@@ -474,6 +540,11 @@ def _activity_type(payload: dict[str, Any]) -> str:
     else:
         text = str(raw or "")
     return text or "running_unknown"
+
+
+def _is_running_activity_payload(payload: dict[str, Any]) -> bool:
+    activity_type = _activity_type(payload).lower()
+    return "running" in activity_type or activity_type in {"run", "trail_run", "treadmill_run"}
 
 
 def _first(payload: dict[str, Any], *keys: str) -> Any:

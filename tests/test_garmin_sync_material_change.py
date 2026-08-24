@@ -15,9 +15,17 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from planner_core.config import get_settings
 from planner_core.database.base import Base
-from planner_core.database.models import ExternalAccountConnection, ExternalSyncJob, UserAccount, WorkoutLog
+from planner_core.database.models import (
+    ExternalAccountConnection,
+    ExternalActivity,
+    ExternalActivityLap,
+    ExternalSyncJob,
+    UserAccount,
+    WorkoutLog,
+)
 from planner_core.enums import PainScaleVersion, WorkoutStatusNormalized
 from scripts.upgrade_v0103_garmin_sync_material_change import downgrade, upgrade
+from server.integrations.activity_provider import ProviderActivity, ProviderLap
 from server.integrations.activity_sync.outcome import (
     GarminSyncRunOutcome,
     RunnerStateRelevantWorkoutLogProjection,
@@ -111,6 +119,97 @@ def _user_connection_job(
     session.add(job)
     session.commit()
     return user, connection, job
+
+
+def test_replacing_existing_laps_is_idempotent(mysql_factory) -> None:
+    with mysql_factory() as session:
+        user, connection, job = _user_connection_job(session)
+        activity = ExternalActivity(
+            user_id=user.id,
+            connection_id=connection.id,
+            sync_job_id=job.id,
+            provider="garmin",
+            external_activity_id=f"lap-replace-{uuid4().hex}",
+            connector_version="test",
+            activity_type="running",
+            start_time_local=datetime(2026, 8, 24, 8),
+            timezone="Asia/Shanghai",
+            activity_date=date(2026, 8, 24),
+        )
+        session.add(activity)
+        session.flush()
+        session.add(
+            ExternalActivityLap(
+                external_activity_id=activity.id,
+                lap_index=1,
+                distance_m=Decimal("1000"),
+            )
+        )
+        session.commit()
+
+        provider_activity = ProviderActivity(
+            external_activity_id=activity.external_activity_id,
+            activity_name="Morning Run",
+            activity_type="running",
+            activity_subtype=None,
+            start_time_local=activity.start_time_local,
+            laps=[
+                ProviderLap(lap_index=1, distance_m=Decimal("1200")),
+                ProviderLap(lap_index=1, distance_m=Decimal("800")),
+            ],
+        )
+
+        garmin_sync_service._replace_laps(session, activity, provider_activity)
+        session.flush()
+        garmin_sync_service._replace_laps(session, activity, provider_activity)
+        session.commit()
+
+        laps = session.scalars(
+            select(ExternalActivityLap)
+            .where(ExternalActivityLap.external_activity_id == activity.id)
+            .order_by(ExternalActivityLap.lap_index)
+        ).all()
+        assert [(lap.lap_index, lap.distance_m) for lap in laps] == [
+            (1, Decimal("1200.00")),
+            (2, Decimal("800.00")),
+        ]
+
+
+def test_replace_laps_flushes_delete_before_staging_replacements() -> None:
+    operations: list[str] = []
+    staged: list[ExternalActivityLap] = []
+
+    class RecordingSession:
+        def execute(self, _statement):
+            operations.append("delete")
+
+        def flush(self):
+            operations.append("flush")
+
+        def add_all(self, rows):
+            operations.append("add_all")
+            staged.extend(rows)
+
+    activity = SimpleNamespace(id=42, high_intensity_distance_m=None)
+    provider_activity = ProviderActivity(
+        external_activity_id="duplicate-lap-indices",
+        activity_name="Intervals",
+        activity_type="running",
+        activity_subtype=None,
+        start_time_local=datetime(2026, 8, 24, 8),
+        laps=[
+            ProviderLap(lap_index=1, distance_m=Decimal("1000")),
+            ProviderLap(lap_index=1, distance_m=Decimal("400")),
+        ],
+    )
+
+    garmin_sync_service._replace_laps(RecordingSession(), activity, provider_activity)
+
+    assert operations == ["delete", "flush", "add_all"]
+    assert [(lap.external_activity_id, lap.lap_index) for lap in staged] == [
+        (42, 1),
+        (42, 2),
+    ]
 
 
 def _log(user_id: int, log_id: int = 501) -> WorkoutLog:
@@ -255,6 +354,47 @@ def test_atomic_claim_allows_only_one_background_or_worker_claimant(mysql_factor
         assert persisted is not None
         assert persisted.status == "running"
         assert persisted.attempt_count == 1
+
+
+def test_queued_sync_job_can_be_cancelled_and_cannot_be_claimed(mysql_factory) -> None:
+    with mysql_factory() as session:
+        user, _connection, job = _user_connection_job(session)
+        cancelled = garmin_sync_service.cancel_sync_job(session, user.id, job.id)
+        assert cancelled.status == "cancelled"
+        assert cancelled.error_code == "CANCELLED_BY_USER"
+        assert garmin_sync_service.claim_sync_job(session, job.id) is False
+
+
+def test_running_sync_cancellation_is_observed_after_provider_returns(
+    mysql_factory,
+    monkeypatch,
+) -> None:
+    with mysql_factory() as worker_session:
+        user, _connection, job = _user_connection_job(worker_session)
+
+        class CancellingProvider(_FakeProvider):
+            def fetch_activities(self, _start: datetime, _end: datetime):
+                with mysql_factory() as cancellation_session:
+                    garmin_sync_service.cancel_sync_job(
+                        cancellation_session,
+                        user.id,
+                        job.id,
+                    )
+                return self.activities
+
+        _install_fake_sync(
+            monkeypatch,
+            CancellingProvider(_activities(1)),
+            _successful_process,
+        )
+        outcome = garmin_sync_service.run_sync_job(worker_session, job.id)
+
+        assert outcome.final_status == "cancelled"
+        assert outcome.committed is False
+        assert outcome.warning_codes == ("CANCELLED_BY_USER",)
+        assert worker_session.scalar(
+            select(WorkoutLog).where(WorkoutLog.user_id == user.id)
+        ) is None
 
 
 class _FakeProvider:

@@ -196,6 +196,11 @@ def validate_draft_items(
     for item in selected:
         workout = item.planned_workout
         _assert_workout_can_change(workout, draft.user_id, draft.target_block_id)
+        if (
+            item.base_plan_version is not None
+            and workout.plan_version != item.base_plan_version
+        ):
+            raise BadRequestError("Plan changed after proposal generation; approval is stale.")
         original_type = item.original_main_type or workout.main_type_normalized.value
         suggested_type = item.suggested_main_type or original_type
         original_distance = float(item.original_distance_km or 0)

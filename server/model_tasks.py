@@ -61,7 +61,10 @@ def task_model_profile(settings: Settings, task_type: ModelTaskType) -> TaskMode
         return TaskModelProfile(
             task_type=task_type,
             model=settings.weekly_review_model or settings.deepseek_model,
-            thinking_enabled=True,
+            # Weekly review is structured extraction plus deterministic rule
+            # validation. Honour the deployment-wide Thinking policy so a
+            # disabled setting also keeps these two long provider calls light.
+            thinking_enabled=settings.coach_agent_thinking_mode == "enabled",
             max_output_tokens=settings.weekly_review_max_output_tokens,
             request_timeout_seconds=settings.weekly_review_timeout_seconds,
             persist_reasoning=settings.weekly_reasoning_persistence_enabled,
@@ -71,7 +74,7 @@ def task_model_profile(settings: Settings, task_type: ModelTaskType) -> TaskMode
         return TaskModelProfile(
             task_type=task_type,
             model=settings.plan_design_model or settings.deepseek_model,
-            thinking_enabled=True,
+            thinking_enabled=settings.coach_agent_thinking_mode == "enabled",
             max_output_tokens=settings.plan_design_max_output_tokens,
             request_timeout_seconds=settings.plan_design_timeout_seconds,
             persist_reasoning=settings.plan_design_reasoning_persistence_enabled,
