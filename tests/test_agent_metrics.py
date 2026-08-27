@@ -104,6 +104,34 @@ def test_tool_rag_validator_fallback_and_adaptive_metrics_are_real_span_mappings
     assert sink.counter("proposal_reject") == 1
 
 
+def test_evidence_and_reflect_metrics_use_only_aggregate_low_cardinality_data() -> None:
+    sink = InMemoryMetricsSink()
+    recorder = MetricsRecorder(sink)
+    recorder.record_span(
+        _span(
+            "evidence",
+            "judge",
+            metadata={"relevant_domain_count": 4, "conflict_count": 1},
+        )
+    )
+    recorder.record_span(
+        _span("reflect", "evaluate", metadata={"candidate_action_count": 1})
+    )
+    recorder.record_span(
+        _span("reflect", "tool", metadata={"executed_action_count": 1})
+    )
+    recorder.record_span(
+        _span("reflect", "outcome", metadata={"result": "no_gain"})
+    )
+
+    assert sink.counter("evidence_assessment_total") == 4
+    assert sink.counter("evidence_conflict_total") == 1
+    assert sink.counter("reflect_trigger_total") == 1
+    assert sink.counter("reflect_action_total") == 1
+    assert sink.counter("reflect_no_gain_total") == 1
+    assert all("user_id" not in dict(series[1]) for series in sink._counters)
+
+
 def test_disabled_recorder_and_sink_failures_do_not_change_business_execution() -> None:
     sink = InMemoryMetricsSink()
     disabled = MetricsRecorder(sink, enabled=False)

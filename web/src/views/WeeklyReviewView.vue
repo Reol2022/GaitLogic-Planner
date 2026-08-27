@@ -116,7 +116,10 @@
 
     <div v-if="draft && canEditDraft" class="mobile-apply-bar">
       <span>已选 {{ selectedItemIds.length }} 项</span>
-      <el-button type="primary" :disabled="!selectedItemIds.length" :loading="applying" @click="applyDraft">应用调整</el-button>
+      <div class="mobile-draft-actions">
+        <el-button @click="rejectDraft">保留原计划</el-button>
+        <el-button type="primary" :disabled="!selectedItemIds.length" :loading="applying" @click="applyDraft">应用调整</el-button>
+      </div>
     </div>
 
     <el-dialog v-model="editVisible" title="编辑调整建议" width="560px">
@@ -353,6 +356,7 @@ onMounted(async () => {
   .selection-actions { width: 100%; justify-content: space-between; }
   .plan-compare p { min-height: 0; }
   .draft-actions { display: none; }
-  .mobile-apply-bar { position: sticky; bottom: 70px; z-index: 20; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid var(--card-border); border-radius: var(--card-radius); background: #fff; box-shadow: 0 -4px 16px rgba(23,32,51,.14); }
+  .mobile-apply-bar { position: sticky; bottom: 70px; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--card-border); border-radius: var(--card-radius); background: #fff; box-shadow: 0 -4px 16px rgba(23,32,51,.14); }
+  .mobile-draft-actions { display: flex; flex: 1; justify-content: flex-end; gap: 8px; }
 }
 </style>

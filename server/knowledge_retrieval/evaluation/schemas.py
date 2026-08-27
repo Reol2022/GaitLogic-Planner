@@ -40,6 +40,9 @@ class RetrievalEvaluationCase(StrictEvaluationModel):
     difficulty: Literal["easy", "medium", "hard"] = "medium"
     filters: RetrievalFilters = Field(default_factory=RetrievalFilters)
     relevant_documents: list[RelevantDocument] = Field(default_factory=list)
+    relevant_topics: list[str] = Field(default_factory=list, max_length=12)
+    acceptable_sections: list[str] = Field(default_factory=list, max_length=20)
+    minimum_relevant_hits: int | None = Field(default=None, ge=1, le=4)
     acceptable_chunk_ids: list[str] = Field(default_factory=list)
     forbidden_document_ids: list[str] = Field(default_factory=list)
     should_abstain: bool = False
@@ -55,11 +58,18 @@ class RetrievalEvaluationCase(StrictEvaluationModel):
             raise ValueError("a document cannot be both relevant and forbidden")
         if self.should_abstain and self.relevant_documents:
             raise ValueError("abstention cases cannot declare relevant documents")
+        if self.minimum_relevant_hits is not None and self.minimum_relevant_hits > len(relevant):
+            raise ValueError("minimum relevant hits cannot exceed relevant document count")
         return self
 
 
 class RetrievalDataset(StrictEvaluationModel):
     dataset_version: str = RETRIEVAL_DATASET_VERSION
+    retrieval_eval_version: str | None = None
+    corpus_version: str | None = None
+    corpus_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    manifest_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    fixture_version: str | None = None
     content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     cases: list[RetrievalEvaluationCase] = Field(min_length=1)
 
@@ -69,6 +79,18 @@ class RetrievalDataset(StrictEvaluationModel):
             raise ValueError("legacy retrieval dataset must retain at least 60 cases")
         if self.dataset_version == "retrieval-holdout-v2" and not 40 <= len(self.cases) <= 60:
             raise ValueError("retrieval holdout v2 must contain 40 to 60 cases")
+        if self.dataset_version == "retrieval-cases-v2":
+            if len(self.cases) != 60:
+                raise ValueError("retrieval v2 must retain the 60 audited public queries")
+            required = (
+                self.retrieval_eval_version,
+                self.corpus_version,
+                self.corpus_hash,
+                self.manifest_hash,
+                self.fixture_version,
+            )
+            if not all(required):
+                raise ValueError("retrieval v2 requires complete version metadata")
         return self
 
 

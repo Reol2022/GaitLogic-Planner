@@ -6,7 +6,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from planner_core.weekly_review.schemas import WeeklyFacts, WeeklyFactsRequest
-from server.agent.schemas import AgentKnowledgeReference
+from server.agent.schemas import AgentKnowledgeReference, AgentToolResult
+from server.domain.decision_readiness import DomainReadiness
+from server.domain.evidence import EvidenceAssessment, ReflectSummary
 from server.agent.tools.knowledge_tools import KnowledgeToolResultItem
 from planner_core.adaptive_plan.schemas import (
     PlanAdjustmentProposal,
@@ -22,6 +24,8 @@ class GraphModel(BaseModel):
 class WeeklyReviewGraphStatus(str, Enum):
     PENDING = "PENDING"
     FACTS_READY = "FACTS_READY"
+    EVIDENCE_READY = "EVIDENCE_READY"
+    REFLECTED = "REFLECTED"
     RULES_READY = "RULES_READY"
     KNOWLEDGE_READY = "KNOWLEDGE_READY"
     DRAFT_READY = "DRAFT_READY"
@@ -86,6 +90,8 @@ class WeeklyReviewResult(GraphModel):
     knowledge_references: list[AgentKnowledgeReference]
     fallback_used: bool
     proposal_record_id: int | None = None
+    review_report_id: int | None = None
+    evidence_status: dict[str, str] = Field(default_factory=dict)
 
 
 class WeeklyReviewState(GraphModel):
@@ -93,9 +99,19 @@ class WeeklyReviewState(GraphModel):
     request: WeeklyFactsRequest
     weekly_facts: WeeklyFacts | None = None
     rule_results: list[str] = Field(default_factory=list)
+    supplemental_tool_results: list[AgentToolResult] = Field(default_factory=list, max_length=20)
+    evidence_assessments: list[EvidenceAssessment] = Field(default_factory=list, max_length=30)
+    decision_readiness: list[DomainReadiness] = Field(default_factory=list, max_length=30)
+    evidence_fingerprint: str | None = Field(default=None, min_length=64, max_length=64)
+    reflect_summary: ReflectSummary = Field(default_factory=ReflectSummary)
     knowledge_results: list[KnowledgeToolResultItem] = Field(default_factory=list)
     knowledge_reference_ids: list[str] = Field(default_factory=list)
     target_plans: list[TargetPlanFact] = Field(default_factory=list, max_length=30)
+    # Revision-only preference input. It is never treated as rule evidence and
+    # therefore cannot weaken deterministic proposal validation.
+    previous_proposal: PlanAdjustmentProposal | None = None
+    revision_feedback: dict[str, Any] | None = None
+    revision_number: int | None = Field(default=None, ge=2, le=6)
     review_draft: WeeklyReviewDraft | None = None
     weekly_analysis: WeeklyReviewAnalysis | None = None
     plan_design: PlanDesignAnalysis | None = None

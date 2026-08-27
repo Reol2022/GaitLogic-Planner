@@ -5,16 +5,25 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from planner_core.adaptive_plan.schemas import PlanAdjustmentProposal
+from planner_core.adaptive_plan.schemas import (
+    PlanAdjustmentProposal,
+    PlanValue,
+    ProposalCandidateChange,
+    TargetPlanFact,
+)
 from planner_core.database.models import (
     AdaptivePlanVersionRecord,
     PlannedWorkout,
     TrainingAdjustmentDraft,
+    WeeklyReviewReport,
 )
-from planner_core.enums import WorkoutMainTypeNormalized, WorkoutStatusNormalized
+from planner_core.enums import WeeklyReviewStatus, WorkoutMainTypeNormalized, WorkoutStatusNormalized
+from planner_core.weekly_review.schemas import WeeklyFactsRequest
 from server.common.exceptions import BadRequestError, NotFoundError
 from server.schemas.adaptive_plan import AdaptiveApprovalResult
 from server.observability.tracing import NOOP_TRACER, SafeTracer
+from server.services.adaptive_plan_proposal_service import AdaptivePlanProposalService
+from server.services.weekly_facts_service import WeeklyFactsService
 
 
 COMPLETED = {
@@ -22,6 +31,7 @@ COMPLETED = {
     WorkoutStatusNormalized.completed_normal,
     WorkoutStatusNormalized.completed_adjusted,
 }
+ADAPTIVE_WEEKLY_PROPOSAL_SOURCES = {"weekly_review_v0130", "adaptive_weekly_coaching_v0164"}
 
 
 def _snapshot(workout: PlannedWorkout) -> dict:
@@ -40,6 +50,79 @@ class AdaptivePlanApprovalService:
     def __init__(self, tracer: SafeTracer | None = None) -> None:
         self.tracer = tracer or NOOP_TRACER
 
+    @staticmethod
+    def _revalidate_current_snapshot(
+        db: Session,
+        *,
+        user_id: int,
+        record: TrainingAdjustmentDraft,
+        workouts: list[PlannedWorkout],
+    ) -> None:
+        """Re-check freshness and deterministic safety immediately before apply."""
+        if record.review_report_id is None:
+            return  # Backward-compatible v0.13 proposal without snapshot linkage.
+        report = db.scalar(
+            select(WeeklyReviewReport)
+            .where(WeeklyReviewReport.id == record.review_report_id, WeeklyReviewReport.user_id == user_id)
+            .with_for_update()
+        )
+        if report is None or report.weekly_facts_fingerprint is None:
+            record.status = "invalidated"
+            db.commit()
+            raise BadRequestError("周复盘快照缺少可验证事实，请重新生成周复盘。", error_code="REVIEW_STALE")
+        facts = WeeklyFactsService().build_weekly_facts(
+            db,
+            WeeklyFactsRequest(
+                user_id=user_id,
+                week_start=report.week_start_date,
+                week_end=report.week_end_date,
+                cycle_id=report.cycle_id,
+                timezone="Asia/Shanghai",
+            ),
+        )
+        if report.status != WeeklyReviewStatus.current or facts.result_hash != report.weekly_facts_fingerprint:
+            report.status = WeeklyReviewStatus.stale
+            record.status = "invalidated"
+            db.commit()
+            raise BadRequestError("本周训练事实已发生变化，请重新生成周复盘。", error_code="REVIEW_STALE")
+        proposal = PlanAdjustmentProposal.model_validate({**record.adjustment_json, "user_id": user_id})
+        by_id = {item.id: item for item in workouts}
+        targets = [
+            TargetPlanFact(
+                plan_id=item.id,
+                user_id=user_id,
+                workout_date=item.workout_date,
+                value=PlanValue(
+                    content=item.planned_content,
+                    distance_km=float(item.planned_distance_km) if item.planned_distance_km is not None else None,
+                    main_type=item.main_type_normalized.value,
+                    target_pace_text=item.target_pace_text,
+                ),
+                is_locked=item.is_locked,
+                is_completed=bool(item.workout_log and item.workout_log.status_normalized in COMPLETED),
+                plan_version=item.plan_version,
+            )
+            for item in workouts
+        ]
+        # Re-materializing only validates current deterministic facts; it never
+        # invokes a provider or replaces the persisted candidate proposal.
+        AdaptivePlanProposalService().create_proposal(
+            user_id=user_id,
+            weekly_facts=facts,
+            target_plans=targets,
+            candidates=[
+                ProposalCandidateChange(
+                    plan_id=change.plan_id,
+                    action=change.action,
+                    after=change.after,
+                    reason=change.reason,
+                    rule_evidence=change.rule_evidence,
+                )
+                for change in proposal.changes
+                if change.plan_id in by_id
+            ],
+        )
+
     def persist_proposal(
         self,
         db: Session,
@@ -47,6 +130,11 @@ class AdaptivePlanApprovalService:
         user_id: int,
         proposal: PlanAdjustmentProposal,
         cycle_id: int | None = None,
+        review_report_id: int | None = None,
+        revision: int = 1,
+        parent_proposal_id: int | None = None,
+        feedback_json: dict | None = None,
+        facts_hash: str | None = None,
     ) -> TrainingAdjustmentDraft:
         if proposal.user_id != user_id:
             raise BadRequestError("Proposal owner does not match the authenticated user.")
@@ -55,7 +143,7 @@ class AdaptivePlanApprovalService:
             cycle_id=cycle_id,
             week_start=proposal.week_start,
             status="pending_approval",
-            source_type="weekly_review_v0130",
+            source_type="adaptive_weekly_coaching_v0164" if review_report_id else "weekly_review_v0130",
             adjustment_json=proposal.model_dump(mode="json"),
             explanation_json={
                 "reason_codes": proposal.reason_codes,
@@ -70,8 +158,12 @@ class AdaptivePlanApprovalService:
                 }
                 for item in proposal.changes
             ],
-            facts_hash=None,
-            source_version="adaptive-proposal-1.0.0",
+            facts_hash=facts_hash,
+            source_version="adaptive-weekly-coaching-1.0.0" if review_report_id else "adaptive-proposal-1.0.0",
+            review_report_id=review_report_id,
+            revision=revision,
+            parent_proposal_id=parent_proposal_id,
+            feedback_json=feedback_json,
         )
         db.add(record)
         db.commit()
@@ -108,7 +200,7 @@ class AdaptivePlanApprovalService:
                     .where(
                         TrainingAdjustmentDraft.id == proposal_id,
                         TrainingAdjustmentDraft.user_id == user_id,
-                        TrainingAdjustmentDraft.source_type == "weekly_review_v0130",
+                        TrainingAdjustmentDraft.source_type.in_(ADAPTIVE_WEEKLY_PROPOSAL_SOURCES),
                     )
                     .with_for_update()
                 )
@@ -145,6 +237,12 @@ class AdaptivePlanApprovalService:
             by_id = {item.id: item for item in workouts}
             if len(by_id) != len(ids):
                 raise BadRequestError("Proposal contains a plan outside the authenticated user scope.")
+            self._revalidate_current_snapshot(
+                db,
+                user_id=user_id,
+                record=record,
+                workouts=workouts,
+            )
             before: list[dict] = []
             after: list[dict] = []
             with self.tracer.span(
@@ -230,7 +328,7 @@ class AdaptivePlanApprovalService:
                 .where(
                     TrainingAdjustmentDraft.id == proposal_id,
                     TrainingAdjustmentDraft.user_id == user_id,
-                    TrainingAdjustmentDraft.source_type == "weekly_review_v0130",
+                    TrainingAdjustmentDraft.source_type.in_(ADAPTIVE_WEEKLY_PROPOSAL_SOURCES),
                 )
                 .with_for_update()
             )

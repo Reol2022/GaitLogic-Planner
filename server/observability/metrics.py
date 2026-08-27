@@ -38,6 +38,9 @@ SAFE_METRIC_LABELS = frozenset(
         "model_family",
         "task_type",
         "model_profile",
+        "domain",
+        "tool_category",
+        "result",
     }
 )
 _SAFE_LABEL_VALUE_TYPES = (str, int, float, bool)
@@ -132,7 +135,7 @@ class MetricsRecorder:
             "status": span.status,
             "fallback": str(span.fallback).lower(),
         }
-        for key in ("tool_name", "provider_kind", "failure_category", "transport", "auth_status", "primitive", "resource_type", "vector_store", "retrieval_strategy", "fusion_method", "reranker", "model_family", "task_type", "model_profile"):
+        for key in ("tool_name", "provider_kind", "failure_category", "transport", "auth_status", "primitive", "resource_type", "vector_store", "retrieval_strategy", "fusion_method", "reranker", "model_family", "task_type", "model_profile", "domain", "tool_category", "result"):
             value = span.metadata.get(key)
             if key in SAFE_METRIC_LABELS and isinstance(value, _SAFE_LABEL_VALUE_TYPES):
                 labels[key] = str(value)
@@ -246,6 +249,29 @@ class MetricsRecorder:
                 self._record("provider_empty_content", 1, labels)
         elif span.component == "validator":
             self._record("validator_pass" if success else "validator_reject", 1, labels)
+        elif span.component == "evidence" and span.operation in {"judge", "rejudge"}:
+            count = span.metadata.get("relevant_domain_count")
+            conflicts = span.metadata.get("conflict_count")
+            if isinstance(count, int) and count > 0:
+                self._record("evidence_assessment_total", count, labels)
+            if isinstance(conflicts, int) and conflicts > 0:
+                self._record("evidence_conflict_total", conflicts, labels)
+        elif span.component == "reflect" and span.operation == "evaluate":
+            candidates = span.metadata.get("candidate_action_count")
+            if isinstance(candidates, int) and candidates > 0:
+                self._record("reflect_trigger_total", 1, labels)
+        elif span.component == "reflect" and span.operation == "tool":
+            executed = span.metadata.get("executed_action_count")
+            if isinstance(executed, int) and executed > 0:
+                self._record("reflect_action_total", executed, labels)
+        elif span.component == "reflect" and span.operation == "outcome":
+            result = span.metadata.get("result")
+            if result == "resolved":
+                self._record("reflect_success_total", 1, labels)
+            elif result == "no_gain":
+                self._record("reflect_no_gain_total", 1, labels)
+            elif result == "max_rounds":
+                self._record("reflect_max_round_reached_total", 1, labels)
         elif span.component == "fallback" or span.fallback:
             self._record("fallback_count", 1, labels)
             if span.metadata.get("fallback_reason") == "WEEKLY_REVIEW_VALIDATION_FALLBACK":

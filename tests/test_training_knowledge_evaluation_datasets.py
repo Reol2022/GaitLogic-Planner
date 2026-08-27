@@ -19,6 +19,12 @@ def test_public_datasets_have_required_case_counts_and_unique_ids() -> None:
     rag = load_rag_dataset(Path("docs/rag/evaluation/cases/rag-answer-eval-v1.json"))
     assert len(retrieval.cases) == 60
     assert len({item.case_id for item in retrieval.cases}) == 60
+    retrieval_v2 = load_retrieval_dataset(
+        Path("docs/rag/evaluation/cases/retrieval-eval-v2.json")
+    )
+    assert retrieval_v2.dataset_version == "retrieval-cases-v2"
+    assert retrieval_v2.fixture_version == "retrieval-fixture-2.0.0"
+    assert len(retrieval_v2.cases) == 60
     assert len(rag.cases) == 36
     assert len({item.case_id for item in rag.cases}) == 36
 
@@ -36,6 +42,7 @@ def test_dataset_hash_detects_content_change(tmp_path: Path) -> None:
 def test_dataset_contains_no_identity_fields() -> None:
     for path in (
         Path("docs/rag/evaluation/cases/retrieval-eval-v1.json"),
+        Path("docs/rag/evaluation/cases/retrieval-eval-v2.json"),
         Path("docs/rag/evaluation/cases/rag-answer-eval-v1.json"),
     ):
         text = path.read_text(encoding="utf-8").lower()

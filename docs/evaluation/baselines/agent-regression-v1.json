@@ -36,7 +36,7 @@
         "warning_retention_rate": 1.0
       }
     },
-    "retrieval": {
+    "retrieval_v1": {
       "version": "training-knowledge-eval-1.0.0",
       "dataset_version": "retrieval-cases-v1",
       "metrics": {
@@ -44,6 +44,17 @@
         "mrr_at_4": 0.715,
         "ndcg_at_4": 0.69018,
         "forbidden_document_rate": 0.05,
+        "filter_violation_rate": 0.0
+      }
+    },
+    "retrieval_v2": {
+      "version": "retrieval-evaluation-2.0.0",
+      "dataset_version": "retrieval-cases-v2",
+      "metrics": {
+        "recall_at_4": 0.451667,
+        "mrr_at_4": 0.783333,
+        "ndcg_at_4": 0.504565,
+        "forbidden_document_rate": 0.0,
         "filter_violation_rate": 0.0
       }
     },

@@ -73,6 +73,7 @@ export interface LangGraphWeeklyReview {
   knowledge_references: WeeklyKnowledgeReference[];
   fallback_used: boolean;
   proposal_record_id?: number | null;
+  review_report_id?: number | null;
 }
 
 export interface AdaptivePlanValue {
@@ -97,6 +98,10 @@ export interface AdaptiveProposal {
   id: number;
   week_start: string | null;
   status: string;
+  review_report_id?: number | null;
+  revision?: number;
+  parent_proposal_id?: number | null;
+  feedback?: { reason_codes: string[]; free_text?: string | null } | null;
   proposal: {
     reason_codes: string[];
     changes: AdaptivePlanChange[];
@@ -105,6 +110,12 @@ export interface AdaptiveProposal {
   };
   created_at: string;
   updated_at: string;
+}
+
+export interface ProposalRevisionResult {
+  status: "PENDING_APPROVAL" | "REVIEW_STALE" | "REVISION_LIMIT_REACHED";
+  proposal?: AdaptiveProposal | null;
+  revision_limit: number;
 }
 
 export interface AdaptiveApprovalResult {

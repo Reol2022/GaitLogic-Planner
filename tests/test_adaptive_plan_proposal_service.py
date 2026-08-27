@@ -19,6 +19,7 @@ from planner_core.weekly_review.schemas import (
 )
 from server.common.exceptions import BadRequestError
 from server.services.adaptive_plan_proposal_service import AdaptivePlanProposalService
+from server.domain.decision_readiness import DecisionReadiness, DomainReadiness
 
 
 START = date(2026, 7, 6)
@@ -100,6 +101,23 @@ def test_high_fatigue_blocks_volume_or_intensity_increase() -> None:
             weekly_facts=facts(fatigue="HIGH"),
             target_plans=[target()],
             candidates=[increasing],
+        )
+
+
+def test_evidence_blocked_recovery_cannot_authorize_increase() -> None:
+    increasing = candidate(kind="tempo", distance=12)
+    with pytest.raises(BadRequestError, match="Blocked recovery facts"):
+        AdaptivePlanProposalService().create_proposal(
+            user_id=7,
+            weekly_facts=facts(),
+            target_plans=[target()],
+            candidates=[increasing],
+            decision_readiness=[
+                DomainReadiness(
+                    domain="recovery",
+                    readiness=DecisionReadiness.BLOCKED,
+                )
+            ],
         )
 
 

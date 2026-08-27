@@ -1,3 +1,5 @@
+import re
+
 from fastapi.testclient import TestClient
 
 from server.main import app, create_app
@@ -14,6 +16,17 @@ def test_health_route_works_without_database() -> None:
     response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_version_route_exposes_only_safe_build_fingerprint() -> None:
+    client = TestClient(app)
+    response = client.get("/api/system/version")
+    assert response.status_code == 200
+    payload = response.json()
+    assert set(payload) == {"app_version", "git_commit", "environment", "build_time"}
+    assert payload["app_version"] == "0.16.3"
+    assert re.fullmatch(r"(?:unknown|[0-9a-f]{7,40})", payload["git_commit"])
+    assert "Gaitlogic-planner" not in str(payload)
 
 
 def test_api_docs_are_available_behind_api_prefix() -> None:

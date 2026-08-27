@@ -1,0 +1,11 @@
+﻿{
+    "pid":  13824,
+    "started_at":  "2026-08-21T12:10:53.1344393+08:00",
+    "python":  "3.11",
+    "command":  "python scripts/evaluate_competition_ablation.py --phase full --provider-mode real --runs 3 --resume --fail-fast",
+    "reused_successes":  74,
+    "expected_total_runs":  432,
+    "stdout_log":  "docs/evaluation/competition-ablation-v1/full-resume-2.stdout.log",
+    "stderr_log":  "docs/evaluation/competition-ablation-v1/full-resume-2.stderr.log",
+    "status":  "running"
+}

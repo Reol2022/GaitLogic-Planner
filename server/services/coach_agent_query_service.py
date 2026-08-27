@@ -108,6 +108,7 @@ class CoachAgentQueryService:
             max_evidence_items=self.settings.agent_max_evidence_items,
             max_rule_items=self.settings.agent_max_rule_items,
             max_answer_length=self.settings.agent_max_answer_length,
+            max_reflect_rounds=self.settings.evidence_max_reflect_rounds,
         )
 
     def _gateway(self) -> tuple[AgentLLMGateway, str]:

@@ -187,6 +187,7 @@ class TrainingKnowledgeEvaluationRunner:
         if provider is not None:
             provider.close()
         report = TrainingKnowledgeEvaluationReport(
+            evaluation_version=(dataset.retrieval_eval_version or "training-knowledge-eval-1.0.0"),
             evaluation_kind="retrieval",
             dataset_version=dataset.dataset_version,
             dataset_sha256=dataset.content_sha256,

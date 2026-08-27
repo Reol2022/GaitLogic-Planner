@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ValidationError
@@ -10,6 +11,9 @@ from server.agent.errors import AgentErrorCode, AgentToolRegistrationError
 from server.agent.schemas import AgentContext, AgentNotice, AgentToolDefinition, AgentToolResult
 from server.agent.tool import AgentTool
 from server.observability.tracing import active_trace_handle, active_tracer
+
+
+logger = logging.getLogger(__name__)
 
 
 class AgentToolRegistry:
@@ -135,7 +139,16 @@ class AgentToolRegistry:
             validated = tool.output_model.model_validate(raw_output)
             data = validated.model_dump(mode="json")
             json.dumps(data, ensure_ascii=False, sort_keys=True, allow_nan=False)
-        except Exception:
+        except Exception as exc:
+            # Keep the API contract deliberately generic: a tool exception may
+            # contain provider or storage details.  Preserve the traceback in
+            # server logs, without recording tool arguments or returned data,
+            # so deployment-only retrieval faults can be diagnosed.
+            logger.exception(
+                "agent_tool_execution_failed tool_name=%s exception_type=%s",
+                name,
+                type(exc).__name__,
+            )
             return self._failure(
                 tool_call_id=call_id,
                 tool_name=name,

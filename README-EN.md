@@ -9,7 +9,7 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.16.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.16.3-1976d2?style=for-the-badge" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42B883?style=for-the-badge&logo=vue.js&logoColor=white" />
@@ -30,15 +30,21 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
 
 ---
 
-## v0.16.0 Retrieval Quality and Safety Boundary
+## v0.16.3 DeepSeek Thinking and Weekly Planning Consolidation
+
+v0.16.3 consolidates Garmin recovery facts, Partial Facts / Decision Readiness, DeepSeek Thinking, multi-round Tool Calling, Weekly Review Analysis, independent Plan Design, Evidence Judge / Reflect, and Approval Checkpoints into one formal release. Weekly analysis and plan design use separate model requests, contexts, and output budgets. Plan changes still pass through Python/Pydantic materialization, deterministic validation, HITL approval, and server-side revalidation.
+
+See the [v0.16.3 release note](docs/release/v0.16.3.md). Raw Provider reasoning is optional internal diagnostic data only; it is excluded from REST, MCP, traces, metrics, evaluation reports, canonical evidence, and the frontend.
+
+### v0.16.0 Retrieval Quality and Safety Boundary
 
 Training knowledge retrieval supports Dense Exact, optional Qdrant, deterministic BM25, fixed Hybrid RRF, and an optional reranker. Strategy selection uses an independent 40-case public fictional Holdout v2 rather than presenting the repeatedly observed Legacy regression set as blind evidence. Dense Exact remains the default: it tied Rerank at 33/40 Holdout passes with lower operational complexity. Rerank is real-provider evaluated but non-default and safely falls back on failure.
 
 See the [v0.16.0 release note](docs/release/v0.16.0.md) and [Holdout report](docs/evaluation/reports/retrieval-holdout-v2.md). Retrieval supplies knowledge explanation only; it cannot change Runner State, deterministic TODAY advice, or training plans.
 
-### v0.16.1 / v0.16.2 Development Snapshot
+### v0.16.1 / v0.16.2 Merged Development Records
 
-The formal release remains **v0.16.0**. The current development line also contains two capabilities that have not been released independently:
+The following development snapshots were not released independently and are now included in **v0.16.3**:
 
 - **v0.16.1 Garmin Recovery Data Sync** normalizes daily sleep, resting heart rate, HRV, stress, Body Battery, and respiration facts through the existing Garmin Pipeline. Missing provider fields remain absent and become limitations; explicit manual recovery input takes precedence.
 - **v0.16.2 Partial Facts & Decision Readiness** distinguishes `PARTIAL` analysis from `BLOCKED` core facts. Missing RPE, for example, no longer invalidates an entire Coach TODAY result; the affected load rule is reported as unevaluable instead of treating missing data as normal.

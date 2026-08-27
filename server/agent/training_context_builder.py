@@ -64,6 +64,34 @@ _KNOWLEDGE_PRELOAD_INTENTS = frozenset(
 )
 
 
+def merge_agent_tool_results(context: AgentContext, new_results: list) -> AgentContext:
+    """Merge validated Tool Results into canonical request-local context."""
+
+    values = context.model_dump(mode="python")
+    missing = dict(context.missing_reasons)
+    for result in new_results:
+        if result.status != AgentToolStatus.SUCCEEDED or not isinstance(result.data, dict):
+            missing[result.tool_name] = (
+                result.safe_error_code.value
+                if result.safe_error_code is not None
+                else "AGENT_TOOL_EXECUTION_FAILED"
+            )
+            continue
+        if result.data.get("data_status") in {"NOT_FOUND", "UNKNOWN"}:
+            missing[result.tool_name] = str(result.data.get("data_status"))
+        else:
+            missing.pop(result.tool_name, None)
+        if result.tool_name == "get_training_rules":
+            values["applicable_rules"] = list(result.data.get("rules", []))
+        else:
+            field = _FIELD_BY_TOOL.get(result.tool_name)
+            if field:
+                values[field] = result.data
+    values["tool_results"] = [*context.tool_results, *new_results]
+    values["missing_reasons"] = missing
+    return AgentContext.model_validate(values)
+
+
 class AgentTrainingContextBuilder(AgentContextBuilder):
     """Build intent-aware context exclusively through the registered tool boundary."""
 
@@ -101,7 +129,6 @@ class AgentTrainingContextBuilder(AgentContextBuilder):
                     tool_name=name,
                 )
             result = self.registry.invoke(name, arguments, context)
-            results.append(result)
             if trace is not None:
                 trace.add_event(
                     AgentTraceEventType.CONTEXT_TOOL_COMPLETED,
@@ -112,24 +139,10 @@ class AgentTrainingContextBuilder(AgentContextBuilder):
                     safe_error_code=result.safe_error_code,
                     duration_ms=(perf_counter() - started) * 1000,
                 )
-            if result.status != AgentToolStatus.SUCCEEDED or not isinstance(result.data, dict):
-                missing[name] = (
-                    result.safe_error_code.value
-                    if result.safe_error_code is not None
-                    else "AGENT_TOOL_EXECUTION_FAILED"
-                )
-            else:
-                if result.data.get("data_status") in {"NOT_FOUND", "UNKNOWN"}:
-                    missing[name] = str(result.data.get("data_status"))
-                if name == "get_training_rules":
-                    values["applicable_rules"] = list(result.data.get("rules", []))
-                else:
-                    field = _FIELD_BY_TOOL.get(name)
-                    if field:
-                        values[field] = result.data
-            values["tool_results"] = results
-            values["missing_reasons"] = missing
-            context = AgentContext.model_validate(values)
+            context = merge_agent_tool_results(context, [result])
+            results = list(context.tool_results)
+            values = context.model_dump(mode="python")
+            missing = dict(context.missing_reasons)
         return self._bounded_context(context)
 
     def _bounded_context(self, context: AgentContext) -> AgentContext:

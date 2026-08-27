@@ -259,8 +259,21 @@ def test_adjustment_is_user_scoped_applies_once_and_preserves_snapshot(db_sessio
     db_session.refresh(report)
     assert float(workout.planned_distance_km) == 8
     assert workout.main_type_normalized == WorkoutMainTypeNormalized.easy
+    assert workout.plan_version == 2
     assert report.source_snapshot_json == {"safe": True}
     with pytest.raises(BadRequestError):
+        apply_adjustment_draft(db_session, user.id, draft.id, [item.id])
+
+
+def test_adjustment_rejects_stale_base_plan_version(db_session):
+    user, _, _, draft, item, workout = create_adjustment_fixture(
+        db_session, uuid4().hex[:6]
+    )
+    item.base_plan_version = workout.plan_version
+    workout.plan_version += 1
+    db_session.commit()
+
+    with pytest.raises(BadRequestError, match="approval is stale"):
         apply_adjustment_draft(db_session, user.id, draft.id, [item.id])
 
 

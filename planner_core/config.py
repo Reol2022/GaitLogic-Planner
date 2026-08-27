@@ -26,6 +26,18 @@ class Settings(BaseSettings):
     )
     mcp_http_enabled: bool = Field(default=False, validation_alias="MCP_HTTP_ENABLED")
     mcp_http_host: str = Field(default="127.0.0.1", validation_alias="MCP_HTTP_HOST")
+    mcp_public_base_url: str = Field(
+        default="http://127.0.0.1:8000",
+        validation_alias="MCP_PUBLIC_BASE_URL",
+    )
+    mcp_oauth_enabled: bool = Field(default=False, validation_alias="MCP_OAUTH_ENABLED")
+    mcp_oauth_refresh_token_expire_days: int = Field(
+        default=30, ge=1, le=90, validation_alias="MCP_OAUTH_REFRESH_TOKEN_EXPIRE_DAYS"
+    )
+    mcp_oauth_allowed_redirect_hosts: str = Field(
+        default="chatgpt.com,chat.openai.com,localhost,127.0.0.1",
+        validation_alias="MCP_OAUTH_ALLOWED_REDIRECT_HOSTS",
+    )
     mcp_allowed_origins: str = Field(
         default="http://localhost:5173,http://127.0.0.1:5173",
         validation_alias="MCP_ALLOWED_ORIGINS",
@@ -154,6 +166,12 @@ class Settings(BaseSettings):
         ge=1,
         le=12000,
         validation_alias="AGENT_MAX_ANSWER_LENGTH",
+    )
+    evidence_max_reflect_rounds: int = Field(
+        default=1,
+        ge=0,
+        le=2,
+        validation_alias="EVIDENCE_MAX_REFLECT_ROUNDS",
     )
     coach_agent_enabled: bool = Field(
         default=False,
@@ -497,6 +515,9 @@ class Settings(BaseSettings):
     )
     weekly_review_prompt_override: str | None = Field(
         default=None, validation_alias="WEEKLY_REVIEW_PROMPT_OVERRIDE"
+    )
+    max_proposal_revisions: int = Field(
+        default=2, ge=0, le=5, validation_alias="MAX_PROPOSAL_REVISIONS"
     )
     training_readiness_rollout_mode: str = Field(
         default="all", validation_alias="TRAINING_READINESS_ROLLOUT_MODE"

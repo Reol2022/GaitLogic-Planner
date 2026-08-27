@@ -1,0 +1,1788 @@
+{
+  "bm25": {
+    "case_count": 60,
+    "failure_case_ids": [
+      "ret_single_007",
+      "ret_multi_003",
+      "ret_multi_008",
+      "ret_multi_010",
+      "ret_multi_011",
+      "ret_multi_012",
+      "ret_hard_001",
+      "ret_hard_002",
+      "ret_hard_004",
+      "ret_hard_005",
+      "ret_hard_007",
+      "ret_hard_008"
+    ],
+    "index_id": "bm25-e13c636f1d7a9b4fde788701",
+    "metrics": {
+      "abstention_precision": 1.0,
+      "abstention_recall": 1.0,
+      "empty_result_accuracy": 1.0,
+      "filter_violation_rate": 0.0,
+      "forbidden_document_rate": 0.1,
+      "hit_at_1": 0.78,
+      "hit_at_3": 0.92,
+      "hit_at_4": 0.92,
+      "mrr_at_4": 0.85,
+      "ndcg_at_4": 0.649093,
+      "recall_at_1": 0.249,
+      "recall_at_3": 0.385333,
+      "recall_at_4": 0.400333
+    }
+  },
+  "candidate_depth": {
+    "bm25": 8,
+    "dense": 8
+  },
+  "comparison": {
+    "all_fail": [
+      "ret_single_007",
+      "ret_multi_003",
+      "ret_multi_008",
+      "ret_hard_007"
+    ],
+    "hybrid_recovered_vs_bm25": [
+      "ret_multi_010",
+      "ret_hard_002",
+      "ret_hard_004",
+      "ret_hard_008"
+    ],
+    "hybrid_recovered_vs_dense": [
+      "ret_multi_001",
+      "ret_multi_007",
+      "ret_multi_010",
+      "ret_hard_006"
+    ],
+    "hybrid_regressed_vs_bm25": [],
+    "hybrid_regressed_vs_dense": [
+      "ret_multi_011",
+      "ret_multi_012",
+      "ret_hard_001",
+      "ret_hard_005"
+    ]
+  },
+  "comparison_version": "retrieval-hybrid-comparison-2.0.0",
+  "dataset_version": "retrieval-cases-v2",
+  "dense": {
+    "case_count": 60,
+    "failure_case_ids": [
+      "ret_single_007",
+      "ret_multi_001",
+      "ret_multi_003",
+      "ret_multi_007",
+      "ret_multi_008",
+      "ret_multi_010",
+      "ret_hard_006",
+      "ret_hard_007"
+    ],
+    "metrics": {
+      "abstention_precision": 1.0,
+      "abstention_recall": 1.0,
+      "empty_result_accuracy": 1.0,
+      "filter_violation_rate": 0.0,
+      "forbidden_document_rate": 0.0,
+      "hit_at_1": 0.68,
+      "hit_at_3": 0.88,
+      "hit_at_4": 0.92,
+      "mrr_at_4": 0.783333,
+      "ndcg_at_4": 0.504565,
+      "provider_success_rate": 1.0,
+      "recall_at_1": 0.221667,
+      "recall_at_3": 0.414333,
+      "recall_at_4": 0.451667
+    }
+  },
+  "forbidden_analysis": {
+    "bm25_cases": [
+      "ret_hard_001",
+      "ret_hard_002",
+      "ret_hard_004",
+      "ret_hard_005",
+      "ret_hard_007",
+      "ret_hard_008"
+    ],
+    "dense_cases": [],
+    "hybrid_cases": [
+      "ret_hard_001",
+      "ret_hard_005",
+      "ret_hard_007"
+    ],
+    "promoted_by_fusion": [],
+    "suppressed_from_bm25": [
+      "ret_hard_002",
+      "ret_hard_004",
+      "ret_hard_008"
+    ],
+    "suppressed_from_dense": []
+  },
+  "hybrid_cases": [
+    {
+      "case_id": "ret_single_001",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 1,
+          "score": 0.37550354192564706
+        },
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.34015619605339564
+        },
+        {
+          "chunk_id": "threshold-session-placement#decision-conditions#003",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.33705560746056673
+        },
+        {
+          "chunk_id": "interval-recovery-design#decision-conditions#003",
+          "document_id": "interval-recovery-design",
+          "rank": 4,
+          "score": 0.9731432
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_002",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#recommended-strategies#004",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 1,
+          "score": 0.31022625636940854
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#applicable-scenarios#001",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 2,
+          "score": 0.26257171840116206
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.28247584383999513
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 4,
+          "score": 0.1777904668047552
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_003",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.42256677349440774
+        },
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.38072667963096146
+        },
+        {
+          "chunk_id": "daniels-half-marathon-training#evidence#007",
+          "document_id": "daniels-half-marathon-training",
+          "rank": 3,
+          "score": 0.3886128521038225
+        },
+        {
+          "chunk_id": "intensity-density-management#recommended-strategies#004",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.95774416
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_004",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-training-load-variables#recommended-strategies#004",
+          "document_id": "daniels-training-load-variables",
+          "rank": 1,
+          "score": 0.36762538228209707
+        },
+        {
+          "chunk_id": "daniels-training-load-variables#applicable-scenarios#001",
+          "document_id": "daniels-training-load-variables",
+          "rank": 2,
+          "score": 0.35131580194490153
+        },
+        {
+          "chunk_id": "daniels-training-load-variables#core-principles#002",
+          "document_id": "daniels-training-load-variables",
+          "rank": 3,
+          "score": 0.38828202262464995
+        },
+        {
+          "chunk_id": "intensity-density-management#recommended-strategies#004",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.97052824
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_005",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-cruise-intervals#core-principles#002",
+          "document_id": "daniels-cruise-intervals",
+          "rank": 1,
+          "score": 0.5550505978390813
+        },
+        {
+          "chunk_id": "interval-recovery-design#core-principles#002",
+          "document_id": "interval-recovery-design",
+          "rank": 2,
+          "score": 0.9560341
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.5289087964545186
+        },
+        {
+          "chunk_id": "daniels-four-season-phases#section-d87a017688#007",
+          "document_id": "daniels-four-season-phases",
+          "rank": 4,
+          "score": 0.95478871
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_006",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-hard-running-short-intervals#applicable-scenarios#001",
+          "document_id": "daniels-hard-running-short-intervals",
+          "rank": 1,
+          "score": 0.3067990557255667
+        },
+        {
+          "chunk_id": "daniels-interval-purpose#applicable-scenarios#001",
+          "document_id": "daniels-interval-purpose",
+          "rank": 2,
+          "score": 0.24362750905688832
+        },
+        {
+          "chunk_id": "daniels-hard-running-short-intervals#decision-conditions#003",
+          "document_id": "daniels-hard-running-short-intervals",
+          "rank": 3,
+          "score": 0.2256868973723174
+        },
+        {
+          "chunk_id": "daniels-hard-running-short-intervals#recommended-strategies#004",
+          "document_id": "daniels-hard-running-short-intervals",
+          "rank": 4,
+          "score": 0.21295249803993874
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_007",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.3820760628264496
+        },
+        {
+          "chunk_id": "daniels-half-marathon-training#section-42b34d617d#005",
+          "document_id": "daniels-half-marathon-training",
+          "rank": 2,
+          "score": 0.4111408642886428
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 3,
+          "score": 0.95137563
+        },
+        {
+          "chunk_id": "daniels-long-run-progression#applicable-scenarios#001",
+          "document_id": "daniels-long-run-progression",
+          "rank": 4,
+          "score": 0.92218511
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_008",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 1,
+          "score": 0.477973881840022
+        },
+        {
+          "chunk_id": "long-run-placement#applicable-scenarios#001",
+          "document_id": "long-run-placement",
+          "rank": 2,
+          "score": 0.3688789794789348
+        },
+        {
+          "chunk_id": "daniels-long-run-progression#core-principles#002",
+          "document_id": "daniels-long-run-progression",
+          "rank": 3,
+          "score": 0.4353091457859483
+        },
+        {
+          "chunk_id": "daniels-long-run-progression#applicable-scenarios#001",
+          "document_id": "daniels-long-run-progression",
+          "rank": 4,
+          "score": 0.4515868387242409
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_009",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+          "document_id": "pain-risk-boundaries",
+          "rank": 1,
+          "score": 0.5204209201029959
+        },
+        {
+          "chunk_id": "daniels-interval-purpose#recommended-strategies#004",
+          "document_id": "daniels-interval-purpose",
+          "rank": 2,
+          "score": 0.4699468741001822
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#cautions#005",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 3,
+          "score": 0.95908185
+        },
+        {
+          "chunk_id": "daniels-training-intensity-types#evidence#007",
+          "document_id": "daniels-training-intensity-types",
+          "rank": 4,
+          "score": 0.46926681852564794
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_010",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pain-risk-boundaries#core-principles#002",
+          "document_id": "pain-risk-boundaries",
+          "rank": 1,
+          "score": 0.4310504503422108
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#decision-conditions#003",
+          "document_id": "pain-risk-boundaries",
+          "rank": 2,
+          "score": 0.3326538051778705
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+          "document_id": "pain-risk-boundaries",
+          "rank": 3,
+          "score": 0.08905575260421394
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#recommended-strategies#004",
+          "document_id": "pain-risk-boundaries",
+          "rank": 4,
+          "score": 0.09213410056187456
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_011",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 1,
+          "score": 0.27947958113735843
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 2,
+          "score": 0.97529388
+        },
+        {
+          "chunk_id": "daniels-four-season-phases#r#003",
+          "document_id": "daniels-four-season-phases",
+          "rank": 3,
+          "score": 0.2784748384452504
+        },
+        {
+          "chunk_id": "daniels-four-season-phases#section-32edcd236b#001",
+          "document_id": "daniels-four-season-phases",
+          "rank": 4,
+          "score": 0.95326201
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_012",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-four-season-phases#section-77253921f4#006",
+          "document_id": "daniels-four-season-phases",
+          "rank": 1,
+          "score": 0.3278151594473825
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 2,
+          "score": 0.93460352
+        },
+        {
+          "chunk_id": "phase-transition-principles#decision-conditions#003",
+          "document_id": "phase-transition-principles",
+          "rank": 3,
+          "score": 0.4192407368430643
+        },
+        {
+          "chunk_id": "daniels-four-season-phases#evidence#008",
+          "document_id": "daniels-four-season-phases",
+          "rank": 4,
+          "score": 0.3915938046819584
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_013",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-four-season-phases#section-a6c5263fc9#005",
+          "document_id": "daniels-four-season-phases",
+          "rank": 1,
+          "score": 0.4475254965433476
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.96631532
+        },
+        {
+          "chunk_id": "daniels-5k-10k-training#evidence#006",
+          "document_id": "daniels-5k-10k-training",
+          "rank": 3,
+          "score": 0.3926545319942204
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.95520992
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_014",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pre-race-taper-principles#decision-conditions#003",
+          "document_id": "pre-race-taper-principles",
+          "rank": 1,
+          "score": 0.02300476224547501
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#applicable-scenarios#001",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": 0.21802760721402786
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#cautions#005",
+          "document_id": "pre-race-taper-principles",
+          "rank": 3,
+          "score": 0.1823106731308343
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#recommended-strategies#004",
+          "document_id": "pre-race-taper-principles",
+          "rank": 4,
+          "score": 0.13743804432859139
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_015",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-half-marathon-training#section-42b34d617d#005",
+          "document_id": "daniels-half-marathon-training",
+          "rank": 1,
+          "score": 0.2848661868727795
+        },
+        {
+          "chunk_id": "daniels-long-run-progression#core-principles#002",
+          "document_id": "daniels-long-run-progression",
+          "rank": 2,
+          "score": 0.33801342882514385
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#applicable-scenarios#001",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 3,
+          "score": 0.96814552
+        },
+        {
+          "chunk_id": "daniels-success-factors#recommended-strategies#004",
+          "document_id": "daniels-success-factors",
+          "rank": 4,
+          "score": 0.29965807136703987
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_016",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-training-load-variables#decision-conditions#003",
+          "document_id": "daniels-training-load-variables",
+          "rank": 1,
+          "score": 0.3235920934009024
+        },
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.35147273077584845
+        },
+        {
+          "chunk_id": "daniels-training-stress-recording#decision-conditions#003",
+          "document_id": "daniels-training-stress-recording",
+          "rank": 3,
+          "score": 0.4140738085339103
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.96659777
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_017",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 1,
+          "score": 0.4608466974472885
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 2,
+          "score": 0.94933031
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.6350123175691454
+        },
+        {
+          "chunk_id": "daniels-training-principles#core-principles#002",
+          "document_id": "daniels-training-principles",
+          "rank": 4,
+          "score": 0.48786599283895493
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_018",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "recovery-week-principles#core-principles#002",
+          "document_id": "recovery-week-principles",
+          "rank": 1,
+          "score": 0.4719288078833975
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.38005167141808
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.3686350786909447
+        },
+        {
+          "chunk_id": "daniels-planned-unplanned-rest#cautions#005",
+          "document_id": "daniels-planned-unplanned-rest",
+          "rank": 4,
+          "score": 0.422764481169112
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_019",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.43068669032694645
+        },
+        {
+          "chunk_id": "daniels-four-season-phases#section-d87a017688#007",
+          "document_id": "daniels-four-season-phases",
+          "rank": 2,
+          "score": 0.93768144
+        },
+        {
+          "chunk_id": "daniels-treadmill-training#core-principles#002",
+          "document_id": "daniels-treadmill-training",
+          "rank": 3,
+          "score": 0.4447530042070629
+        },
+        {
+          "chunk_id": "daniels-long-run-progression#cautions#005",
+          "document_id": "daniels-long-run-progression",
+          "rank": 4,
+          "score": 0.43424687547149377
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_020",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.22747105589326366
+        },
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.3329635471141978
+        },
+        {
+          "chunk_id": "running-strength-basics#decision-conditions#003",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.11823837874327646
+        },
+        {
+          "chunk_id": "running-strength-basics#cautions#005",
+          "document_id": "running-strength-basics",
+          "rank": 4,
+          "score": 0.08274523426676428
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_021",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-altitude-training#applicable-scenarios#001",
+          "document_id": "daniels-altitude-training",
+          "rank": 1,
+          "score": 0.33681254027131263
+        },
+        {
+          "chunk_id": "threshold-control-signals#core-principles#002",
+          "document_id": "threshold-control-signals",
+          "rank": 2,
+          "score": 0.95593203
+        },
+        {
+          "chunk_id": "daniels-aerobic-fitness-economy#core-principles#002",
+          "document_id": "daniels-aerobic-fitness-economy",
+          "rank": 3,
+          "score": 0.32831140866049624
+        },
+        {
+          "chunk_id": "intensity-density-management#cautions#005",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.95019459
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_022",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.29776981099704747
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 2,
+          "score": 0.3236644281729629
+        },
+        {
+          "chunk_id": "threshold-control-signals#cautions#005",
+          "document_id": "threshold-control-signals",
+          "rank": 3,
+          "score": 0.24820096258622545
+        },
+        {
+          "chunk_id": "daniels-cruise-intervals#recommended-strategies#004",
+          "document_id": "daniels-cruise-intervals",
+          "rank": 4,
+          "score": 0.2502457059514448
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_023",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-half-marathon-training#section-42b34d617d#005",
+          "document_id": "daniels-half-marathon-training",
+          "rank": 1,
+          "score": 0.4667137790296717
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.4739168935265841
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.4748697521787407
+        },
+        {
+          "chunk_id": "daniels-four-season-phases#section-d87a017688#007",
+          "document_id": "daniels-four-season-phases",
+          "rank": 4,
+          "score": 0.9583809
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_024",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.4477701371697026
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 2,
+          "score": 0.3243674721199845
+        },
+        {
+          "chunk_id": "daniels-cruise-intervals#recommended-strategies#004",
+          "document_id": "daniels-cruise-intervals",
+          "rank": 3,
+          "score": 0.36404003745597824
+        },
+        {
+          "chunk_id": "daniels-cruise-intervals#decision-conditions#003",
+          "document_id": "daniels-cruise-intervals",
+          "rank": 4,
+          "score": 0.31564519107907024
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_025",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#applicable-scenarios#001",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 1,
+          "score": 0.28650538899636085
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#decision-conditions#003",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 2,
+          "score": 0.11918254517695484
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 3,
+          "score": -0.07822691432893976
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#recommended-strategies#004",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 4,
+          "score": 0.006476958341572131
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_026",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#cautions#005",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.0942203048809875
+        },
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.04208340498972262
+        },
+        {
+          "chunk_id": "intensity-density-management#decision-conditions#003",
+          "document_id": "intensity-density-management",
+          "rank": 3,
+          "score": 0.060279602462451516
+        },
+        {
+          "chunk_id": "intensity-density-management#recommended-strategies#004",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.03644225678752005
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_027",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pre-race-taper-principles#recommended-strategies#004",
+          "document_id": "pre-race-taper-principles",
+          "rank": 1,
+          "score": 0.044528225470828305
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 2,
+          "score": -0.03250038703863599
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#cautions#005",
+          "document_id": "pre-race-taper-principles",
+          "rank": 3,
+          "score": -0.009283918045018904
+        },
+        {
+          "chunk_id": "pre-race-taper-principles#applicable-scenarios#001",
+          "document_id": "pre-race-taper-principles",
+          "rank": 4,
+          "score": -0.0009421118037945403
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_028",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 1,
+          "score": 0.411543200808815
+        },
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.3752424507506516
+        },
+        {
+          "chunk_id": "running-strength-basics#decision-conditions#003",
+          "document_id": "running-strength-basics",
+          "rank": 3,
+          "score": 0.3580658548233619
+        },
+        {
+          "chunk_id": "running-strength-basics#cautions#005",
+          "document_id": "running-strength-basics",
+          "rank": 4,
+          "score": 0.13333364732005337
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_029",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 1,
+          "score": 0.3424440062500445
+        },
+        {
+          "chunk_id": "daniels-performance-variables#decision-conditions#003",
+          "document_id": "daniels-performance-variables",
+          "rank": 2,
+          "score": 0.27710461762291094
+        },
+        {
+          "chunk_id": "threshold-control-signals#decision-conditions#003",
+          "document_id": "threshold-control-signals",
+          "rank": 3,
+          "score": 0.27670196224957183
+        },
+        {
+          "chunk_id": "daniels-performance-variables#cautions#005",
+          "document_id": "daniels-performance-variables",
+          "rank": 4,
+          "score": 0.24906601876179152
+        }
+      ]
+    },
+    {
+      "case_id": "ret_single_030",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-long-run-progression#applicable-scenarios#001",
+          "document_id": "daniels-long-run-progression",
+          "rank": 1,
+          "score": 0.3547042404839025
+        },
+        {
+          "chunk_id": "daniels-long-run-progression#decision-conditions#003",
+          "document_id": "daniels-long-run-progression",
+          "rank": 2,
+          "score": 0.3434720550386447
+        },
+        {
+          "chunk_id": "long-run-placement#decision-conditions#003",
+          "document_id": "long-run-placement",
+          "rank": 3,
+          "score": 0.28373950195679426
+        },
+        {
+          "chunk_id": "daniels-long-run-progression#core-principles#002",
+          "document_id": "daniels-long-run-progression",
+          "rank": 4,
+          "score": 0.2878895650043035
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_001",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#core-principles#002",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.3204178708414092
+        },
+        {
+          "chunk_id": "threshold-session-placement#cautions#005",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.96094196
+        },
+        {
+          "chunk_id": "daniels-running-breathing#recommended-strategies#004",
+          "document_id": "daniels-running-breathing",
+          "rank": 3,
+          "score": 0.25815346759389834
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 4,
+          "score": 0.95405628
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_002",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-rest-and-return-to-running#cautions#005",
+          "document_id": "daniels-rest-and-return-to-running",
+          "rank": 1,
+          "score": 0.3662458785079703
+        },
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.98389204
+        },
+        {
+          "chunk_id": "daniels-training-principles#cautions#005",
+          "document_id": "daniels-training-principles",
+          "rank": 3,
+          "score": 0.3488854864373202
+        },
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 4,
+          "score": 0.96383973
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_003",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-5k-10k-training#core-principles#002",
+          "document_id": "daniels-5k-10k-training",
+          "rank": 1,
+          "score": 0.5330217826826869
+        },
+        {
+          "chunk_id": "recovery-week-principles#core-principles#002",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.95467075
+        },
+        {
+          "chunk_id": "daniels-800m-training#core-principles#002",
+          "document_id": "daniels-800m-training",
+          "rank": 3,
+          "score": 0.4681904237608768
+        },
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 4,
+          "score": 0.95461348
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_004",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-phase-length-adjustment#core-principles#002",
+          "document_id": "daniels-phase-length-adjustment",
+          "rank": 1,
+          "score": 0.33402076830358035
+        },
+        {
+          "chunk_id": "phase-transition-principles#recommended-strategies#004",
+          "document_id": "phase-transition-principles",
+          "rank": 2,
+          "score": 0.2892052384563041
+        },
+        {
+          "chunk_id": "daniels-half-marathon-training#i-h-r#004",
+          "document_id": "daniels-half-marathon-training",
+          "rank": 3,
+          "score": 0.3344946724603475
+        },
+        {
+          "chunk_id": "daniels-four-season-phases#section-a6c5263fc9#005",
+          "document_id": "daniels-four-season-phases",
+          "rank": 4,
+          "score": 0.3713269864377997
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_005",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "threshold-session-placement#applicable-scenarios#001",
+          "document_id": "threshold-session-placement",
+          "rank": 1,
+          "score": 0.3645993205338349
+        },
+        {
+          "chunk_id": "threshold-session-placement#core-principles#002",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.3003809777368119
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 3,
+          "score": 0.3017655542653757
+        },
+        {
+          "chunk_id": "threshold-control-signals#cautions#005",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.314623410722776
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_006",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.37204584380254374
+        },
+        {
+          "chunk_id": "daniels-marathon-2q-plan#recommended-strategies#004",
+          "document_id": "daniels-marathon-2q-plan",
+          "rank": 2,
+          "score": 0.4195055467669238
+        },
+        {
+          "chunk_id": "intensity-density-management#recommended-strategies#004",
+          "document_id": "intensity-density-management",
+          "rank": 3,
+          "score": 0.96633938
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.43671783472902587
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_007",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-phase-length-adjustment#core-principles#002",
+          "document_id": "daniels-phase-length-adjustment",
+          "rank": 1,
+          "score": 0.42110184726511407
+        },
+        {
+          "chunk_id": "running-strength-basics#applicable-scenarios#001",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.951886
+        },
+        {
+          "chunk_id": "daniels-training-principles#cautions#005",
+          "document_id": "daniels-training-principles",
+          "rank": 3,
+          "score": 0.4159744671657718
+        },
+        {
+          "chunk_id": "long-run-placement#core-principles#002",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.9481676
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_008",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+          "document_id": "pain-risk-boundaries",
+          "rank": 1,
+          "score": 0.27987418655591406
+        },
+        {
+          "chunk_id": "running-strength-basics#core-principles#002",
+          "document_id": "running-strength-basics",
+          "rank": 2,
+          "score": 0.3337813023528337
+        },
+        {
+          "chunk_id": "daniels-four-season-phases#section-77253921f4#006",
+          "document_id": "daniels-four-season-phases",
+          "rank": 3,
+          "score": 0.29136572954443024
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#cautions#005",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.96767808
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_009",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 1,
+          "score": 0.49279703997838314
+        },
+        {
+          "chunk_id": "daniels-long-run-progression#applicable-scenarios#001",
+          "document_id": "daniels-long-run-progression",
+          "rank": 2,
+          "score": 0.42907412503903164
+        },
+        {
+          "chunk_id": "daniels-half-marathon-training#section-42b34d617d#005",
+          "document_id": "daniels-half-marathon-training",
+          "rank": 3,
+          "score": 0.38789469583328223
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#recommended-strategies#004",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.96237301
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_010",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-training-load-variables#cautions#005",
+          "document_id": "daniels-training-load-variables",
+          "rank": 1,
+          "score": 0.43865876814015786
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 2,
+          "score": 0.95779354
+        },
+        {
+          "chunk_id": "daniels-cruise-intervals#core-principles#002",
+          "document_id": "daniels-cruise-intervals",
+          "rank": 3,
+          "score": 0.4370950753396061
+        },
+        {
+          "chunk_id": "daniels-cross-country-training#cautions#005",
+          "document_id": "daniels-cross-country-training",
+          "rank": 4,
+          "score": 0.43010434019735344
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_011",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-season-phasing#decision-conditions#003",
+          "document_id": "daniels-season-phasing",
+          "rank": 1,
+          "score": 0.5287794094438831
+        },
+        {
+          "chunk_id": "threshold-session-placement#decision-conditions#003",
+          "document_id": "threshold-session-placement",
+          "rank": 2,
+          "score": 0.96663115
+        },
+        {
+          "chunk_id": "daniels-four-season-phases#section-a6c5263fc9#005",
+          "document_id": "daniels-four-season-phases",
+          "rank": 3,
+          "score": 0.96335842
+        },
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 4,
+          "score": 0.4652026406880415
+        }
+      ]
+    },
+    {
+      "case_id": "ret_multi_012",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-four-season-phases#section-a6c5263fc9#005",
+          "document_id": "daniels-four-season-phases",
+          "rank": 1,
+          "score": 0.5461337626567746
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 2,
+          "score": 0.9451563
+        },
+        {
+          "chunk_id": "daniels-easy-running#decision-conditions#003",
+          "document_id": "daniels-easy-running",
+          "rank": 3,
+          "score": 0.5011614692207595
+        },
+        {
+          "chunk_id": "interval-recovery-design#applicable-scenarios#001",
+          "document_id": "interval-recovery-design",
+          "rank": 4,
+          "score": 0.90356973
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_001",
+      "failure_codes": [
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#core-principles#002",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 1,
+          "score": 0.4404604442892415
+        },
+        {
+          "chunk_id": "recovery-week-principles#cautions#005",
+          "document_id": "recovery-week-principles",
+          "rank": 2,
+          "score": 0.44358807143665796
+        },
+        {
+          "chunk_id": "recovery-week-principles#core-principles#002",
+          "document_id": "recovery-week-principles",
+          "rank": 3,
+          "score": 0.96821
+        },
+        {
+          "chunk_id": "recovery-week-principles#recommended-strategies#004",
+          "document_id": "recovery-week-principles",
+          "rank": 4,
+          "score": 0.5227354553371436
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_002",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "intensity-density-management#applicable-scenarios#001",
+          "document_id": "intensity-density-management",
+          "rank": 1,
+          "score": 0.326834856592306
+        },
+        {
+          "chunk_id": "daniels-cruise-intervals#core-principles#002",
+          "document_id": "daniels-cruise-intervals",
+          "rank": 2,
+          "score": 0.3728711916240241
+        },
+        {
+          "chunk_id": "daniels-threshold-purpose#core-principles#002",
+          "document_id": "daniels-threshold-purpose",
+          "rank": 3,
+          "score": 0.3739361779657992
+        },
+        {
+          "chunk_id": "threshold-control-signals#applicable-scenarios#001",
+          "document_id": "threshold-control-signals",
+          "rank": 4,
+          "score": 0.95325033
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_003",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "long-run-placement#recommended-strategies#004",
+          "document_id": "long-run-placement",
+          "rank": 1,
+          "score": 0.39745404232531273
+        },
+        {
+          "chunk_id": "daniels-long-run-progression#core-principles#002",
+          "document_id": "daniels-long-run-progression",
+          "rank": 2,
+          "score": 0.4254197155671297
+        },
+        {
+          "chunk_id": "daniels-long-run-progression#applicable-scenarios#001",
+          "document_id": "daniels-long-run-progression",
+          "rank": 3,
+          "score": 0.4040230742383919
+        },
+        {
+          "chunk_id": "daniels-four-season-phases#i#004",
+          "document_id": "daniels-four-season-phases",
+          "rank": 4,
+          "score": 0.9613217
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_004",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "pre-race-taper-principles#core-principles#002",
+          "document_id": "pre-race-taper-principles",
+          "rank": 1,
+          "score": 0.3770822924641306
+        },
+        {
+          "chunk_id": "daniels-training-intensity-types#e#002",
+          "document_id": "daniels-training-intensity-types",
+          "rank": 2,
+          "score": 0.36157969140890467
+        },
+        {
+          "chunk_id": "daniels-four-season-phases#section-a6c5263fc9#005",
+          "document_id": "daniels-four-season-phases",
+          "rank": 3,
+          "score": 0.34047699934608494
+        },
+        {
+          "chunk_id": "daniels-training-load-variables#decision-conditions#003",
+          "document_id": "daniels-training-load-variables",
+          "rank": 4,
+          "score": 0.4097226007334261
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_005",
+      "failure_codes": [
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-rest-and-return-to-running#decision-conditions#003",
+          "document_id": "daniels-rest-and-return-to-running",
+          "rank": 1,
+          "score": 0.48229197602208546
+        },
+        {
+          "chunk_id": "pain-risk-boundaries#applicable-scenarios#001",
+          "document_id": "pain-risk-boundaries",
+          "rank": 2,
+          "score": 0.97007209
+        },
+        {
+          "chunk_id": "daniels-hard-running-short-intervals#cautions#005",
+          "document_id": "daniels-hard-running-short-intervals",
+          "rank": 3,
+          "score": 0.47125218421151205
+        },
+        {
+          "chunk_id": "high-fatigue-intensity-adjustment#decision-conditions#003",
+          "document_id": "high-fatigue-intensity-adjustment",
+          "rank": 4,
+          "score": 0.95799239
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_006",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-800m-training#core-principles#002",
+          "document_id": "daniels-800m-training",
+          "rank": 1,
+          "score": 0.43484532318314445
+        },
+        {
+          "chunk_id": "daniels-four-season-phases#e#002",
+          "document_id": "daniels-four-season-phases",
+          "rank": 2,
+          "score": 0.42015926389472563
+        },
+        {
+          "chunk_id": "daniels-1500m-3200m-training#applicable-scenarios#001",
+          "document_id": "daniels-1500m-3200m-training",
+          "rank": 3,
+          "score": 0.5027338812933704
+        },
+        {
+          "chunk_id": "phase-transition-principles#applicable-scenarios#001",
+          "document_id": "phase-transition-principles",
+          "rank": 4,
+          "score": 0.95299104
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_007",
+      "failure_codes": [
+        "RELEVANT_DOCUMENT_MISSED",
+        "FORBIDDEN_DOCUMENT_RETRIEVED"
+      ],
+      "passed": false,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-treadmill-training#core-principles#002",
+          "document_id": "daniels-treadmill-training",
+          "rank": 1,
+          "score": 0.6387231469470603
+        },
+        {
+          "chunk_id": "intensity-density-management#recommended-strategies#004",
+          "document_id": "intensity-density-management",
+          "rank": 2,
+          "score": 0.95192375
+        },
+        {
+          "chunk_id": "daniels-treadmill-training#recommended-strategies#004",
+          "document_id": "daniels-treadmill-training",
+          "rank": 3,
+          "score": 0.6235249215250778
+        },
+        {
+          "chunk_id": "progressive-volume-adjustment#decision-conditions#003",
+          "document_id": "progressive-volume-adjustment",
+          "rank": 4,
+          "score": 0.93729863
+        }
+      ]
+    },
+    {
+      "case_id": "ret_hard_008",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": [
+        {
+          "chunk_id": "daniels-cruise-intervals#core-principles#002",
+          "document_id": "daniels-cruise-intervals",
+          "rank": 1,
+          "score": 0.434791463745591
+        },
+        {
+          "chunk_id": "interval-recovery-design#core-principles#002",
+          "document_id": "interval-recovery-design",
+          "rank": 2,
+          "score": 0.96979852
+        },
+        {
+          "chunk_id": "daniels-marathon-beginner-training#recommended-strategies#004",
+          "document_id": "daniels-marathon-beginner-training",
+          "rank": 3,
+          "score": 0.43258280623273027
+        },
+        {
+          "chunk_id": "daniels-hard-running-short-intervals#core-principles#002",
+          "document_id": "daniels-hard-running-short-intervals",
+          "rank": 4,
+          "score": 0.4217060533640649
+        }
+      ]
+    },
+    {
+      "case_id": "ret_abstain_001",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_002",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_003",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_004",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_005",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_006",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_007",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_008",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_009",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    },
+    {
+      "case_id": "ret_abstain_010",
+      "failure_codes": [],
+      "passed": true,
+      "ranked_items": []
+    }
+  ],
+  "hybrid_rrf": {
+    "case_count": 60,
+    "failure_case_ids": [
+      "ret_single_007",
+      "ret_multi_003",
+      "ret_multi_008",
+      "ret_multi_011",
+      "ret_multi_012",
+      "ret_hard_001",
+      "ret_hard_005",
+      "ret_hard_007"
+    ],
+    "metrics": {
+      "abstention_precision": 1.0,
+      "abstention_recall": 1.0,
+      "empty_result_accuracy": 1.0,
+      "filter_violation_rate": 0.0,
+      "forbidden_document_rate": 0.05,
+      "hit_at_1": 0.7,
+      "hit_at_3": 0.94,
+      "hit_at_4": 0.96,
+      "mrr_at_4": 0.825,
+      "ndcg_at_4": 0.626525,
+      "recall_at_1": 0.246667,
+      "recall_at_3": 0.457,
+      "recall_at_4": 0.498333
+    }
+  },
+  "oracle_candidate_recall": {
+    "12": 0.766389,
+    "4": 0.646111,
+    "8": 0.729722
+  },
+  "safety": {
+    "chunk_text_saved": false,
+    "private_cases_used": false,
+    "raw_query_saved": false
+  },
+  "top_k": 4
+}

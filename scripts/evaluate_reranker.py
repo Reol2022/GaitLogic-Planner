@@ -150,10 +150,11 @@ def _write(report: dict[str, object]) -> None:
 
 
 def _blocked(reason: str) -> int:
+    is_v2 = DATASET.name.endswith("v2.json")
     _write(
         {
-            "comparison_version": "retrieval-reranker-comparison-1.0.0",
-            "benchmark": "legacy-public-60-case",
+            "comparison_version": ("retrieval-reranker-comparison-2.0.0" if is_v2 else "retrieval-reranker-comparison-1.0.0"),
+            "benchmark": ("expanded-public-60-case" if is_v2 else "legacy-public-60-case"),
             "status": "REAL_PROVIDER_BLOCKED",
             "reason": reason,
             "raw_query_saved": False,
@@ -328,8 +329,9 @@ def main() -> int:
     # sampled after each bounded Provider call without saving Provider payloads.
     provider_failures = reranker_counts["failure"]
     report = {
-        "comparison_version": "retrieval-reranker-comparison-1.0.0",
-        "benchmark": "legacy-public-60-case",
+        "comparison_version": ("retrieval-reranker-comparison-2.0.0" if dataset.dataset_version == "retrieval-cases-v2" else "retrieval-reranker-comparison-1.0.0"),
+        "benchmark": ("expanded-public-60-case" if dataset.dataset_version == "retrieval-cases-v2" else "legacy-public-60-case"),
+        "dataset_version": dataset.dataset_version,
         "status": "COMPLETED" if provider_failures == 0 else "COMPLETED_WITH_PROVIDER_FAILURES",
         "configuration": {
             "candidate_depth": 8,

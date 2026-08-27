@@ -24,6 +24,7 @@ from server.knowledge_retrieval.index_service import KnowledgeIndexService
 from server.mcp.evaluation import run_mcp_evaluation
 from server.weekly_review_evaluation import load_cases as load_weekly_cases
 from server.weekly_review_evaluation import run_evaluation
+from server.evidence_evaluation import run_evidence_reflect_cases
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
@@ -94,11 +95,15 @@ class EvaluationRegistry:
         self._suites = {
             "coach": RegisteredEvaluationSuite("coach", self._run_coach),
             "rag": RegisteredEvaluationSuite("rag", self._run_rag),
-            "retrieval": RegisteredEvaluationSuite("retrieval", self._run_retrieval),
+            "retrieval_v1": RegisteredEvaluationSuite("retrieval_v1", self._run_retrieval_v1),
+            "retrieval_v2": RegisteredEvaluationSuite("retrieval_v2", self._run_retrieval_v2),
             "weekly_adaptive": RegisteredEvaluationSuite(
                 "weekly_adaptive", self._run_weekly_adaptive
             ),
             "mcp": RegisteredEvaluationSuite("mcp", self._run_mcp),
+            "evidence_reflect": RegisteredEvaluationSuite(
+                "evidence_reflect", self._run_evidence_reflect
+            ),
         }
 
     @property
@@ -182,14 +187,34 @@ class EvaluationRegistry:
             limitations=report.limitations,
         )
 
-    def _run_retrieval(self) -> EvaluationSuiteResult:
+    def _run_retrieval_v1(self) -> EvaluationSuiteResult:
+        return self._run_retrieval_version(
+            suite="retrieval_v1",
+            manifest_path=self.repository_root / "docs/evaluation/baselines/retrieval-v1-corpus-manifest.json",
+            dataset_path=self.repository_root / "docs/rag/evaluation/cases/retrieval-eval-v1.json",
+        )
+
+    def _run_retrieval_v2(self) -> EvaluationSuiteResult:
+        return self._run_retrieval_version(
+            suite="retrieval_v2",
+            manifest_path=self.repository_root / "knowledge/manifests/corpus-v1.json",
+            dataset_path=self.repository_root / "docs/rag/evaluation/cases/retrieval-eval-v2.json",
+        )
+
+    def _run_retrieval_version(
+        self,
+        *,
+        suite: str,
+        manifest_path: Path,
+        dataset_path: Path,
+    ) -> EvaluationSuiteResult:
         started_at, started = _utc_now(), perf_counter()
         with tempfile.TemporaryDirectory(prefix="gaitlogic-public-eval-") as directory:
             temporary_root = Path(directory)
             manifest_target = temporary_root / "knowledge/manifests"
             manifest_target.mkdir(parents=True)
             shutil.copyfile(
-                self.repository_root / "knowledge/manifests/corpus-v1.json",
+                manifest_path,
                 manifest_target / "corpus-v1.json",
             )
             index_service = KnowledgeIndexService(repository_root=temporary_root)
@@ -198,7 +223,7 @@ class EvaluationRegistry:
             )
             runner = TrainingKnowledgeEvaluationRunner(repository_root=temporary_root)
             report = runner.run_retrieval(
-                dataset_path=self.repository_root / "docs/rag/evaluation/cases/retrieval-eval-v1.json",
+                dataset_path=dataset_path,
                 provider_factory=lambda: DeterministicEmbeddingProvider(dimensions=64, environment="test"),
                 provider_name="deterministic_test",
                 model_name="deterministic-sha256-v1",
@@ -217,7 +242,7 @@ class EvaluationRegistry:
         ]
         passed = sum(item.passed for item in report.cases)
         return EvaluationSuiteResult(
-            suite="retrieval",
+            suite=suite,
             version=report.evaluation_version,
             started_at=started_at,
             duration_ms=(perf_counter() - started) * 1000,
@@ -274,3 +299,39 @@ class EvaluationRegistry:
 
     def _run_mcp(self) -> EvaluationSuiteResult:
         return run_mcp_evaluation(self.repository_root)
+
+    def _run_evidence_reflect(self) -> EvaluationSuiteResult:
+        started_at, started = _utc_now(), perf_counter()
+        cases, metrics = run_evidence_reflect_cases()
+        passed = sum(bool(item["passed"]) for item in cases)
+        return EvaluationSuiteResult(
+            suite="evidence_reflect",
+            version="evidence-reflect-public-fictional-1.0.0",
+            started_at=started_at,
+            duration_ms=(perf_counter() - started) * 1000,
+            total_cases=len(cases),
+            passed_cases=passed,
+            failed_cases=len(cases) - passed,
+            skipped_cases=0,
+            metrics=[
+                {"name": key, "category": "EVIDENCE_REFLECT", "current": value}
+                for key, value in metrics.items()
+            ],
+            provider_mode="offline",
+            dataset_type="public_fictional",
+            status=_status(passed=passed, total=len(cases)),
+            cases=[
+                EvaluationCaseResult(
+                    case_id=str(item["case_id"]),
+                    category=str(item["category"]),
+                    passed=bool(item["passed"]),
+                    failure_category=(
+                        None
+                        if item["passed"]
+                        else EvaluationFailureCategory.VALIDATOR_FAILURE
+                    ),
+                    safe_error_codes=list(item["safe_error_codes"]),
+                )
+                for item in cases
+            ],
+        )

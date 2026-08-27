@@ -117,6 +117,7 @@ class RetrieveTrainingKnowledgeTool(AgentTool):
         AgentIntent.EXPLAIN_RUNNER_STATE,
         AgentIntent.GENERAL_TRAINING_QUESTION,
     )
+    provided_fact_domains = ("training_knowledge",)
 
     def __init__(
         self,

@@ -33,6 +33,14 @@ class GetRecentTrainingTool(AgentTool):
     input_model = RecentTrainingInput
     output_model = RecentTrainingOutput
     allowed_intents = _ALL_TRAINING_INTENTS
+    provided_fact_domains = (
+        "training_volume",
+        "training_frequency",
+        "recent_intensity",
+        "training_load",
+        "plan_execution",
+        "subjective_fatigue",
+    )
 
     def __init__(self, dependencies: CoachAgentToolDependencies, *, item_limit: int = 20) -> None:
         self.dependencies = dependencies
@@ -97,6 +105,7 @@ class GetTrainingDataQualityTool(AgentTool):
     input_model = TrainingDataQualityInput
     output_model = TrainingDataQualityOutput
     allowed_intents = _ALL_TRAINING_INTENTS
+    provided_fact_domains = ("data_quality",)
 
     def __init__(self, dependencies: CoachAgentToolDependencies) -> None:
         self.dependencies = dependencies

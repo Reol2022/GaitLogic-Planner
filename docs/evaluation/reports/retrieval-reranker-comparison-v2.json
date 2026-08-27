@@ -1,0 +1,9 @@
+{
+  "benchmark": "expanded-public-60-case",
+  "chunk_text_saved": false,
+  "comparison_version": "retrieval-reranker-comparison-2.0.0",
+  "provider_response_saved": false,
+  "raw_query_saved": false,
+  "reason": "Reranker provider is disabled or incomplete.",
+  "status": "REAL_PROVIDER_BLOCKED"
+}

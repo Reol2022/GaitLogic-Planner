@@ -112,6 +112,9 @@ class WeeklyReviewStatus(str, Enum):
     generating = "generating"
     success = "success"
     failed = "failed"
+    current = "current"
+    superseded = "superseded"
+    stale = "stale"
 
 
 class TrainingStatus(str, Enum):

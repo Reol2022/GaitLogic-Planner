@@ -16,6 +16,7 @@ from planner_core.weekly_review.enums import (
 from planner_core.weekly_review.schemas import WeeklyFacts
 from server.common.exceptions import BadRequestError
 from server.domain.review_thresholds import HIGH_INTENSITY_TYPES
+from server.domain.decision_readiness import DecisionReadiness, DomainReadiness
 from server.services.plan_adjustment_validation_service import (
     INTENSITY_RANK,
     MAX_WEEKLY_INCREASE_RATIO,
@@ -32,6 +33,7 @@ class AdaptivePlanProposalService:
         weekly_facts: WeeklyFacts,
         target_plans: list[TargetPlanFact],
         candidates: list[ProposalCandidateChange],
+        decision_readiness: list[DomainReadiness] | None = None,
     ) -> PlanAdjustmentProposal:
         by_id = {item.plan_id: item for item in target_plans}
         if len(by_id) != len(target_plans):
@@ -48,6 +50,11 @@ class AdaptivePlanProposalService:
             for item in weekly_facts.classification.domain_readiness
             if item.get("readiness") == "BLOCKED"
         }
+        blocked_domains.update(
+            item.domain
+            for item in (decision_readiness or [])
+            if item.readiness == DecisionReadiness.BLOCKED
+        )
         if "recovery" in blocked_domains:
             for candidate in candidates:
                 target = by_id.get(candidate.plan_id)

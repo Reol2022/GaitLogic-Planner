@@ -87,7 +87,7 @@ const router = createRouter({
     {
       path: "/weekly-review",
       name: "WeeklyReview",
-      component: () => import("@/views/WeeklyReviewView.vue"),
+      component: () => import("@/views/AdaptiveWeeklyReviewView.vue"),
       meta: { title: "智能周复盘" },
     },
     {

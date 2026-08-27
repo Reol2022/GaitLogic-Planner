@@ -624,6 +624,13 @@ class WeeklyReviewReport(IdMixin, TimestampMixin, Base):
     model_name: Mapped[str | None] = mapped_column(String(128))
     error_message: Mapped[str | None] = mapped_column(Text)
     generated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Immutable adaptive-coaching snapshot fields.  Legacy reports leave these
+    # nullable and remain history-only rather than being treated as fresh.
+    weekly_facts_fingerprint: Mapped[str | None] = mapped_column(String(64), index=True)
+    analysis_snapshot_json: Mapped[dict | None] = mapped_column(JSON)
+    readiness_snapshot_json: Mapped[list | None] = mapped_column(JSON)
+    evidence_snapshot_json: Mapped[dict | None] = mapped_column(JSON)
+    knowledge_references_json: Mapped[list | None] = mapped_column(JSON)
 
     user: Mapped[UserAccount] = relationship(back_populates="weekly_review_reports")
     cycle: Mapped[TrainingCycle] = relationship(back_populates="weekly_review_reports")
@@ -2102,6 +2109,7 @@ class TrainingAdjustmentDraft(IdMixin, TimestampMixin, Base):
         Index("ix_training_adjustment_user_status", "user_id", "status"),
         Index("ix_training_adjustment_user_source", "user_id", "source_type", "source_evaluation_id"),
         Index("ix_training_adjustment_cycle_week", "cycle_id", "week_start"),
+        UniqueConstraint("review_report_id", "revision", name="uq_training_adjustment_review_revision"),
         MYSQL_TABLE_ARGS,
     )
 
@@ -2124,10 +2132,22 @@ class TrainingAdjustmentDraft(IdMixin, TimestampMixin, Base):
     facts_hash: Mapped[str | None] = mapped_column(String(64))
     source_version: Mapped[str | None] = mapped_column(String(64))
     applied_at: Mapped[datetime | None] = mapped_column(DateTime)
+    review_report_id: Mapped[int | None] = mapped_column(
+        ForeignKey("weekly_review_report.id", ondelete="SET NULL"), index=True
+    )
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    parent_proposal_id: Mapped[int | None] = mapped_column(
+        ForeignKey("training_adjustment_drafts.id", ondelete="SET NULL"), index=True
+    )
+    feedback_json: Mapped[dict | None] = mapped_column(JSON)
 
     user: Mapped[UserAccount] = relationship(back_populates="training_adjustment_drafts")
     source_evaluation: Mapped[TrainingRuleEvaluation | None] = relationship()
     cycle: Mapped[TrainingCycle | None] = relationship()
+    review_report: Mapped[WeeklyReviewReport | None] = relationship(foreign_keys=[review_report_id])
+    parent_proposal: Mapped[TrainingAdjustmentDraft | None] = relationship(
+        remote_side="TrainingAdjustmentDraft.id", foreign_keys=[parent_proposal_id]
+    )
 
 
 class AdaptivePlanVersionRecord(IdMixin, TimestampMixin, Base):
@@ -2206,6 +2226,42 @@ class AdaptiveWorkflowCheckpointWriteRecord(IdMixin, Base):
     channel: Mapped[str] = mapped_column(String(128), nullable=False)
     value_type: Mapped[str] = mapped_column(String(64), nullable=False)
     value_blob: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+
+
+class McpOAuthClient(IdMixin, TimestampMixin, Base):
+    __tablename__ = "mcp_oauth_clients"
+    __table_args__ = (UniqueConstraint("client_id", name="uq_mcp_oauth_client_id"), MYSQL_TABLE_ARGS)
+
+    client_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    client_name: Mapped[str | None] = mapped_column(String(255))
+    redirect_uris_json: Mapped[list] = mapped_column(JSON, nullable=False)
+    scopes_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+
+
+class McpOAuthAuthorizationCode(IdMixin, TimestampMixin, Base):
+    __tablename__ = "mcp_oauth_authorization_codes"
+    __table_args__ = (UniqueConstraint("code_hash", name="uq_mcp_oauth_code_hash"), MYSQL_TABLE_ARGS)
+
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    client_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    redirect_uri: Mapped[str] = mapped_column(String(2048), nullable=False)
+    code_challenge: Mapped[str] = mapped_column(String(128), nullable=False)
+    scopes_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class McpOAuthRefreshToken(IdMixin, TimestampMixin, Base):
+    __tablename__ = "mcp_oauth_refresh_tokens"
+    __table_args__ = (UniqueConstraint("token_hash", name="uq_mcp_oauth_refresh_hash"), MYSQL_TABLE_ARGS)
+
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    client_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    scopes_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
 @event.listens_for(AdaptiveWorkflowCheckpointWriteRecord, "before_insert")

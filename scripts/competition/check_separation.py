@@ -19,6 +19,18 @@ def run_git(path: Path, *args: str) -> tuple[int, str]:
     return result.returncode, result.stdout.strip()
 
 
+def remote_urls(path: Path) -> set[str]:
+    code, names = run_git(path, "remote")
+    if code:
+        return set()
+    urls: set[str] = set()
+    for name in names.splitlines():
+        remote_code, remote_url = run_git(path, "remote", "get-url", name.strip())
+        if not remote_code and remote_url:
+            urls.add(remote_url.rstrip("/").removesuffix(".git").lower())
+    return urls
+
+
 def main() -> int:
     product = Path(__file__).resolve().parents[2]
     private = product.parent / "gaitlogic-competition-2026"
@@ -33,9 +45,10 @@ def main() -> int:
     elif not (private / ".git").exists():
         failures.append("private workspace is not an independent Git repository")
     else:
-        code, remote = run_git(private, "remote")
-        if code or remote:
-            failures.append("private workspace must not have a remote during initialization")
+        product_remotes = remote_urls(product)
+        private_remotes = remote_urls(private)
+        if product_remotes & private_remotes:
+            failures.append("product and private workspaces must not share a remote")
         if run_git(product, "ls-files", "--", str(private))[1]:
             failures.append("product repository tracks content from private workspace")
         manifest = private / "competition-manifest.yaml"

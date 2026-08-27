@@ -2,8 +2,10 @@
   <div class="page-stack adaptive-review-page">
     <PageHeader title="周复盘与自适应调整" subtitle="确定性事实负责边界，AI 负责解释，计划修改必须由你确认。" />
     <section class="panel controls">
-      <el-date-picker v-model="range" type="daterange" value-format="YYYY-MM-DD" start-placeholder="周开始" end-placeholder="周结束" />
-      <el-button type="primary" :loading="loading" :disabled="!range" @click="generate">生成周复盘</el-button>
+      <el-select v-model="cycleId" placeholder="训练周期" @change="loadBlocks"><el-option v-for="cycle in cycles" :key="cycle.id" :label="cycle.name" :value="cycle.id" /></el-select>
+      <el-select v-model="sourceBlockId" placeholder="复盘训练周" @change="chooseTarget"><el-option v-for="block in blocks" :key="block.id" :label="block.block_name" :value="block.id" /></el-select>
+      <el-select v-model="targetBlockId" placeholder="下一训练周"><el-option v-for="block in targetBlocks" :key="block.id" :label="block.block_name" :value="block.id" /></el-select>
+      <el-button type="primary" :loading="loading" :disabled="!range || !cycleId || !sourceBlockId || !targetBlockId" @click="generate">生成周复盘</el-button>
     </section>
     <el-alert title="AI 周复盘不是医疗建议，也不会自动修改训练计划。" type="info" :closable="false" show-icon />
 
@@ -30,13 +32,26 @@
       </el-collapse>
     </section>
 
+    <section v-if="proposal" class="proposal-meta">
+      <el-tag effect="plain">方案 v{{ proposal.revision || 1 }} / {{ maxProposalVersion }}</el-tag>
+      <span v-if="proposal.parent_proposal_id">上一版方案已拒绝，当前为基于反馈生成的新方案。</span>
+    </section>
     <AdaptiveProposalDiff v-if="proposal" :proposal="proposal" @approve="approve" @reject="reject" />
+    <el-button v-if="proposal?.status === 'pending_approval'" :disabled="!proposal.review_report_id" @click="feedbackVisible = true">反馈后重新生成方案</el-button>
+    <el-dialog v-model="feedbackVisible" title="反馈并重新生成方案" width="560px">
+      <p>反馈只表达你的偏好；系统仍会重新执行当前安全校验，不会绕过恢复、负荷和计划版本限制。</p>
+      <el-checkbox-group v-model="feedback.reason_codes">
+        <el-checkbox v-for="item in feedbackOptions" :key="item.value" :label="item.value">{{ item.label }}</el-checkbox>
+      </el-checkbox-group>
+      <el-input v-model="feedback.free_text" class="feedback-text" type="textarea" :rows="3" maxlength="1000" show-word-limit placeholder="补充时间安排或偏好（可选）" />
+      <template #footer><el-button @click="feedbackVisible = false">取消</el-button><el-button type="primary" :loading="revising" @click="revise">提交反馈并生成</el-button></template>
+    </el-dialog>
     <el-empty v-if="!loading && !review" description="选择一周后生成可解释周复盘" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import AdaptiveProposalDiff from "@/components/weekly-review/AdaptiveProposalDiff.vue";
@@ -46,15 +61,35 @@ import {
   generateLangGraphWeeklyReview,
   getAdaptiveProposal,
   rejectAdaptiveProposal,
+  reviseAdaptiveProposal,
 } from "@/api/adaptivePlan";
 import type { AdaptiveProposal, LangGraphWeeklyReview } from "@/types/adaptivePlan";
 import { limitationMessage } from "@/utils/limitationDisplay";
+import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles";
+import { listTrainingBlocks } from "@/api/trainingBlocks";
+import type { TrainingBlock, TrainingCycle } from "@/types/models";
 
 const route = useRoute();
+const cycleId = ref<number | null>(Number(route.query.cycle_id) || null);
+const sourceBlockId = ref<number | null>(Number(route.query.source_block_id) || null);
+const targetBlockId = ref<number | null>(Number(route.query.target_block_id) || null);
+const cycles = ref<TrainingCycle[]>([]);
+const blocks = ref<TrainingBlock[]>([]);
+const targetBlocks = computed(() => blocks.value.filter((item) => item.id !== sourceBlockId.value));
 const range = ref<[string, string] | null>(null);
 const review = ref<LangGraphWeeklyReview | null>(null);
 const proposal = ref<AdaptiveProposal | null>(null);
 const loading = ref(false);
+const revising = ref(false);
+const feedbackVisible = ref(false);
+const maxProposalVersion = ref(3);
+const feedback = ref<{ reason_codes: string[]; free_text: string }>({ reason_codes: [], free_text: "" });
+const feedbackOptions = [
+  { value: "VOLUME_TOO_HIGH", label: "跑量偏高" }, { value: "VOLUME_TOO_LOW", label: "跑量偏低" },
+  { value: "TOO_MANY_QUALITY_SESSIONS", label: "强度课过多" }, { value: "WORKOUT_DAY_CONFLICT", label: "训练日冲突" },
+  { value: "LONG_RUN_CONFLICT", label: "长距离安排冲突" }, { value: "INSUFFICIENT_RECOVERY", label: "恢复不足" },
+  { value: "PERSONAL_SCHEDULE_CONFLICT", label: "个人日程冲突" }, { value: "OTHER", label: "其他" },
+];
 
 function currentWeek(): [string, string] {
   const today = new Date();
@@ -67,13 +102,29 @@ function currentWeek(): [string, string] {
   return [text(start), text(end)];
 }
 
+async function loadBlocks() {
+  blocks.value = cycleId.value ? await listTrainingBlocks(cycleId.value) : [];
+  if (!sourceBlockId.value) sourceBlockId.value = blocks.value[blocks.value.length - 1]?.id || null;
+  chooseTarget();
+}
+
+function chooseTarget() {
+  const index = blocks.value.findIndex((item) => item.id === sourceBlockId.value);
+  targetBlockId.value = index >= 0 ? blocks.value[index + 1]?.id || null : null;
+  const source = blocks.value.find((item) => item.id === sourceBlockId.value);
+  if (source?.start_date && source.end_date) range.value = [source.start_date, source.end_date];
+}
+
 async function generate() {
-  if (!range.value) return;
+  if (!range.value || !cycleId.value || !sourceBlockId.value || !targetBlockId.value) return;
   loading.value = true;
   try {
     review.value = await generateLangGraphWeeklyReview({
       week_start: range.value[0],
       week_end: range.value[1],
+      cycle_id: cycleId.value,
+      source_block_id: sourceBlockId.value,
+      target_block_id: targetBlockId.value,
       timezone: "Asia/Shanghai",
     });
     proposal.value = review.value.proposal_record_id
@@ -100,8 +151,41 @@ async function reject() {
   ElMessage.success("已拒绝 Proposal，原计划未修改");
 }
 
+async function revise() {
+  if (!proposal.value?.review_report_id) return;
+  if (!feedback.value.reason_codes.length && !feedback.value.free_text.trim()) {
+    ElMessage.warning("请选择反馈原因或补充说明");
+    return;
+  }
+  revising.value = true;
+  try {
+    const result = await reviseAdaptiveProposal(proposal.value.review_report_id, {
+      proposal_id: proposal.value.id,
+      feedback: { reason_codes: feedback.value.reason_codes, free_text: feedback.value.free_text.trim() || null },
+    });
+    if (result.status === "REVIEW_STALE") {
+      ElMessage.error("本周训练事实已发生变化，当前周复盘已过期，请重新生成周复盘。");
+      return;
+    }
+    if (result.status === "REVISION_LIMIT_REACHED") {
+      ElMessage.warning("已达到当前周复盘的方案调整次数上限，可保留原计划或重新生成新的周复盘。");
+      return;
+    }
+    proposal.value = result.proposal || null;
+    maxProposalVersion.value = result.revision_limit + 1;
+    feedbackVisible.value = false;
+    feedback.value = { reason_codes: [], free_text: "" };
+    ElMessage.success("已根据反馈生成新的调整方案");
+  } finally { revising.value = false; }
+}
+
 onMounted(async () => {
   range.value = currentWeek();
+  cycles.value = await listTrainingCycles();
+  if (!cycleId.value) {
+    try { cycleId.value = (await getActiveTrainingCycle()).id; } catch { cycleId.value = null; }
+  }
+  if (cycleId.value) await loadBlocks();
   const proposalId = Number(route.query.proposal_id);
   if (Number.isInteger(proposalId) && proposalId > 0) {
     proposal.value = await getAdaptiveProposal(proposalId);
@@ -110,5 +194,5 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.adaptive-review-page{gap:16px}.controls{display:flex;align-items:center;gap:12px;padding:16px}.narrative{padding:18px}.narrative header{display:flex;justify-content:space-between;align-items:center}.narrative h2{margin:0}.overview{font-size:15px;line-height:1.8}.review-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.review-grid article,.reference{padding:13px;border:1px solid var(--card-border);border-radius:10px}.review-grid h3{margin:0}.review-grid p,.reference p{line-height:1.7}.narrative :deep(.el-alert){margin-top:10px}.reference{margin-bottom:10px}.reference small{color:var(--muted)}@media(max-width:600px){.controls{align-items:stretch;flex-direction:column}.controls :deep(.el-date-editor){width:100%}.review-grid{grid-template-columns:1fr}}
+.adaptive-review-page{gap:16px}.controls{display:flex;align-items:center;gap:12px;padding:16px}.narrative{padding:18px}.narrative header,.proposal-meta{display:flex;justify-content:space-between;align-items:center;gap:10px}.narrative h2{margin:0}.overview{font-size:15px;line-height:1.8}.review-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.review-grid article,.reference{padding:13px;border:1px solid var(--card-border);border-radius:10px}.review-grid h3{margin:0}.review-grid p,.reference p{line-height:1.7}.narrative :deep(.el-alert){margin-top:10px}.reference{margin-bottom:10px}.reference small{color:var(--muted)}.feedback-text{margin-top:14px}@media(max-width:600px){.controls{align-items:stretch;flex-direction:column}.controls :deep(.el-date-editor){width:100%}.review-grid{grid-template-columns:1fr}.proposal-meta{align-items:flex-start;flex-direction:column}}
 </style>

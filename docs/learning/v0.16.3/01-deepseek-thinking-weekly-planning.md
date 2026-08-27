@@ -57,3 +57,17 @@ Token Budget 按任务复杂度和真实 Provider 行为设置，而不是按“
 SafeTracer 仅允许记录 `task_type`、`model_profile`、Thinking 开关、工具轮次、finish reason、reasoning/content 长度、最大 Token、重试次数和失败分类。它禁止 Prompt、raw response、reasoning 文本、完整 Tool Result 和用户训练正文。
 
 当 `finish_reason=length`、`content_length=0` 且 `reasoning_length>0` 时，Metrics 同时记录输出截断和 reasoning budget exhaustion 聚合计数，不使用 user ID、trace ID 或文本作为 label。
+## 16. 周复盘报告、Checkpoint 与 HITL 的边界
+
+`weekly_review_report` 保存已经完成并可展示给用户的周复盘业务结果。它不是
+LangGraph checkpoint，也不能用来从某个模型节点继续执行。Checkpoint 保存的是尚未
+完成的工作流状态，默认不作为用户可见证据。
+
+当前主“智能周复盘”继续持久化版本化报告和可编辑调整草稿。生成草稿后，服务端启动
+Adaptive Approval Graph 并在 `human_interrupt` 保存 SQLAlchemy checkpoint。用户点击
+应用或拒绝时，审批接口使用由记录类型、用户和记录 ID 组成的内部 `thread_id` 恢复图；
+实际写计划节点位于恢复之后，并继续执行所有权、计划版本、锁定状态和确定性规则校验。
+
+实验性的“周复盘与自适应调整”页面不再出现在产品导航中，其旧路由暂时保留用于兼容
+已有链接和专项测试。产品入口统一为“智能周复盘”，历史报告与 checkpoint 仍然分别
+存储、分别承担业务审计和执行恢复职责。

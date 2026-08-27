@@ -7,6 +7,7 @@ from langgraph.graph import END, START, StateGraph
 from server.weekly_review_graph.nodes import WeeklyReviewNodes
 from server.weekly_review_graph.ports import (
     WeeklyFactsLoader,
+    WeeklyEvidenceReacquirer,
     WeeklyKnowledgeRetriever,
     WeeklyReviewGenerator,
     PlanDesigner,
@@ -58,6 +59,8 @@ def build_weekly_review_graph(
     knowledge_retriever: WeeklyKnowledgeRetriever | None = None,
     plan_designer: PlanDesigner | None = None,
     proposal_materializer: ProposalMaterializer | None = None,
+    evidence_reacquirer: WeeklyEvidenceReacquirer | None = None,
+    max_reflect_rounds: int = 1,
     tracer: SafeTracer | None = None,
 ):
     tracer = tracer or NOOP_TRACER
@@ -67,6 +70,8 @@ def build_weekly_review_graph(
         knowledge_retriever=knowledge_retriever,
         plan_designer=plan_designer,
         proposal_materializer=proposal_materializer,
+        evidence_reacquirer=evidence_reacquirer,
+        max_reflect_rounds=max_reflect_rounds,
     )
     def traced(name, function):
         def run(raw):
@@ -97,6 +102,8 @@ def build_weekly_review_graph(
 
     graph = StateGraph(WeeklyReviewState)
     graph.add_node("load_weekly_facts", traced("weekly_facts", nodes.load_weekly_facts))
+    graph.add_node("assess_weekly_evidence", traced("evidence.judge", nodes.assess_weekly_evidence))
+    graph.add_node("reflect_weekly_evidence", traced("reflect.evaluate", nodes.reflect_weekly_evidence))
     graph.add_node("evaluate_weekly_rules", traced("rules.evaluate", nodes.evaluate_weekly_rules))
     graph.add_node("retrieve_training_knowledge", traced("rag.retrieve", nodes.retrieve_training_knowledge))
     graph.add_node("generate_weekly_review", traced("llm.generate", nodes.generate_weekly_review))
@@ -106,7 +113,9 @@ def build_weekly_review_graph(
     graph.add_node("materialize_proposal", traced("proposal.materialize", nodes.materialize_proposal))
     graph.add_node("finalize_weekly_review", traced("finalize", nodes.finalize_weekly_review))
     graph.add_edge(START, "load_weekly_facts")
-    graph.add_edge("load_weekly_facts", "evaluate_weekly_rules")
+    graph.add_edge("load_weekly_facts", "assess_weekly_evidence")
+    graph.add_edge("assess_weekly_evidence", "reflect_weekly_evidence")
+    graph.add_edge("reflect_weekly_evidence", "evaluate_weekly_rules")
     graph.add_edge("evaluate_weekly_rules", "retrieve_training_knowledge")
     graph.add_edge("retrieve_training_knowledge", "generate_weekly_review")
     graph.add_edge("generate_weekly_review", "validate_weekly_review")

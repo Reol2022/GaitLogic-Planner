@@ -18,9 +18,12 @@ _SUITE_ALIASES = {
     "all": None,
     "coach": ["coach"],
     "rag": ["rag"],
-    "retrieval": ["retrieval"],
+    "retrieval": ["retrieval_v1", "retrieval_v2"],
+    "retrieval-v1": ["retrieval_v1"],
+    "retrieval-v2": ["retrieval_v2"],
     "weekly-adaptive": ["weekly_adaptive"],
     "mcp": ["mcp"],
+    "evidence-reflect": ["evidence_reflect"],
 }
 
 

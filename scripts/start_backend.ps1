@@ -10,7 +10,11 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 
 if (-not $PythonExe) {
-    if (Test-Path "D:\python3.11\python.exe") {
+    $ProjectVirtualEnvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
+    if (Test-Path $ProjectVirtualEnvPython) {
+        $PythonExe = $ProjectVirtualEnvPython
+    }
+    elseif (Test-Path "D:\python3.11\python.exe") {
         $PythonExe = "D:\python3.11\python.exe"
     } else {
         $PythonExe = "python"
@@ -25,6 +29,13 @@ Write-Host "Docs: http://${HostName}:${Port}/docs"
 Write-Host ""
 
 Set-Location $ProjectRoot
+
+if (-not $env:GAITLOGIC_GIT_COMMIT) {
+    $detectedCommit = (& git -C $ProjectRoot rev-parse --short=12 HEAD 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $detectedCommit) {
+        $env:GAITLOGIC_GIT_COMMIT = $detectedCommit.Trim()
+    }
+}
 
 if ($KillExisting) {
     $connections = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue

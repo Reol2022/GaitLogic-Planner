@@ -151,12 +151,18 @@ CREATE TABLE IF NOT EXISTS `weekly_review_report` (
   `model_name` VARCHAR(128) NULL,
   `error_message` TEXT NULL,
   `generated_at` DATETIME NULL,
+  `weekly_facts_fingerprint` VARCHAR(64) NULL,
+  `analysis_snapshot_json` JSON NULL,
+  `readiness_snapshot_json` JSON NULL,
+  `evidence_snapshot_json` JSON NULL,
+  `knowledge_references_json` JSON NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `ix_weekly_review_user_cycle_created` (`user_id`, `cycle_id`, `created_at`),
   KEY `ix_weekly_review_user_block_version` (`user_id`, `source_block_id`, `version`),
   KEY `ix_weekly_review_snapshot_hash` (`user_id`, `source_block_id`, `snapshot_hash`),
+  KEY `ix_weekly_review_weekly_facts_fingerprint` (`weekly_facts_fingerprint`),
   KEY `ix_weekly_review_cycle_id` (`cycle_id`),
   KEY `ix_weekly_review_source_block_id` (`source_block_id`),
   KEY `ix_weekly_review_target_block_id` (`target_block_id`),
@@ -1395,19 +1401,30 @@ CREATE TABLE IF NOT EXISTS `training_adjustment_drafts` (
   `facts_hash` VARCHAR(64) NULL,
   `source_version` VARCHAR(64) NULL,
   `applied_at` DATETIME NULL,
+  `review_report_id` BIGINT NULL,
+  `revision` INT NOT NULL DEFAULT 1,
+  `parent_proposal_id` BIGINT NULL,
+  `feedback_json` JSON NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `ix_training_adjustment_user_status` (`user_id`, `status`),
   KEY `ix_training_adjustment_user_source` (`user_id`, `source_type`, `source_evaluation_id`),
   KEY `ix_training_adjustment_cycle_week` (`cycle_id`, `week_start`),
+  KEY `ix_training_adjustment_review_report_id` (`review_report_id`),
+  KEY `ix_training_adjustment_parent_proposal_id` (`parent_proposal_id`),
+  UNIQUE KEY `uq_training_adjustment_review_revision` (`review_report_id`, `revision`),
   KEY `ix_training_adjustment_source_evaluation_id` (`source_evaluation_id`),
   CONSTRAINT `fk_training_adjustment_user_id`
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_training_adjustment_source_evaluation_id`
     FOREIGN KEY (`source_evaluation_id`) REFERENCES `training_rule_evaluations` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_training_adjustment_cycle_id`
-    FOREIGN KEY (`cycle_id`) REFERENCES `training_cycles` (`id`) ON DELETE SET NULL
+    FOREIGN KEY (`cycle_id`) REFERENCES `training_cycles` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_training_adjustment_review_report_id`
+    FOREIGN KEY (`review_report_id`) REFERENCES `weekly_review_report` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_training_adjustment_parent_proposal_id`
+    FOREIGN KEY (`parent_proposal_id`) REFERENCES `training_adjustment_drafts` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `runner_state_snapshots` (
@@ -1535,4 +1552,54 @@ CREATE TABLE IF NOT EXISTS `adaptive_workflow_checkpoint_writes` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_adaptive_checkpoint_write_identity` (`thread_id`, `checkpoint_namespace`, `checkpoint_id`, `task_id`, `task_path_hash`, `write_index`),
   KEY `ix_adaptive_checkpoint_writes_lookup` (`thread_id`, `checkpoint_namespace`, `checkpoint_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `mcp_oauth_clients` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `client_id` VARCHAR(128) NOT NULL,
+  `client_name` VARCHAR(255) NULL,
+  `redirect_uris_json` JSON NOT NULL,
+  `scopes_json` JSON NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_mcp_oauth_client_id` (`client_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `mcp_oauth_authorization_codes` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `code_hash` VARCHAR(64) NOT NULL,
+  `client_id` VARCHAR(128) NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `redirect_uri` VARCHAR(2048) NOT NULL,
+  `code_challenge` VARCHAR(128) NOT NULL,
+  `scopes_json` JSON NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `consumed_at` DATETIME NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_mcp_oauth_code_hash` (`code_hash`),
+  KEY `ix_mcp_oauth_code_client` (`client_id`),
+  KEY `ix_mcp_oauth_code_user` (`user_id`),
+  KEY `ix_mcp_oauth_code_expires` (`expires_at`),
+  CONSTRAINT `fk_mcp_oauth_code_user` FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `mcp_oauth_refresh_tokens` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `token_hash` VARCHAR(64) NOT NULL,
+  `client_id` VARCHAR(128) NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `scopes_json` JSON NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `revoked_at` DATETIME NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_mcp_oauth_refresh_hash` (`token_hash`),
+  KEY `ix_mcp_oauth_refresh_client` (`client_id`),
+  KEY `ix_mcp_oauth_refresh_user` (`user_id`),
+  KEY `ix_mcp_oauth_refresh_expires` (`expires_at`),
+  CONSTRAINT `fk_mcp_oauth_refresh_user` FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

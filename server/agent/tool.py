@@ -19,6 +19,7 @@ class AgentTool(ABC):
     read_only: ClassVar[bool] = True
     requires_confirmation: ClassVar[bool] = False
     allowed_intents: ClassVar[tuple[AgentIntent, ...]]
+    provided_fact_domains: ClassVar[tuple[str, ...]] = ()
 
     @property
     def definition(self) -> AgentToolDefinition:
@@ -30,6 +31,7 @@ class AgentTool(ABC):
             read_only=self.read_only,
             requires_confirmation=self.requires_confirmation,
             allowed_intents=list(self.allowed_intents),
+            provided_fact_domains=list(self.provided_fact_domains),
         )
 
     @abstractmethod

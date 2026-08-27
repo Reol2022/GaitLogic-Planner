@@ -33,9 +33,21 @@ from server.agent.schemas import (
     AgentValidationResult,
 )
 from server.agent.trace import AgentTrace
+from server.agent.training_context_builder import merge_agent_tool_results
 from server.agent.validator import AgentResponseValidator
 from server.agent.prompts import build_coach_agent_system_prompt
+from server.domain.evidence import EvidenceAssessmentStatus, EvidenceJudgeResult, ReflectSummary
 from server.observability.tracing import NOOP_TRACER, SafeTracer, active_trace_handle
+from server.services.evidence_judge_service import (
+    EvidenceJudge,
+    materialize_agent_evidence,
+    relevant_domains_for_request,
+)
+from server.services.evidence_reflect_service import (
+    EvidenceReflectPlanner,
+    execute_reflect_actions,
+    successful_tool_fingerprints,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +87,8 @@ class GaitLogicCoachAgent:
         validator: AgentResponseValidator | None = None,
         limits: AgentLimits | None = None,
         tracer: SafeTracer | None = None,
+        evidence_judge: EvidenceJudge | None = None,
+        reflect_planner: EvidenceReflectPlanner | None = None,
     ) -> None:
         self.limits = limits or self._limits_from_settings()
         self.gateway = gateway
@@ -82,8 +96,11 @@ class GaitLogicCoachAgent:
         self.context_builder = context_builder or AgentContextBuilder(limits=self.limits)
         self.validator = validator or AgentResponseValidator(limits=self.limits)
         self.tracer = tracer or NOOP_TRACER
+        self.evidence_judge = evidence_judge or EvidenceJudge()
+        self.reflect_planner = reflect_planner or EvidenceReflectPlanner()
         self.last_trace: AgentTrace | None = None
         self.last_context: AgentContext | None = None
+        self.last_evidence_result: EvidenceJudgeResult | None = None
 
     @staticmethod
     def _limits_from_settings() -> AgentLimits:
@@ -101,7 +118,191 @@ class GaitLogicCoachAgent:
             max_evidence_items=settings.agent_max_evidence_items,
             max_rule_items=settings.agent_max_rule_items,
             max_answer_length=settings.agent_max_answer_length,
+            max_reflect_rounds=settings.evidence_max_reflect_rounds,
         )
+
+    def _judge_context(
+        self,
+        *,
+        request: AgentRequest,
+        context: AgentContext,
+        operation: str = "judge",
+    ) -> tuple[AgentContext, EvidenceJudgeResult]:
+        result = self.evidence_judge.assess(
+            relevant_domains=relevant_domains_for_request(request.intent, request.message),
+            evidence=materialize_agent_evidence(context),
+        )
+        self.last_evidence_result = result
+        values = context.model_dump(mode="python")
+        values["evidence_assessments"] = result.assessments
+        values["decision_readiness"] = result.decision_readiness
+        updated = AgentContext.model_validate(values)
+        handle = active_trace_handle()
+        if handle is not None:
+            counts = Counter(item.status for item in result.assessments)
+            with self.tracer.span(
+                handle,
+                component="evidence",
+                operation=operation,
+                metadata={
+                    "relevant_domain_count": len(result.relevant_domains),
+                    "sufficient_domain_count": counts[EvidenceAssessmentStatus.SUFFICIENT],
+                    "partial_domain_count": counts[EvidenceAssessmentStatus.PARTIAL],
+                    "missing_domain_count": counts[EvidenceAssessmentStatus.MISSING],
+                    "conflict_count": sum(len(item.conflicts) for item in result.assessments),
+                },
+            ):
+                pass
+        return updated, result
+
+    def _reflect_context(
+        self,
+        *,
+        request: AgentRequest,
+        context: AgentContext,
+        initial: EvidenceJudgeResult,
+    ) -> tuple[AgentContext, EvidenceJudgeResult]:
+        if self.limits.max_reflect_rounds == 0:
+            values = context.model_dump(mode="python")
+            values["reflect_summary"] = ReflectSummary(stop_reasons=["REFLECT_DISABLED"])
+            return AgentContext.model_validate(values), initial
+
+        attempted = successful_tool_fingerprints(context.tool_results)
+        current = initial
+        rounds = 0
+        executed = 0
+        evidence_added = 0
+        no_gain = False
+        stop_reasons: list[str] = []
+        for round_index in range(self.limits.max_reflect_rounds):
+            plan = self.reflect_planner.plan(
+                intent=request.intent,
+                assessments=current.assessments,
+                registry=self.registry,
+                attempted_fingerprints=attempted,
+            )
+            candidates = [
+                item
+                for item in plan.actions
+                if item.automatically_resolvable
+                and not item.already_attempted
+                and item.tool_name is not None
+            ]
+            handle = active_trace_handle()
+            if handle is not None:
+                with self.tracer.span(
+                    handle,
+                    component="reflect",
+                    operation="evaluate",
+                    metadata={
+                        "reflect_round": round_index + 1,
+                        "candidate_action_count": len(candidates),
+                    },
+                ):
+                    pass
+            if not candidates:
+                stop_reasons.extend(plan.stop_reasons or ["NO_AUTOMATIC_EVIDENCE_SOURCE"])
+                break
+            remaining = max(0, self.limits.max_tool_calls - len(context.tool_results))
+            if remaining == 0:
+                stop_reasons.append("AGENT_TOOL_CALL_BUDGET_EXHAUSTED")
+                break
+            rounds += 1
+            before_fingerprint = current.evidence_fingerprint
+            if handle is None:
+                results, fingerprints = execute_reflect_actions(
+                    plan=plan,
+                    registry=self.registry,
+                    context=context,
+                    max_actions=remaining,
+                )
+            else:
+                with self.tracer.span(
+                    handle,
+                    component="reflect",
+                    operation="tool",
+                    metadata={
+                        "reflect_round": rounds,
+                        "candidate_action_count": len(candidates),
+                    },
+                ) as span:
+                    results, fingerprints = execute_reflect_actions(
+                        plan=plan,
+                        registry=self.registry,
+                        context=context,
+                        max_actions=remaining,
+                    )
+                    span.add_metadata(executed_action_count=len(results))
+            attempted.update(fingerprints)
+            executed += len(results)
+            if not results:
+                stop_reasons.append("NO_REFLECT_ACTION_EXECUTED")
+                break
+            previous_count = len(current.evidence)
+            context = merge_agent_tool_results(context, results)
+            context, current = self._judge_context(
+                request=request,
+                context=context,
+                operation="rejudge",
+            )
+            evidence_added += max(0, len(current.evidence) - previous_count)
+            if before_fingerprint == current.evidence_fingerprint:
+                no_gain = True
+                stop_reasons.append("NO_MARGINAL_EVIDENCE_GAIN")
+                break
+            if all(
+                item.status
+                in {
+                    EvidenceAssessmentStatus.SUFFICIENT,
+                    EvidenceAssessmentStatus.NOT_APPLICABLE,
+                }
+                for item in current.assessments
+            ):
+                stop_reasons.append("READINESS_SATISFIED")
+                break
+            if any(result.status != AgentToolStatus.SUCCEEDED for result in results):
+                stop_reasons.append("REFLECT_TOOL_FAILED")
+                break
+        max_reached = rounds >= self.limits.max_reflect_rounds and not any(
+            reason in {"READINESS_SATISFIED", "NO_MARGINAL_EVIDENCE_GAIN"}
+            for reason in stop_reasons
+        )
+        if max_reached:
+            stop_reasons.append("MAX_REFLECT_ROUNDS_REACHED")
+        handle = active_trace_handle()
+        if handle is not None:
+            outcome = (
+                "no_gain"
+                if no_gain
+                else "max_rounds"
+                if max_reached
+                else "resolved"
+                if "READINESS_SATISFIED" in stop_reasons
+                else "stopped"
+            )
+            with self.tracer.span(
+                handle,
+                component="reflect",
+                operation="outcome",
+                metadata={
+                    "result": outcome,
+                    "reflect_round": rounds,
+                    "executed_action_count": executed,
+                    "evidence_added_count": evidence_added,
+                },
+            ):
+                pass
+        values = context.model_dump(mode="python")
+        values["reflect_summary"] = ReflectSummary(
+            rounds=rounds,
+            triggered=rounds > 0,
+            executed_action_count=executed,
+            evidence_added_count=evidence_added,
+            no_marginal_gain=no_gain,
+            max_rounds_reached=max_reached,
+            stop_reasons=list(dict.fromkeys(stop_reasons)),
+        )
+        return AgentContext.model_validate(values), current
 
     @staticmethod
     def _notice(code: AgentErrorCode) -> AgentNotice:
@@ -528,6 +729,14 @@ class GaitLogicCoachAgent:
             )
         trace.add_event(AgentTraceEventType.CONTEXT_BUILT, AgentTraceStatus.SUCCEEDED)
 
+        context, evidence_result = self._judge_context(request=request, context=context)
+        context, evidence_result = self._reflect_context(
+            request=request,
+            context=context,
+            initial=evidence_result,
+        )
+        self.last_evidence_result = evidence_result
+
         execution_state = AgentExecutionState()
         tool_name_counts: Counter[str] = Counter()
         total_tool_calls = 0
@@ -655,11 +864,11 @@ class GaitLogicCoachAgent:
                     safe_error_code=result.safe_error_code,
                 )
             try:
-                context = AgentContext.model_validate(
-                    {
-                        **context.model_dump(mode="python"),
-                        "tool_results": [*context.tool_results, *round_results],
-                    }
+                context = merge_agent_tool_results(context, round_results)
+                context, evidence_result = self._judge_context(
+                    request=request,
+                    context=context,
+                    operation="rejudge",
                 )
             except ValidationError:
                 return self._finish(

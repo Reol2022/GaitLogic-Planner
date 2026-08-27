@@ -81,7 +81,7 @@ def run() -> dict[str, object]:
         hybrid_forbidden = {item["case_id"] for item in cases if has_forbidden(item["case_id"], item["ranked_items"])}
         oracle = {str(depth): round(sum(_oracle(case, dense, bm25, depth) for case in dataset.cases) / len(dataset.cases), 6) for depth in (4, 8, 12)}
         return {
-            "comparison_version": "retrieval-hybrid-comparison-1.0.0", "dataset_version": dataset.dataset_version, "top_k": 4,
+            "comparison_version": ("retrieval-hybrid-comparison-2.0.0" if dataset.dataset_version == "retrieval-cases-v2" else "retrieval-hybrid-comparison-1.0.0"), "dataset_version": dataset.dataset_version, "top_k": 4,
             "candidate_depth": {"dense": 8, "bm25": 8},
             "dense": {"case_count": dense_report.case_count, "metrics": dense_report.metrics, "failure_case_ids": dense_report.failure_case_ids},
             "bm25": bm25_comparison["bm25"],
@@ -107,9 +107,9 @@ def run() -> dict[str, object]:
 
 def _markdown(report: dict[str, object]) -> str:
     def row(name, data):
-        m=data["metrics"]; return f"| {name} | {data['case_count']} | {m.get('recall_at_4', 0):.4f} | {m.get('mrr_at_4', 0):.4f} | {m.get('ndcg_at_4', 0):.4f} | {m.get('forbidden_document_rate', 0):.4f} | {m.get('filter_violation_rate', 0):.4f} |"
+        m=data["metrics"]; passed=data["case_count"]-len(data["failure_case_ids"]); return f"| {name} | {passed} | {m.get('recall_at_4', 0):.4f} | {m.get('mrr_at_4', 0):.4f} | {m.get('ndcg_at_4', 0):.4f} | {m.get('forbidden_document_rate', 0):.4f} | {m.get('filter_violation_rate', 0):.4f} |"
     c=report["comparison"]
-    return f"""# Dense、BM25 与 Hybrid RRF 对比 v1
+    return f"""# Dense、BM25 与 Hybrid RRF 对比 — {report['dataset_version']}
 
 同一公开 60-case 数据集、相同 Corpus、metadata filter 和最终 `top_k=4`。Hybrid 使用固定等权 `RRF(k=60)`，Dense/BM25 候选深度均固定为 8；4/8/12 仅用于 Oracle candidate coverage 诊断，未用于调参。
 

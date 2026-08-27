@@ -1,0 +1,2183 @@
+{
+  "dataset_version": "retrieval-cases-v2",
+  "retrieval_eval_version": "retrieval-evaluation-2.0.0",
+  "corpus_version": "training-knowledge-1",
+  "corpus_hash": "57a90da48ef857040ee88c41f1888448fd2a684c4b34268382ace153c979df0f",
+  "manifest_hash": "29daa3f02a1e369c7c4b59a5aa4f54af343548bc72dc30813cbf2b4256de154a",
+  "fixture_version": "retrieval-fixture-2.0.0",
+  "content_sha256": "03fd579a444907675a5a03b0c6fe110c9909fe27b149fb22d5860f8c60cdde3f",
+  "cases": [
+    {
+      "case_id": "ret_single_001",
+      "query": "高疲劳时是否应该继续高强度训练",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-training-load-variables",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-training-principles",
+          "relevance": 2
+        },
+        {
+          "document_id": "high-fatigue-intensity-adjustment",
+          "relevance": 3
+        },
+        {
+          "document_id": "intensity-density-management",
+          "relevance": 2
+        },
+        {
+          "document_id": "threshold-control-signals",
+          "relevance": 1
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_002",
+      "query": "腿部沉重和疲劳时如何降低训练强度",
+      "filters": {
+        "categories": [
+          "RECOVERY"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-rest-and-return-to-running",
+          "relevance": 1
+        },
+        {
+          "document_id": "high-fatigue-intensity-adjustment",
+          "relevance": 3
+        },
+        {
+          "document_id": "recovery-week-principles",
+          "relevance": 1
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_003",
+      "query": "一周内高强度课之间需要间隔多久",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-marathon-2q-plan",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-marathon-cycles",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-training-load-variables",
+          "relevance": 1
+        },
+        {
+          "document_id": "intensity-density-management",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_004",
+      "query": "如何控制质量课训练密度",
+      "filters": {
+        "categories": [
+          "LOAD_MANAGEMENT"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-marathon-2q-plan",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-training-load-variables",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-training-stress-recording",
+          "relevance": 1
+        },
+        {
+          "document_id": "intensity-density-management",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_005",
+      "query": "间歇训练组间恢复应该怎样安排",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-cruise-intervals",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-hard-running-short-intervals",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-interval-purpose",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-repetition-training",
+          "relevance": 1
+        },
+        {
+          "document_id": "interval-recovery-design",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_006",
+      "query": "间歇跑每组之间慢跑还是站立休息",
+      "filters": {
+        "categories": [
+          "INTERVAL"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-hard-running-short-intervals",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-interval-purpose",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-repetition-training",
+          "relevance": 2
+        },
+        {
+          "document_id": "interval-recovery-design",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_007",
+      "query": "长距离训练应该放在一周的哪一天",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-marathon-2q-plan",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-phase-length-adjustment",
+          "relevance": 1
+        },
+        {
+          "document_id": "long-run-placement",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_008",
+      "query": "长跑前后怎样安排恢复",
+      "filters": {
+        "categories": [
+          "LONG_RUN"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-easy-running",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-long-run-progression",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-training-principles",
+          "relevance": 1
+        },
+        {
+          "document_id": "long-run-placement",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_009",
+      "query": "跑步出现疼痛时训练建议的安全边界",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-planned-unplanned-rest",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-rest-and-return-to-running",
+          "relevance": 1
+        },
+        {
+          "document_id": "pain-risk-boundaries",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_010",
+      "query": "训练系统为什么不能做伤病诊断",
+      "filters": {
+        "categories": [
+          "INJURY_PREVENTION"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "pain-risk-boundaries",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_011",
+      "query": "基础期进入建设期应该注意什么",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-four-season-phases",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-phase-length-adjustment",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-season-phasing",
+          "relevance": 2
+        },
+        {
+          "document_id": "phase-transition-principles",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_012",
+      "query": "训练阶段转换不能只看日期吗",
+      "filters": {
+        "categories": [
+          "PERIODIZATION"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-four-season-phases",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-phase-length-adjustment",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-season-phasing",
+          "relevance": 2
+        },
+        {
+          "document_id": "phase-transition-principles",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_013",
+      "query": "比赛前减量期如何减少训练量",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-5k-10k-training",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-four-season-phases",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-marathon-final-preparation",
+          "relevance": 1
+        },
+        {
+          "document_id": "pre-race-taper-principles",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_014",
+      "query": "taper期间是否完全停止训练",
+      "filters": {
+        "categories": [
+          "TAPER"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-four-season-phases",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-marathon-final-preparation",
+          "relevance": 1
+        },
+        {
+          "document_id": "pre-race-taper-principles",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_015",
+      "query": "跑量连续增加后怎样调整",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-long-run-progression",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-return-volume-adjustment",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-training-load-variables",
+          "relevance": 1
+        },
+        {
+          "document_id": "progressive-volume-adjustment",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_016",
+      "query": "周跑量增长过快后是否需要回撤",
+      "filters": {
+        "categories": [
+          "LOAD_MANAGEMENT"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-long-run-progression",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-training-load-variables",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-training-stress-recording",
+          "relevance": 1
+        },
+        {
+          "document_id": "progressive-volume-adjustment",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_017",
+      "query": "恢复周应该如何安排训练",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-easy-running",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-planned-unplanned-rest",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-training-principles",
+          "relevance": 2
+        },
+        {
+          "document_id": "recovery-week-principles",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_018",
+      "query": "恢复周是不是完全不跑步",
+      "filters": {
+        "categories": [
+          "RECOVERY"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-easy-running",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-planned-unplanned-rest",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-rest-and-return-to-running",
+          "relevance": 2
+        },
+        {
+          "document_id": "recovery-week-principles",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_019",
+      "query": "跑者力量训练一周安排几次",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "running-strength-basics",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_020",
+      "query": "力量训练与关键跑课如何错开",
+      "filters": {
+        "categories": [
+          "STRENGTH"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "running-strength-basics",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_021",
+      "query": "阈值跑强度过高有哪些信号",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-heart-rate-context",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-performance-variables",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-threshold-purpose",
+          "relevance": 2
+        },
+        {
+          "document_id": "threshold-control-signals",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_022",
+      "query": "阈值训练如何结合RPE控制",
+      "filters": {
+        "categories": [
+          "THRESHOLD"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-cruise-intervals",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-performance-variables",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-threshold-purpose",
+          "relevance": 2
+        },
+        {
+          "document_id": "threshold-control-signals",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_023",
+      "query": "阈值课在一周中怎样安排",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-half-marathon-training",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-marathon-2q-plan",
+          "relevance": 1
+        },
+        {
+          "document_id": "threshold-session-placement",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_024",
+      "query": "阈值训练与长距离课要隔几天",
+      "filters": {
+        "categories": [
+          "THRESHOLD"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-cruise-intervals",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-marathon-2q-plan",
+          "relevance": 1
+        },
+        {
+          "document_id": "long-run-placement",
+          "relevance": 2
+        },
+        {
+          "document_id": "threshold-session-placement",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_025",
+      "query": "疲劳上升后如何处理原计划强度",
+      "filters": {
+        "tags": [
+          "fatigue"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-training-load-variables",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-training-principles",
+          "relevance": 1
+        },
+        {
+          "document_id": "high-fatigue-intensity-adjustment",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_026",
+      "query": "连续两天质量课有什么负荷风险",
+      "filters": {
+        "tags": [
+          "spacing"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-marathon-2q-plan",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-training-load-variables",
+          "relevance": 2
+        },
+        {
+          "document_id": "intensity-density-management",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_027",
+      "query": "比赛周前的减量应保留什么刺激",
+      "filters": {
+        "tags": [
+          "taper"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-four-season-phases",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-marathon-final-preparation",
+          "relevance": 1
+        },
+        {
+          "document_id": "pre-race-taper-principles",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_028",
+      "query": "跑步力量训练如何支持适应",
+      "filters": {
+        "tags": [
+          "strength"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "running-strength-basics",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_029",
+      "query": "阈值课配速失控时如何判断",
+      "filters": {
+        "tags": [
+          "rpe"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-heart-rate-context",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-performance-variables",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-threshold-purpose",
+          "relevance": 2
+        },
+        {
+          "document_id": "threshold-control-signals",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_single_030",
+      "query": "长距离后的下一次质量课安排",
+      "filters": {
+        "tags": [
+          "long-run"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-long-run-progression",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-training-load-variables",
+          "relevance": 1
+        },
+        {
+          "document_id": "intensity-density-management",
+          "relevance": 2
+        },
+        {
+          "document_id": "long-run-placement",
+          "relevance": 3
+        }
+      ],
+      "notes": "clear single document",
+      "relevant_topics": [
+        "query-specific training principle",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_multi_001",
+      "query": "高疲劳且本周已有多次强度课怎么调整",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-training-load-variables",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-training-principles",
+          "relevance": 1
+        },
+        {
+          "document_id": "high-fatigue-intensity-adjustment",
+          "relevance": 3
+        },
+        {
+          "document_id": "intensity-density-management",
+          "relevance": 2
+        }
+      ],
+      "notes": "multiple relevant documents",
+      "relevant_topics": [
+        "multi-constraint training decision",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 2,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_multi_002",
+      "query": "长距离和阈值课在一周内如何错开",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-marathon-2q-plan",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-training-principles",
+          "relevance": 1
+        },
+        {
+          "document_id": "long-run-placement",
+          "relevance": 3
+        },
+        {
+          "document_id": "threshold-session-placement",
+          "relevance": 3
+        }
+      ],
+      "notes": "multiple relevant documents",
+      "relevant_topics": [
+        "multi-constraint training decision",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 2,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_multi_003",
+      "query": "恢复周如何同时控制跑量和训练一致性",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-long-run-progression",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-training-principles",
+          "relevance": 2
+        },
+        {
+          "document_id": "progressive-volume-adjustment",
+          "relevance": 2
+        },
+        {
+          "document_id": "recovery-week-principles",
+          "relevance": 3
+        }
+      ],
+      "notes": "multiple relevant documents",
+      "relevant_topics": [
+        "multi-constraint training decision",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 2,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_multi_004",
+      "query": "比赛前阶段转换和减量原则",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-four-season-phases",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-marathon-final-preparation",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-season-phasing",
+          "relevance": 2
+        },
+        {
+          "document_id": "phase-transition-principles",
+          "relevance": 2
+        },
+        {
+          "document_id": "pre-race-taper-principles",
+          "relevance": 3
+        }
+      ],
+      "notes": "multiple relevant documents",
+      "relevant_topics": [
+        "multi-constraint training decision",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 2,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_multi_005",
+      "query": "阈值训练的强度与周内位置",
+      "filters": {
+        "categories": [
+          "THRESHOLD"
+        ]
+      },
+      "relevant_documents": [
+        {
+          "document_id": "daniels-cruise-intervals",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-marathon-2q-plan",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-threshold-purpose",
+          "relevance": 2
+        },
+        {
+          "document_id": "threshold-control-signals",
+          "relevance": 3
+        },
+        {
+          "document_id": "threshold-session-placement",
+          "relevance": 3
+        }
+      ],
+      "notes": "multiple relevant documents",
+      "relevant_topics": [
+        "multi-constraint training decision",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 2,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_multi_006",
+      "query": "间歇训练恢复与强度课间隔",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-cruise-intervals",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-interval-purpose",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-marathon-2q-plan",
+          "relevance": 1
+        },
+        {
+          "document_id": "intensity-density-management",
+          "relevance": 2
+        },
+        {
+          "document_id": "interval-recovery-design",
+          "relevance": 3
+        }
+      ],
+      "notes": "multiple relevant documents",
+      "relevant_topics": [
+        "multi-constraint training decision",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 2,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_multi_007",
+      "query": "力量训练怎样避开长距离关键课",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-marathon-2q-plan",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-training-principles",
+          "relevance": 1
+        },
+        {
+          "document_id": "long-run-placement",
+          "relevance": 2
+        },
+        {
+          "document_id": "running-strength-basics",
+          "relevance": 3
+        }
+      ],
+      "notes": "multiple relevant documents",
+      "relevant_topics": [
+        "multi-constraint training decision",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 2,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_multi_008",
+      "query": "疲劳同时伴随疼痛时应如何保守处理",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-planned-unplanned-rest",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-rest-and-return-to-running",
+          "relevance": 2
+        },
+        {
+          "document_id": "high-fatigue-intensity-adjustment",
+          "relevance": 2
+        },
+        {
+          "document_id": "pain-risk-boundaries",
+          "relevance": 3
+        }
+      ],
+      "notes": "multiple relevant documents",
+      "relevant_topics": [
+        "multi-constraint training decision",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 2,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_multi_009",
+      "query": "增加跑量期间如何安排恢复周",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-long-run-progression",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-training-principles",
+          "relevance": 1
+        },
+        {
+          "document_id": "progressive-volume-adjustment",
+          "relevance": 3
+        },
+        {
+          "document_id": "recovery-week-principles",
+          "relevance": 3
+        }
+      ],
+      "notes": "multiple relevant documents",
+      "relevant_topics": [
+        "multi-constraint training decision",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 2,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_multi_010",
+      "query": "专项期的阈值课如何循序增加",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-cruise-intervals",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-four-season-phases",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-threshold-purpose",
+          "relevance": 2
+        },
+        {
+          "document_id": "phase-transition-principles",
+          "relevance": 2
+        },
+        {
+          "document_id": "threshold-session-placement",
+          "relevance": 3
+        }
+      ],
+      "notes": "multiple relevant documents",
+      "relevant_topics": [
+        "multi-constraint training decision",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 2,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_multi_011",
+      "query": "长距离后疲劳高时是否保留间歇课",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-interval-purpose",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-long-run-progression",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-training-load-variables",
+          "relevance": 2
+        },
+        {
+          "document_id": "high-fatigue-intensity-adjustment",
+          "relevance": 3
+        },
+        {
+          "document_id": "interval-recovery-design",
+          "relevance": 2
+        },
+        {
+          "document_id": "long-run-placement",
+          "relevance": 2
+        }
+      ],
+      "notes": "multiple relevant documents",
+      "relevant_topics": [
+        "multi-constraint training decision",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 2,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_multi_012",
+      "query": "减量期力量训练和跑步质量如何协调",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-four-season-phases",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-marathon-final-preparation",
+          "relevance": 2
+        },
+        {
+          "document_id": "pre-race-taper-principles",
+          "relevance": 3
+        },
+        {
+          "document_id": "running-strength-basics",
+          "relevance": 2
+        }
+      ],
+      "notes": "multiple relevant documents",
+      "relevant_topics": [
+        "multi-constraint training decision",
+        "supporting Daniels evidence"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 2,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_hard_001",
+      "query": "恢复周不是停训，应该怎样保持连续性",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-easy-running",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-planned-unplanned-rest",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-training-principles",
+          "relevance": 2
+        },
+        {
+          "document_id": "recovery-week-principles",
+          "relevance": 3
+        }
+      ],
+      "forbidden_document_ids": [
+        "high-fatigue-intensity-adjustment"
+      ],
+      "notes": "hard negative fatigue versus recovery week",
+      "relevant_topics": [
+        "semantic boundary",
+        "confusable training concepts"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_hard_002",
+      "query": "阈值跑不是间歇跑，强度控制看什么",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-cruise-intervals",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-performance-variables",
+          "relevance": 1
+        },
+        {
+          "document_id": "daniels-threshold-purpose",
+          "relevance": 3
+        },
+        {
+          "document_id": "threshold-control-signals",
+          "relevance": 3
+        }
+      ],
+      "forbidden_document_ids": [
+        "interval-recovery-design"
+      ],
+      "notes": "hard negative threshold versus interval",
+      "relevant_topics": [
+        "semantic boundary",
+        "confusable training concepts"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_hard_003",
+      "query": "长距离安排不是简单增加周跑量",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-long-run-progression",
+          "relevance": 3
+        },
+        {
+          "document_id": "daniels-marathon-2q-plan",
+          "relevance": 1
+        },
+        {
+          "document_id": "long-run-placement",
+          "relevance": 3
+        }
+      ],
+      "forbidden_document_ids": [
+        "progressive-volume-adjustment"
+      ],
+      "notes": "hard negative placement versus volume",
+      "relevant_topics": [
+        "semantic boundary",
+        "confusable training concepts"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_hard_004",
+      "query": "比赛减量不是普通恢复周",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-four-season-phases",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-marathon-final-preparation",
+          "relevance": 1
+        },
+        {
+          "document_id": "pre-race-taper-principles",
+          "relevance": 3
+        }
+      ],
+      "forbidden_document_ids": [
+        "recovery-week-principles"
+      ],
+      "notes": "hard negative taper versus recovery",
+      "relevant_topics": [
+        "semantic boundary",
+        "confusable training concepts"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_hard_005",
+      "query": "训练疼痛风险边界不是疲劳调整",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-planned-unplanned-rest",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-rest-and-return-to-running",
+          "relevance": 2
+        },
+        {
+          "document_id": "pain-risk-boundaries",
+          "relevance": 3
+        }
+      ],
+      "forbidden_document_ids": [
+        "high-fatigue-intensity-adjustment"
+      ],
+      "notes": "hard negative injury versus fatigue",
+      "relevant_topics": [
+        "semantic boundary",
+        "confusable training concepts"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_hard_006",
+      "query": "阶段转换不是单周跑量波动",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-four-season-phases",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-phase-length-adjustment",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-season-phasing",
+          "relevance": 2
+        },
+        {
+          "document_id": "phase-transition-principles",
+          "relevance": 3
+        }
+      ],
+      "forbidden_document_ids": [
+        "progressive-volume-adjustment"
+      ],
+      "notes": "hard negative phase versus volume",
+      "relevant_topics": [
+        "semantic boundary",
+        "confusable training concepts"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_hard_007",
+      "query": "力量训练安排不是跑步强度课密度",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "running-strength-basics",
+          "relevance": 3
+        }
+      ],
+      "forbidden_document_ids": [
+        "intensity-density-management"
+      ],
+      "notes": "hard negative strength versus intensity",
+      "relevant_topics": [
+        "semantic boundary",
+        "confusable training concepts"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_hard_008",
+      "query": "间歇组间恢复不是训练日之间间隔",
+      "filters": {},
+      "relevant_documents": [
+        {
+          "document_id": "daniels-cruise-intervals",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-hard-running-short-intervals",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-interval-purpose",
+          "relevance": 2
+        },
+        {
+          "document_id": "daniels-repetition-training",
+          "relevance": 1
+        },
+        {
+          "document_id": "interval-recovery-design",
+          "relevance": 3
+        }
+      ],
+      "forbidden_document_ids": [
+        "intensity-density-management"
+      ],
+      "notes": "hard negative within-session versus weekly spacing",
+      "relevant_topics": [
+        "semantic boundary",
+        "confusable training concepts"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "minimum_relevant_hits": 1,
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_abstain_001",
+      "query": "游泳自由泳划水技术",
+      "filters": {
+        "categories": [
+          "GENERAL"
+        ]
+      },
+      "should_abstain": true,
+      "notes": "out of corpus",
+      "relevant_documents": [],
+      "relevant_topics": [
+        "out-of-domain or unauthorized request"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_abstain_002",
+      "query": "自行车变速器维修",
+      "filters": {
+        "categories": [
+          "GENERAL"
+        ]
+      },
+      "should_abstain": true,
+      "notes": "out of corpus",
+      "relevant_documents": [],
+      "relevant_topics": [
+        "out-of-domain or unauthorized request"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_abstain_003",
+      "query": "足球守门员训练",
+      "filters": {
+        "categories": [
+          "GENERAL"
+        ]
+      },
+      "should_abstain": true,
+      "notes": "out of corpus",
+      "relevant_documents": [],
+      "relevant_topics": [
+        "out-of-domain or unauthorized request"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_abstain_004",
+      "query": "篮球投篮动作",
+      "filters": {
+        "categories": [
+          "GENERAL"
+        ]
+      },
+      "should_abstain": true,
+      "notes": "out of corpus",
+      "relevant_documents": [],
+      "relevant_topics": [
+        "out-of-domain or unauthorized request"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_abstain_005",
+      "query": "请求医疗诊断处方",
+      "filters": {
+        "categories": [
+          "GENERAL"
+        ]
+      },
+      "should_abstain": true,
+      "notes": "unsupported medical request",
+      "relevant_documents": [],
+      "relevant_topics": [
+        "out-of-domain or unauthorized request"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_abstain_006",
+      "query": "查询另一个用户训练数据",
+      "filters": {
+        "categories": [
+          "GENERAL"
+        ]
+      },
+      "should_abstain": true,
+      "notes": "unauthorized request",
+      "relevant_documents": [],
+      "relevant_topics": [
+        "out-of-domain or unauthorized request"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_abstain_007",
+      "query": "修改正式训练计划",
+      "filters": {
+        "categories": [
+          "GENERAL"
+        ]
+      },
+      "should_abstain": true,
+      "notes": "write request",
+      "relevant_documents": [],
+      "relevant_topics": [
+        "out-of-domain or unauthorized request"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_abstain_008",
+      "query": "预测股票价格",
+      "filters": {
+        "categories": [
+          "GENERAL"
+        ]
+      },
+      "should_abstain": true,
+      "notes": "out of domain",
+      "relevant_documents": [],
+      "relevant_topics": [
+        "out-of-domain or unauthorized request"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_abstain_009",
+      "query": "生成数据库密码",
+      "filters": {
+        "categories": [
+          "GENERAL"
+        ]
+      },
+      "should_abstain": true,
+      "notes": "unsafe request",
+      "relevant_documents": [],
+      "relevant_topics": [
+        "out-of-domain or unauthorized request"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    },
+    {
+      "case_id": "ret_abstain_010",
+      "query": "未知量子训练理论",
+      "filters": {
+        "categories": [
+          "GENERAL"
+        ]
+      },
+      "should_abstain": true,
+      "notes": "no coverage",
+      "relevant_documents": [],
+      "relevant_topics": [
+        "out-of-domain or unauthorized request"
+      ],
+      "acceptable_sections": [
+        "核心原则",
+        "适用场景",
+        "判断条件",
+        "推荐策略",
+        "注意事项",
+        "Evidence"
+      ],
+      "label_rationale": "人工依据 query intent、文档主题与章节内容审查；当前排名不参与标签生成。"
+    }
+  ]
+}

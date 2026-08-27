@@ -56,6 +56,12 @@ def load_retrieval_dataset(
 ) -> RetrievalDataset:
     dataset = _load(path, RetrievalDataset)
     corpus = load_manifest(corpus_manifest_path)
+    if dataset.dataset_version == "retrieval-cases-v2":
+        manifest_hash = hashlib.sha256(corpus_manifest_path.read_bytes()).hexdigest()
+        if dataset.corpus_hash != corpus.root_hash:
+            raise EvaluationDatasetError("retrieval v2 corpus hash does not match manifest")
+        if dataset.manifest_hash != manifest_hash:
+            raise EvaluationDatasetError("retrieval v2 manifest hash does not match file")
     document_ids = {item.document_id for item in corpus.documents}
     chunk_ids = {item.chunk_id for item in corpus.chunks}
     for case in dataset.cases:

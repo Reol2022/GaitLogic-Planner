@@ -45,6 +45,7 @@ class GetTrainingRulesTool(AgentTool):
         AgentIntent.EXPLAIN_RUNNER_STATE,
         AgentIntent.GENERAL_TRAINING_QUESTION,
     )
+    provided_fact_domains = ("rule_information", "system_capability")
 
     def __init__(self, dependencies: CoachAgentToolDependencies, *, rule_limit: int = 20) -> None:
         self.dependencies = dependencies
@@ -89,6 +90,7 @@ class EvaluateTodayWorkoutTool(AgentTool):
     input_model = EmptyToolInput
     output_model = TodayEvaluationOutput
     allowed_intents = (AgentIntent.TODAY_RECOMMENDATION,)
+    provided_fact_domains = ("today_decision",)
 
     def __init__(self, dependencies: CoachAgentToolDependencies, *, item_limit: int = 20) -> None:
         self.dependencies = dependencies

@@ -15,6 +15,9 @@ from planner_core.adaptive_plan.schemas import PlanValue, ProposalCandidateChang
 from planner_core.enums import PlanAdjustmentAction
 from server.weekly_review_graph.adapters import DeterministicProposalMaterializer
 from server.weekly_review_graph.workflow import build_weekly_review_graph
+from server.agent.enums import AgentToolStatus
+from server.agent.schemas import AgentToolResult
+from server.domain.evidence import MissingEvidencePlan, ReflectAction
 
 
 START = date(2026, 7, 6)
@@ -220,3 +223,102 @@ def test_weekly_analysis_then_independent_plan_design_and_materialize() -> None:
     assert result.plan_design is not None
     assert result.proposal.changes[0].after.distance_km == 6
     assert result.proposal.week_start == date(2026, 7, 13)
+
+
+def test_weekly_evidence_reflects_existing_sources_and_reassesses() -> None:
+    def reacquire(**kwargs):
+        del kwargs
+        return (
+            MissingEvidencePlan(
+                actions=[
+                    ReflectAction(
+                        target_domain="recovery",
+                        missing_fact="recovery_signal",
+                        tool_name="get_runner_state",
+                        reason="Recovery evidence is missing",
+                        priority=10,
+                        automatically_resolvable=True,
+                        fingerprint="a" * 64,
+                    )
+                ]
+            ),
+            [
+                AgentToolResult(
+                    tool_call_id="5ef6ac0d-b831-455c-bdf5-664af0f59a50",
+                    tool_name="get_runner_state",
+                    status=AgentToolStatus.SUCCEEDED,
+                    data={
+                        "data_status": "AVAILABLE",
+                        "as_of_date": END.isoformat(),
+                        "overall_state": "NORMAL",
+                        "metrics": {},
+                        "evidence": [],
+                        "limitations": [],
+                    },
+                ),
+                AgentToolResult(
+                    tool_call_id="71b6ac0d-b831-455c-bdf5-664af0f59a50",
+                    tool_name="get_recent_training",
+                    status=AgentToolStatus.SUCCEEDED,
+                    data={
+                        "data_status": "AVAILABLE",
+                        "as_of": END.isoformat(),
+                        "items": [{"date": END.isoformat(), "rpe": 5}],
+                        "limitations": [],
+                    },
+                ),
+            ],
+        )
+
+    graph = build_weekly_review_graph(
+        facts_loader=lambda request: weekly_facts(),
+        generator=lambda state: valid_draft(),
+        evidence_reacquirer=reacquire,
+        max_reflect_rounds=1,
+    )
+    result = WeeklyReviewState.model_validate(
+        graph.invoke(initial_state().model_dump(mode="python"))
+    )
+    statuses = {item.domain: item.status.value for item in result.evidence_assessments}
+    assert result.reflect_summary.triggered is True
+    assert result.reflect_summary.rounds == 1
+    assert statuses["recovery"] == "SUFFICIENT"
+    assert statuses["subjective_fatigue"] == "SUFFICIENT"
+    assert result.final_review.evidence_status == statuses
+
+
+def test_weekly_missing_user_input_does_not_pause_or_fail_whole_review() -> None:
+    result = invoke()
+    statuses = {item.domain: item.status.value for item in result.evidence_assessments}
+    assert statuses["subjective_fatigue"] == "MISSING"
+    assert result.reflect_summary.triggered is False
+    assert result.final_review is not None
+    assert result.status.value == "COMPLETED"
+
+
+def test_weekly_reflect_stops_on_no_marginal_gain() -> None:
+    def no_gain(**kwargs):
+        del kwargs
+        return (
+            MissingEvidencePlan(),
+            [
+                AgentToolResult(
+                    tool_call_id="5ef6ac0d-b831-455c-bdf5-664af0f59a50",
+                    tool_name="get_runner_state",
+                    status=AgentToolStatus.SUCCEEDED,
+                    data={"data_status": "NOT_FOUND"},
+                )
+            ],
+        )
+
+    graph = build_weekly_review_graph(
+        facts_loader=lambda request: weekly_facts(),
+        generator=lambda state: valid_draft(),
+        evidence_reacquirer=no_gain,
+        max_reflect_rounds=1,
+    )
+    result = WeeklyReviewState.model_validate(
+        graph.invoke(initial_state().model_dump(mode="python"))
+    )
+    assert result.reflect_summary.no_marginal_gain is True
+    assert result.reflect_summary.rounds == 1

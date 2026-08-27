@@ -2,6 +2,7 @@ import request from "./request";
 import type {
   AdaptiveApprovalResult,
   AdaptiveProposal,
+  ProposalRevisionResult,
   LangGraphWeeklyReview,
   WeeklyFacts,
 } from "@/types/adaptivePlan";
@@ -10,6 +11,8 @@ export interface WeeklyFactsQuery {
   week_start: string;
   week_end: string;
   cycle_id?: number | null;
+  source_block_id?: number | null;
+  target_block_id?: number | null;
   timezone?: string;
 }
 
@@ -35,4 +38,13 @@ export function approveAdaptiveProposal(proposalId: number) {
 
 export function rejectAdaptiveProposal(proposalId: number) {
   return request.post<AdaptiveApprovalResult>(`/adaptive-plan/proposals/${proposalId}/reject`);
+}
+
+export function reviseAdaptiveProposal(
+  reviewId: number,
+  payload: { proposal_id: number; feedback: { reason_codes: string[]; free_text?: string | null } },
+) {
+  return request.post<ProposalRevisionResult>(`/weekly-reviews/${reviewId}/proposal/revise`, payload, {
+    timeout: 900000,
+  });
 }

@@ -56,7 +56,8 @@ def evaluate_retrieval_case(
         ideal = _dcg(ideal_grades)
         metrics["ndcg_at_4"] = round(_dcg(actual_grades) / ideal, 6) if ideal else 1.0
         metrics["empty_result_accuracy"] = float(bool(ranked))
-        if metrics["recall_at_4"] < 1:
+        required_hits = case.minimum_relevant_hits or len(unique_relevant)
+        if len(unique_relevant & set(documents[:4])) < required_hits:
             failures.append("RELEVANT_DOCUMENT_MISSED")
     forbidden = bool(set(documents) & set(case.forbidden_document_ids))
     filter_violation = False

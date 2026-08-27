@@ -51,6 +51,16 @@ def test_forbidden_document_is_a_failure() -> None:
     assert "FORBIDDEN_DOCUMENT_RETRIEVED" in failures
 
 
+def test_v2_minimum_hits_does_not_require_every_relevant_document() -> None:
+    case = _case().model_copy(update={"minimum_relevant_hits": 1})
+    metrics, failures = evaluate_retrieval_case(
+        case,
+        [RankedItem(rank=1, chunk_id="a-1", document_id="a", score=1.0)],
+    )
+    assert metrics["recall_at_4"] == 0.5
+    assert failures == []
+
+
 def test_abstention_metrics_and_empty_aggregation() -> None:
     case = _case(abstain=True)
     metrics, failures = evaluate_retrieval_case(case, [])

@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.16.0-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.16.3-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -34,15 +34,21 @@
 
 ---
 
-## v0.16.0 检索质量与安全边界
+## v0.16.3 DeepSeek Thinking 与智能周复盘收口
+
+v0.16.3 将 Garmin 恢复事实、Partial Facts / Decision Readiness、DeepSeek Thinking、多轮 Tool Calling、Weekly Review Analysis、独立 Plan Design、Evidence Judge / Reflect 与 Approval Checkpoint 收口为一个正式版本。周复盘分析和计划设计使用相互独立的模型请求、上下文与输出预算；计划修改仍必须经过 Python/Pydantic 物化、确定性校验、HITL 审批和服务端重新校验。
+
+详见 [v0.16.3 发布说明](docs/release/v0.16.3.md)。原始 Provider reasoning 仅作为可配置的内部诊断数据，不进入 REST、MCP、Trace、Metrics、Evaluation Report、Canonical Evidence 或前端。
+
+### v0.16.0 检索质量与安全边界
 
 训练知识检索支持 Dense Exact、可选 Qdrant、确定性 BM25、固定 Hybrid RRF 与可选 Reranker。策略通过独立的 40 条公开虚构 Holdout v2 消融评测选择，而不是将已反复使用的 Legacy 回归集当作盲测。当前默认保持 Dense Exact：它在 Holdout 上与 Rerank 同为 33/40 通过，同时拥有更低的运行复杂度；Rerank 保留为真实 Provider 已验证的非默认能力，并在故障时安全回退。
 
 详见 [v0.16.0 发布说明](docs/release/v0.16.0.md) 与 [Holdout 报告](docs/evaluation/reports/retrieval-holdout-v2.md)。检索只提供知识解释，不修改 Runner State、TODAY 确定性建议或训练计划。
 
-### v0.16.1 / v0.16.2 开发快照
+### v0.16.1 / v0.16.2 已合并开发记录
 
-正式版本仍为 **v0.16.0**。当前开发线继续完善两个尚未独立发版的能力：
+以下两个开发快照未单独发布，现已合并进入 **v0.16.3**：
 
 - **v0.16.1 Garmin Recovery Data Sync**：在既有 Garmin Pipeline 中归一化睡眠、静息心率、HRV、压力、Body Battery 和呼吸率等日级恢复事实；字段缺失保持为空并形成 limitation，用户手动填写的恢复信息优先保留。
 - **v0.16.2 Partial Facts & Decision Readiness**：将“缺少部分指标”和“核心数据不可用”区分为 `PARTIAL` 与 `BLOCKED`。例如缺 RPE 不再让 Coach TODAY 整体失效；相关负荷规则显示为“未参与判断”，而不是把缺失数据误当作正常值。
@@ -154,6 +160,15 @@ v0.13.0 新增确定性 Weekly Facts、LangGraph 周复盘、训练知识引用�
 
 ![周复盘2](docs/images/weekly-review2.png)
 
+
+下一周训练调整
+
+![训练调整1](docs/images/weekly-review3.png)
+
+
+![训练调整2](docs/images/weekly-review4.png)
+
+![训练调整3](docs/images/weekly-review5.png)
 ### v0.12.0 训练知识 RAG 与可信引用
 
 Coach Agent 通过只读 `retrieve_training_knowledge` 工具检索版本化训练知识。模型只选择本次请求内的临时 Reference ID，服务端负责校验并物化标题、来源、版本、证据等级和摘录，避免模型伪造来源。知识用于解释，不参与或覆盖 TODAY 的确定性 Decision。

@@ -1,0 +1,12 @@
+﻿{
+    "status":  "completed",
+    "updated_at":  "2026-08-21T16:06:44.1446142+08:00",
+    "supervisor_pid":  4308,
+    "python":  "3.11",
+    "successes":  432,
+    "expected_total_runs":  432,
+    "failure_code":  "",
+    "checkpoint_mode":  "case-variant",
+    "stdout_log":  "docs/evaluation/competition-ablation-v1/full-supervisor-single.stdout.log",
+    "stderr_log":  "docs/evaluation/competition-ablation-v1/full-supervisor-single.stderr.log"
+}

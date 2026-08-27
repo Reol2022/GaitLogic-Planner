@@ -61,6 +61,12 @@ class GetRunnerStateTool(AgentTool):
     input_model = EmptyToolInput
     output_model = RunnerStateToolOutput
     allowed_intents = _INTENTS
+    provided_fact_domains = (
+        "training_load",
+        "recent_intensity",
+        "recovery",
+        "subjective_fatigue",
+    )
 
     def __init__(self, dependencies: CoachAgentToolDependencies, *, evidence_limit: int = 5) -> None:
         self.dependencies = dependencies
@@ -146,6 +152,7 @@ class GetRunnerStateHistoryTool(AgentTool):
     input_model = RunnerStateHistoryInput
     output_model = RunnerStateHistoryOutput
     allowed_intents = (AgentIntent.WEEKLY_REVIEW, AgentIntent.EXPLAIN_RUNNER_STATE)
+    provided_fact_domains = ("training_load", "recovery")
 
     def __init__(self, dependencies: CoachAgentToolDependencies, *, history_limit: int = 7) -> None:
         self.dependencies = dependencies

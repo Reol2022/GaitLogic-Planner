@@ -72,6 +72,20 @@ SAFE_METADATA_KEYS = frozenset(
         "retry_count",
         "candidate_count",
         "top_n",
+        "relevant_domain_count",
+        "sufficient_domain_count",
+        "partial_domain_count",
+        "missing_domain_count",
+        "conflict_count",
+        "reflect_round",
+        "candidate_action_count",
+        "executed_action_count",
+        "evidence_added_count",
+        "readiness_before",
+        "readiness_after",
+        "domain",
+        "tool_category",
+        "result",
     }
 )
 # Kept as a public compatibility name for the v0.13 workflow integration.

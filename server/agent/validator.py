@@ -19,6 +19,7 @@ from server.agent.schemas import (
     AgentValidationResult,
 )
 from server.agent.today_recommendation import TodayRecommendationValidator
+from server.services.evidence_judge_service import evidence_claim_violations
 
 _MEDICAL_DIAGNOSIS_PATTERNS = (
     r"(?:已经|就是|患有|得了).{0,12}(?:骨折|肌腱炎|心肌炎|疾病)",
@@ -268,6 +269,9 @@ class AgentResponseValidator:
                 for pattern in _GENERAL_PERSONAL_FACT_PATTERNS
             ):
                 errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+
+        if final and evidence_claim_violations(text, context.evidence_assessments):
+            errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
 
         if final and context.intent == AgentIntent.TODAY_RECOMMENDATION:
             errors.extend(self.today_validator.validate(output, context))

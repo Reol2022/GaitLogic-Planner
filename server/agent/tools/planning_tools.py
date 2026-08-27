@@ -33,6 +33,7 @@ class GetTodayWorkoutTool(AgentTool):
         AgentIntent.TODAY_RECOMMENDATION,
         AgentIntent.GENERAL_TRAINING_QUESTION,
     )
+    provided_fact_domains = ("today_plan",)
 
     def __init__(self, dependencies: CoachAgentToolDependencies) -> None:
         self.dependencies = dependencies
@@ -101,6 +102,7 @@ class GetCurrentTrainingCycleTool(AgentTool):
         AgentIntent.WEEKLY_REVIEW,
         AgentIntent.GENERAL_TRAINING_QUESTION,
     )
+    provided_fact_domains = ("training_phase", "training_plan_context")
 
     def __init__(self, dependencies: CoachAgentToolDependencies, *, block_limit: int = 16) -> None:
         self.dependencies = dependencies

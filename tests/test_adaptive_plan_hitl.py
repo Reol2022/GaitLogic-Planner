@@ -210,6 +210,30 @@ def test_langgraph_interrupt_resumes_from_sqlalchemy_checkpoint(mysql_factory) -
     assert resumed["decision"] == "approve"
 
 
+def test_langgraph_resume_runs_business_handler_once(mysql_factory) -> None:
+    calls: list[tuple[int, list[int]]] = []
+
+    def approve(state):
+        calls.append((state["proposal_id"], state.get("selected_item_ids", [])))
+        return {"status": "applied", "proposal_id": state["proposal_id"]}
+
+    saver = SQLAlchemyCheckpointSaver(mysql_factory)
+    graph = build_adaptive_approval_graph(checkpointer=saver, approval_handler=approve)
+    config = {"configurable": {"thread_id": f"adaptive-handler-{uuid4()}"}}
+    paused = graph.invoke(
+        {"user_id": 7, "proposal_id": 99, "decision": None, "trace_context": {}},
+        config,
+    )
+    assert "__interrupt__" in paused
+
+    resumed = graph.invoke(
+        Command(resume={"decision": "approve", "selected_item_ids": [11, 12]}),
+        config,
+    )
+    assert resumed["result"] == {"status": "applied", "proposal_id": 99}
+    assert calls == [(99, [11, 12])]
+
+
 def test_migration_upgrade_and_downgrade_are_reversible(mysql_factory) -> None:
     engine = mysql_factory.kw["bind"]
     with engine.begin() as connection:

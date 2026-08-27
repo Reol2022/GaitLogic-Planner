@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from server.agent.schemas import AgentKnowledgeReference
 from server.weekly_review_graph.ports import (
+    WeeklyEvidenceReacquirer,
     WeeklyFactsLoader,
     WeeklyKnowledgeRetriever,
     PlanDesigner,
@@ -14,6 +15,12 @@ from server.weekly_review_graph.schemas import (
     WeeklyReviewGraphStatus,
     WeeklyReviewResult,
     WeeklyReviewState,
+)
+from server.domain.evidence import EvidenceAssessmentStatus, ReflectSummary
+from server.services.evidence_judge_service import (
+    EvidenceJudge,
+    evidence_claim_violations,
+    materialize_weekly_evidence,
 )
 
 
@@ -30,17 +37,148 @@ class WeeklyReviewNodes:
         knowledge_retriever: WeeklyKnowledgeRetriever | None = None,
         plan_designer: PlanDesigner | None = None,
         proposal_materializer: ProposalMaterializer | None = None,
+        evidence_reacquirer: WeeklyEvidenceReacquirer | None = None,
+        max_reflect_rounds: int = 1,
     ) -> None:
         self.facts_loader = facts_loader
         self.generator = generator
         self.knowledge_retriever = knowledge_retriever
         self.plan_designer = plan_designer
         self.proposal_materializer = proposal_materializer
+        self.evidence_reacquirer = evidence_reacquirer
+        self.max_reflect_rounds = max(0, min(max_reflect_rounds, 2))
+        self.evidence_judge = EvidenceJudge()
 
     def load_weekly_facts(self, raw: WeeklyReviewState | dict) -> dict:
         state = _state(raw)
         facts = self.facts_loader(state.request)
         return {"weekly_facts": facts, "status": WeeklyReviewGraphStatus.FACTS_READY}
+
+    def assess_weekly_evidence(self, raw: WeeklyReviewState | dict) -> dict:
+        state = _state(raw)
+        if state.weekly_facts is None:
+            return {
+                "validation_errors": ["WEEKLY_FACTS_MISSING"],
+                "status": WeeklyReviewGraphStatus.FALLBACK,
+            }
+        result = self.evidence_judge.assess(
+            relevant_domains=[
+                "plan_execution",
+                "training_volume",
+                "training_frequency",
+                "recent_intensity",
+                "recovery",
+                "subjective_fatigue",
+                "training_phase",
+            ],
+            evidence=materialize_weekly_evidence(
+                state.weekly_facts,
+                state.supplemental_tool_results,
+            ),
+        )
+        return {
+            "evidence_assessments": result.assessments,
+            "decision_readiness": result.decision_readiness,
+            "evidence_fingerprint": result.evidence_fingerprint,
+            "status": WeeklyReviewGraphStatus.EVIDENCE_READY,
+        }
+
+    def reflect_weekly_evidence(self, raw: WeeklyReviewState | dict) -> dict:
+        state = _state(raw)
+        if state.weekly_facts is None or not state.evidence_assessments:
+            return {
+                "reflect_summary": ReflectSummary(
+                    stop_reasons=["WEEKLY_EVIDENCE_NOT_ASSESSED"]
+                ),
+                "status": WeeklyReviewGraphStatus.REFLECTED,
+            }
+        if self.max_reflect_rounds == 0 or self.evidence_reacquirer is None:
+            reason = (
+                "REFLECT_DISABLED"
+                if self.max_reflect_rounds == 0
+                else "NO_WEEKLY_AUTOMATIC_EVIDENCE_SOURCE"
+            )
+            return {
+                "reflect_summary": ReflectSummary(stop_reasons=[reason]),
+                "status": WeeklyReviewGraphStatus.REFLECTED,
+            }
+
+        results = list(state.supplemental_tool_results)
+        assessments = list(state.evidence_assessments)
+        before = state.evidence_fingerprint
+        rounds = 0
+        executed = 0
+        evidence_added = 0
+        no_gain = False
+        stop_reasons: list[str] = []
+        final_result = None
+        for _ in range(self.max_reflect_rounds):
+            plan, acquired = self.evidence_reacquirer(
+                user_id=state.user_id,
+                assessments=assessments,
+                existing_results=results,
+            )
+            if not acquired:
+                stop_reasons.extend(plan.stop_reasons or ["NO_AUTOMATIC_EVIDENCE_SOURCE"])
+                break
+            rounds += 1
+            executed += len(acquired)
+            previous_count = len(
+                materialize_weekly_evidence(state.weekly_facts, results)
+            )
+            results.extend(acquired)
+            final_result = self.evidence_judge.assess(
+                relevant_domains=[item.domain for item in assessments],
+                evidence=materialize_weekly_evidence(state.weekly_facts, results),
+            )
+            evidence_added += max(0, len(final_result.evidence) - previous_count)
+            assessments = final_result.assessments
+            if before == final_result.evidence_fingerprint:
+                no_gain = True
+                stop_reasons.append("NO_MARGINAL_EVIDENCE_GAIN")
+                break
+            before = final_result.evidence_fingerprint
+            if all(
+                item.status
+                in {
+                    EvidenceAssessmentStatus.SUFFICIENT,
+                    EvidenceAssessmentStatus.NOT_APPLICABLE,
+                }
+                for item in assessments
+            ):
+                stop_reasons.append("READINESS_SATISFIED")
+                break
+            if any(item.status.value != "SUCCEEDED" for item in acquired):
+                stop_reasons.append("REFLECT_TOOL_FAILED")
+                break
+        max_reached = rounds >= self.max_reflect_rounds and not any(
+            reason in {"READINESS_SATISFIED", "NO_MARGINAL_EVIDENCE_GAIN"}
+            for reason in stop_reasons
+        )
+        if max_reached:
+            stop_reasons.append("MAX_REFLECT_ROUNDS_REACHED")
+        update = {
+            "supplemental_tool_results": results,
+            "reflect_summary": ReflectSummary(
+                rounds=rounds,
+                triggered=rounds > 0,
+                executed_action_count=executed,
+                evidence_added_count=evidence_added,
+                no_marginal_gain=no_gain,
+                max_rounds_reached=max_reached,
+                stop_reasons=list(dict.fromkeys(stop_reasons)),
+            ),
+            "status": WeeklyReviewGraphStatus.REFLECTED,
+        }
+        if final_result is not None:
+            update.update(
+                {
+                    "evidence_assessments": final_result.assessments,
+                    "decision_readiness": final_result.decision_readiness,
+                    "evidence_fingerprint": final_result.evidence_fingerprint,
+                }
+            )
+        return update
 
     def evaluate_weekly_rules(self, raw: WeeklyReviewState | dict) -> dict:
         state = _state(raw)
@@ -130,6 +268,7 @@ class WeeklyReviewNodes:
         ).lower()
         if any(term in text for term in ("已修改训练计划", "确诊", "绝对安全")):
             errors.append("UNSUPPORTED_OR_UNSAFE_CLAIM")
+        errors.extend(evidence_claim_violations(text, state.evidence_assessments))
         return {
             "validated_review": None,
             "validation_errors": errors,
@@ -255,5 +394,8 @@ class WeeklyReviewNodes:
             limitations=list(dict.fromkeys([*state.limitations, *analysis.limitations])),
             knowledge_references=references,
             fallback_used=state.status == WeeklyReviewGraphStatus.FALLBACK,
+            evidence_status={
+                item.domain: item.status.value for item in state.evidence_assessments
+            },
         )
         return {"final_review": result, "status": WeeklyReviewGraphStatus.COMPLETED}

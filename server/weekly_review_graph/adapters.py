@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 from server.agent.enums import AgentIntent, AgentToolStatus
 from server.agent.gateway import AgentLLMGateway
+from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import AgentContext, AgentToolResult
 from server.agent.tools.knowledge_tools import (
     RetrieveTrainingKnowledgeInput,
@@ -22,6 +23,12 @@ from server.services.adaptive_plan_proposal_service import AdaptivePlanProposalS
 from server.services.provider_reasoning_service import persist_reasoning
 from server.structured_task_provider import StructuredTaskProvider
 from server.weekly_review_graph.schemas import PlanDesignAnalysis, WeeklyReviewAnalysis
+from server.domain.evidence import EvidenceAssessment, MissingEvidencePlan
+from server.services.evidence_reflect_service import (
+    EvidenceReflectPlanner,
+    execute_reflect_actions,
+    successful_tool_fingerprints,
+)
 
 
 class AgentGatewayWeeklyReviewGenerator:
@@ -48,6 +55,9 @@ class AgentGatewayWeeklyReviewGenerator:
             recent_training=state.weekly_facts.model_dump(mode="json"),
             applicable_rules=[{"code": item} for item in state.rule_results],
             data_quality=state.weekly_facts.data_quality.model_dump(mode="json"),
+            evidence_assessments=state.evidence_assessments,
+            decision_readiness=state.decision_readiness,
+            reflect_summary=state.reflect_summary,
             tool_results=(
                 [
                     AgentToolResult(
@@ -65,7 +75,8 @@ class AgentGatewayWeeklyReviewGenerator:
             system_instructions=(
                 "Generate a concise weekly running review. Only explain the canonical weekly facts "
                 "and rules in context. Never claim to modify a plan. Return the existing strict "
-                "AgentModelOutput JSON contract and select only request-local knowledge IDs."
+                "AgentModelOutput JSON contract and select only request-local knowledge IDs. "
+                "Do not make a definite claim for PARTIAL, CONFLICTED, or MISSING evidence domains."
             ),
             user_message="Explain this week's canonical training facts and next-week review focus.",
             context=context,
@@ -116,6 +127,51 @@ class KnowledgeToolWeeklyRetriever:
         )
 
 
+class RegistryWeeklyEvidenceReacquirer:
+    """Use only registered WEEKLY_REVIEW read tools to fill evidence gaps."""
+
+    def __init__(
+        self,
+        registry: AgentToolRegistry,
+        *,
+        timezone: str = "Asia/Shanghai",
+        max_actions: int = 2,
+    ) -> None:
+        self.registry = registry
+        self.timezone = timezone
+        self.max_actions = max(1, min(max_actions, 4))
+        self.planner = EvidenceReflectPlanner()
+
+    def __call__(
+        self,
+        *,
+        user_id: int,
+        assessments: list[EvidenceAssessment],
+        existing_results: list[AgentToolResult],
+    ) -> tuple[MissingEvidencePlan, list[AgentToolResult]]:
+        context = AgentContext(
+            request_id=uuid4(),
+            user_id=user_id,
+            intent=AgentIntent.WEEKLY_REVIEW,
+            current_time=datetime.now(ZoneInfo(self.timezone)),
+            timezone=self.timezone,
+            tool_results=existing_results,
+        )
+        plan = self.planner.plan(
+            intent=AgentIntent.WEEKLY_REVIEW,
+            assessments=assessments,
+            registry=self.registry,
+            attempted_fingerprints=successful_tool_fingerprints(existing_results),
+        )
+        results, _ = execute_reflect_actions(
+            plan=plan,
+            registry=self.registry,
+            context=context,
+            max_actions=self.max_actions,
+        )
+        return plan, results
+
+
 class StructuredWeeklyReviewGenerator:
     def __init__(
         self,
@@ -147,10 +203,17 @@ class StructuredWeeklyReviewGenerator:
             system_prompt=(
                 "Analyze canonical running facts without changing any plan. Treat deterministic rules, "
                 "decision readiness, warnings and limitations as authoritative. Return only the requested "
-                "JSON schema. Do not diagnose injury or invent missing recovery facts."
+                "JSON schema. Do not diagnose injury or invent missing recovery facts. Describe conflicts "
+                "as uncertainty and never turn PARTIAL or MISSING evidence into a definite conclusion."
             ),
             input_payload={
                 "weekly_facts": state.weekly_facts.model_dump(mode="json"),
+                "evidence_assessments": [
+                    item.model_dump(mode="json") for item in state.evidence_assessments
+                ],
+                "decision_readiness": [
+                    item.model_dump(mode="json") for item in state.decision_readiness
+                ],
                 "deterministic_rules": state.rule_results,
                 "warnings": state.warnings,
                 "limitations": state.limitations,
@@ -198,7 +261,20 @@ class StructuredPlanDesigner:
                 "runner_state": state.weekly_facts.runner_state_trend.model_dump(mode="json"),
                 "target_plans": [item.model_dump(mode="json") for item in state.target_plans],
                 "deterministic_rules": state.rule_results,
+                "evidence_assessments": [
+                    item.model_dump(mode="json") for item in state.evidence_assessments
+                ],
+                "decision_readiness": [
+                    item.model_dump(mode="json") for item in state.decision_readiness
+                ],
                 "knowledge_reference_ids": state.weekly_analysis.knowledge_reference_ids,
+                "previous_proposal": (
+                    state.previous_proposal.model_dump(mode="json")
+                    if state.previous_proposal is not None
+                    else None
+                ),
+                "user_feedback": state.revision_feedback,
+                "revision_number": state.revision_number,
             },
         )
         if self.db is not None:
@@ -225,4 +301,5 @@ class DeterministicProposalMaterializer:
             weekly_facts=state.weekly_facts,
             target_plans=state.target_plans,
             candidates=state.plan_design.candidate_adjustments,
+            decision_readiness=state.decision_readiness,
         )

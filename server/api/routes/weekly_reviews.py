@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from planner_core.database.models import PlannedWorkout, UserAccount
+from planner_core.database.models import PlannedWorkout, TrainingBlock, UserAccount
 from planner_core.adaptive_plan.schemas import PlanValue, TargetPlanFact
 from planner_core.enums import WorkoutStatusNormalized
 from server.api.deps import get_current_user, get_db
@@ -26,14 +26,19 @@ from server.schemas.adaptive_plan import (
     AdaptivePlanVersionList,
     AdaptivePlanVersionRead,
     AdaptiveProposalRead,
+    ProposalRevisionRequest,
+    ProposalRevisionResult,
     PlanRollbackRequest,
     WeeklyGraphRequest,
 )
-from server.services.adaptive_plan_approval_service import AdaptivePlanApprovalService
+from server.services.adaptive_plan_approval_service import (
+    ADAPTIVE_WEEKLY_PROPOSAL_SOURCES,
+    AdaptivePlanApprovalService,
+)
 from server.services.adaptive_plan_version_service import AdaptivePlanVersionService
-from planner_core.database.models import TrainingAdjustmentDraft
+from planner_core.database.models import PlanAdjustmentDraft, TrainingAdjustmentDraft
 from sqlalchemy import select
-from server.common.exceptions import NotFoundError
+from server.common.exceptions import BadRequestError, NotFoundError
 from planner_core.config import get_settings
 from planner_core.weekly_review.schemas import WeeklyFacts, WeeklyFactsRequest
 from server.agent.providers.openai_compatible import OpenAICompatibleAgentGateway
@@ -56,11 +61,13 @@ from server.observability.factory import get_configured_tracer
 from server.structured_task_provider import StructuredTaskProvider
 from server.services.admin_ai_settings_service import get_effective_ai_settings
 from server.services import approval_workflow_service
+from server.services.adaptive_weekly_coaching_service import AdaptiveWeeklyCoachingService
 
 router = APIRouter(tags=["weekly reviews"])
 adaptive_approval_service = AdaptivePlanApprovalService(tracer=get_configured_tracer())
 adaptive_version_service = AdaptivePlanVersionService()
 weekly_facts_service = WeeklyFactsService()
+adaptive_weekly_coaching_service = AdaptiveWeeklyCoachingService()
 
 
 @router.get("/weekly-reviews/summary", response_model=WeeklyReviewSummaryResponse)
@@ -155,9 +162,9 @@ def apply_adjustment_draft(
     current_user: UserAccount = Depends(get_current_user),
 ):
     owned_draft = db.scalar(
-        select(TrainingAdjustmentDraft.id).where(
-            TrainingAdjustmentDraft.id == draft_id,
-            TrainingAdjustmentDraft.user_id == current_user.id,
+        select(PlanAdjustmentDraft.id).where(
+            PlanAdjustmentDraft.id == draft_id,
+            PlanAdjustmentDraft.user_id == current_user.id,
         )
     )
     if owned_draft is None:
@@ -180,9 +187,9 @@ def reject_adjustment_draft(
     current_user: UserAccount = Depends(get_current_user),
 ):
     draft = db.scalar(
-        select(TrainingAdjustmentDraft).where(
-            TrainingAdjustmentDraft.id == draft_id,
-            TrainingAdjustmentDraft.user_id == current_user.id,
+        select(PlanAdjustmentDraft).where(
+            PlanAdjustmentDraft.id == draft_id,
+            PlanAdjustmentDraft.user_id == current_user.id,
         )
     )
     if draft is None or draft.review_report_id is None:
@@ -207,7 +214,7 @@ def get_adaptive_proposal(
         select(TrainingAdjustmentDraft).where(
             TrainingAdjustmentDraft.id == proposal_id,
             TrainingAdjustmentDraft.user_id == current_user.id,
-            TrainingAdjustmentDraft.source_type == "weekly_review_v0130",
+            TrainingAdjustmentDraft.source_type.in_(ADAPTIVE_WEEKLY_PROPOSAL_SOURCES),
         )
     )
     if record is None:
@@ -217,8 +224,37 @@ def get_adaptive_proposal(
         week_start=record.week_start,
         status=record.status,
         proposal=record.adjustment_json,
+        review_report_id=record.review_report_id,
+        revision=record.revision,
+        parent_proposal_id=record.parent_proposal_id,
+        feedback=record.feedback_json,
         created_at=record.created_at,
         updated_at=record.updated_at,
+    )
+
+
+@router.post(
+    "/weekly-reviews/{review_id}/proposal/revise",
+    response_model=ProposalRevisionResult,
+)
+def revise_adaptive_weekly_proposal(
+    review_id: int,
+    payload: ProposalRevisionRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    """Regenerate only Plan Design from an immutable Review Snapshot.
+
+    This endpoint intentionally does not call the weekly-analysis provider,
+    Evidence Judge, Reflect, Rules, or RAG again.  Freshness is checked before
+    the plan-design task; a changed facts fingerprint forces a new review.
+    """
+    return adaptive_weekly_coaching_service.revise_proposal(
+        db,
+        user_id=current_user.id,
+        review_id=review_id,
+        proposal_id=payload.proposal_id,
+        feedback=payload.feedback,
     )
 
 
@@ -235,7 +271,7 @@ def approve_adaptive_proposal(
         select(TrainingAdjustmentDraft.id).where(
             TrainingAdjustmentDraft.id == proposal_id,
             TrainingAdjustmentDraft.user_id == current_user.id,
-            TrainingAdjustmentDraft.source_type == "weekly_review_v0130",
+            TrainingAdjustmentDraft.source_type.in_(ADAPTIVE_WEEKLY_PROPOSAL_SOURCES),
         )
     )
     if owned_proposal is None:
@@ -258,7 +294,7 @@ def reject_adaptive_proposal(
         select(TrainingAdjustmentDraft.id).where(
             TrainingAdjustmentDraft.id == proposal_id,
             TrainingAdjustmentDraft.user_id == current_user.id,
-            TrainingAdjustmentDraft.source_type == "weekly_review_v0130",
+            TrainingAdjustmentDraft.source_type.in_(ADAPTIVE_WEEKLY_PROPOSAL_SOURCES),
         )
     )
     if owned_proposal is None:
@@ -345,6 +381,39 @@ def generate_langgraph_weekly_review(
         cycle_id=payload.cycle_id,
         timezone=payload.timezone,
     )
+    source_block = (
+        db.scalar(
+            select(TrainingBlock).where(
+                TrainingBlock.id == payload.source_block_id,
+                TrainingBlock.user_id == current_user.id,
+                TrainingBlock.cycle_id == payload.cycle_id,
+            )
+        )
+        if payload.source_block_id is not None
+        else db.scalar(
+            select(TrainingBlock).where(
+                TrainingBlock.user_id == current_user.id,
+                TrainingBlock.cycle_id == payload.cycle_id,
+                TrainingBlock.start_date == payload.week_start,
+                TrainingBlock.end_date == payload.week_end,
+            )
+        )
+    )
+    target_block = (
+        db.scalar(
+            select(TrainingBlock).where(
+                TrainingBlock.id == payload.target_block_id,
+                TrainingBlock.user_id == current_user.id,
+                TrainingBlock.cycle_id == payload.cycle_id,
+            )
+        )
+        if payload.target_block_id is not None
+        else None
+    )
+    if payload.source_block_id is not None and source_block is None:
+        raise NotFoundError("Source training block not found.")
+    if payload.target_block_id is not None and target_block is None:
+        raise NotFoundError("Target training block not found.")
     provider_configured = settings.coach_agent_enabled and all(
         (
             settings.coach_agent_api_key,
@@ -375,8 +444,14 @@ def generate_langgraph_weekly_review(
         db.scalars(
             select(PlannedWorkout).where(
                 PlannedWorkout.user_id == current_user.id,
-                PlannedWorkout.workout_date >= next_week_start,
-                PlannedWorkout.workout_date <= next_week_end,
+                *(
+                    (PlannedWorkout.block_id == target_block.id,)
+                    if target_block is not None
+                    else (
+                        PlannedWorkout.workout_date >= next_week_start,
+                        PlannedWorkout.workout_date <= next_week_end,
+                    )
+                ),
                 *(
                     (PlannedWorkout.cycle_id == payload.cycle_id,)
                     if payload.cycle_id is not None
@@ -454,12 +529,25 @@ def generate_langgraph_weekly_review(
     if result.final_review is None:
         raise RuntimeError("Weekly review graph did not produce a final result")
     review = result.final_review
+    snapshot = None
+    if payload.cycle_id is not None and source_block is not None:
+        snapshot = adaptive_weekly_coaching_service.persist_review_snapshot(
+            db,
+            user_id=current_user.id,
+            cycle_id=payload.cycle_id,
+            source_block_id=source_block.id,
+            target_block_id=target_block.id if target_block else None,
+            state=result,
+        )
+        review = review.model_copy(update={"review_report_id": snapshot.id})
     if result.proposal is not None:
         record = adaptive_approval_service.persist_proposal(
             db,
             user_id=current_user.id,
             proposal=result.proposal,
             cycle_id=payload.cycle_id,
+            review_report_id=snapshot.id if snapshot else None,
+            facts_hash=result.weekly_facts.result_hash,
         )
         review = review.model_copy(update={"proposal_record_id": record.id})
         approval_workflow_service.ensure_pending(

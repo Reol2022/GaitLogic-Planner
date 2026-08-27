@@ -1,0 +1,13 @@
+﻿{
+    "pid":  14172,
+    "started_at":  "2026-08-21T11:23:18.2173511+08:00",
+    "command":  "python scripts/evaluate_competition_ablation.py --phase full --provider-mode real --runs 3",
+    "stdout_log":  "docs/evaluation/competition-ablation-v1/full-study.stdout.log",
+    "stderr_log":  "docs/evaluation/competition-ablation-v1/full-study.stderr.log",
+    "expected_calls":  432,
+    "status":  "blocked-payment-required",
+    "completed_at":  "2026-08-21T11:38:20.1295953+08:00",
+    "succeeded_calls":  29,
+    "failed_calls":  403,
+    "safe_failure_code":  "PROVIDER_PAYMENT_REQUIRED"
+}

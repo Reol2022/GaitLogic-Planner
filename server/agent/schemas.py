@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from server.agent.enums import AgentIntent, AgentRiskLevel, AgentRunStatus, AgentToolStatus
 from server.agent.errors import AgentErrorCode
+from server.domain.decision_readiness import DomainReadiness
+from server.domain.evidence import EvidenceAssessment, ReflectSummary
 
 MAX_MESSAGE_LENGTH = 4000
 MAX_CONVERSATION_ITEMS = 50
@@ -79,6 +81,7 @@ class AgentToolDefinition(AgentContractModel):
     read_only: bool = True
     requires_confirmation: bool = False
     allowed_intents: list[AgentIntent] = Field(min_length=1, max_length=len(AgentIntent))
+    provided_fact_domains: list[str] = Field(default_factory=list, max_length=20)
 
     @model_validator(mode="after")
     def validate_unique_intents(self) -> "AgentToolDefinition":
@@ -142,6 +145,9 @@ class AgentContext(AgentContractModel):
     tool_results: list[AgentToolResult] = Field(default_factory=list, max_length=MAX_CONTEXT_ITEMS)
     missing_reasons: dict[str, str] = Field(default_factory=dict, max_length=MAX_CONTEXT_ITEMS)
     limitations: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
+    evidence_assessments: list[EvidenceAssessment] = Field(default_factory=list, max_length=30)
+    decision_readiness: list[DomainReadiness] = Field(default_factory=list, max_length=30)
+    reflect_summary: ReflectSummary = Field(default_factory=ReflectSummary)
 
     @model_validator(mode="after")
     def validate_context_size(self) -> "AgentContext":
@@ -268,3 +274,4 @@ class AgentLimits(AgentContractModel):
     max_evidence_items: int = Field(default=5, ge=1, le=20)
     max_rule_items: int = Field(default=20, ge=1, le=50)
     max_answer_length: int = Field(default=6000, ge=1, le=12000)
+    max_reflect_rounds: int = Field(default=1, ge=0, le=2)
