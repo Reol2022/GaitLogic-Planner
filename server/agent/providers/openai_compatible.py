@@ -489,10 +489,11 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     user_message,
                 )
                 finish_reason, content_text, reasoning_text = self._response_lengths(response.choices[0])
+                profile = task_model_profile(self.settings, ModelTaskType.COACH_ANALYSIS)
                 self.last_response_metadata = {
                     "task_type": ModelTaskType.COACH_ANALYSIS.value,
                     "model_profile": ModelTaskType.COACH_ANALYSIS.value,
-                    "thinking_enabled": True,
+                    "thinking_enabled": profile.thinking_enabled,
                     "tool_round": tool_round,
                     "finish_reason": finish_reason,
                     "reasoning_length": len(reasoning_text),
@@ -541,10 +542,11 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                 )
                 return output
             except AgentProviderError as exc:
+                profile = task_model_profile(self.settings, ModelTaskType.COACH_ANALYSIS)
                 self.last_response_metadata = {
                     "task_type": ModelTaskType.COACH_ANALYSIS.value,
                     "model_profile": ModelTaskType.COACH_ANALYSIS.value,
-                    "thinking_enabled": True,
+                    "thinking_enabled": profile.thinking_enabled,
                     "tool_round": tool_round,
                     "finish_reason": exc.finish_reason,
                     "reasoning_length": exc.reasoning_length,

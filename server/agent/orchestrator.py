@@ -121,6 +121,14 @@ class GaitLogicCoachAgent:
             max_reflect_rounds=settings.evidence_max_reflect_rounds,
         )
 
+    @staticmethod
+    def _status_for_provider_error(error: AgentProviderError) -> AgentRunStatus:
+        """Keep invalid provider output separate from availability failures."""
+
+        if error.code == AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID:
+            return AgentRunStatus.VALIDATION_FAILED
+        return AgentRunStatus.MODEL_FAILED
+
     def _judge_context(
         self,
         *,
@@ -548,7 +556,7 @@ class GaitLogicCoachAgent:
             return self._finish(
                 request=request,
                 trace=trace,
-                status=AgentRunStatus.MODEL_FAILED,
+                status=self._status_for_provider_error(exc),
                 context=context,
                 errors=[exc.code],
             )
@@ -755,7 +763,7 @@ class GaitLogicCoachAgent:
                 return self._finish(
                     request=request,
                     trace=trace,
-                    status=AgentRunStatus.MODEL_FAILED,
+                    status=self._status_for_provider_error(exc),
                     context=context,
                     errors=[exc.code],
                 )

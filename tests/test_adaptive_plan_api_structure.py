@@ -1,4 +1,5 @@
 from server.main import app
+from server.api.routes.weekly_reviews import router as weekly_reviews_router
 
 
 def test_adaptive_plan_api_exposes_only_controlled_operations() -> None:
@@ -37,3 +38,8 @@ def test_weekly_facts_and_graph_contracts_use_authenticated_identity() -> None:
         "properties"
     ]
     assert "user_id" not in request_properties
+
+
+def test_static_weekly_facts_route_precedes_dynamic_review_route() -> None:
+    paths = [route.path for route in weekly_reviews_router.routes]
+    assert paths.index("/weekly-reviews/facts") < paths.index("/weekly-reviews/{review_id}")

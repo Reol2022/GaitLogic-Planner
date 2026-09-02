@@ -330,6 +330,31 @@ def test_json_object_request_is_exact_and_ignores_unknown_provider_settings() ->
     )
 
 
+@pytest.mark.parametrize(
+    ("thinking_mode", "expected_type"),
+    [("disabled", "disabled"), ("enabled", "enabled")],
+)
+def test_coach_analysis_honors_deployment_thinking_mode(
+    thinking_mode: str,
+    expected_type: str,
+) -> None:
+    fake = FakeClient(
+        [response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "safe"}))]
+    )
+    gateway, _output, _trace = run_gateway(
+        fake,
+        configured=settings(
+            COACH_AGENT_RESPONSE_FORMAT_MODE="json_object",
+            COACH_AGENT_THINKING_MODE=thinking_mode,
+        ),
+    )
+
+    assert fake.completions.calls[0]["extra_body"] == {
+        "thinking": {"type": expected_type}
+    }
+    assert gateway.last_response_metadata["thinking_enabled"] == (thinking_mode == "enabled")
+
+
 def test_today_evidence_ids_materialize_to_canonical_public_text() -> None:
     payload = {
         "answer": "Use the existing plan cautiously.",
@@ -411,7 +436,7 @@ def test_task_profile_enables_thinking_even_when_legacy_mode_is_unset() -> None:
     assert fake.completions.calls[0]["extra_body"] == {"thinking": {"type": "enabled"}}
 
 
-def test_analysis_task_profile_supersedes_legacy_disabled_mode() -> None:
+def test_analysis_task_profile_honors_explicit_disabled_mode() -> None:
     fake = FakeClient(
         [response(content=json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "safe"}))]
     )
@@ -422,7 +447,7 @@ def test_analysis_task_profile_supersedes_legacy_disabled_mode() -> None:
             COACH_AGENT_EXTRA_BODY='{"unsafe":true}',
         ),
     )
-    assert fake.completions.calls[0]["extra_body"] == {"thinking": {"type": "enabled"}}
+    assert fake.completions.calls[0]["extra_body"] == {"thinking": {"type": "disabled"}}
 
 
 def test_json_object_and_thinking_disabled_are_combined_without_other_fields() -> None:
@@ -438,7 +463,7 @@ def test_json_object_and_thinking_disabled_are_combined_without_other_fields() -
     )
     call = fake.completions.calls[0]
     assert call["response_format"] == {"type": "json_object"}
-    assert call["extra_body"] == {"thinking": {"type": "enabled"}}
+    assert call["extra_body"] == {"thinking": {"type": "disabled"}}
 
 
 def test_thinking_mode_enabled_calls_provider() -> None:
@@ -717,7 +742,7 @@ def test_json_object_tool_call_then_final_response_uses_same_safe_contract() -> 
     assert len(fake.completions.calls) == 2
     assert all(
         call["response_format"] == {"type": "json_object"}
-        and call["extra_body"] == {"thinking": {"type": "enabled"}}
+        and call["extra_body"] == {"thinking": {"type": "disabled"}}
         for call in fake.completions.calls
     )
     assert [

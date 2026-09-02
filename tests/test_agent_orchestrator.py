@@ -466,6 +466,19 @@ def test_provider_error_preserves_its_safe_category() -> None:
     assert response.limitations[0].code == AgentErrorCode.AGENT_PROVIDER_UNAVAILABLE.value
 
 
+def test_provider_structured_output_error_is_validation_failure() -> None:
+    gateway = MockAgentLLMGateway(
+        [],
+        error=AgentProviderError(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID),
+    )
+    agent = GaitLogicCoachAgent(gateway=gateway)
+
+    response = agent.run(make_request())
+
+    assert response.status == AgentRunStatus.VALIDATION_FAILED
+    assert response.limitations[0].code == AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID.value
+
+
 def test_invalid_model_mapping_becomes_validation_failure() -> None:
     gateway = MockAgentLLMGateway({"answer": "missing intent"})
     agent = GaitLogicCoachAgent(gateway=gateway)
