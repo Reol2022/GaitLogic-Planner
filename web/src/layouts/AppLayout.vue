@@ -156,7 +156,11 @@
           </button>
           <span>返回我的</span>
         </div>
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <KeepAlive>
+            <component :is="Component" :key="route.path" />
+          </KeepAlive>
+        </router-view>
         <SiteFilingFooter />
       </el-main>
     </el-container>

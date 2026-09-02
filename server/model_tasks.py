@@ -52,7 +52,12 @@ def task_model_profile(settings: Settings, task_type: ModelTaskType) -> TaskMode
         return TaskModelProfile(
             task_type=task_type,
             model=settings.coach_analysis_model or settings.coach_agent_model,
-            thinking_enabled=True,
+            # Coach responses are structured, bounded explanations.  Do not
+            # silently enable DeepSeek thinking here: deployments control this
+            # explicitly through COACH_AGENT_THINKING_MODE.  Keeping a
+            # disabled deployment non-thinking prevents reasoning output from
+            # consuming the response budget and destabilising final JSON.
+            thinking_enabled=settings.coach_agent_thinking_mode != "disabled",
             max_output_tokens=settings.coach_analysis_max_output_tokens,
             request_timeout_seconds=settings.coach_agent_total_timeout_seconds,
             **common,
@@ -83,7 +88,10 @@ def task_model_profile(settings: Settings, task_type: ModelTaskType) -> TaskMode
     return TaskModelProfile(
         task_type=task_type,
         model=settings.ai_plan_generation_model or settings.deepseek_model,
-        thinking_enabled=True,
+        # Generating a complete, structured multi-week plan already produces
+        # a large response.  Keep this request non-thinking so hidden
+        # reasoning cannot exhaust the response window or trigger retries.
+        thinking_enabled=False,
         max_output_tokens=settings.ai_plan_generation_max_output_tokens,
         request_timeout_seconds=settings.deepseek_timeout_seconds,
         **common,

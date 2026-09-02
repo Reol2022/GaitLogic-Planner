@@ -80,12 +80,16 @@ def test_weekly_profile_honours_thinking_policy_and_is_independent_from_ai_plan_
     weekly = task_model_profile(configured, ModelTaskType.WEEKLY_REVIEW_ANALYSIS)
     plan = task_model_profile(configured, ModelTaskType.PLAN_DESIGN)
     ai_plan = task_model_profile(configured, ModelTaskType.AI_PLAN_GENERATION)
-    assert not weekly.thinking_enabled and not plan.thinking_enabled
+    assert not weekly.thinking_enabled and not plan.thinking_enabled and not ai_plan.thinking_enabled
     enabled = task_model_profile(
         settings(COACH_AGENT_THINKING_MODE="enabled"),
         ModelTaskType.WEEKLY_REVIEW_ANALYSIS,
     )
     assert enabled.thinking_enabled
+    assert not task_model_profile(
+        settings(COACH_AGENT_THINKING_MODE="enabled"),
+        ModelTaskType.AI_PLAN_GENERATION,
+    ).thinking_enabled
     assert weekly.max_output_tokens == 15000
     assert weekly.max_output_tokens != ai_plan.max_output_tokens
     assert weekly.request_timeout_seconds == 310

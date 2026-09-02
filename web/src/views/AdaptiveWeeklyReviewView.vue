@@ -5,11 +5,38 @@
       <el-select v-model="cycleId" placeholder="训练周期" @change="loadBlocks"><el-option v-for="cycle in cycles" :key="cycle.id" :label="cycle.name" :value="cycle.id" /></el-select>
       <el-select v-model="sourceBlockId" placeholder="复盘训练周" @change="chooseTarget"><el-option v-for="block in blocks" :key="block.id" :label="block.block_name" :value="block.id" /></el-select>
       <el-select v-model="targetBlockId" placeholder="下一训练周"><el-option v-for="block in targetBlocks" :key="block.id" :label="block.block_name" :value="block.id" /></el-select>
+      <el-select v-if="history.length" v-model="selectedHistoryId" placeholder="历史周复盘" @change="loadHistoricalReview">
+        <el-option v-for="item in history" :key="item.id" :label="`第 ${item.version} 版 · ${formatDateTime(item.created_at)}`" :value="item.id" />
+      </el-select>
       <el-button type="primary" :loading="loading" :disabled="!range || !cycleId || !sourceBlockId || !targetBlockId" @click="generate">生成周复盘</el-button>
     </section>
     <el-alert title="AI 周复盘不是医疗建议，也不会自动修改训练计划。" type="info" :closable="false" show-icon />
 
-    <WeeklyFactsPanel v-if="review" :facts="review.weekly_facts" />
+    <el-skeleton v-if="factsLoading" class="panel facts-loading" :rows="3" animated />
+    <section v-else-if="summary" class="panel execution-summary">
+      <header class="section-heading">
+        <div><h2>本周训练情况</h2><span>{{ summary.metrics.week_start_date }} 至 {{ summary.metrics.week_end_date }}</span></div>
+        <span>日志覆盖率 {{ percent(summary.metrics.logged_workout_ratio) }}</span>
+      </header>
+      <div class="overview-metrics">
+        <div><span>计划跑量</span><strong>{{ km(summary.metrics.planned_distance_km) }}</strong></div>
+        <div><span>实际跑量</span><strong>{{ km(summary.metrics.actual_distance_km) }}</strong></div>
+        <div><span>完成率</span><strong>{{ percent(summary.metrics.completion_rate) }}</strong></div>
+        <div><span>完成天数</span><strong>{{ summary.metrics.completed_workout_days }}/{{ summary.metrics.planned_workout_days }}</strong></div>
+      </div>
+      <div class="daily-review-grid">
+        <article v-for="day in summary.metrics.daily_workouts" :key="day.planned_workout_id" class="daily-review-card">
+          <div><strong>{{ day.date || "未定日期" }}</strong><el-tag size="small" effect="plain">{{ statusLabel(day.status) }}</el-tag></div>
+          <p>{{ day.planned_content }}</p>
+          <span>计划 {{ km(day.planned_distance_km) }} · 实际 {{ km(day.actual_distance_km) }} · RPE {{ day.rpe ?? "-" }}</span>
+        </article>
+      </div>
+      <div class="completion-notes">
+        <p><strong>关键课：</strong>{{ summary.metrics.key_workouts.length }} 次，平均 RPE {{ summary.metrics.key_workout_avg_rpe ?? "-" }}</p>
+        <p><strong>长距离：</strong>{{ summary.metrics.long_run ? "已纳入复盘" : "本周无长距离计划" }}</p>
+        <p><strong>数据缺失：</strong>{{ missingDataText }}</p>
+      </div>
+    </section>
 
     <section v-if="review" class="panel narrative">
       <header><h2>AI 周复盘</h2><el-tag v-if="review.fallback_used" type="warning">确定性降级结果</el-tag></header>
@@ -36,6 +63,17 @@
       <el-tag effect="plain">方案 v{{ proposal.revision || 1 }} / {{ maxProposalVersion }}</el-tag>
       <span v-if="proposal.parent_proposal_id">上一版方案已拒绝，当前为基于反馈生成的新方案。</span>
     </section>
+
+    <section v-else-if="legacyReview" class="panel narrative">
+      <header><h2>AI 周复盘</h2><el-tag effect="plain">历史记录</el-tag></header>
+      <p class="overview">{{ legacyReview.report.summary || "该历史复盘未保存文字总结。" }}</p>
+      <div class="review-grid">
+        <article><h3>做得好的地方</h3><ul><li v-for="item in legacyReview.report.positive_points_json || []" :key="item">{{ item }}</li></ul></article>
+        <article><h3>需要注意</h3><ul><li v-for="item in legacyReview.report.attention_points_json || []" :key="item">{{ item }}</li></ul></article>
+      </div>
+      <article v-if="legacyReview.report.next_week_strategy" class="strategy-card"><h3>下一周总体策略</h3><p>{{ legacyReview.report.next_week_strategy }}</p></article>
+      <el-alert v-for="item in legacyReview.report.risk_notes_json || []" :key="item" :title="item" type="warning" :closable="false" show-icon />
+    </section>
     <AdaptiveProposalDiff v-if="proposal" :proposal="proposal" @approve="approve" @reject="reject" />
     <el-button v-if="proposal?.status === 'pending_approval'" :disabled="!proposal.review_report_id" @click="feedbackVisible = true">反馈后重新生成方案</el-button>
     <el-dialog v-model="feedbackVisible" title="反馈并重新生成方案" width="560px">
@@ -55,7 +93,6 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import AdaptiveProposalDiff from "@/components/weekly-review/AdaptiveProposalDiff.vue";
-import WeeklyFactsPanel from "@/components/weekly-review/WeeklyFactsPanel.vue";
 import {
   approveAdaptiveProposal,
   generateLangGraphWeeklyReview,
@@ -67,7 +104,8 @@ import type { AdaptiveProposal, LangGraphWeeklyReview } from "@/types/adaptivePl
 import { limitationMessage } from "@/utils/limitationDisplay";
 import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles";
 import { listTrainingBlocks } from "@/api/trainingBlocks";
-import type { TrainingBlock, TrainingCycle } from "@/types/models";
+import { getWeeklyReview, getWeeklyReviewSummary, listWeeklyReviews } from "@/api/weeklyReviews";
+import type { TrainingBlock, TrainingCycle, WeeklyReviewDetail, WeeklyReviewReport, WeeklyReviewSummary } from "@/types/models";
 
 const route = useRoute();
 const cycleId = ref<number | null>(Number(route.query.cycle_id) || null);
@@ -78,8 +116,13 @@ const blocks = ref<TrainingBlock[]>([]);
 const targetBlocks = computed(() => blocks.value.filter((item) => item.id !== sourceBlockId.value));
 const range = ref<[string, string] | null>(null);
 const review = ref<LangGraphWeeklyReview | null>(null);
+const summary = ref<WeeklyReviewSummary | null>(null);
+const history = ref<WeeklyReviewReport[]>([]);
+const selectedHistoryId = ref<number | null>(null);
+const legacyReview = ref<WeeklyReviewDetail | null>(null);
 const proposal = ref<AdaptiveProposal | null>(null);
 const loading = ref(false);
+const factsLoading = ref(false);
 const revising = ref(false);
 const feedbackVisible = ref(false);
 const maxProposalVersion = ref(3);
@@ -109,10 +152,49 @@ async function loadBlocks() {
 }
 
 function chooseTarget() {
+  review.value = null;
+  proposal.value = null;
   const index = blocks.value.findIndex((item) => item.id === sourceBlockId.value);
   targetBlockId.value = index >= 0 ? blocks.value[index + 1]?.id || null : null;
   const source = blocks.value.find((item) => item.id === sourceBlockId.value);
   if (source?.start_date && source.end_date) range.value = [source.start_date, source.end_date];
+  else range.value = null;
+  void loadFacts();
+}
+
+async function loadFacts() {
+  summary.value = null;
+  history.value = [];
+  selectedHistoryId.value = null;
+  legacyReview.value = null;
+  if (!range.value || !cycleId.value || !sourceBlockId.value) return;
+  factsLoading.value = true;
+  try {
+    const [summaryResult, historyResult] = await Promise.all([
+      getWeeklyReviewSummary(cycleId.value, sourceBlockId.value),
+      listWeeklyReviews(cycleId.value),
+    ]);
+    summary.value = summaryResult;
+    history.value = historyResult.items.filter((item) => (
+      item.source_block_id === sourceBlockId.value
+      && item.status === "success"
+      && Boolean(item.summary)
+    ));
+    selectedHistoryId.value = history.value[0]?.id || null;
+    await loadHistoricalReview();
+  } catch {
+    ElMessage.error("本周训练情况加载失败，请稍后重试。");
+  } finally {
+    factsLoading.value = false;
+  }
+}
+
+async function loadHistoricalReview() {
+  review.value = null;
+  proposal.value = null;
+  legacyReview.value = selectedHistoryId.value
+    ? await getWeeklyReview(selectedHistoryId.value)
+    : null;
 }
 
 async function generate() {
@@ -150,6 +232,23 @@ async function reject() {
   proposal.value = await getAdaptiveProposal(proposal.value.id);
   ElMessage.success("已拒绝 Proposal，原计划未修改");
 }
+
+function km(value?: number | null) { return `${Number(value || 0).toFixed(1)} km`; }
+function percent(value?: number | null) { return `${Math.round(Number(value || 0) * 100)}%`; }
+function statusLabel(value: string) {
+  return ({
+    completed_high: "高质量完成", completed_normal: "完成", completed_adjusted: "降级完成",
+    missed: "未完成", skipped: "跳过", rest: "休息", rest_or_cancelled: "休息", not_started: "未开始",
+  } as Record<string, string>)[value] || value;
+}
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("zh-CN", {
+    month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  });
+}
+const missingDataText = computed(() => summary.value?.metrics.missing_fields.length
+  ? summary.value.metrics.missing_fields.join("、")
+  : "核心字段已记录");
 
 async function revise() {
   if (!proposal.value?.review_report_id) return;
@@ -194,5 +293,5 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.adaptive-review-page{gap:16px}.controls{display:flex;align-items:center;gap:12px;padding:16px}.narrative{padding:18px}.narrative header,.proposal-meta{display:flex;justify-content:space-between;align-items:center;gap:10px}.narrative h2{margin:0}.overview{font-size:15px;line-height:1.8}.review-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.review-grid article,.reference{padding:13px;border:1px solid var(--card-border);border-radius:10px}.review-grid h3{margin:0}.review-grid p,.reference p{line-height:1.7}.narrative :deep(.el-alert){margin-top:10px}.reference{margin-bottom:10px}.reference small{color:var(--muted)}.feedback-text{margin-top:14px}@media(max-width:600px){.controls{align-items:stretch;flex-direction:column}.controls :deep(.el-date-editor){width:100%}.review-grid{grid-template-columns:1fr}.proposal-meta{align-items:flex-start;flex-direction:column}}
+.adaptive-review-page{gap:16px}.controls{display:flex;align-items:center;gap:12px;padding:16px}.narrative,.execution-summary{padding:18px}.narrative header,.proposal-meta,.section-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}.narrative h2,.section-heading h2{margin:0}.section-heading span{color:var(--muted);font-size:12px}.overview{font-size:15px;line-height:1.8}.review-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.review-grid article,.reference,.daily-review-card{padding:13px;border:1px solid var(--card-border);border-radius:10px}.review-grid h3{margin:0}.review-grid p,.reference p{line-height:1.7}.narrative :deep(.el-alert){margin-top:10px}.reference{margin-bottom:10px}.reference small{color:var(--muted)}.overview-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}.overview-metrics div,.completion-notes p{padding:12px;background:var(--surface-muted);border-radius:10px}.overview-metrics span{display:block;color:var(--muted);font-size:12px}.overview-metrics strong{display:block;margin-top:6px}.daily-review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.daily-review-card>div{display:flex;align-items:center;justify-content:space-between;gap:10px}.daily-review-card p{margin:10px 0;line-height:1.55}.daily-review-card>span{color:var(--muted);font-size:12px}.completion-notes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.completion-notes p{margin:0}.feedback-text{margin-top:14px}@media(max-width:600px){.controls{align-items:stretch;flex-direction:column}.controls :deep(.el-date-editor){width:100%}.review-grid,.daily-review-grid{grid-template-columns:1fr}.overview-metrics{grid-template-columns:repeat(2,1fr)}.completion-notes{grid-template-columns:1fr}.proposal-meta{align-items:flex-start;flex-direction:column}}
 </style>

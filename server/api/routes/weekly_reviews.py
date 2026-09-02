@@ -124,6 +124,27 @@ def list_weekly_reviews(
     return weekly_review_ai_service.list_weekly_reviews(db, current_user.id, cycle_id, page, page_size)
 
 
+@router.get("/weekly-reviews/facts", response_model=WeeklyFacts)
+def get_canonical_weekly_facts(
+    week_start: date = Query(...),
+    week_end: date = Query(...),
+    cycle_id: int | None = Query(default=None, gt=0),
+    timezone: str = Query(default="Asia/Shanghai"),
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    return weekly_facts_service.build_weekly_facts(
+        db,
+        WeeklyFactsRequest(
+            user_id=current_user.id,
+            week_start=week_start,
+            week_end=week_end,
+            cycle_id=cycle_id,
+            timezone=timezone,
+        ),
+    ).model_dump(mode="json")
+
+
 @router.get("/weekly-reviews/{review_id}", response_model=WeeklyReviewDetailResponse)
 def get_weekly_review(
     review_id: int,
@@ -335,27 +356,6 @@ def rollback_adaptive_plan_version(
             reason=payload.reason,
         )
     )
-
-
-@router.get("/weekly-reviews/facts", response_model=WeeklyFacts)
-def get_canonical_weekly_facts(
-    week_start: date = Query(...),
-    week_end: date = Query(...),
-    cycle_id: int | None = Query(default=None, gt=0),
-    timezone: str = Query(default="Asia/Shanghai"),
-    db: Session = Depends(get_db),
-    current_user: UserAccount = Depends(get_current_user),
-):
-    return weekly_facts_service.build_weekly_facts(
-        db,
-        WeeklyFactsRequest(
-            user_id=current_user.id,
-            week_start=week_start,
-            week_end=week_end,
-            cycle_id=cycle_id,
-            timezone=timezone,
-        ),
-    ).model_dump(mode="json")
 
 
 @router.post("/weekly-reviews/graph", response_model=WeeklyReviewResult)
