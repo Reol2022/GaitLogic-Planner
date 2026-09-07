@@ -77,6 +77,8 @@ pnpm-debug.log*
 logs/
 server/logs/
 web/logs/
+deploy/observability/.env
+deploy/observability/data/
 
 # Derived local knowledge indexes and vectors
 var/knowledge_indexes/

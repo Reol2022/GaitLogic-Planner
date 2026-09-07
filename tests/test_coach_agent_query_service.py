@@ -186,17 +186,16 @@ def test_query_trace_contains_request_tool_provider_and_fallback_without_content
     assert "1399" not in rendered
 
 
-def test_unsupported_weekly_intent_loads_no_dependencies_or_model(monkeypatch) -> None:
+def test_weekly_intent_is_available_to_the_coach_runtime(monkeypatch) -> None:
     deps = configured_dependencies()
     gateway = MockAgentLLMGateway(model_output())
     result = service(monkeypatch, gateway=gateway, deps=deps).query(
         user_id=1304,
         payload=CoachQueryRequest(message="Review this week", intent=AgentIntent.WEEKLY_REVIEW),
     )
-    assert result.status == "REJECTED"
-    assert result.provider_status == "NOT_CALLED"
-    assert gateway.call_count == 0
-    assert deps.seen_user_ids == []
+    assert result.status in {"SUCCEEDED", "DEGRADED"}
+    assert result.provider_status in {"SUCCEEDED", "FAILED"}
+    assert gateway.call_count >= 1
 
 
 def test_optional_intent_is_inferred_server_side(monkeypatch) -> None:

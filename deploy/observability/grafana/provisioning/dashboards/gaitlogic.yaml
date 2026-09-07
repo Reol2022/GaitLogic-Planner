@@ -1,0 +1,12 @@
+apiVersion: 1
+providers:
+  - name: gaitlogic-observability
+    orgId: 1
+    folder: GaitLogic
+    folderUid: gaitlogic
+    type: file
+    disableDeletion: true
+    editable: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

@@ -216,6 +216,9 @@ class RetrieveTrainingKnowledgeTool(AgentTool):
             span.add_metadata(
                 knowledge_retrieval_status=output.query_status,
                 retrieval_result_count=len(output.results),
+                retrieved_count=len(output.results),
+                canonical_reference_count=len(output.results),
+                metadata_filter_used=bool(arguments.categories or arguments.tags or arguments.language),
                 retrieval_strategy=(self.vector_store if self.vector_store in {"bm25", "hybrid"} else "dense"),
                 vector_store=(self.vector_store if self.vector_store not in {"bm25", "hybrid"} else ""),
             )

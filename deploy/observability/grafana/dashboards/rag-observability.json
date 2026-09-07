@@ -1,0 +1,13 @@
+{
+  "uid": "gaitlogic-rag-observability",
+  "title": "GaitLogic / RAG Observability",
+  "schemaVersion": 41,
+  "version": 1,
+  "panels": [
+    {"id": 1, "title": "Retrieval Count", "type": "timeseries", "targets": [{"expr": "sum(rate(gaitlogic_rag_retrievals_total[5m]))", "refId": "A"}]},
+    {"id": 2, "title": "Empty Retrieval Rate", "type": "timeseries", "targets": [{"expr": "sum(rate(gaitlogic_rag_empty_retrievals_total[5m])) / clamp_min(sum(rate(gaitlogic_rag_retrievals_total[5m])), 1)", "refId": "A"}]},
+    {"id": 3, "title": "Retrieval Latency P50 / P95", "type": "timeseries", "targets": [{"expr": "histogram_quantile(0.50, sum(rate(gaitlogic_rag_duration_milliseconds_bucket[5m])) by (le))", "refId": "A"}, {"expr": "histogram_quantile(0.95, sum(rate(gaitlogic_rag_duration_milliseconds_bucket[5m])) by (le))", "refId": "B"}]},
+    {"id": 4, "title": "Retrieved Candidates / Canonical References", "type": "timeseries", "targets": [{"expr": "sum(rate(gaitlogic_rag_retrieved_candidates_total[5m]))", "refId": "A"}, {"expr": "sum(rate(gaitlogic_rag_canonical_references_total[5m]))", "refId": "B"}]},
+    {"id": 5, "title": "Metadata Filter / Fallback Usage", "type": "timeseries", "targets": [{"expr": "sum(rate(gaitlogic_rag_metadata_filter_uses_total[5m]))", "refId": "A"}, {"expr": "sum(rate(gaitlogic_rag_fallbacks_total[5m]))", "refId": "B"}]}
+  ]
+}

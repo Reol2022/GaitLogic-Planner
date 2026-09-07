@@ -1,0 +1,14 @@
+{
+  "uid": "gaitlogic-evaluation-analysis",
+  "title": "GaitLogic / Evaluation Analysis",
+  "schemaVersion": 41,
+  "version": 1,
+  "panels": [
+    {"id": 1, "title": "Fact Consistency by Variant", "type": "bargauge", "targets": [{"expr": "gaitlogic_eval_fact_consistency", "refId": "A"}]},
+    {"id": 2, "title": "Partial Facts Response by Variant", "type": "bargauge", "targets": [{"expr": "gaitlogic_eval_partial_facts_rate", "refId": "A"}]},
+    {"id": 3, "title": "False Global Block Rate by Variant (offline evaluation)", "type": "bargauge", "targets": [{"expr": "gaitlogic_eval_false_global_block_rate", "refId": "A"}]},
+    {"id": 4, "title": "Safety trade-off: Blocked-domain Hallucination vs False Global Block", "type": "timeseries", "targets": [{"expr": "gaitlogic_eval_blocked_domain_hallucination_rate", "refId": "A"}, {"expr": "gaitlogic_eval_false_global_block_rate", "refId": "B"}]},
+    {"id": 5, "title": "Evaluation latency / tokens", "type": "table", "targets": [{"expr": "gaitlogic_eval_latency_milliseconds", "refId": "A"}, {"expr": "gaitlogic_eval_total_tokens", "refId": "B"}]},
+    {"id": 6, "title": "Data boundary", "type": "text", "options": {"mode": "markdown", "content": "These are read-only aggregates from the fixed, fictional evaluation CSV. False Global Block is **not** inferred from online requests. Scenario panels are intentionally omitted because the checked-in public artifact does not provide safe scenario-level fields."}}
+  ]
+}

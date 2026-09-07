@@ -52,6 +52,8 @@ from server.common.exceptions import (
     unhandled_exception_handler,
     validation_error_handler,
 )
+from server.observability.factory import get_configured_tracer
+from server.observability.http import trace_http_request
 
 
 def create_app() -> FastAPI:
@@ -69,6 +71,11 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def observability_middleware(request, call_next):
+        return await trace_http_request(request, call_next, tracer=get_configured_tracer())
+
     app.add_exception_handler(AppError, app_error_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_error_handler)

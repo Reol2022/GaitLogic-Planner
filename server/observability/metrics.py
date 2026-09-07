@@ -11,9 +11,10 @@ from dataclasses import dataclass
 import logging
 from math import ceil
 from threading import Lock
-from typing import Protocol
+from typing import Any, Protocol
 
 from server.observability.tracing import SpanRecord, TraceSink
+from server.observability.schema import domain_span_name
 
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ SAFE_METRIC_LABELS = frozenset(
         "domain",
         "tool_category",
         "result",
+        "decision_outcome",
     }
 )
 _SAFE_LABEL_VALUE_TYPES = (str, int, float, bool)
@@ -65,6 +67,41 @@ class MetricsSink(Protocol):
 class NoopMetricsSink:
     def record(self, point: MetricPoint) -> None:
         del point
+
+
+class OpenTelemetryMetricsSink:
+    """Optional OTLP backend kept behind the existing metrics abstraction."""
+
+    def __init__(self, *, endpoint: str, service_name: str) -> None:
+        try:
+            from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+            from opentelemetry.sdk.metrics import MeterProvider
+            from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+            from opentelemetry.sdk.resources import Resource
+        except (ImportError, ModuleNotFoundError) as exc:
+            raise RuntimeError("OTEL_METRICS_SDK_UNAVAILABLE") from exc
+        try:
+            reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=endpoint), export_interval_millis=5_000)
+            self._provider = MeterProvider(resource=Resource.create({"service.name": service_name}), metric_readers=[reader])
+            self._meter = self._provider.get_meter(service_name)
+            self._instruments: dict[tuple[str, str], Any] = {}
+        except Exception as exc:
+            raise RuntimeError("OTEL_METRICS_INITIALIZATION_FAILED") from exc
+
+    def record(self, point: MetricPoint) -> None:
+        instrument = self._instruments.get((point.name, point.kind))
+        if instrument is None:
+            if point.kind == "counter":
+                instrument = self._meter.create_counter(point.name, unit="1")
+            elif point.kind == "latency":
+                instrument = self._meter.create_histogram(point.name, unit="ms")
+            else:
+                raise ValueError("METRIC_KIND_UNSUPPORTED")
+            self._instruments[(point.name, point.kind)] = instrument
+        if point.kind == "counter":
+            instrument.add(point.value, attributes=dict(point.labels))
+        else:
+            instrument.record(point.value, attributes=dict(point.labels))
 
 
 class InMemoryMetricsSink:
@@ -135,7 +172,7 @@ class MetricsRecorder:
             "status": span.status,
             "fallback": str(span.fallback).lower(),
         }
-        for key in ("tool_name", "provider_kind", "failure_category", "transport", "auth_status", "primitive", "resource_type", "vector_store", "retrieval_strategy", "fusion_method", "reranker", "model_family", "task_type", "model_profile", "domain", "tool_category", "result"):
+        for key in ("tool_name", "provider_kind", "failure_category", "transport", "auth_status", "primitive", "resource_type", "vector_store", "retrieval_strategy", "fusion_method", "reranker", "model_family", "task_type", "model_profile", "domain", "tool_category", "result", "decision_outcome"):
             value = span.metadata.get(key)
             if key in SAFE_METRIC_LABELS and isinstance(value, _SAFE_LABEL_VALUE_TYPES):
                 labels[key] = str(value)
@@ -158,6 +195,51 @@ class MetricsRecorder:
             return
         labels = self._labels(span)
         success = span.status == "SUCCEEDED"
+        domain_name = span.domain_name or domain_span_name(span.component, span.operation)
+
+        # Standard GaitLogic metric names mirror the stable domain schema.
+        # Existing v0.14 metric names remain below for dashboard compatibility.
+        if domain_name == "coach.request":
+            self._record("gaitlogic.agent.requests", 1, labels)
+            self._record("gaitlogic.agent.duration", span.duration_ms, labels, kind="latency")
+        elif domain_name == "tool.call":
+            self._record("gaitlogic.tool.calls", 1, labels)
+            self._record("gaitlogic.tool.duration", span.duration_ms, labels, kind="latency")
+            if not success:
+                self._record("gaitlogic.tool.failures", 1, labels)
+        elif domain_name == "rag.retrieve":
+            self._record("gaitlogic.rag.retrievals", 1, labels)
+            self._record("gaitlogic.rag.duration", span.duration_ms, labels, kind="latency")
+            if span.metadata.get("retrieval_result_count") == 0:
+                self._record("gaitlogic.rag.empty_retrievals", 1, labels)
+            for source_key, metric_name in (
+                ("retrieved_count", "gaitlogic.rag.retrieved_candidates"),
+                ("canonical_reference_count", "gaitlogic.rag.canonical_references"),
+            ):
+                value = span.metadata.get(source_key)
+                if isinstance(value, int) and value > 0:
+                    self._record(metric_name, value, labels)
+            if span.metadata.get("metadata_filter_used"):
+                self._record("gaitlogic.rag.metadata_filter_uses", 1, labels)
+            if span.fallback:
+                self._record("gaitlogic.rag.fallbacks", 1, labels)
+        elif domain_name == "llm.generate":
+            self._record("gaitlogic.llm.calls", 1, labels)
+            self._record("gaitlogic.llm.duration", span.duration_ms, labels, kind="latency")
+        elif domain_name == "evidence.reflect":
+            if span.metadata.get("candidate_action_count"):
+                self._record("gaitlogic.evidence.reflects", 1, labels)
+        elif domain_name == "validator.check" and not success:
+            self._record("gaitlogic.validator.rejections", 1, labels)
+        elif domain_name == "proposal.generate":
+            self._record("gaitlogic.proposal.created", 1, labels)
+        elif domain_name == "approval.evaluate":
+            decision = "approved" if span.operation == "approve_proposal" else "rejected"
+            self._record(f"gaitlogic.proposal.{decision}", 1, labels)
+        elif domain_name == "decision.outcome":
+            outcome = span.metadata.get("decision_outcome")
+            if isinstance(outcome, str):
+                self._record("gaitlogic.answers.total", 1, {**labels, "decision_outcome": outcome})
 
         if span.component == "coach_api" and span.operation == "query":
             self._record("agent_request_count", 1, labels)

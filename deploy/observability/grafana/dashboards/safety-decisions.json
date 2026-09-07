@@ -1,0 +1,13 @@
+{
+  "uid": "gaitlogic-safety-decisions",
+  "title": "GaitLogic / Decision Safety",
+  "schemaVersion": 41,
+  "version": 1,
+  "annotations": {"list": [{"name": "Runtime only", "enable": true, "iconColor": "#5794F2", "text": "Global Block Rate is a runtime behavior metric. It is NOT False Global Block Rate."}]},
+  "panels": [
+    {"id": 1, "title": "Answer Outcome Rate", "type": "timeseries", "targets": [{"expr": "sum by (decision_outcome) (rate(gaitlogic_answers_total_total[5m])) / clamp_min(sum(rate(gaitlogic_answers_total_total[5m])), 1)", "refId": "A"}]},
+    {"id": 2, "title": "Evidence Reflect Rate", "type": "timeseries", "targets": [{"expr": "sum(rate(gaitlogic_evidence_reflects_total[5m])) / clamp_min(sum(rate(gaitlogic_agent_requests_total[5m])), 1)", "refId": "A"}]},
+    {"id": 3, "title": "Validator Rejection Rate", "type": "timeseries", "targets": [{"expr": "sum(rate(gaitlogic_validator_rejections_total[5m])) / clamp_min(sum(rate(gaitlogic_agent_requests_total[5m])), 1)", "refId": "A"}]},
+    {"id": 4, "title": "Global Block Rate is runtime behavior, not offline FGB", "type": "text", "options": {"mode": "markdown", "content": "Runtime `global_block` is observed from Evidence Judge assessments. Offline `false_global_block` requires labeled evaluation data and is only shown on Evaluation Analysis."}}
+  ]
+}

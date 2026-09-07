@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+from typing import Callable
+
 from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import AgentLimits
+from server.agent.schemas import AgentContext
+from server.agent.skill import SkillResult, SkillStatus
+from server.agent.skills import WeatherAwareTrainingSkill, WeeklyReviewSkill, WeeklyReviewSkillInput
 from server.agent.tool import AgentTool
 from server.agent.tools.dependencies import CoachAgentToolDependencies
 from server.agent.tools.planning_tools import (
@@ -17,6 +22,7 @@ from server.agent.tools.training_tools import (
     GetRecentTrainingTool,
     GetTrainingDataQualityTool,
 )
+from server.agent.tools.weather import GetWeatherTool, WeatherProvider
 
 COACH_AGENT_TOOL_NAMES = frozenset(
     {
@@ -38,6 +44,8 @@ def build_coach_agent_tool_registry(
     *,
     limits: AgentLimits | None = None,
     knowledge_tool: AgentTool | None = None,
+    weather_provider: WeatherProvider | None = None,
+    weekly_review_runner: Callable[[WeeklyReviewSkillInput, AgentContext], SkillResult] | None = None,
 ) -> AgentToolRegistry:
     """Build one request-scoped registry with bounded read-only tools."""
     bounded = limits or AgentLimits()
@@ -57,12 +65,32 @@ def build_coach_agent_tool_registry(
         if knowledge_tool.name != COACH_AGENT_KNOWLEDGE_TOOL_NAME:
             raise RuntimeError("Unexpected Coach knowledge tool.")
         registry.register(knowledge_tool)
+    # Existing construction remains the eight-tool compatibility surface.
+    # New capabilities are opt-in until the request has an actual provider or
+    # a concrete WeeklyReviewGraph runner wired by its caller.
+    if weather_provider is not None:
+        registry.register(GetWeatherTool(weather_provider))
+        registry.register(WeatherAwareTrainingSkill(registry))
+    if weekly_review_runner is not None:
+        registry.register(WeeklyReviewSkill(weekly_review_runner))
     actual = {definition.name for definition in registry.list_tools()}
     expected = (
         COACH_AGENT_TOOL_NAMES | {COACH_AGENT_KNOWLEDGE_TOOL_NAME}
         if knowledge_tool is not None
         else COACH_AGENT_TOOL_NAMES
     )
-    if actual != expected:
+    if not expected.issubset(actual):
         raise RuntimeError("Coach Agent production tool registry is incomplete or unsafe.")
     return registry
+
+
+def _weekly_review_unavailable(
+    arguments: WeeklyReviewSkillInput, context: AgentContext
+) -> SkillResult:
+    del arguments, context
+    return SkillResult(
+        skill_name="weekly_review",
+        status=SkillStatus.PARTIAL,
+        summary="Weekly Review runtime is unavailable for this request.",
+        warnings=[{"code": "WEEKLY_REVIEW_UNAVAILABLE", "message": "Weekly Review runtime is unavailable."}],
+    )

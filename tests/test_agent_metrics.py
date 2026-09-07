@@ -8,6 +8,17 @@ from server.observability.metrics import (
     MetricsRecorder,
     MetricsTraceSink,
 )
+
+
+def test_metric_labels_drop_request_identity_and_prompt_content() -> None:
+    sink = InMemoryMetricsSink()
+    recorder = MetricsRecorder(sink)
+    recorder._record(  # exercised through the private boundary to prove its allowlist
+        "gaitlogic.test",
+        1,
+        {"tool_name": "get_runner_state", "trace_id": "secret", "request_id": "secret", "prompt": "secret"},
+    )
+    assert sink.counter("gaitlogic.test", labels={"tool_name": "get_runner_state"}) == 1
 from server.observability.tracing import FanoutTraceSink, InMemoryTraceSink, SafeTracer, SpanRecord
 
 

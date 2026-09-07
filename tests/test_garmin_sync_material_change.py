@@ -410,6 +410,9 @@ class _FakeProvider:
     def fetch_activities(self, _start: datetime, _end: datetime) -> list[SimpleNamespace]:
         return self.activities
 
+    def fetch_recovery(self, _start: date, _end: date) -> list[SimpleNamespace]:
+        return []
+
     def refresh_session(self):
         if self.fail_refresh:
             raise RuntimeError("fictional fatal refresh failure")

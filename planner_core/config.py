@@ -577,13 +577,21 @@ class Settings(BaseSettings):
         default=False,
         validation_alias="AGENT_TRACING_ENABLED",
     )
-    agent_trace_exporter: Literal["noop", "otlp"] = Field(
+    agent_trace_exporter: Literal["noop", "local", "otlp"] = Field(
         default="noop",
         validation_alias="AGENT_TRACE_EXPORTER",
+    )
+    agent_trace_local_path: str = Field(
+        default="logs/traces.jsonl",
+        validation_alias="AGENT_TRACE_LOCAL_PATH",
     )
     agent_metrics_enabled: bool = Field(
         default=False,
         validation_alias="AGENT_METRICS_ENABLED",
+    )
+    agent_metrics_exporter: Literal["local", "otlp"] = Field(
+        default="local",
+        validation_alias="AGENT_METRICS_EXPORTER",
     )
     agent_metrics_max_latency_samples: int = Field(
         default=2048,
@@ -595,6 +603,17 @@ class Settings(BaseSettings):
         default=None,
         max_length=512,
         validation_alias="OTEL_EXPORTER_OTLP_ENDPOINT",
+    )
+    otel_exporter_otlp_metrics_endpoint: str | None = Field(
+        default=None,
+        max_length=512,
+        validation_alias="OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+    )
+    otel_service_name: str = Field(
+        default="gaitlogic-planner",
+        min_length=1,
+        max_length=128,
+        validation_alias="OTEL_SERVICE_NAME",
     )
     enable_survey_module: bool = Field(default=False, validation_alias="ENABLE_SURVEY_MODULE")
     enable_competition_demo_data: bool = Field(default=False, validation_alias="ENABLE_COMPETITION_DEMO_DATA")
@@ -608,7 +627,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    @field_validator("otel_exporter_otlp_endpoint")
+    @field_validator("otel_exporter_otlp_endpoint", "otel_exporter_otlp_metrics_endpoint")
     @classmethod
     def validate_otel_endpoint(cls, value: str | None) -> str | None:
         if value in (None, ""):
