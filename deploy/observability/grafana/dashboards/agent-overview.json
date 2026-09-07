@@ -1,0 +1,15 @@
+{
+  "uid": "gaitlogic-agent-overview",
+  "title": "GaitLogic / Agent Overview",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {"id": 1, "title": "Request Rate", "type": "timeseries", "targets": [{"expr": "sum(rate(gaitlogic_agent_requests_total[5m]))", "refId": "A"}]},
+    {"id": 2, "title": "Agent Latency P50 / P95 / P99", "type": "timeseries", "targets": [{"expr": "histogram_quantile(0.50, sum(rate(gaitlogic_agent_duration_milliseconds_bucket[5m])) by (le))", "refId": "A"}, {"expr": "histogram_quantile(0.95, sum(rate(gaitlogic_agent_duration_milliseconds_bucket[5m])) by (le))", "refId": "B"}, {"expr": "histogram_quantile(0.99, sum(rate(gaitlogic_agent_duration_milliseconds_bucket[5m])) by (le))", "refId": "C"}]},
+    {"id": 3, "title": "Tool Calls / Failure Rate", "type": "timeseries", "targets": [{"expr": "sum(rate(gaitlogic_tool_calls_total[5m]))", "refId": "A"}, {"expr": "sum(rate(gaitlogic_tool_failures_total[5m])) / clamp_min(sum(rate(gaitlogic_tool_calls_total[5m])), 1)", "refId": "B"}]},
+    {"id": 4, "title": "LLM Duration", "type": "timeseries", "targets": [{"expr": "histogram_quantile(0.95, sum(rate(provider_latency_ms_bucket[5m])) by (le))", "refId": "A"}]},
+    {"id": 5, "title": "Validator Rejections", "type": "stat", "targets": [{"expr": "sum(increase(gaitlogic_validator_rejections_total[1h]))", "refId": "A"}]},
+    {"id": 6, "title": "Proposal Approval Rate", "type": "stat", "targets": [{"expr": "sum(increase(gaitlogic_proposal_approved_total[24h])) / clamp_min(sum(increase(gaitlogic_proposal_created_total[24h])), 1)", "refId": "A"}]}
+  ]
+}

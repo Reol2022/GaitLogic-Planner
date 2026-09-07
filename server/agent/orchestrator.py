@@ -3,11 +3,13 @@ from __future__ import annotations
 import logging
 from collections import Counter
 from time import perf_counter
+from uuid import UUID
 
 from pydantic import ValidationError
 
 from planner_core.config import get_settings
 from server.agent.context import AgentContextBuilder
+from server.agent.capabilities import ExecutionContext, execution_context_scope
 from server.agent.enums import (
     AgentIntent,
     AgentRiskLevel,
@@ -38,6 +40,7 @@ from server.agent.validator import AgentResponseValidator
 from server.agent.prompts import build_coach_agent_system_prompt
 from server.domain.evidence import EvidenceAssessmentStatus, EvidenceJudgeResult, ReflectSummary
 from server.observability.tracing import NOOP_TRACER, SafeTracer, active_trace_handle
+from server.observability.decision import classify_decision_outcome
 from server.services.evidence_judge_service import (
     EvidenceJudge,
     materialize_agent_evidence,
@@ -367,6 +370,26 @@ class GaitLogicCoachAgent:
         )
         self.last_trace = trace
         self.last_context = context
+        decision = classify_decision_outcome(self.last_evidence_result)
+        handle = active_trace_handle()
+        if handle is not None and decision is not None:
+            assessments = self.last_evidence_result.assessments
+            summary = getattr(context, "reflect_summary", None) if context is not None else None
+            with self.tracer.span(
+                handle,
+                component="decision",
+                operation="outcome",
+                metadata={
+                    "decision_outcome": decision.value,
+                    "decision_source": "evidence_judge",
+                    "available_domain_count": sum(item.status == EvidenceAssessmentStatus.SUFFICIENT for item in assessments),
+                    "missing_domain_count": sum(item.status == EvidenceAssessmentStatus.MISSING for item in assessments),
+                    "answerable_domain_count": sum(item.status != EvidenceAssessmentStatus.MISSING for item in assessments),
+                    "blocked_domain_count": sum(item.status == EvidenceAssessmentStatus.MISSING for item in assessments),
+                    "reflect_triggered": bool(summary and summary.triggered),
+                },
+            ):
+                pass
         logger.info(
             "coach_agent_run_complete request_id=%s trace_id=%s status=%s tool_calls=%s",
             request.request_id,
@@ -500,7 +523,7 @@ class GaitLogicCoachAgent:
         else:
             tools = [
                 definition
-                for definition in self.registry.list_tools(request.intent)
+                for definition in self.registry.list_capabilities(request.intent)
                 if definition.name not in completed_tool_names
             ]
         try:
@@ -704,7 +727,21 @@ class GaitLogicCoachAgent:
         *,
         context_seed: AgentContextSeed | None = None,
     ) -> AgentResponse:
-        trace = AgentTrace(request_id=request.request_id)
+        handle = active_trace_handle()
+        with execution_context_scope(ExecutionContext()):
+            return self._run_traced(request, context_seed=context_seed)
+
+    def _run_traced(
+        self,
+        request: AgentRequest,
+        *,
+        context_seed: AgentContextSeed | None = None,
+    ) -> AgentResponse:
+        handle = active_trace_handle()
+        trace = AgentTrace(
+            request_id=request.request_id,
+            **({"trace_id": UUID(handle.trace_id)} if handle is not None else {}),
+        )
         self.last_trace = trace
         request_validation = self._validate_request(request)
         if not request_validation.valid:
@@ -846,8 +883,10 @@ class GaitLogicCoachAgent:
                     errors=[AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED],
                 )
 
+            normalized_names = self.registry.normalize_candidates([call.tool_name for call in output.tool_calls])
+            normalized_calls = [call for call in output.tool_calls if call.tool_name in normalized_names]
             round_results: list[AgentToolResult] = []
-            for call in output.tool_calls:
+            for call in normalized_calls:
                 started = perf_counter()
                 trace.add_event(AgentTraceEventType.TOOL_CALL, AgentTraceStatus.STARTED, tool_name=call.tool_name)
                 trace.add_event(AgentTraceEventType.MODEL_TOOL_STARTED, AgentTraceStatus.STARTED, tool_name=call.tool_name)

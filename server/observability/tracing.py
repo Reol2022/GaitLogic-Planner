@@ -16,6 +16,8 @@ from time import perf_counter
 from typing import Iterator, Protocol
 from uuid import uuid4
 
+from server.observability.schema import domain_span_name
+
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,7 @@ SAFE_METADATA_KEYS = frozenset(
         "knowledge_retrieval_status",
         "operation_type",
         "transport",
+        "http_method",
         "auth_status",
         "primitive",
         "resource_type",
@@ -50,6 +53,11 @@ SAFE_METADATA_KEYS = frozenset(
         "retried",
         "final_status",
         "retrieval_result_count",
+        "metadata_filter_used",
+        "retrieved_count",
+        "reranked_count",
+        "canonical_reference_count",
+        "knowledge_version",
         "retrieval_strategy",
         "fusion_method",
         "dense_result_count",
@@ -86,6 +94,17 @@ SAFE_METADATA_KEYS = frozenset(
         "domain",
         "tool_category",
         "result",
+        "decision_outcome",
+        "decision_source",
+        "available_domain_count",
+        "answerable_domain_count",
+        "blocked_domain_count",
+        "reflect_triggered",
+        "capability_kind",
+        "capability_status",
+        "weather_mode",
+        "weather_provider",
+        "fact_key",
     }
 )
 # Kept as a public compatibility name for the v0.13 workflow integration.
@@ -114,6 +133,7 @@ class SpanRecord:
     fallback: bool = False
     metadata: dict[str, str | int | float | bool | None] = field(default_factory=dict)
     name: str = ""
+    domain_name: str = ""
 
     @property
     def started_at(self) -> datetime:
@@ -295,6 +315,7 @@ class SafeTracer:
                 fallback=state._fallback,
                 metadata=self._safe_metadata(state._metadata),
                 name=resolved_name,
+                domain_name=domain_span_name(resolved_component, resolved_operation),
             )
             try:
                 assert self.sink is not None

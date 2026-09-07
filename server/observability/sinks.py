@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import json
 from collections import OrderedDict
 from dataclasses import dataclass
+from pathlib import Path
 from threading import Lock
 from typing import Any, Protocol
 
@@ -59,6 +61,7 @@ def _safe_attributes(span: SpanRecord) -> dict[str, str | int | float | bool]:
         "gaitlogic.span_id": span.span_id,
         "gaitlogic.component": span.component,
         "gaitlogic.operation": span.operation,
+        "gaitlogic.domain_span": span.domain_name or f"{span.component}.{span.operation}",
         "gaitlogic.duration_ms": span.duration_ms,
         "gaitlogic.status": span.status,
         "gaitlogic.fallback": span.fallback,
@@ -99,11 +102,12 @@ class OpenTelemetryTraceSink:
             from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.trace.export import BatchSpanProcessor
+            from opentelemetry.sdk.resources import Resource
             from opentelemetry.trace import Status, StatusCode
         except (ImportError, ModuleNotFoundError) as exc:
             raise OpenTelemetryUnavailableError("OTEL_SDK_UNAVAILABLE") from exc
         try:
-            provider = TracerProvider()
+            provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
             provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
             runtime = _OtelRuntime(
                 tracer=provider.get_tracer(service_name),
@@ -176,7 +180,7 @@ class OpenTelemetryTraceSink:
         if parent is not None:
             kwargs["context"] = self._runtime.trace_api.set_span_in_context(parent)
         otel_span = self._runtime.tracer.start_span(
-            f"{record.component}.{record.operation}",
+            record.domain_name or f"{record.component}.{record.operation}",
             **kwargs,
         )
         if record.status == "FAILED":
@@ -195,3 +199,35 @@ class OpenTelemetryTraceSink:
             while len(self._root_contexts) > _MAX_CACHED_ROOT_CONTEXTS:
                 self._root_contexts.popitem(last=False)
         return otel_span
+
+
+class JsonlTraceSink:
+    """Best-effort local trace output containing only already-sanitized fields."""
+
+    def __init__(self, path: str | Path) -> None:
+        self._path = Path(path)
+        self._lock = Lock()
+
+    def write(self, span: SpanRecord) -> None:
+        payload = {
+            "trace_id": span.trace_id,
+            "span_id": span.span_id,
+            "parent_span_id": span.parent_span_id,
+            "name": span.domain_name or span.name,
+            "component": span.component,
+            "operation": span.operation,
+            "start_time": span.start_time.isoformat(),
+            "end_time": span.end_time.isoformat(),
+            "duration_ms": span.duration_ms,
+            "status": span.status,
+            "error_code": span.error_code,
+            "fallback": span.fallback,
+            "attributes": _safe_attributes(span),
+        }
+        try:
+            with self._lock:
+                self._path.parent.mkdir(parents=True, exist_ok=True)
+                with self._path.open("a", encoding="utf-8") as output:
+                    output.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n")
+        except Exception:
+            logger.warning("local_trace_export_failed code=LOCAL_TRACE_EXPORT_FAILED")

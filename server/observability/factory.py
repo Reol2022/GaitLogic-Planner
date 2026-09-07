@@ -11,8 +11,10 @@ from server.observability.metrics import (
     MetricsRecorder,
     MetricsTraceSink,
     NoopMetricsSink,
+    OpenTelemetryMetricsSink,
 )
 from server.observability.sinks import (
+    JsonlTraceSink,
     NoopTraceSink,
     OpenTelemetryTraceSink,
     OpenTelemetryUnavailableError,
@@ -29,23 +31,33 @@ class TraceConfigurationError(ValueError):
 def build_trace_sink(settings: Settings) -> TraceSink:
     if settings.agent_trace_exporter == "noop":
         return NoopTraceSink()
+    if settings.agent_trace_exporter == "local":
+        return JsonlTraceSink(settings.agent_trace_local_path)
     if settings.agent_trace_exporter == "otlp":
         if not settings.otel_exporter_otlp_endpoint:
             raise TraceConfigurationError("OTEL_ENDPOINT_MISSING")
         return OpenTelemetryTraceSink.from_otlp(
             endpoint=settings.otel_exporter_otlp_endpoint,
+            service_name=settings.otel_service_name,
         )
     raise TraceConfigurationError("TRACE_EXPORTER_UNSUPPORTED")
 
 
 def build_metrics_recorder(settings: Settings) -> MetricsRecorder:
-    """Build bounded local metrics only; no external metrics exporter is required."""
+    """Build metrics backends without exposing OTel imports to business code."""
 
     if not settings.agent_metrics_enabled:
         return MetricsRecorder(NoopMetricsSink(), enabled=False)
-    return MetricsRecorder(
-        InMemoryMetricsSink(max_latency_samples=settings.agent_metrics_max_latency_samples),
-    )
+    if settings.agent_metrics_exporter == "otlp":
+        if not settings.otel_exporter_otlp_metrics_endpoint:
+            logger.warning("agent_metrics_exporter_disabled code=OTEL_METRICS_ENDPOINT_MISSING")
+            return MetricsRecorder(NoopMetricsSink(), enabled=False)
+        try:
+            return MetricsRecorder(OpenTelemetryMetricsSink(endpoint=settings.otel_exporter_otlp_metrics_endpoint, service_name=settings.otel_service_name))
+        except RuntimeError:
+            logger.warning("agent_metrics_exporter_disabled code=OTEL_METRICS_EXPORTER_UNAVAILABLE")
+            return MetricsRecorder(NoopMetricsSink(), enabled=False)
+    return MetricsRecorder(InMemoryMetricsSink(max_latency_samples=settings.agent_metrics_max_latency_samples))
 
 
 def build_configured_tracer(settings: Settings) -> SafeTracer:

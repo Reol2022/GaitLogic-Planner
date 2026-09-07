@@ -108,7 +108,7 @@ def test_otel_sink_buffers_child_completion_and_preserves_parent_relation() -> N
         ):
             pass
 
-    assert [item.name for item in fake.spans] == ["coach_api.query", "validator.validate_output"]
+    assert [item.name for item in fake.spans] == ["coach.request", "validator.check"]
     root, child = fake.spans
     assert child.kwargs["context"] == {"parent": root}
     assert child.kwargs["attributes"]["gaitlogic.metadata.validator_result"] == "VALID"

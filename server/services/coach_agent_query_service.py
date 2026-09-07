@@ -32,12 +32,14 @@ from server.services.coach_agent_usage_service import (
     CoachAgentUsageRecorder,
 )
 from server.services.weekly_review_stats_service import APP_TIMEZONE
+from server.services.weekly_review_skill_runtime import build_weekly_review_skill_runner
 from server.observability.tracing import NOOP_TRACER, SafeTracer, active_trace_handle
 
 _PUBLIC_INTENTS = {
     AgentIntent.TODAY_RECOMMENDATION,
     AgentIntent.EXPLAIN_RUNNER_STATE,
     AgentIntent.GENERAL_TRAINING_QUESTION,
+    AgentIntent.WEEKLY_REVIEW,
 }
 
 logger = logging.getLogger(__name__)
@@ -149,13 +151,14 @@ class CoachAgentQueryService:
         # Only the declared intent reaches the trace boundary.  The message,
         # authenticated user, context and response remain in business memory.
         intent = payload.intent or self._infer_intent(payload.message)
-        handle = self.tracer.start_trace()
+        existing_handle = active_trace_handle()
+        handle = existing_handle or self.tracer.start_trace()
         with self.tracer.span(
             handle,
             component="coach_api",
             operation="query",
             metadata={"intent": intent.value},
-            root=True,
+            root=existing_handle is None,
         ) as span:
             response = self._query(user_id=user_id, payload=payload, intent=intent)
             if response.status != "SUCCEEDED":
@@ -185,13 +188,16 @@ class CoachAgentQueryService:
         self.rate_limiter.check_and_consume(user_id)
         limits = self._limits()
         dependencies = CoachAgentToolDependencies.from_session(self.db)
+        gateway, initial_provider_status = self._gateway()
         registry = build_coach_agent_tool_registry(
             dependencies,
             limits=limits,
             knowledge_tool=build_configured_knowledge_tool(self.settings),
+            weekly_review_runner=build_weekly_review_skill_runner(
+                db=self.db, gateway=gateway, settings=self.settings, tracer=self.tracer
+            ),
         )
         context_builder = AgentTrainingContextBuilder(registry=registry, limits=limits)
-        gateway, initial_provider_status = self._gateway()
         agent = GaitLogicCoachAgent(
             gateway=gateway,
             registry=registry,

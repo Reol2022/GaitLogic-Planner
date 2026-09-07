@@ -1,0 +1,7 @@
+# Jaeger all-in-one v1.76.0 is configured through Docker environment variables
+# in docker-compose.yml. This file records the intentional local-only mode:
+collector:
+  otlp:
+    enabled: true
+storage:
+  type: memory
