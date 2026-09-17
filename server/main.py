@@ -25,6 +25,7 @@ from server.api.routes import (
     planned_workouts,
     onboarding,
     recovery_checkins,
+    run_reviews,
     runner_state,
     rule_loop,
     system_settings,
@@ -106,6 +107,7 @@ def create_app() -> FastAPI:
     app.include_router(planned_workouts.router, prefix="/api")
     app.include_router(workout_logs.router, prefix="/api")
     app.include_router(recovery_checkins.router, prefix="/api")
+    app.include_router(run_reviews.router, prefix="/api")
     app.include_router(runner_state.router, prefix="/api")
     app.include_router(rule_loop.router, prefix="/api")
     app.include_router(training_load.router, prefix="/api")

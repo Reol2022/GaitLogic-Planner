@@ -127,6 +127,18 @@
       </div>
     </section>
 
+    <section v-else-if="showCompletedCycle" class="no-active-card">
+      <div>
+        <div class="onboarding-kicker">训练周期</div>
+        <h3>上一训练周期已完成</h3>
+        <p>
+          {{ lifecycle?.latest_completed_cycle?.name || "最近训练周期" }} 已结束。
+          {{ lifecycle?.transition === "awaiting_next_cycle" ? "创建或启用下一训练周期后，今日计划会自动恢复。" : "请查看下一训练周期的安排。" }}
+        </p>
+      </div>
+      <el-button type="primary" @click="router.push('/cycles')">管理周期</el-button>
+    </section>
+
     <section v-else-if="showNoActiveCycle" class="no-active-card">
       <div>
         <div class="onboarding-kicker">当前周期</div>
@@ -322,6 +334,7 @@ import type {
   TaskItem,
   TrainingBlock,
   TrainingCycle,
+  TrainingCycleLifecycle,
   TrainingReadinessToday,
   TrainingStatus,
   WorkoutLogPayload,
@@ -334,6 +347,7 @@ const today = ref(new Date().toISOString().slice(0, 10));
 const workouts = ref<PlannedWorkout[]>([]);
 const cycles = ref<TrainingCycle[]>([]);
 const activeCycle = ref<TrainingCycle | null>(null);
+const lifecycle = ref<TrainingCycleLifecycle | null>(null);
 const blocks = ref<TrainingBlock[]>([]);
 const loading = ref(false);
 const loadingCycles = ref(true);
@@ -351,7 +365,8 @@ const todayRuleEvaluation = ref<RuleLoopEvaluation | null>(null);
 const ruleEvaluationLoading = ref(false);
 const readinessAvailable = computed(() => !!todayReadiness.value && !readinessMessage.value);
 const showOnboarding = computed(() => !loadingCycles.value && cycles.value.length === 0);
-const showNoActiveCycle = computed(() => !loadingCycles.value && cycles.value.length > 0 && !activeCycle.value);
+const showCompletedCycle = computed(() => !loadingCycles.value && lifecycle.value?.state === "completed" && !activeCycle.value);
+const showNoActiveCycle = computed(() => !loadingCycles.value && cycles.value.length > 0 && !activeCycle.value && !showCompletedCycle.value);
 const showWeeklyReviewPrompt = computed(() =>
   !!activeCycle.value && blocks.value.some((block) => block.end_date && block.end_date < today.value),
 );
@@ -511,6 +526,7 @@ async function recalculateRuleEvaluation() {
 async function loadDailyHub() {
   try {
     const dashboard = await getTodayDashboard(true);
+    lifecycle.value = dashboard.lifecycle;
     dashboardTasks.value = dashboard.tasks;
     connectedDataSources.value = dashboard.data_sync.connected_count;
     firstConnectedProvider.value = dashboard.data_sync.providers.find((item) => item.connected)?.provider || null;

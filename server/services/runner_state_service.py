@@ -25,6 +25,7 @@ from server.schemas.runner_state import (
     RunnerStateDataQuality,
     RunnerStateSnapshot,
 )
+from server.schemas.training_cycle import TrainingCycleLifecycleRead
 from server.services import training_cycle_lifecycle_service
 from server.services.training_load_service import EASY_TYPES, MODERATE_TYPES, _query_logs
 from server.services.weekly_review_stats_service import APP_TIMEZONE, COMPLETED_STATUSES, REST_STATUSES
@@ -238,7 +239,11 @@ def _target_time_seconds(value: str | None) -> int | None:
     return hours * 3600 + minutes * 60 + seconds
 
 
-def _goal_context(cycle: TrainingCycle | None, window_end: date) -> RunnerGoalContext:
+def _goal_context(
+    cycle: TrainingCycle | None,
+    window_end: date,
+    lifecycle: TrainingCycleLifecycleRead | None = None,
+) -> RunnerGoalContext:
     if cycle is None:
         return RunnerGoalContext()
     race_date = cycle.target_race_date
@@ -250,6 +255,10 @@ def _goal_context(cycle: TrainingCycle | None, window_end: date) -> RunnerGoalCo
         race_date=race_date,
         target_time_seconds=_target_time_seconds(cycle.target_result),
         weeks_remaining=weeks_remaining,
+        cycle_id=cycle.id,
+        cycle_name=cycle.name,
+        cycle_status=lifecycle.state.value if lifecycle else None,
+        cycle_transition=lifecycle.transition if lifecycle else None,
     )
 
 
@@ -267,6 +276,7 @@ def build_runner_state_snapshot(
     *,
     runner_id: int,
     cycle: TrainingCycle | None,
+    lifecycle: TrainingCycleLifecycleRead | None = None,
     log_rows: list[tuple[WorkoutLog, PlannedWorkout | None]],
     planned_workouts: list[PlannedWorkout],
     generated_at: datetime,
@@ -345,7 +355,11 @@ def build_runner_state_snapshot(
             calculation_window_start_7d=start_7d,
             calculation_window_start_28d=start_28d,
         ),
-        goal_context=_goal_context(cycle, window_end),
+        goal_context=_goal_context(
+            cycle or (lifecycle.latest_completed_cycle if lifecycle else None),
+            window_end,
+            lifecycle,
+        ),
         recent_training=RecentTrainingMetrics(
             distance_7d_km=metrics_7d.distance_km,
             distance_28d_km=metrics_28d.distance_km,
@@ -414,7 +428,12 @@ class RunnerStateService:
         generated = generated_at or datetime.now(zone)
         window_end = generated.astimezone(zone).date() if generated.tzinfo else generated.date()
         start_28d = window_end - timedelta(days=WINDOW_28D_DAYS - 1)
-        cycle = training_cycle_lifecycle_service.get_active_cycle(self.db, current_user.id)
+        lifecycle = training_cycle_lifecycle_service.get_lifecycle_snapshot(
+            self.db,
+            current_user.id,
+            as_of_date=window_end,
+        )
+        cycle = lifecycle.active_cycle
         log_rows = _query_logs(self.db, current_user.id, start_28d, window_end)
         planned = list(
             self.db.scalars(
@@ -445,6 +464,7 @@ class RunnerStateService:
         snapshot = build_runner_state_snapshot(
             runner_id=current_user.id,
             cycle=cycle,
+            lifecycle=lifecycle,
             log_rows=log_rows,
             planned_workouts=planned,
             generated_at=generated,

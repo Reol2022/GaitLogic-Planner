@@ -15,7 +15,7 @@ from server.schemas.training_calendar import (
     TrainingCalendarRead,
     TrainingCalendarSummaryRead,
 )
-from server.services.training_cycle_lifecycle_service import get_active_cycle
+from server.services.training_cycle_lifecycle_service import get_lifecycle_snapshot
 
 WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
@@ -29,14 +29,15 @@ def get_training_calendar(
 ) -> TrainingCalendarRead:
     start_date, end_date = month_bounds(month)
     if cycle_id is None:
-        active_cycle = get_active_cycle(db, user_id)
-        if active_cycle is None:
+        lifecycle = get_lifecycle_snapshot(db, user_id)
+        selected_cycle = lifecycle.active_cycle or lifecycle.latest_completed_cycle
+        if selected_cycle is None:
             days = [
                 build_day(date(start_date.year, start_date.month, day_number), None, None)
                 for day_number in range(1, end_date.day + 1)
             ]
             return TrainingCalendarRead(month=month, days=days, summary=build_summary(days))
-        cycle_id = active_cycle.id
+        cycle_id = selected_cycle.id
     stmt = (
         select(PlannedWorkout)
         .options(

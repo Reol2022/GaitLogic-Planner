@@ -2,12 +2,23 @@
   <div class="page-stack training-plan-page">
     <PageHeader title="训练计划" subtitle="默认展示当前正在进行的训练周期。" />
 
-    <section v-if="!loading && !overview?.has_active_cycle" class="empty-panel">
+    <section v-if="!loading && !overview?.has_active_cycle && overview?.lifecycle?.state !== 'completed'" class="empty-panel">
       <div>
         <strong>当前没有生效中的训练周期</strong>
         <p>可以保留多个草稿周期，但首页、今日训练和计划中心只读取唯一 active 周期。</p>
       </div>
       <el-button type="primary" @click="router.push('/cycles')">去启用周期</el-button>
+    </section>
+
+    <section v-else-if="!loading && overview?.lifecycle?.state === 'completed'" class="empty-panel">
+      <div>
+        <strong>上一训练周期已完成</strong>
+        <p>
+          {{ overview.lifecycle.latest_completed_cycle?.name || "最近训练周期" }} 已结束。
+          {{ overview.lifecycle.transition === "awaiting_next_cycle" ? "请创建或启用下一训练周期。" : "你可以查看下一周期安排。" }}
+        </p>
+      </div>
+      <el-button type="primary" @click="router.push('/cycles')">管理训练周期</el-button>
     </section>
 
     <template v-else>

@@ -46,6 +46,17 @@
       </div>
     </section>
 
+    <section v-else-if="hasCompletedCycle" class="empty-data-card">
+      <h3>上一训练周期已完成</h3>
+      <p>
+        {{ lifecycle?.latest_completed_cycle?.name || "最近训练周期" }} 已结束。
+        {{ lifecycle?.transition === "awaiting_next_cycle" ? "请创建或启用下一训练周期。" : "你可以查看下一训练周期安排。" }}
+      </p>
+      <div>
+        <el-button type="primary" @click="router.push('/cycles')">管理训练周期</el-button>
+      </div>
+    </section>
+
     <section v-else-if="hasNoActiveCycle" class="empty-data-card">
       <h3>当前没有正在进行的训练周期</h3>
       <p>系统首页、今日训练和训练计划默认只显示 active 周期的数据。请先到训练周期页面启用一个草稿周期。</p>
@@ -199,8 +210,8 @@ import * as echarts from "echarts";
 import { getDashboard } from "@/api/dashboard";
 import { listPlannedWorkouts } from "@/api/plannedWorkouts";
 import { listTrainingBlocks } from "@/api/trainingBlocks";
-import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles";
-import type { DashboardSummary, PlannedWorkout, TrainingBlock, TrainingCycle } from "@/types/models";
+import { getActiveTrainingCycle, getTrainingCycleLifecycle, listTrainingCycles } from "@/api/trainingCycles";
+import type { DashboardSummary, PlannedWorkout, TrainingBlock, TrainingCycle, TrainingCycleLifecycle } from "@/types/models";
 import { labelFor, mainTypeOptions } from "@/types/options";
 
 type ChartMode = "cycle" | "month" | "week";
@@ -221,6 +232,7 @@ interface TypeBucket {
 const router = useRouter();
 const cycleId = ref<number | null>(null);
 const activeCycle = ref<TrainingCycle | null>(null);
+const lifecycle = ref<TrainingCycleLifecycle | null>(null);
 const cycles = ref<TrainingCycle[]>([]);
 const blocks = ref<TrainingBlock[]>([]);
 const workouts = ref<PlannedWorkout[]>([]);
@@ -241,7 +253,8 @@ let healthChart: echarts.ECharts | null = null;
 const palette = ["#1976d2", "#1f7a68", "#ff8a00", "#7b68aa", "#bc4b4b", "#5f8d4e", "#8293a4"];
 
 const hasNoCycles = computed(() => cycles.value.length === 0);
-const hasNoActiveCycle = computed(() => !hasNoCycles.value && !activeCycle.value);
+const hasCompletedCycle = computed(() => !hasNoCycles.value && lifecycle.value?.state === "completed" && !activeCycle.value);
+const hasNoActiveCycle = computed(() => !hasNoCycles.value && !activeCycle.value && !hasCompletedCycle.value);
 const hasNoWorkoutData = computed(() => !hasNoCycles.value && !hasNoActiveCycle.value && !!summary.value && summary.value.workout_count === 0);
 
 const currentCycleName = computed(() => {
@@ -575,6 +588,7 @@ async function loadDashboard() {
 
 async function loadCycles() {
   cycles.value = await listTrainingCycles();
+  lifecycle.value = await getTrainingCycleLifecycle();
   try {
     activeCycle.value = await getActiveTrainingCycle();
     cycleId.value = activeCycle.value.id;

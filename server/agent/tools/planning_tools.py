@@ -112,9 +112,32 @@ class GetCurrentTrainingCycleTool(AgentTool):
         self, arguments: EmptyToolInput, context: AgentContext
     ) -> CurrentTrainingCycleOutput:
         del arguments
+        lifecycle = self.dependencies.current_cycle_lifecycle(context.user_id)
         cycle = self.dependencies.current_cycle(context.user_id)
         if cycle is None:
-            return CurrentTrainingCycleOutput(data_status=TrainingDataStatus.NOT_FOUND)
+            reference_cycle = lifecycle.latest_completed_cycle or lifecycle.next_cycle
+            if reference_cycle is not None:
+                return CurrentTrainingCycleOutput(
+                    data_status=TrainingDataStatus.AVAILABLE,
+                    lifecycle_status=lifecycle.state.value,
+                    transition=lifecycle.transition,
+                    cycle_id=reference_cycle.id,
+                    name=_clean(reference_cycle.name, 128),
+                    start_date=reference_cycle.actual_start_date or reference_cycle.start_date,
+                    end_date=reference_cycle.actual_end_date or reference_cycle.end_date,
+                    goal=_clean(reference_cycle.goal, 255),
+                    limitations=[
+                        _notice(
+                            "CYCLE_NOT_ACTIVE",
+                            "This cycle is not active; it is provided only as recent training context.",
+                        )
+                    ],
+                )
+            return CurrentTrainingCycleOutput(
+                data_status=TrainingDataStatus.NOT_FOUND,
+                lifecycle_status=lifecycle.state.value,
+                transition=lifecycle.transition,
+            )
         today = context.current_time.date()
         blocks = sorted(cycle.blocks, key=lambda item: (item.sort_order, item.id))
         current = next(
@@ -139,6 +162,8 @@ class GetCurrentTrainingCycleTool(AgentTool):
             )
         return CurrentTrainingCycleOutput(
             data_status=TrainingDataStatus.AVAILABLE,
+            lifecycle_status=lifecycle.state.value,
+            transition=lifecycle.transition,
             cycle_id=cycle.id,
             name=_clean(cycle.name, 128),
             start_date=cycle.actual_start_date or cycle.start_date,

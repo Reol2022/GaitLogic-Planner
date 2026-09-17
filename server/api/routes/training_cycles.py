@@ -12,6 +12,7 @@ from server.schemas.training_cycle import (
     TrainingCycleCompleteRequest,
     TrainingCycleCreate,
     TrainingCycleRead,
+    TrainingCycleLifecycleRead,
     TrainingCycleUpdate,
 )
 from server.services import training_cycle_lifecycle_service, training_cycle_service
@@ -33,6 +34,14 @@ def get_active_cycle(
     current_user: UserAccount = Depends(get_current_user),
 ):
     return training_cycle_service.get_active_cycle(db, current_user.id)
+
+
+@router.get("/lifecycle", response_model=TrainingCycleLifecycleRead)
+def get_training_cycle_lifecycle(
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+) -> TrainingCycleLifecycleRead:
+    return training_cycle_lifecycle_service.get_lifecycle_snapshot(db, current_user.id)
 
 
 @router.get("/history", response_model=list[TrainingCycleRead])

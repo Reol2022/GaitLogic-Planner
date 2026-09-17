@@ -208,6 +208,10 @@ class RunnerGoalContext(BaseModel):
     race_date: date | None = None
     target_time_seconds: int | None = None
     weeks_remaining: float | None = None
+    cycle_id: int | None = None
+    cycle_name: str | None = None
+    cycle_status: str | None = None
+    cycle_transition: str | None = None
 
 
 class RecentTrainingMetrics(BaseModel):

@@ -134,6 +134,8 @@ class TrainingCycleBlockRead(AgentContractModel):
 
 class CurrentTrainingCycleOutput(AgentContractModel):
     data_status: TrainingDataStatus
+    lifecycle_status: str | None = None
+    transition: str | None = None
     cycle_id: int | None = None
     name: str | None = Field(default=None, max_length=128)
     start_date: date | None = None

@@ -20,7 +20,7 @@ from server.schemas.simplified_workflow import (
     TrainingPlanOverviewRead,
 )
 from server.services import planned_workout_service, task_center_service
-from server.services.training_cycle_lifecycle_service import get_active_cycle
+from server.services.training_cycle_lifecycle_service import get_lifecycle_snapshot
 from server.services.weekly_review_stats_service import local_today
 
 
@@ -67,7 +67,8 @@ def get_data_sync_summary(db: Session, user_id: int) -> DataSyncSummaryRead:
 
 def get_today_dashboard(db: Session, user_id: int) -> TodayDashboardRead:
     today = local_today()
-    active_cycle = get_active_cycle(db, user_id)
+    lifecycle = get_lifecycle_snapshot(db, user_id, as_of_date=today)
+    active_cycle = lifecycle.active_cycle
     checkin = db.scalar(
         select(DailyRecoveryCheckin).where(
             DailyRecoveryCheckin.user_id == user_id,
@@ -77,6 +78,7 @@ def get_today_dashboard(db: Session, user_id: int) -> TodayDashboardRead:
     return TodayDashboardRead(
         today=today,
         has_active_cycle=active_cycle is not None,
+        lifecycle=lifecycle,
         workouts=planned_workout_service.get_today_workouts(db, today, user_id) if active_cycle else [],
         tasks=task_center_service.list_tasks(db, user_id, limit=3),
         data_sync=get_data_sync_summary(db, user_id),
@@ -88,7 +90,8 @@ def get_training_plan_overview(db: Session, user_id: int) -> TrainingPlanOvervie
     today = local_today()
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
-    active_cycle = get_active_cycle(db, user_id)
+    lifecycle = get_lifecycle_snapshot(db, user_id, as_of_date=today)
+    active_cycle = lifecycle.active_cycle
     week_workouts = planned_workout_service.list_planned_workouts(
         db,
         user_id,
@@ -119,6 +122,7 @@ def get_training_plan_overview(db: Session, user_id: int) -> TrainingPlanOvervie
     return TrainingPlanOverviewRead(
         has_active_cycle=active_cycle is not None,
         active_cycle=active_cycle,
+        lifecycle=lifecycle,
         current_block=block,
         week_start=week_start,
         week_end=week_end,
