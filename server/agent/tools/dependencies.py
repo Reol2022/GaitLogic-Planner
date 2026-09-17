@@ -83,6 +83,9 @@ class CoachAgentToolDependencies:
     def current_cycle(self, user_id: int):
         return training_cycle_lifecycle_service.get_active_cycle_with_blocks(self.db, user_id)
 
+    def current_cycle_lifecycle(self, user_id: int):
+        return training_cycle_lifecycle_service.get_lifecycle_snapshot(self.db, user_id)
+
     def training_rules(self, scope: str, limit: int):
         return training_rule_service.list_rules(
             self.db,

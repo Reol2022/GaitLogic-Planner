@@ -9,6 +9,7 @@ from server.services import training_cycle_lifecycle_service
 
 
 def list_training_cycles(db: Session, user_id: int) -> list[TrainingCycle]:
+    training_cycle_lifecycle_service.reconcile_expired_cycles(db, user_id)
     return list(
         db.scalars(
             select(TrainingCycle)
@@ -19,6 +20,7 @@ def list_training_cycles(db: Session, user_id: int) -> list[TrainingCycle]:
 
 
 def list_history_cycles(db: Session, user_id: int) -> list[TrainingCycle]:
+    training_cycle_lifecycle_service.reconcile_expired_cycles(db, user_id)
     return list(
         db.scalars(
             select(TrainingCycle)

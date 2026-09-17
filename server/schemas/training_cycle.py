@@ -1,8 +1,31 @@
 from datetime import date, datetime
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
 from planner_core.enums import TrainingCycleStatus
+
+
+class TrainingCycleLifecycleState(str, Enum):
+    """Read-model lifecycle states; persisted status remains backward compatible."""
+
+    DRAFT = "draft"
+    UPCOMING = "upcoming"
+    ACTIVE = "active"
+    ENDING_SOON = "ending_soon"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class TrainingCycleLifecycleRead(BaseModel):
+    """The user-facing cycle state after deterministic date reconciliation."""
+
+    state: TrainingCycleLifecycleState
+    active_cycle: "TrainingCycleRead | None" = None
+    latest_completed_cycle: "TrainingCycleRead | None" = None
+    next_cycle: "TrainingCycleRead | None" = None
+    transition: str | None = None
+    days_until_end: int | None = None
 
 
 class TrainingCycleBase(BaseModel):

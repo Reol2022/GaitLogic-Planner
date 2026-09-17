@@ -600,9 +600,21 @@ export interface DataSyncSummary {
   failed_job_count: number;
 }
 
-export interface TrainingPlanOverview {
-  has_active_cycle: boolean;
+export type TrainingCycleLifecycleState = "draft" | "upcoming" | "active" | "ending_soon" | "completed" | "cancelled";
+
+export interface TrainingCycleLifecycle {
+  state: TrainingCycleLifecycleState;
   active_cycle?: TrainingCycle | null;
+  latest_completed_cycle?: TrainingCycle | null;
+  next_cycle?: TrainingCycle | null;
+  transition?: "awaiting_next_cycle" | null;
+  days_until_end?: number | null;
+}
+
+export interface TrainingPlanOverview {
+    has_active_cycle: boolean;
+    active_cycle?: TrainingCycle | null;
+    lifecycle: TrainingCycleLifecycle;
   current_block?: Record<string, unknown> | null;
   week_start: string;
   week_end: string;
@@ -612,8 +624,9 @@ export interface TrainingPlanOverview {
 }
 
 export interface TodayDashboard {
-  today: string;
-  has_active_cycle: boolean;
+    today: string;
+    has_active_cycle: boolean;
+    lifecycle: TrainingCycleLifecycle;
   workouts: PlannedWorkout[];
   tasks: TaskItem[];
   data_sync: DataSyncSummary;

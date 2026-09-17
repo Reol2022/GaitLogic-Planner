@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from server.schemas.planned_workout import PlannedWorkoutWithLogRead
-from server.schemas.training_cycle import TrainingCycleRead
+from server.schemas.training_cycle import TrainingCycleLifecycleRead, TrainingCycleRead
 
 
 class TaskItemRead(BaseModel):
@@ -54,6 +54,7 @@ class DataSyncPreferencesUpdate(BaseModel):
 class TrainingPlanOverviewRead(BaseModel):
     has_active_cycle: bool
     active_cycle: TrainingCycleRead | None = None
+    lifecycle: TrainingCycleLifecycleRead
     current_block: dict[str, Any] | None = None
     week_start: date
     week_end: date
@@ -65,6 +66,7 @@ class TrainingPlanOverviewRead(BaseModel):
 class TodayDashboardRead(BaseModel):
     today: date
     has_active_cycle: bool
+    lifecycle: TrainingCycleLifecycleRead
     workouts: list[PlannedWorkoutWithLogRead]
     tasks: list[TaskItemRead]
     data_sync: DataSyncSummaryRead

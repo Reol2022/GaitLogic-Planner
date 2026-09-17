@@ -1,5 +1,5 @@
 import request from "./request";
-import type { TrainingCycle, TrainingCyclePayload } from "@/types/models";
+import type { TrainingCycle, TrainingCycleLifecycle, TrainingCyclePayload } from "@/types/models";
 
 export function listTrainingCycles() {
   return request.get<TrainingCycle[]>("/training-cycles");
@@ -7,6 +7,10 @@ export function listTrainingCycles() {
 
 export function getActiveTrainingCycle() {
   return request.get<TrainingCycle>("/training-cycles/active", { skipErrorMessage: true });
+}
+
+export function getTrainingCycleLifecycle() {
+  return request.get<TrainingCycleLifecycle>("/training-cycles/lifecycle", { skipErrorMessage: true });
 }
 
 export function createTrainingCycle(payload: TrainingCyclePayload) {
