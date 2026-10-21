@@ -105,6 +105,12 @@ SAFE_METADATA_KEYS = frozenset(
         "weather_mode",
         "weather_provider",
         "fact_key",
+        "conversation_status",
+        "message_role",
+        "message_count_bucket",
+        "context_token_count",
+        "tool_call_count",
+        "error_category",
     }
 )
 # Kept as a public compatibility name for the v0.13 workflow integration.

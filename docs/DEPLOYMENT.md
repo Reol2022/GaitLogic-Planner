@@ -718,6 +718,22 @@ Provider 上线顺序：
 
 v0.11.0 不支持 RAG、Weekly Review Agent、写工具、长期记忆、Streaming、多 Agent 或 DeepSeek thinking 工具链。Coach Agent 只提供非医疗的只读训练参考；Quota 当前为进程内限制。
 
+### Coach Chat v1 database migration
+
+Coach Chat v1 persists user-owned conversation history and therefore requires a
+database migration. Before uploading the new backend code, take a MySQL backup
+and run once from the deployed backend directory:
+
+```powershell
+python scripts/upgrade_v0165_coach_chat.py upgrade
+```
+
+It only creates `coach_conversations` and `coach_messages`; it does not read or
+backfill training data. Keep the previous release package and database backup
+for rollback. The script deliberately requires an explicit destructive flag for
+downgrade because dropping these tables removes chat data. See
+`docs/coach-chat.md` for the API, privacy boundary and context policy.
+
 ---
 
 ## 18. v0.13.0 Weekly Review 与 Adaptive Coaching

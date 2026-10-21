@@ -42,6 +42,8 @@ _PUBLIC_INTENTS = {
     AgentIntent.WEEKLY_REVIEW,
 }
 
+_DIRECT_PUBLIC_INTENTS = _PUBLIC_INTENTS - {AgentIntent.WEEKLY_REVIEW}
+
 logger = logging.getLogger(__name__)
 
 
@@ -168,6 +170,25 @@ class CoachAgentQueryService:
                     error_code=error_code,
                 )
             return response
+
+    def reject_direct_public_intent(
+        self, *, user_id: int, payload: CoachQueryRequest
+    ) -> CoachQueryResponse | None:
+        """Keep the legacy HTTP endpoint closed to workflow-only intents.
+
+        Weekly review remains an internal Coach capability used by its existing
+        workflow. The standalone one-shot endpoint must not bypass that workflow.
+        """
+        intent = payload.intent or self._infer_intent(payload.message)
+        if intent in _DIRECT_PUBLIC_INTENTS:
+            return None
+        request = AgentRequest.for_authenticated_user(
+            user_id=user_id,
+            message=payload.message,
+            intent=intent,
+            conversation_context=payload.conversation_context,
+        )
+        return self._rejected(request, intent)
 
     def _query(
         self,

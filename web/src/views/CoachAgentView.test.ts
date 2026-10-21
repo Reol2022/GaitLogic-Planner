@@ -1,180 +1,82 @@
 import { flushPromises, shallowMount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CoachAgentView from "./CoachAgentView.vue";
-import { createCoachResponse } from "@/test/coachAgentFixture";
 
-const { queryCoach, getCoachAgentErrorMessage } = vi.hoisted(() => ({
-  queryCoach: vi.fn(),
-  getCoachAgentErrorMessage: vi.fn((error: unknown) => error instanceof Error ? error.message : "安全请求错误"),
+const api = vi.hoisted(() => ({
+  createCoachConversation: vi.fn(),
+  deleteCoachConversation: vi.fn(),
+  getCoachAgentErrorMessage: vi.fn(() => "请求失败"),
+  getCoachConversationMessages: vi.fn(),
+  listCoachConversations: vi.fn(),
+  sendCoachConversationMessage: vi.fn(),
+  updateCoachConversation: vi.fn(),
 }));
 
-vi.mock("@/api/coachAgent", () => ({ queryCoach, getCoachAgentErrorMessage }));
+vi.mock("@/api/coachAgent", () => api);
+
+const conversation = {
+  id: "conversation-1",
+  title: "昨天间歇练得怎么样？",
+  status: "active" as const,
+  created_at: "2026-10-01T08:00:00",
+  updated_at: "2026-10-01T08:00:00",
+  last_message_at: "2026-10-01T08:00:00",
+  message_count: 2,
+};
 
 const stubs = {
-  PageHeader: { props: ["title", "subtitle"], template: "<header><h1>{{ title }}</h1><p>{{ subtitle }}</p></header>" },
-  ElIcon: { template: "<i><slot /></i>" },
+  ElButton: { template: "<button @click='$emit(\"click\")'><slot /></button>" },
   ElInput: {
-    props: ["modelValue", "disabled", "maxlength"],
+    props: ["modelValue", "disabled"],
     emits: ["update:modelValue", "keydown"],
-    template: `<textarea class="coach-textarea" :value="modelValue" :disabled="disabled" :maxlength="maxlength" @input="$emit('update:modelValue', $event.target.value)" @keydown="$emit('keydown', $event)" />`,
+    template: "<textarea :value='modelValue' :disabled='disabled' @input='$emit(\"update:modelValue\", $event.target.value)' />",
   },
-  ElButton: {
-    props: ["disabled", "loading"],
-    emits: ["click"],
-    template: "<button :disabled='disabled' @click='$emit(\"click\")'><slot /></button>",
-  },
-  CoachTodayRecommendationCard: {
-    props: ["recommendation", "riskLevel"],
-    template: "<div class='recommendation-stub'>确定性规则建议 {{ recommendation.decision }}</div>",
-  },
-  CoachSafetyNotices: {
-    props: ["warnings", "limitations", "riskLevel"],
-    template: "<div v-if='warnings.length || limitations.length' class='notices-stub'>安全提示</div>",
-  },
-  CoachAnswerCard: {
-    props: ["status", "answer", "summary", "generatedAt", "providerStatus"],
-    template: "<div class='answer-stub'>AI 解释 {{ status }} {{ answer }}</div>",
-  },
-  CoachKnowledgeStatus: {
-    props: ["status"],
-    template: "<div v-if='status' class='knowledge-status-stub'>知识状态 {{ status }}</div>",
-  },
-  CoachKnowledgeReferences: {
-    props: ["references"],
-    template: "<div v-if='references.length' class='references-stub'>训练知识依据 {{ references.length }}</div>",
-  },
-  CoachToolSummary: {
-    props: ["tools"],
-    template: "<div class='tools-stub'>本次参考的数据 {{ tools.length }}</div>",
-  },
+  ElDrawer: { template: "<aside><slot /></aside>" },
+  ElSkeleton: { template: "<div />" },
 };
 
 function mountPage() {
   return shallowMount(CoachAgentView, { global: { stubs } });
 }
 
-describe("CoachAgentView", () => {
+describe("CoachAgentView persistent chat", () => {
   beforeEach(() => {
-    queryCoach.mockReset();
-    getCoachAgentErrorMessage.mockClear();
+    vi.clearAllMocks();
+    api.listCoachConversations.mockResolvedValue({ items: [conversation], page: 1, page_size: 20, total: 1 });
+    api.getCoachConversationMessages.mockResolvedValue({
+      items: [{
+        id: "message-1", role: "assistant", content: "虚构安全回答。", status: "completed", sequence_no: 2,
+        evidence_refs: [], warnings: [], limitations: [], tool_calls: [], created_at: "2026-10-01T08:00:00",
+      }], page: 1, page_size: 100, total: 1,
+    });
   });
 
-  it("shows three supported intents and never exposes WEEKLY or provider configuration", () => {
-    const wrapper = mountPage();
-    expect(wrapper.text()).toContain("今日训练建议");
-    expect(wrapper.text()).toContain("解释当前状态");
-    expect(wrapper.text()).toContain("一般训练问题");
-    expect(wrapper.text()).not.toContain("WEEKLY_REVIEW");
-    expect(wrapper.text()).not.toContain("API Key");
-    expect(wrapper.text()).not.toContain("Base URL");
-    expect(wrapper.text()).not.toContain("选择模型");
-    expect(wrapper.text()).toContain("不会自动改课表");
-  });
-
-  it("switches intents, applies examples, and disables empty general questions", async () => {
-    const wrapper = mountPage();
-    const buttons = wrapper.findAll(".intent-card");
-    await buttons[1].trigger("click");
-    expect(wrapper.find("textarea").element.value).toContain("Runner State");
-    await buttons[2].trigger("click");
-    expect(wrapper.find("textarea").element.value).toBe("");
-    expect(wrapper.find(".send-button").attributes("disabled")).toBeDefined();
-  });
-
-  it("renders authority, explanation, references, notices, then tool summary", async () => {
-    queryCoach.mockResolvedValue(createCoachResponse({
-      knowledge_references: [{
-        document_id: "public-doc",
-        title: "虚构知识",
-        section: "公开章节",
-        source_id: "public-source",
-        source_title: "公开来源",
-        knowledge_version: "corpus-v1",
-        evidence_level: "EXPERT_CONSENSUS",
-        excerpt: "虚构摘录",
-        limitations: [],
-      }],
-      warnings: [{ code: "FICTIONAL_WARNING", message: "虚构提醒" }],
-    }));
-    const wrapper = mountPage();
-    await wrapper.find(".send-button").trigger("click");
-    await flushPromises();
-
-    expect(queryCoach).toHaveBeenCalledTimes(1);
-    const payload = queryCoach.mock.calls[0][0];
-    expect(payload.intent).toBe("TODAY_RECOMMENDATION");
-    expect(payload.conversation_context).toEqual([]);
-    expect(JSON.stringify(payload)).not.toMatch(/user_id|provider|model|base_url|api_key|tools/);
-    const html = wrapper.html();
-    expect(html.indexOf("recommendation-stub")).toBeLessThan(html.indexOf("answer-stub"));
-    expect(html.indexOf("answer-stub")).toBeLessThan(html.indexOf("references-stub"));
-    expect(html.indexOf("references-stub")).toBeLessThan(html.indexOf("notices-stub"));
-    expect(html.indexOf("notices-stub")).toBeLessThan(html.indexOf("tools-stub"));
-    expect(wrapper.text()).toContain("SUCCEEDED");
-  });
-
-  it("keeps old responses without knowledge_references compatible", async () => {
-    const response = createCoachResponse();
-    delete response.knowledge_references;
-    queryCoach.mockResolvedValue(response);
-    const wrapper = mountPage();
-    await wrapper.find(".send-button").trigger("click");
-    await flushPromises();
-    expect(wrapper.find(".knowledge-status-stub").exists()).toBe(false);
-    expect(wrapper.find(".references-stub").exists()).toBe(false);
-    expect(wrapper.find(".answer-stub").exists()).toBe(true);
-  });
-
-  it("prevents duplicate submissions while a request is pending", async () => {
-    let resolveRequest: ((value: unknown) => void) | undefined;
-    queryCoach.mockReturnValue(new Promise((resolve) => { resolveRequest = resolve; }));
-    const wrapper = mountPage();
-    await wrapper.find(".send-button").trigger("click");
-    await wrapper.find(".send-button").trigger("click");
-    expect(queryCoach).toHaveBeenCalledTimes(1);
-    expect(wrapper.text()).toContain("正在读取训练事实");
-    resolveRequest?.(createCoachResponse());
-    await flushPromises();
-  });
-
-  it("preserves input on 429 or network failure for manual retry", async () => {
-    queryCoach.mockRejectedValue(new Error("请求过于频繁，请稍后再试"));
-    const wrapper = mountPage();
-    const input = wrapper.find("textarea");
-    await input.setValue("请保留这条虚构问题");
-    await wrapper.find(".send-button").trigger("click");
-    await flushPromises();
-    expect(wrapper.find("textarea").element.value).toBe("请保留这条虚构问题");
-    expect(wrapper.find("[role='alert']").text()).toBe("请求过于频繁，请稍后再试");
-  });
-
-  it("treats DEGRADED as a renderable result and can clear the memory-only session", async () => {
-    queryCoach.mockResolvedValue(createCoachResponse({
-      status: "DEGRADED",
-      provider_status: "FAILED",
-      limitations: [{ code: "MODEL_EXPLANATION_UNAVAILABLE", message: "虚构降级说明" }],
-    }));
-    const wrapper = mountPage();
-    await wrapper.find(".send-button").trigger("click");
-    await flushPromises();
-    expect(wrapper.find(".answer-stub").text()).toContain("DEGRADED");
-    expect(wrapper.text()).toContain("安全提示");
-    const clear = wrapper.findAll("button").find((item) => item.text() === "清空会话");
-    await clear?.trigger("click");
-    expect(wrapper.find(".conversation").exists()).toBe(false);
-    expect(wrapper.text()).toContain("从一个训练问题开始");
-  });
-
-  it("aborts on unmount and does not persist conversations in browser storage", async () => {
-    queryCoach.mockReturnValue(new Promise(() => undefined));
+  it("restores the most recent persisted conversation without browser chat storage", async () => {
     const localSet = vi.spyOn(Storage.prototype, "setItem");
-    const sessionSet = vi.spyOn(window.sessionStorage, "setItem");
     const wrapper = mountPage();
-    await wrapper.find(".send-button").trigger("click");
-    wrapper.unmount();
+    await flushPromises();
+    expect(api.listCoachConversations).toHaveBeenCalledTimes(1);
+    expect(api.getCoachConversationMessages).toHaveBeenCalledWith("conversation-1");
+    expect(wrapper.text()).toContain("虚构安全回答。");
     expect(localSet).not.toHaveBeenCalled();
-    expect(sessionSet).not.toHaveBeenCalled();
     localSet.mockRestore();
-    sessionSet.mockRestore();
+  });
+
+  it("submits a message through the active persistent conversation", async () => {
+    api.sendCoachConversationMessage.mockResolvedValue({
+      conversation_id: conversation.id, message_id: "message-2", status: "completed", content: "虚构安全回答。",
+    });
+    const wrapper = mountPage();
+    await flushPromises();
+    const input = wrapper.find("textarea");
+    await input.setValue("今天怎么练？");
+    const form = wrapper.find("form");
+    await form.trigger("submit");
+    await flushPromises();
+    expect(api.sendCoachConversationMessage).toHaveBeenCalledWith(
+      conversation.id,
+      "今天怎么练？",
+      expect.any(String),
+    );
   });
 });

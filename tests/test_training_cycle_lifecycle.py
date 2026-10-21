@@ -38,7 +38,7 @@ def _session() -> Session:
     return db
 
 
-def test_expired_active_cycle_is_completed_even_with_no_completion_rate() -> None:
+def test_expired_active_cycle_is_effectively_completed_without_read_side_write() -> None:
     db = _session()
     try:
         end_date = date(2026, 8, 31)
@@ -59,10 +59,11 @@ def test_expired_active_cycle_is_completed_even_with_no_completion_rate() -> Non
         assert lifecycle.latest_completed_cycle is not None
         assert lifecycle.latest_completed_cycle.id == cycle.id
         assert lifecycle.latest_completed_cycle.actual_end_date == end_date
+        assert lifecycle.latest_completed_cycle.status == TrainingCycleStatus.completed
         assert lifecycle.transition == "awaiting_next_cycle"
         db.refresh(cycle)
-        assert cycle.status == TrainingCycleStatus.completed
-        assert cycle.active_user_id is None
+        assert cycle.status == TrainingCycleStatus.active
+        assert cycle.active_user_id == 1
     finally:
         db.close()
 

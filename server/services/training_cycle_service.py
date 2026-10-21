@@ -1,35 +1,47 @@
+from datetime import date
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from planner_core.database.models import TrainingCycle
 from planner_core.enums import TrainingCycleStatus
 from server.common.exceptions import NotFoundError
-from server.schemas.training_cycle import TrainingCycleCreate, TrainingCycleUpdate
+from server.schemas.training_cycle import TrainingCycleCreate, TrainingCycleRead, TrainingCycleUpdate
 from server.services import training_cycle_lifecycle_service
 
 
-def list_training_cycles(db: Session, user_id: int) -> list[TrainingCycle]:
-    training_cycle_lifecycle_service.reconcile_expired_cycles(db, user_id)
-    return list(
-        db.scalars(
-            select(TrainingCycle)
-            .where(TrainingCycle.user_id == user_id)
-            .order_by(TrainingCycle.start_date, TrainingCycle.id)
-        )
-    )
-
-
-def list_history_cycles(db: Session, user_id: int) -> list[TrainingCycle]:
-    training_cycle_lifecycle_service.reconcile_expired_cycles(db, user_id)
-    return list(
-        db.scalars(
-            select(TrainingCycle)
-            .where(
-                TrainingCycle.user_id == user_id,
-                TrainingCycle.status.in_([TrainingCycleStatus.completed, TrainingCycleStatus.archived]),
+def list_training_cycles(db: Session, user_id: int) -> list[TrainingCycleRead]:
+    with db.no_autoflush:
+        cycles = list(
+            db.scalars(
+                select(TrainingCycle)
+                .where(TrainingCycle.user_id == user_id)
+                .order_by(TrainingCycle.start_date, TrainingCycle.id)
             )
-            .order_by(TrainingCycle.actual_end_date.desc(), TrainingCycle.end_date.desc(), TrainingCycle.id.desc())
         )
+    return [training_cycle_lifecycle_service.to_effective_cycle_read(cycle) for cycle in cycles]
+
+
+def list_history_cycles(db: Session, user_id: int) -> list[TrainingCycleRead]:
+    with db.no_autoflush:
+        cycles = list(
+            db.scalars(
+                select(TrainingCycle)
+                .where(
+                    TrainingCycle.user_id == user_id,
+                    TrainingCycle.status.in_([TrainingCycleStatus.active, TrainingCycleStatus.completed, TrainingCycleStatus.archived]),
+                )
+                .order_by(TrainingCycle.actual_end_date.desc(), TrainingCycle.end_date.desc(), TrainingCycle.id.desc())
+            )
+        )
+    history = [
+        training_cycle_lifecycle_service.to_effective_cycle_read(cycle)
+        for cycle in cycles
+    ]
+    return sorted(
+        [cycle for cycle in history if cycle.status in {TrainingCycleStatus.completed, TrainingCycleStatus.archived}],
+        key=lambda cycle: (cycle.actual_end_date or cycle.end_date or date.min, cycle.id),
+        reverse=True,
     )
 
 
