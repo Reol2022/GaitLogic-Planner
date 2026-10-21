@@ -43,37 +43,81 @@ def reconcile_expired_cycles(
     *,
     as_of_date: date | None = None,
 ) -> int:
-    """Persist the deterministic completion of active cycles whose planned end passed.
+    """Explicitly persist deterministic completion for expired active cycles.
 
-    This intentionally depends only on the configured cycle end date, never on workout
-    completion rate.  It is safe to invoke from read paths and is also suitable for a
-    future scheduled reconciliation job.
+    This is a write-side maintenance operation. Read paths must use the effective
+    lifecycle helpers below and must never call this function implicitly.
     """
     effective_date = as_of_date or date.today()
-    expired = list(
-        db.scalars(
-            select(TrainingCycle)
-            .where(
-                TrainingCycle.user_id == user_id,
-                TrainingCycle.status == TrainingCycleStatus.active,
-                TrainingCycle.end_date.is_not(None),
-                TrainingCycle.end_date < effective_date,
+    try:
+        with db.no_autoflush:
+            expired = list(
+                db.scalars(
+                    select(TrainingCycle)
+                    .where(
+                        TrainingCycle.user_id == user_id,
+                        TrainingCycle.status == TrainingCycleStatus.active,
+                        TrainingCycle.end_date.is_not(None),
+                        TrainingCycle.end_date < effective_date,
+                    )
+                    .with_for_update()
+                )
             )
-            .with_for_update()
-        )
-    )
-    if not expired:
-        return 0
+        if not expired:
+            return 0
 
-    now = datetime.utcnow()
-    for cycle in expired:
-        _set_cycle_status(cycle, TrainingCycleStatus.completed)
-        cycle.actual_end_date = cycle.actual_end_date or cycle.end_date
-        cycle.completed_at = cycle.completed_at or now
-        # Workouts after the configured cycle boundary cannot remain executable.
-        _mark_future_workouts_superseded(db, cycle.id, cycle.end_date + timedelta(days=1))
-    db.commit()
-    return len(expired)
+        now = datetime.utcnow()
+        for cycle in expired:
+            _set_cycle_status(cycle, TrainingCycleStatus.completed)
+            cycle.actual_end_date = cycle.actual_end_date or cycle.end_date
+            cycle.completed_at = cycle.completed_at or now
+            _mark_future_workouts_superseded(db, cycle.id, cycle.end_date + timedelta(days=1))
+        db.commit()
+        return len(expired)
+    except Exception:
+        db.rollback()
+        raise
+
+
+def _effective_start(cycle: TrainingCycle) -> date | None:
+    return cycle.actual_start_date or cycle.start_date
+
+
+def _effective_end(cycle: TrainingCycle) -> date | None:
+    return cycle.actual_end_date or cycle.end_date
+
+
+def _is_effectively_active(cycle: TrainingCycle, as_of_date: date) -> bool:
+    if cycle.status != TrainingCycleStatus.active:
+        return False
+    start_date = _effective_start(cycle)
+    end_date = _effective_end(cycle)
+    return (start_date is None or start_date <= as_of_date) and (
+        end_date is None or end_date >= as_of_date
+    )
+
+
+def _is_effectively_completed(cycle: TrainingCycle, as_of_date: date) -> bool:
+    if cycle.status == TrainingCycleStatus.completed:
+        return True
+    end_date = _effective_end(cycle)
+    return cycle.status == TrainingCycleStatus.active and end_date is not None and end_date < as_of_date
+
+
+def to_effective_cycle_read(cycle: TrainingCycle, *, as_of_date: date | None = None):
+    """Project persisted cycle data into a non-mutating user-facing read model."""
+    from server.schemas.training_cycle import TrainingCycleRead
+
+    effective_date = as_of_date or date.today()
+    result = TrainingCycleRead.model_validate(cycle)
+    if _is_effectively_completed(cycle, effective_date):
+        return result.model_copy(
+            update={
+                "status": TrainingCycleStatus.completed,
+                "actual_end_date": result.actual_end_date or result.end_date,
+            }
+        )
+    return result
 
 
 def get_active_cycle(
@@ -82,26 +126,36 @@ def get_active_cycle(
     *,
     as_of_date: date | None = None,
 ) -> TrainingCycle | None:
-    reconcile_expired_cycles(db, user_id, as_of_date=as_of_date)
-    return db.scalar(
-        select(TrainingCycle).where(
-            TrainingCycle.user_id == user_id,
-            TrainingCycle.status == TrainingCycleStatus.active,
+    effective_date = as_of_date or date.today()
+    with db.no_autoflush:
+        candidates = list(
+            db.scalars(
+                select(TrainingCycle).where(
+                    TrainingCycle.user_id == user_id,
+                    TrainingCycle.status == TrainingCycleStatus.active,
+                )
+            )
         )
-    )
+    return next((cycle for cycle in candidates if _is_effectively_active(cycle, effective_date)), None)
 
 
-def get_active_cycle_with_blocks(db: Session, user_id: int) -> TrainingCycle | None:
+def get_active_cycle_with_blocks(
+    db: Session, user_id: int, *, as_of_date: date | None = None
+) -> TrainingCycle | None:
     """Load the one active cycle and its bounded structural children read-only."""
-    reconcile_expired_cycles(db, user_id)
-    return db.scalar(
-        select(TrainingCycle)
-        .options(selectinload(TrainingCycle.blocks))
-        .where(
-            TrainingCycle.user_id == user_id,
-            TrainingCycle.status == TrainingCycleStatus.active,
+    effective_date = as_of_date or date.today()
+    with db.no_autoflush:
+        candidates = list(
+            db.scalars(
+                select(TrainingCycle)
+                .options(selectinload(TrainingCycle.blocks))
+                .where(
+                    TrainingCycle.user_id == user_id,
+                    TrainingCycle.status == TrainingCycleStatus.active,
+                )
+            )
         )
-    )
+    return next((cycle for cycle in candidates if _is_effectively_active(cycle, effective_date)), None)
 
 
 def get_lifecycle_snapshot(
@@ -113,29 +167,28 @@ def get_lifecycle_snapshot(
     """Return a stable UI/API lifecycle view without changing persisted enum values."""
     effective_date = as_of_date or date.today()
     active = get_active_cycle(db, user_id, as_of_date=effective_date)
-    latest_completed = db.scalar(
-        select(TrainingCycle)
-        .where(
-            TrainingCycle.user_id == user_id,
-            TrainingCycle.status == TrainingCycleStatus.completed,
+    with db.no_autoflush:
+        cycles = list(
+            db.scalars(
+                select(TrainingCycle)
+                .where(TrainingCycle.user_id == user_id)
+                .order_by(TrainingCycle.id)
+            )
         )
-        .order_by(
-            TrainingCycle.actual_end_date.desc(),
-            TrainingCycle.end_date.desc(),
-            TrainingCycle.completed_at.desc(),
-            TrainingCycle.id.desc(),
-        )
+    completed_candidates = [cycle for cycle in cycles if _is_effectively_completed(cycle, effective_date)]
+    completed_candidates.sort(
+        key=lambda cycle: (_effective_end(cycle) or date.min, cycle.completed_at or datetime.min, cycle.id),
+        reverse=True,
     )
-    next_cycle = db.scalar(
-        select(TrainingCycle)
-        .where(
-            TrainingCycle.user_id == user_id,
-            TrainingCycle.status == TrainingCycleStatus.draft,
-            TrainingCycle.start_date.is_not(None),
-            TrainingCycle.start_date > effective_date,
-        )
-        .order_by(TrainingCycle.start_date, TrainingCycle.id)
-    )
+    latest_completed = completed_candidates[0] if completed_candidates else None
+    upcoming_candidates = [
+        cycle for cycle in cycles
+        if cycle.status in {TrainingCycleStatus.draft, TrainingCycleStatus.active}
+        and _effective_start(cycle) is not None
+        and _effective_start(cycle) > effective_date
+    ]
+    upcoming_candidates.sort(key=lambda cycle: (_effective_start(cycle), cycle.id))
+    next_cycle = upcoming_candidates[0] if upcoming_candidates else None
     if active is not None:
         days_until_end = (active.end_date - effective_date).days if active.end_date else None
         state = (
@@ -145,31 +198,24 @@ def get_lifecycle_snapshot(
         )
         return TrainingCycleLifecycleRead(
             state=state,
-            active_cycle=active,
-            latest_completed_cycle=latest_completed,
-            next_cycle=next_cycle,
+            active_cycle=to_effective_cycle_read(active, as_of_date=effective_date),
+            latest_completed_cycle=(to_effective_cycle_read(latest_completed, as_of_date=effective_date) if latest_completed else None),
+            next_cycle=(to_effective_cycle_read(next_cycle, as_of_date=effective_date) if next_cycle else None),
             days_until_end=days_until_end,
         )
     if latest_completed is not None:
         return TrainingCycleLifecycleRead(
             state=TrainingCycleLifecycleState.COMPLETED,
-            latest_completed_cycle=latest_completed,
-            next_cycle=next_cycle,
+            latest_completed_cycle=to_effective_cycle_read(latest_completed, as_of_date=effective_date),
+            next_cycle=(to_effective_cycle_read(next_cycle, as_of_date=effective_date) if next_cycle else None),
             transition="awaiting_next_cycle" if next_cycle is None else None,
         )
     if next_cycle is not None:
         return TrainingCycleLifecycleRead(
             state=TrainingCycleLifecycleState.UPCOMING,
-            next_cycle=next_cycle,
+            next_cycle=to_effective_cycle_read(next_cycle, as_of_date=effective_date),
         )
-    archived_cycle = db.scalar(
-        select(TrainingCycle)
-        .where(
-            TrainingCycle.user_id == user_id,
-            TrainingCycle.status == TrainingCycleStatus.archived,
-        )
-        .order_by(TrainingCycle.updated_at.desc(), TrainingCycle.id.desc())
-    )
+    archived_cycle = next((cycle for cycle in reversed(cycles) if cycle.status == TrainingCycleStatus.archived), None)
     if archived_cycle is not None:
         return TrainingCycleLifecycleRead(state=TrainingCycleLifecycleState.CANCELLED)
     return TrainingCycleLifecycleRead(state=TrainingCycleLifecycleState.DRAFT)

@@ -90,6 +90,16 @@ class FakeDependencies:
         self.seen_user_ids.append(user_id)
         return self.cycle
 
+    def current_cycle_lifecycle(self, user_id: int):
+        """Match the production dependency contract used by planning tools."""
+        self.seen_user_ids.append(user_id)
+        return SimpleNamespace(
+            state=SimpleNamespace(value="NO_ACTIVE_CYCLE" if self.cycle is None else "ACTIVE"),
+            transition=None,
+            latest_completed_cycle=None,
+            next_cycle=None,
+        )
+
     def training_rules(self, scope: str, limit: int):
         return self.rules[:limit], len(self.rules)
 

@@ -1,296 +1,290 @@
 <template>
-  <div class="page-stack coach-page">
-    <PageHeader
-      title="AI 教练"
-      subtitle="基于训练事实、Runner State 和科学规则生成解释与建议"
-    />
-
-    <section class="coach-intro" aria-label="AI 教练使用边界">
-      <div class="boundary-tags">
-        <span>只读建议</span>
-        <span>规则约束</span>
-        <span>不会自动改课表</span>
-        <span v-if="demoScenario">虚构 Demo 数据</span>
+  <div class="coach-chat-page">
+    <header class="coach-chat-header">
+      <div>
+        <p class="eyebrow">GaitLogic AI Coach</p>
+        <h1>和你的训练教练持续交流</h1>
+        <p>建议基于当前训练事实与训练知识生成，不会直接修改正式训练计划。</p>
       </div>
-      <p>建议仅供训练决策参考，不用于医疗诊断，也不会自动修改训练计划。</p>
-    </section>
+      <el-button class="mobile-history" plain @click="drawerOpen = true">历史会话</el-button>
+    </header>
 
-    <section class="intent-section" aria-labelledby="coach-intent-title">
-      <div class="section-title">
-        <span>快捷入口</span>
-        <h2 id="coach-intent-title">你想了解什么？</h2>
-      </div>
-      <div class="intent-grid">
-        <button
-          v-for="item in quickIntents"
-          :key="item.intent"
-          type="button"
-          class="intent-card"
-          :class="{ active: selectedIntent === item.intent }"
-          :disabled="Boolean(demoScenario)"
-          :aria-pressed="selectedIntent === item.intent"
-          @click="selectIntent(item.intent)"
-        >
-          <el-icon><component :is="item.icon" /></el-icon>
-          <strong>{{ item.title }}</strong>
-          <span>{{ item.description }}</span>
-        </button>
-      </div>
-    </section>
+    <div class="coach-chat-layout">
+      <aside class="conversation-panel desktop-conversations">
+        <ConversationList
+          :items="conversations"
+          :active-id="activeConversationId ?? undefined"
+          :loading="conversationsLoading"
+          @create="createConversation"
+          @select="selectConversation"
+          @archive="archiveConversation"
+          @delete="removeConversation"
+        />
+      </aside>
 
-    <section class="input-panel" aria-labelledby="coach-input-title">
-      <div class="input-heading">
-        <div>
-          <span>当前能力：{{ coachIntentDisplay[selectedIntent] }}</span>
-          <h2 id="coach-input-title">向教练提问</h2>
+      <main class="chat-panel">
+        <div v-if="!activeConversationId" class="empty-chat">
+          <h2>从一个问题开始</h2>
+          <p>新对话会自动保存，关闭页面后仍可继续。</p>
+          <div class="quick-prompts">
+            <el-button v-for="prompt in quickPrompts" :key="prompt" @click="startWithPrompt(prompt)">
+              {{ prompt }}
+            </el-button>
+          </div>
         </div>
-        <el-button v-if="turns.length" text @click="clearConversation">清空会话</el-button>
-      </div>
-      <label for="coach-message">训练问题</label>
-      <el-input
-        id="coach-message"
-        v-model="message"
-        type="textarea"
-        :rows="4"
-        :maxlength="MAX_MESSAGE_LENGTH"
-        show-word-limit
-        resize="vertical"
-        :disabled="loading"
-        :placeholder="inputPlaceholder"
-        @keydown.ctrl.enter.prevent="submitQuery"
+
+        <template v-else>
+          <div ref="messageListRef" class="message-list" aria-live="polite">
+            <div v-if="messagesLoading" class="message-loading"><el-skeleton :rows="5" animated /></div>
+            <template v-else>
+              <article v-for="item in messages" :key="item.id" class="chat-message" :class="item.role">
+                <span class="message-role">{{ item.role === "user" ? "你" : "AI 教练" }}</span>
+                <div class="message-bubble">
+                  <p v-if="item.content" class="message-content">{{ item.content }}</p>
+                  <p v-else-if="item.status === 'pending'" class="message-state">正在生成安全回复…</p>
+                  <p v-else class="message-state">本轮回复未能完成，可重试。</p>
+                  <div v-if="item.role === 'assistant' && item.warnings.length" class="notice-list warning">
+                    <p v-for="notice in item.warnings" :key="notice.code">{{ notice.message }}</p>
+                  </div>
+                  <div v-if="item.role === 'assistant' && item.limitations.length" class="notice-list limitation">
+                    <p v-for="notice in item.limitations" :key="notice.code">{{ notice.message }}</p>
+                  </div>
+                  <details v-if="item.role === 'assistant' && item.evidence_refs.length" class="evidence-details">
+                    <summary>训练知识依据（{{ item.evidence_refs.length }}）</summary>
+                    <p v-for="reference in item.evidence_refs" :key="reference.document_id + reference.section">
+                      <strong>{{ reference.title }}</strong>：{{ reference.excerpt }}
+                    </p>
+                  </details>
+                </div>
+              </article>
+            </template>
+          </div>
+
+          <div v-if="submitError" class="submit-error">
+            <span>{{ submitError }}</span>
+            <el-button v-if="retryPayload" size="small" @click="retryLastMessage">重试</el-button>
+          </div>
+          <form class="composer" @submit.prevent="sendMessage">
+            <el-input
+              v-model="draft"
+              type="textarea"
+              :rows="3"
+              maxlength="4000"
+              show-word-limit
+              placeholder="例如：昨天间歇练得怎么样？那周四还能练节奏吗？"
+              :disabled="sending"
+              @keydown.enter.exact.prevent="sendMessage"
+            />
+            <div class="composer-actions">
+              <span>Enter 发送，Shift + Enter 换行</span>
+              <el-button type="primary" native-type="submit" :loading="sending" :disabled="!draft.trim()">
+                发送
+              </el-button>
+            </div>
+          </form>
+        </template>
+      </main>
+    </div>
+
+    <el-drawer v-model="drawerOpen" title="历史会话" direction="ltr" size="86%" class="history-drawer">
+      <ConversationList
+        :items="conversations"
+        :active-id="activeConversationId ?? undefined"
+        :loading="conversationsLoading"
+        @create="createConversation"
+        @select="selectConversation"
+        @archive="archiveConversation"
+        @delete="removeConversation"
       />
-      <div class="input-actions">
-        <span>Ctrl + Enter 发送；会话仅保存在当前页面内存中。</span>
-        <el-button
-          class="send-button"
-          type="primary"
-          :loading="loading"
-          :disabled="!canSubmit"
-          @click="submitQuery"
-        >
-          发送问题
-        </el-button>
-      </div>
-      <p v-if="errorMessage" class="request-error" role="alert">{{ errorMessage }}</p>
-      <p v-if="conversationTrimmed" class="trim-notice" role="status">
-        为保护隐私并控制上下文长度，较早的公开问答已从本次上下文中裁剪。
-      </p>
-      <p v-if="loading" class="loading-status" aria-live="polite">正在读取训练事实并生成安全建议……</p>
-    </section>
-
-    <section v-if="turns.length" class="conversation" aria-label="本次页面会话">
-      <article v-for="turn in turns" :key="turn.id" class="conversation-turn">
-        <div class="user-question">
-          <span>你的问题</span>
-          <p>{{ turn.question }}</p>
-        </div>
-
-        <CoachTodayRecommendationCard
-          v-if="turn.response.today_recommendation"
-          :recommendation="turn.response.today_recommendation"
-          :risk-level="turn.response.risk_level"
-        />
-        <CoachAnswerCard
-          :status="turn.response.status"
-          :answer="turn.response.answer"
-          :summary="turn.response.summary"
-          :generated-at="turn.response.generated_at"
-          :provider-status="turn.response.provider_status"
-        />
-        <CoachKnowledgeStatus :status="resolveCoachKnowledgeStatus(turn.response)" />
-        <CoachKnowledgeReferences
-          :references="turn.response.knowledge_references ?? []"
-        />
-        <CoachSafetyNotices
-          :warnings="turn.response.warnings"
-          :limitations="turn.response.limitations"
-          :risk-level="turn.response.risk_level"
-        />
-        <CoachToolSummary :tools="turn.response.tool_calls" />
-      </article>
-    </section>
-
-    <section v-else class="empty-state">
-      <el-icon><ChatDotRound /></el-icon>
-      <h2>从一个训练问题开始</h2>
-      <p>确定性规则结论会优先展示，AI 只负责解释已有事实。</p>
-    </section>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from "vue";
-import { ChatDotRound, DataAnalysis, Timer } from "@element-plus/icons-vue";
-import { getCoachAgentErrorMessage, queryCoach } from "@/api/coachAgent";
-import CoachAnswerCard from "@/components/coach/CoachAnswerCard.vue";
-import CoachKnowledgeReferences from "@/components/coach/CoachKnowledgeReferences.vue";
-import CoachKnowledgeStatus from "@/components/coach/CoachKnowledgeStatus.vue";
-import CoachSafetyNotices from "@/components/coach/CoachSafetyNotices.vue";
-import CoachTodayRecommendationCard from "@/components/coach/CoachTodayRecommendationCard.vue";
-import CoachToolSummary from "@/components/coach/CoachToolSummary.vue";
-import PageHeader from "@/components/PageHeader.vue";
+import { computed, defineComponent, h, nextTick, onMounted, ref } from "vue";
+import { ElButton, ElMessage, ElMessageBox } from "element-plus";
 import {
-  coachRagDemoFixtures,
-  coachRagDemoQuestions,
-  createCoachRagDemoResponse,
-  getCoachRagDemoScenario,
-} from "@/demo/coachRagDemo";
-import type { CoachAgentIntent } from "@/types/coachAgent";
-import {
-  appendCoachTurn,
-  buildCoachConversationContext,
-  type CoachConversationTurn,
-} from "@/utils/coachAgentConversation";
-import { coachIntentDisplay } from "@/utils/coachAgentDisplay";
-import { resolveCoachKnowledgeStatus } from "@/utils/coachKnowledgeDisplay";
+  createCoachConversation,
+  deleteCoachConversation,
+  getCoachAgentErrorMessage,
+  getCoachConversationMessages,
+  listCoachConversations,
+  sendCoachConversationMessage,
+  updateCoachConversation,
+} from "@/api/coachAgent";
+import type { CoachConversation, CoachStoredMessage } from "@/types/coachAgent";
 
-const MAX_MESSAGE_LENGTH = 4000;
-const DEFAULT_QUESTIONS: Record<CoachAgentIntent, string> = {
-  TODAY_RECOMMENDATION: "根据我今天的计划、近期训练和当前状态，我今天应该怎么训练？请说明依据和限制。",
-  EXPLAIN_RUNNER_STATE: "请解释我当前的 Runner State、主要依据，以及哪些结论可能因为数据不足而不可靠。",
-  GENERAL_TRAINING_QUESTION: "",
-};
+const quickPrompts = ["今天怎么练？", "看看最近状态", "帮我复盘本周", "讨论训练计划"];
+const conversations = ref<CoachConversation[]>([]);
+const messages = ref<CoachStoredMessage[]>([]);
+const activeConversationId = ref<string | null>(null);
+const conversationsLoading = ref(false);
+const messagesLoading = ref(false);
+const sending = ref(false);
+const drawerOpen = ref(false);
+const draft = ref("");
+const submitError = ref("");
+const retryPayload = ref<{ message: string; turnId: string } | null>(null);
+const messageListRef = ref<HTMLElement | null>(null);
 
-const quickIntents = [
-  {
-    intent: "TODAY_RECOMMENDATION" as const,
-    title: "今日训练建议",
-    description: "结合今日计划、近期训练和规则评估。",
-    icon: Timer,
+const ConversationList = defineComponent({
+  props: {
+    items: { type: Array as () => CoachConversation[], required: true },
+    activeId: { type: String, default: null },
+    loading: { type: Boolean, default: false },
   },
-  {
-    intent: "EXPLAIN_RUNNER_STATE" as const,
-    title: "解释当前状态",
-    description: "了解 Runner State 的依据与数据限制。",
-    icon: DataAnalysis,
+  emits: ["create", "select", "archive", "delete"],
+  setup(props, { emit }) {
+    return () => h("div", { class: "conversation-list" }, [
+      h(ElButton, { type: "primary", class: "new-conversation", onClick: () => emit("create") }, () => "+ 新对话"),
+      props.loading ? h("p", { class: "sidebar-state" }, "正在加载…") : null,
+      ...props.items.map((item) => h("div", {
+        class: ["conversation-item", { active: item.id === props.activeId }],
+        key: item.id,
+      }, [
+        h("button", { class: "conversation-select", onClick: () => emit("select", item.id) }, [
+          h("strong", item.title),
+          h("span", `${item.message_count} 条消息`),
+        ]),
+        h("div", { class: "conversation-actions" }, [
+          item.status === "active"
+            ? h("button", { title: "归档", onClick: () => emit("archive", item.id) }, "归档")
+            : null,
+          h("button", { title: "删除", onClick: () => emit("delete", item.id) }, "删除"),
+        ]),
+      ])),
+    ]);
   },
-  {
-    intent: "GENERAL_TRAINING_QUESTION" as const,
-    title: "一般训练问题",
-    description: "询问公开训练规则，不生成或修改课表。",
-    icon: ChatDotRound,
-  },
-];
-
-const demoScenario = import.meta.env.DEV
-  ? getCoachRagDemoScenario(window.location.search)
-  : null;
-const demoResponse = demoScenario ? coachRagDemoFixtures[demoScenario] : null;
-const selectedIntent = ref<CoachAgentIntent>(
-  demoResponse?.intent ?? "TODAY_RECOMMENDATION",
-);
-const message = ref(
-  demoScenario
-    ? coachRagDemoQuestions[demoScenario]
-    : DEFAULT_QUESTIONS.TODAY_RECOMMENDATION,
-);
-const turns = ref<CoachConversationTurn[]>([]);
-const loading = ref(false);
-const errorMessage = ref("");
-const conversationTrimmed = ref(false);
-let active = true;
-let controller: AbortController | null = null;
-
-const inputPlaceholder = computed(() => selectedIntent.value === "GENERAL_TRAINING_QUESTION"
-  ? "请输入你的训练问题"
-  : "可以修改示例问题后发送");
-const canSubmit = computed(() => {
-  const length = message.value.trim().length;
-  return !loading.value && length > 0 && length <= MAX_MESSAGE_LENGTH;
 });
 
-function selectIntent(intent: CoachAgentIntent) {
-  selectedIntent.value = intent;
-  message.value = DEFAULT_QUESTIONS[intent];
-  errorMessage.value = "";
+function turnId(): string {
+  return crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
-function clearConversation() {
-  turns.value = [];
-  conversationTrimmed.value = false;
-  errorMessage.value = "";
-}
-
-async function submitQuery() {
-  if (!canSubmit.value) return;
-  const question = message.value.trim();
-  const context = buildCoachConversationContext(turns.value);
-  conversationTrimmed.value ||= context.trimmed;
-  loading.value = true;
-  errorMessage.value = "";
-  controller = new AbortController();
+async function refreshConversations(): Promise<void> {
+  conversationsLoading.value = true;
   try {
-    const response = demoScenario
-      ? createCoachRagDemoResponse(demoScenario)
-      : await queryCoach({
-        message: question,
-        intent: selectedIntent.value,
-        conversation_context: context.messages,
-      }, controller.signal);
-    if (!active) return;
-    const appended = appendCoachTurn(turns.value, {
-      id: response.request_id,
-      question,
-      response,
-    });
-    turns.value = appended.turns;
-    conversationTrimmed.value ||= appended.trimmed;
-    message.value = "";
-  } catch (error) {
-    if (!active) return;
-    errorMessage.value = getCoachAgentErrorMessage(error);
+    conversations.value = (await listCoachConversations()).items;
   } finally {
-    if (active) loading.value = false;
-    controller = null;
+    conversationsLoading.value = false;
   }
 }
 
-onBeforeUnmount(() => {
-  active = false;
-  controller?.abort();
+async function loadMessages(id: string): Promise<void> {
+  messagesLoading.value = true;
+  submitError.value = "";
+  retryPayload.value = null;
+  try {
+    messages.value = (await getCoachConversationMessages(id)).items;
+    await scrollToBottom();
+  } catch (error) {
+    ElMessage.error(getCoachAgentErrorMessage(error));
+  } finally {
+    messagesLoading.value = false;
+  }
+}
+
+async function selectConversation(id: string): Promise<void> {
+  activeConversationId.value = id;
+  drawerOpen.value = false;
+  await loadMessages(id);
+}
+
+async function createConversation(): Promise<void> {
+  try {
+    const conversation = await createCoachConversation();
+    await refreshConversations();
+    await selectConversation(conversation.id);
+  } catch (error) {
+    ElMessage.error(getCoachAgentErrorMessage(error));
+  }
+}
+
+async function startWithPrompt(prompt: string): Promise<void> {
+  if (!activeConversationId.value) await createConversation();
+  draft.value = prompt;
+  await sendMessage();
+}
+
+async function sendMessage(): Promise<void> {
+  const message = draft.value.trim();
+  if (!message || !activeConversationId.value || sending.value) return;
+  const payload = { message, turnId: turnId() };
+  draft.value = "";
+  await submit(payload);
+}
+
+async function retryLastMessage(): Promise<void> {
+  if (retryPayload.value && !sending.value) await submit(retryPayload.value);
+}
+
+async function submit(payload: { message: string; turnId: string }): Promise<void> {
+  if (!activeConversationId.value) return;
+  sending.value = true;
+  submitError.value = "";
+  retryPayload.value = null;
+  try {
+    const result = await sendCoachConversationMessage(activeConversationId.value, payload.message, payload.turnId);
+    await loadMessages(activeConversationId.value);
+    await refreshConversations();
+    if (result.status !== "completed") {
+      submitError.value = "本轮教练回复未完成，原问题已安全保存。";
+      retryPayload.value = payload;
+    }
+  } catch (error) {
+    submitError.value = getCoachAgentErrorMessage(error);
+    retryPayload.value = payload;
+  } finally {
+    sending.value = false;
+  }
+}
+
+async function archiveConversation(id: string): Promise<void> {
+  try {
+    await updateCoachConversation(id, { status: "archived" });
+    await refreshConversations();
+    if (activeConversationId.value === id) activeConversationId.value = null;
+    drawerOpen.value = false;
+  } catch (error) {
+    ElMessage.error(getCoachAgentErrorMessage(error));
+  }
+}
+
+async function removeConversation(id: string): Promise<void> {
+  try {
+    await ElMessageBox.confirm("删除后无法恢复该会话及其中消息，是否继续？", "删除会话", { type: "warning" });
+    await deleteCoachConversation(id);
+    if (activeConversationId.value === id) {
+      activeConversationId.value = null;
+      messages.value = [];
+    }
+    await refreshConversations();
+    drawerOpen.value = false;
+  } catch (error) {
+    if (error !== "cancel" && error !== "close") ElMessage.error(getCoachAgentErrorMessage(error));
+  }
+}
+
+async function scrollToBottom(): Promise<void> {
+  await nextTick();
+  if (messageListRef.value) messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
+}
+
+onMounted(async () => {
+  await refreshConversations();
+  if (conversations.value[0]) await selectConversation(conversations.value[0].id);
 });
 </script>
 
 <style scoped>
-.coach-page { max-width: 1080px; margin: 0 auto; gap: 16px; padding-bottom: 24px; }
-.coach-intro, .intent-section, .input-panel, .empty-state { min-width: 0; padding: 18px; border: 1px solid var(--card-border); border-radius: var(--card-radius); background: #fff; box-shadow: var(--card-shadow); }
-.boundary-tags { display: flex; flex-wrap: wrap; gap: 8px; }
-.boundary-tags span { padding: 6px 9px; border-radius: 999px; color: #1f4e79; background: var(--blue-soft); font-size: 12px; font-weight: 700; }
-.coach-intro p { margin: 12px 0 0; color: #475467; line-height: 1.65; }
-.section-title span, .input-heading span { color: #1f4e79; font-size: 12px; font-weight: 700; }
-.section-title h2, .input-heading h2, .empty-state h2 { margin: 4px 0 0; color: #172033; font-size: 20px; }
-.intent-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
-.intent-card { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; min-width: 0; padding: 15px; text-align: left; border: 1px solid #d8e2ec; border-radius: 8px; color: #26354a; background: #fbfcfd; cursor: pointer; }
-.intent-card:hover, .intent-card.active { border-color: #5c8fbd; background: #f2f7fc; }
-.intent-card:disabled { cursor: default; opacity: .72; }
-.intent-card:focus-visible { outline: 3px solid rgba(25, 118, 210, .3); outline-offset: 2px; }
-.intent-card .el-icon { grid-row: 1 / 3; color: #1976d2; font-size: 24px; }
-.intent-card strong, .intent-card span { min-width: 0; overflow-wrap: anywhere; }
-.intent-card span { color: #667085; font-size: 12px; line-height: 1.5; }
-.input-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-.input-panel label { display: inline-block; margin-bottom: 7px; color: #344054; font-size: 13px; font-weight: 700; }
-.input-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; }
-.input-actions span { color: #667085; font-size: 12px; }
-.request-error, .trim-notice, .loading-status { margin: 12px 0 0; padding: 10px 12px; border-radius: 6px; line-height: 1.55; }
-.request-error { color: #9f352e; background: #fff2f0; }
-.trim-notice { color: #7a5713; background: #fff8e8; }
-.loading-status { color: #1f4e79; background: #f1f7fc; }
-.conversation { display: grid; gap: 18px; }
-.conversation-turn { display: grid; gap: 12px; min-width: 0; padding-top: 18px; border-top: 1px solid #dfe5ec; }
-.user-question { max-width: 84%; margin-left: auto; padding: 12px 15px; border-radius: 12px 12px 2px 12px; color: #fff; background: #315f88; }
-.user-question span { font-size: 11px; opacity: .8; }
-.user-question p { margin: 4px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.65; }
-.empty-state { display: grid; justify-items: center; padding: 36px 18px; text-align: center; }
-.empty-state .el-icon { color: #5b7fa3; font-size: 38px; }
-.empty-state p { margin: 9px 0 0; color: #667085; }
-@media (max-width: 768px) {
-  .coach-page { padding-bottom: 88px; }
-  .intent-grid { grid-template-columns: 1fr; }
-}
-@media (max-width: 520px) {
-  .coach-intro, .intent-section, .input-panel, .empty-state { padding: 14px; }
-  .input-heading, .input-actions { align-items: stretch; flex-direction: column; }
-  .send-button { width: 100%; min-height: 44px; }
-  .user-question { max-width: 96%; }
-}
+.coach-chat-page { max-width: 1260px; margin: 0 auto; padding: 22px; }
+.coach-chat-header { display: flex; justify-content: space-between; gap: 18px; align-items: start; margin-bottom: 18px; }
+.coach-chat-header h1 { margin: 4px 0 8px; font-size: 26px; }.coach-chat-header p { margin: 0; color: var(--el-text-color-secondary); }
+.eyebrow { color: var(--el-color-primary) !important; font-weight: 700; font-size: 13px; }.mobile-history { display: none; }
+.coach-chat-layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); min-height: 650px; border: 1px solid var(--el-border-color-light); border-radius: 14px; overflow: hidden; background: var(--el-bg-color); }
+.conversation-panel { border-right: 1px solid var(--el-border-color-light); padding: 12px; background: var(--el-fill-color-lighter); }.conversation-list { display: grid; gap: 8px; }.new-conversation { width: 100%; margin-bottom: 4px; }.sidebar-state { color: var(--el-text-color-secondary); text-align: center; }
+.conversation-item { display: flex; align-items: center; gap: 4px; border-radius: 8px; padding: 4px; }.conversation-item.active { background: var(--el-color-primary-light-9); }.conversation-select { min-width: 0; flex: 1; border: 0; background: transparent; text-align: left; padding: 8px; cursor: pointer; }.conversation-select strong, .conversation-select span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.conversation-select span { font-size: 12px; color: var(--el-text-color-secondary); margin-top: 3px; }.conversation-actions { display: flex; gap: 2px; }.conversation-actions button { border: 0; background: transparent; color: var(--el-text-color-secondary); cursor: pointer; padding: 4px; font-size: 12px; }
+.chat-panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; }.empty-chat { display: grid; place-content: center; min-height: 580px; text-align: center; padding: 28px; }.empty-chat h2 { margin-bottom: 8px; }.empty-chat p { color: var(--el-text-color-secondary); }.quick-prompts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 18px; }
+.message-list { flex: 1; overflow-y: auto; padding: 24px; display: grid; align-content: start; gap: 18px; }.message-loading { padding: 20px; }.chat-message { display: grid; gap: 5px; max-width: min(760px, 90%); }.chat-message.user { justify-self: end; }.message-role { font-size: 12px; color: var(--el-text-color-secondary); }.user .message-role { text-align: right; }.message-bubble { border-radius: 12px; padding: 12px 14px; background: var(--el-fill-color-light); }.user .message-bubble { background: var(--el-color-primary-light-8); }.message-content { margin: 0; white-space: pre-wrap; line-height: 1.65; }.message-state { margin: 0; color: var(--el-text-color-secondary); }.notice-list { margin-top: 10px; padding: 8px 10px; border-radius: 6px; font-size: 13px; }.notice-list p { margin: 0 0 4px; }.notice-list p:last-child { margin-bottom: 0; }.warning { background: var(--el-color-warning-light-9); }.limitation { background: var(--el-fill-color); }.evidence-details { margin-top: 10px; font-size: 13px; color: var(--el-text-color-secondary); }.evidence-details p { margin: 6px 0 0; }.submit-error { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin: 0 18px 8px; padding: 8px 10px; color: var(--el-color-danger); background: var(--el-color-danger-light-9); border-radius: 6px; }.composer { border-top: 1px solid var(--el-border-color-light); padding: 14px; }.composer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--el-text-color-secondary); font-size: 12px; }
+@media (max-width: 760px) { .coach-chat-page { padding: 14px; }.coach-chat-header h1 { font-size: 22px; }.desktop-conversations { display: none; }.mobile-history { display: inline-flex; }.coach-chat-layout { display: block; min-height: 590px; }.message-list { padding: 16px; }.chat-message { max-width: 96%; }.composer-actions span { display: none; } }
 </style>

@@ -1603,3 +1603,53 @@ CREATE TABLE IF NOT EXISTS `mcp_oauth_refresh_tokens` (
   KEY `ix_mcp_oauth_refresh_expires` (`expires_at`),
   CONSTRAINT `fk_mcp_oauth_refresh_user` FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `coach_conversations` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `public_id` VARCHAR(36) NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `title` VARCHAR(160) NOT NULL DEFAULT '新对话',
+  `status` VARCHAR(16) NOT NULL DEFAULT 'active',
+  `last_message_at` DATETIME NULL,
+  `processing_turn_id` VARCHAR(64) NULL,
+  `processing_lease_id` VARCHAR(36) NULL,
+  `processing_started_at` DATETIME NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_coach_conversations_public_id` (`public_id`),
+  KEY `ix_coach_conversations_user_updated` (`user_id`, `updated_at`),
+  KEY `ix_coach_conversations_user_status_updated` (`user_id`, `status`, `updated_at`),
+  CONSTRAINT `ck_coach_conversations_status` CHECK (`status` IN ('active', 'archived')),
+  CONSTRAINT `fk_coach_conversations_user` FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `coach_messages` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `public_id` VARCHAR(36) NOT NULL,
+  `conversation_id` BIGINT NOT NULL,
+  `role` VARCHAR(16) NOT NULL,
+  `content` LONGTEXT NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'pending',
+  `sequence_no` INT NOT NULL,
+  `client_turn_id` VARCHAR(64) NULL,
+  `reply_to_message_id` BIGINT NULL,
+  `response_kind` VARCHAR(32) NULL,
+  `evidence_refs_json` JSON NULL,
+  `response_metadata_json` JSON NULL,
+  `proposal_ref` VARCHAR(128) NULL,
+  `trace_id` VARCHAR(36) NULL,
+  `completed_at` DATETIME NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_coach_messages_public_id` (`public_id`),
+  UNIQUE KEY `uq_coach_messages_sequence` (`conversation_id`, `sequence_no`),
+  UNIQUE KEY `uq_coach_messages_client_turn` (`conversation_id`, `client_turn_id`),
+  KEY `ix_coach_messages_conversation_sequence` (`conversation_id`, `sequence_no`),
+  KEY `ix_coach_messages_reply` (`reply_to_message_id`),
+  CONSTRAINT `ck_coach_messages_role` CHECK (`role` IN ('user', 'assistant')),
+  CONSTRAINT `ck_coach_messages_status` CHECK (`status` IN ('pending', 'completed', 'failed')),
+  CONSTRAINT `fk_coach_messages_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `coach_conversations` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_coach_messages_reply` FOREIGN KEY (`reply_to_message_id`) REFERENCES `coach_messages` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

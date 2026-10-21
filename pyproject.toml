@@ -70,3 +70,6 @@ namespaces = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "mysql_integration: requires an explicitly configured, isolated local MySQL test database",
+]

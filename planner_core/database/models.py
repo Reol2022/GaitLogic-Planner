@@ -257,6 +257,84 @@ class UserAccount(IdMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    coach_conversations: Mapped[list[CoachConversation]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class CoachConversation(IdMixin, TimestampMixin, Base):
+    """User-owned, privacy-scoped Coach Chat session.
+
+    The conversation stores only messages written by the user and final safe Coach
+    responses. Tool payloads and provider reasoning intentionally stay outside it.
+    """
+
+    __tablename__ = "coach_conversations"
+    __table_args__ = (
+        UniqueConstraint("public_id", name="uq_coach_conversations_public_id"),
+        Index("ix_coach_conversations_user_updated", "user_id", "updated_at"),
+        Index("ix_coach_conversations_user_status_updated", "user_id", "status", "updated_at"),
+        CheckConstraint("status IN ('active', 'archived')", name="ck_coach_conversations_status"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    public_id: Mapped[str] = mapped_column(String(36), nullable=False, default=lambda: str(uuid4()))
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title: Mapped[str] = mapped_column(String(160), nullable=False, default="新对话", server_default="新对话")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active", server_default="active")
+    last_message_at: Mapped[datetime | None] = mapped_column(DateTime)
+    processing_turn_id: Mapped[str | None] = mapped_column(String(64))
+    # A new value is generated for every attempt.  The client turn id alone is
+    # not sufficient: a stale provider call can be retried with the same turn
+    # id, or superseded after its lease has expired.
+    processing_lease_id: Mapped[str | None] = mapped_column(String(36))
+    processing_started_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    user: Mapped[UserAccount] = relationship(back_populates="coach_conversations")
+    messages: Mapped[list[CoachMessage]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="CoachMessage.sequence_no",
+    )
+
+
+class CoachMessage(IdMixin, TimestampMixin, Base):
+    __tablename__ = "coach_messages"
+    __table_args__ = (
+        UniqueConstraint("public_id", name="uq_coach_messages_public_id"),
+        UniqueConstraint("conversation_id", "sequence_no", name="uq_coach_messages_sequence"),
+        UniqueConstraint("conversation_id", "client_turn_id", name="uq_coach_messages_client_turn"),
+        Index("ix_coach_messages_conversation_sequence", "conversation_id", "sequence_no"),
+        CheckConstraint("role IN ('user', 'assistant')", name="ck_coach_messages_role"),
+        CheckConstraint("status IN ('pending', 'completed', 'failed')", name="ck_coach_messages_status"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    public_id: Mapped[str] = mapped_column(String(36), nullable=False, default=lambda: str(uuid4()))
+    conversation_id: Mapped[int] = mapped_column(
+        ForeignKey("coach_conversations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    content: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
+    sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    client_turn_id: Mapped[str | None] = mapped_column(String(64))
+    reply_to_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("coach_messages.id", ondelete="CASCADE"), index=True
+    )
+    response_kind: Mapped[str | None] = mapped_column(String(32))
+    evidence_refs_json: Mapped[list | None] = mapped_column(JSON)
+    response_metadata_json: Mapped[dict | None] = mapped_column(JSON)
+    proposal_ref: Mapped[str | None] = mapped_column(String(128))
+    trace_id: Mapped[str | None] = mapped_column(String(36))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    conversation: Mapped[CoachConversation] = relationship(back_populates="messages")
 
 
 class TrainingCycle(IdMixin, TimestampMixin, Base):

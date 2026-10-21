@@ -158,7 +158,9 @@ def test_quota_and_unavailable_statuses_map_to_429_and_503(monkeypatch) -> None:
     assert result.json()["status"] == "UNAVAILABLE"
 
 
-def test_openapi_exposes_only_the_query_operation() -> None:
+def test_openapi_exposes_query_and_persistent_conversation_operations() -> None:
     paths = app.openapi()["paths"]
     assert set(paths["/api/coach/query"]) >= {"post"}
-    assert not any(path.startswith("/api/coach/") and path != "/api/coach/query" for path in paths)
+    assert set(paths["/api/coach/conversations"]) >= {"get", "post"}
+    assert set(paths["/api/coach/conversations/{conversation_id}"]) >= {"get", "patch", "delete"}
+    assert set(paths["/api/coach/conversations/{conversation_id}/messages"]) >= {"get", "post"}

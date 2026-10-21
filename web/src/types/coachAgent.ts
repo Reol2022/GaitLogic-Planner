@@ -118,3 +118,56 @@ export interface CoachQueryResponse {
   provider_status: CoachProviderStatus;
   generated_at: string;
 }
+
+export type CoachConversationStatus = "active" | "archived";
+export type CoachStoredMessageStatus = "pending" | "completed" | "failed";
+
+export interface CoachConversation {
+  id: string;
+  title: string;
+  status: CoachConversationStatus;
+  created_at: string;
+  updated_at: string;
+  last_message_at?: string | null;
+  message_count: number;
+}
+
+export interface CoachConversationPage {
+  items: CoachConversation[];
+  page: number;
+  page_size: number;
+  total: number;
+}
+
+export interface CoachStoredMessage {
+  id: string;
+  role: CoachConversationRole;
+  content?: string | null;
+  status: CoachStoredMessageStatus;
+  sequence_no: number;
+  response_kind?: string | null;
+  evidence_refs: CoachKnowledgeReference[];
+  proposal_ref?: string | null;
+  trace_id?: string | null;
+  created_at: string;
+  completed_at?: string | null;
+  warnings: CoachNotice[];
+  limitations: CoachNotice[];
+  tool_calls: CoachToolCallSummary[];
+  today_recommendation?: CoachTodayRecommendation | null;
+}
+
+export interface CoachMessagePage {
+  items: CoachStoredMessage[];
+  page: number;
+  page_size: number;
+  total: number;
+}
+
+export interface CoachConversationMessageResult {
+  conversation_id: string;
+  message_id: string;
+  status: CoachStoredMessageStatus;
+  content?: string | null;
+  response?: CoachQueryResponse | null;
+}
