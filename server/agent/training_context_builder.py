@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
-from datetime import timedelta
 from time import perf_counter
 from typing import Any, Callable
 
@@ -10,65 +9,15 @@ from pydantic import ValidationError
 
 from server.agent.context import AgentContextBuilder
 from server.agent.enums import (
-    AgentIntent,
     AgentToolStatus,
     AgentTraceEventType,
     AgentTraceStatus,
 )
 from server.agent.knowledge_references import KNOWLEDGE_TOOL_NAME
+from server.agent.required_facts_policy import resolve_required_facts_policy
 from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import AgentContext, AgentContextSeed, AgentNotice, AgentRequest
 from server.agent.trace import AgentTrace
-
-_PRELOADS: dict[AgentIntent, tuple[tuple[str, dict[str, int | str]], ...]] = {
-    AgentIntent.CASUAL_CONVERSATION: (),
-    AgentIntent.COACH_CAPABILITY_QUERY: (),
-    AgentIntent.TODAY_RECOMMENDATION: (
-        ("get_runner_state", {}),
-        ("get_today_workout", {}),
-        ("get_recent_training", {"days": 7, "limit": 20}),
-        ("get_training_data_quality", {"window_days": 14}),
-        ("evaluate_today_workout", {}),
-    ),
-    AgentIntent.WEEKLY_REVIEW: (
-        ("get_runner_state", {}),
-        ("get_runner_state_history", {"limit": 7}),
-        ("get_recent_training", {"days": 7, "limit": 20}),
-        ("get_current_training_cycle", {}),
-        ("get_training_data_quality", {"window_days": 14}),
-    ),
-    AgentIntent.EXPLAIN_RUNNER_STATE: (
-        ("get_runner_state", {}),
-        ("get_runner_state_history", {"limit": 7}),
-        ("get_training_data_quality", {"window_days": 14}),
-    ),
-    AgentIntent.GENERAL_TRAINING_QUESTION: (
-        ("get_training_rules", {"scope": "GENERAL"}),
-    ),
-    AgentIntent.PERSONAL_TRAINING_ANALYSIS: (
-        ("get_runner_state", {}),
-        ("get_runner_state_history", {"limit": 7}),
-        ("get_recent_training", {"days": 28, "limit": 20}),
-        ("get_current_training_cycle", {}),
-        ("get_today_workout", {}),
-        ("get_training_data_quality", {"window_days": 28}),
-    ),
-    AgentIntent.PLAN_ADJUSTMENT_ANALYSIS: (
-        ("get_runner_state", {}),
-        ("get_runner_state_history", {"limit": 7}),
-        ("get_recent_training", {"days": 28, "limit": 20}),
-        ("get_current_training_cycle", {}),
-        ("get_today_workout", {}),
-        ("get_training_data_quality", {"window_days": 28}),
-    ),
-    AgentIntent.PERSONAL_TRAINING_FACT_QUERY: (),
-    AgentIntent.PERSONAL_TRAINING_STATUS: (
-        ("get_runner_state", {}),
-        ("get_recent_training", {"days": 14, "limit": 14}),
-        ("get_training_data_quality", {"window_days": 14}),
-    ),
-    AgentIntent.UNKNOWN: (),
-}
 
 _FIELD_BY_TOOL = {
     "get_runner_state": "runner_state",
@@ -79,15 +28,6 @@ _FIELD_BY_TOOL = {
     "evaluate_today_workout": "today_evaluation",
     "get_training_data_quality": "data_quality",
 }
-
-_KNOWLEDGE_PRELOAD_INTENTS = frozenset(
-    {
-        AgentIntent.TODAY_RECOMMENDATION,
-        AgentIntent.EXPLAIN_RUNNER_STATE,
-        AgentIntent.GENERAL_TRAINING_QUESTION,
-    }
-)
-
 
 def merge_agent_tool_results(context: AgentContext, new_results: list) -> AgentContext:
     """Merge validated Tool Results into canonical request-local context."""
@@ -142,12 +82,17 @@ class AgentTrainingContextBuilder(AgentContextBuilder):
         results = list(context.tool_results)
         values = context.model_dump(mode="python")
         missing = dict(context.missing_reasons)
-        preloads = self._preloads_for_request(request, context.current_time)
+        policy = resolve_required_facts_policy(
+            intent=request.intent,
+            message=request.message,
+            current_time=context.current_time,
+        )
+        preloads = list(policy.tool_preloads)
         available_tools = {
             definition.name for definition in self.registry.list_tools(request.intent)
         }
         if (
-            request.intent in _KNOWLEDGE_PRELOAD_INTENTS
+            policy.requires_knowledge_retrieval
             and KNOWLEDGE_TOOL_NAME in available_tools
         ):
             preloads.append((KNOWLEDGE_TOOL_NAME, {"query": request.message}))
@@ -191,16 +136,6 @@ class AgentTrainingContextBuilder(AgentContextBuilder):
             # In particular, a transient database failure must not turn a Coach
             # analysis into a failed request.
             return
-
-    @staticmethod
-    def _preloads_for_request(request: AgentRequest, current_time) -> list[tuple[str, dict[str, int | str]]]:
-        if request.intent != AgentIntent.PERSONAL_TRAINING_FACT_QUERY:
-            return list(_PRELOADS[request.intent])
-        normalized = request.message.lower()
-        target_date = current_time.date() + timedelta(days=1) if any(
-            marker in normalized for marker in ("明天", "明日", "tomorrow")
-        ) else current_time.date()
-        return [("get_today_workout", {"target_date": target_date.isoformat()})]
 
     def _bounded_context(self, context: AgentContext) -> AgentContext:
         values = deepcopy(context.model_dump(mode="python"))
