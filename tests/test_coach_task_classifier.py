@@ -3,6 +3,11 @@ from server.agent.enums import AgentIntent
 from server.agent.schemas import AgentConversationMessage
 
 
+def test_utf8_recent_four_week_analysis_routes_to_personal_analysis() -> None:
+    message = "\u5e2e\u6211\u5206\u6790\u6700\u8fd1\u56db\u5468\u8bad\u7ec3"
+    assert CoachTaskClassifier.classify(message) == AgentIntent.PERSONAL_TRAINING_ANALYSIS
+
+
 def test_greeting_is_casual_and_does_not_select_retrieval_profile() -> None:
     assert CoachTaskClassifier.classify("你好。") == AgentIntent.CASUAL_CONVERSATION
 

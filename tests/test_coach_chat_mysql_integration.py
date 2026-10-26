@@ -14,7 +14,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, delete, func, insert, inspect, select
+from sqlalchemy import create_engine, delete, func, insert, inspect, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -218,6 +218,26 @@ def test_coach_chat_migration_is_idempotent_and_enforces_integrity(mysql_engine)
         assert conversation_id is not None
         connection.execute(delete(CoachConversation).where(CoachConversation.id == conversation_id))
         assert connection.scalar(select(func.count()).select_from(CoachMessage)) == 0
+
+
+@pytest.mark.mysql_integration
+def test_coach_chat_migration_upgrades_pre_progress_schema_idempotently(mysql_engine) -> None:
+    """A v1 Coach table can gain v1.2.5 progress columns without recreation."""
+    progress_columns = (
+        "progress_stage",
+        "progress_sequence",
+        "progress_summary_json",
+        "progress_updated_at",
+    )
+    with mysql_engine.begin() as connection:
+        for name in progress_columns:
+            connection.execute(text(f"ALTER TABLE `coach_messages` DROP COLUMN `{name}`"))
+        before = {item["name"] for item in inspect(connection).get_columns("coach_messages")}
+        assert not set(progress_columns) & before
+        upgrade(connection)
+        upgrade(connection)
+        after = {item["name"] for item in inspect(connection).get_columns("coach_messages")}
+        assert set(progress_columns) <= after
 
 
 @pytest.mark.mysql_integration

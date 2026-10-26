@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { post, isAxiosError } = vi.hoisted(() => ({
+const { get, post, isAxiosError } = vi.hoisted(() => ({
+  get: vi.fn(),
   post: vi.fn(),
   isAxiosError: vi.fn((error: { isAxiosError?: boolean }) => error?.isAxiosError === true),
 }));
 
-vi.mock("./request", () => ({ default: { post } }));
+vi.mock("./request", () => ({ default: { get, post } }));
 vi.mock("axios", () => ({ default: { isAxiosError }, isAxiosError }));
 
 import {
   CoachAgentRequestError,
+  getCoachConversationTurnStatus,
   getCoachAgentErrorMessage,
   queryCoach,
 } from "./coachAgent";
@@ -17,8 +19,18 @@ import { createCoachResponse } from "@/test/coachAgentFixture";
 
 describe("coach agent api", () => {
   beforeEach(() => {
+    get.mockReset();
     post.mockReset();
     isAxiosError.mockClear();
+  });
+
+  it("suppresses the expected initial progress-read race from global error toasts", async () => {
+    get.mockResolvedValue({});
+    await getCoachConversationTurnStatus("conversation-1", "turn-1");
+    expect(get).toHaveBeenCalledWith(
+      "/coach/conversations/conversation-1/turns/turn-1/status",
+      { skipErrorMessage: true },
+    );
   });
 
   it("sends one authenticated-client POST with only the public request", async () => {

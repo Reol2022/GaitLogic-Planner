@@ -96,6 +96,9 @@ export async function getCoachConversationTurnStatus(
 ): Promise<CoachConversationTurnStatus> {
   return request.get<CoachConversationTurnStatus>(
     `/coach/conversations/${conversationId}/turns/${clientTurnId}/status`,
+    // A status read may arrive before the POST has durably reserved the turn.
+    // The caller retries that expected short race; it must not show a global toast.
+    { skipErrorMessage: true },
   );
 }
 

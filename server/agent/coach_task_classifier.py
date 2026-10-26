@@ -16,7 +16,7 @@ class CoachTaskClassifier:
     _GREETING_MARKERS = ("你好", "您好", "嗨", "哈喽", "hello", "hi", "hey", "谢谢", "再见")
     _PERSONAL_MARKERS = (
         "我的训练", "我最近", "我的跑量", "我的计划", "读取我的", "训练数据",
-        "帮我优化", "帮我调整", "我该如何", "我应该如何", "半马", "马拉松",
+        "帮我", "帮我优化", "帮我调整", "我该如何", "我应该如何", "半马", "马拉松",
         "比赛", "恢复", "疲劳", "睡眠", "心率", "配速", "race", "my training",
         "my plan", "my mileage", "my recovery",
     )
