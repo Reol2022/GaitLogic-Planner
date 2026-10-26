@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
+from datetime import timedelta
 from time import perf_counter
 from typing import Any
 
@@ -21,6 +22,7 @@ from server.agent.trace import AgentTrace
 
 _PRELOADS: dict[AgentIntent, tuple[tuple[str, dict[str, int | str]], ...]] = {
     AgentIntent.CASUAL_CONVERSATION: (),
+    AgentIntent.COACH_CAPABILITY_QUERY: (),
     AgentIntent.TODAY_RECOMMENDATION: (
         ("get_runner_state", {}),
         ("get_today_workout", {}),
@@ -50,6 +52,20 @@ _PRELOADS: dict[AgentIntent, tuple[tuple[str, dict[str, int | str]], ...]] = {
         ("get_current_training_cycle", {}),
         ("get_today_workout", {}),
         ("get_training_data_quality", {"window_days": 28}),
+    ),
+    AgentIntent.PLAN_ADJUSTMENT_ANALYSIS: (
+        ("get_runner_state", {}),
+        ("get_runner_state_history", {"limit": 7}),
+        ("get_recent_training", {"days": 28, "limit": 20}),
+        ("get_current_training_cycle", {}),
+        ("get_today_workout", {}),
+        ("get_training_data_quality", {"window_days": 28}),
+    ),
+    AgentIntent.PERSONAL_TRAINING_FACT_QUERY: (),
+    AgentIntent.PERSONAL_TRAINING_STATUS: (
+        ("get_runner_state", {}),
+        ("get_recent_training", {"days": 14, "limit": 14}),
+        ("get_training_data_quality", {"window_days": 14}),
     ),
     AgentIntent.UNKNOWN: (),
 }
@@ -119,7 +135,7 @@ class AgentTrainingContextBuilder(AgentContextBuilder):
         results = list(context.tool_results)
         values = context.model_dump(mode="python")
         missing = dict(context.missing_reasons)
-        preloads = list(_PRELOADS[request.intent])
+        preloads = self._preloads_for_request(request, context.current_time)
         available_tools = {
             definition.name for definition in self.registry.list_tools(request.intent)
         }
@@ -153,6 +169,16 @@ class AgentTrainingContextBuilder(AgentContextBuilder):
             values = context.model_dump(mode="python")
             missing = dict(context.missing_reasons)
         return self._bounded_context(context)
+
+    @staticmethod
+    def _preloads_for_request(request: AgentRequest, current_time) -> list[tuple[str, dict[str, int | str]]]:
+        if request.intent != AgentIntent.PERSONAL_TRAINING_FACT_QUERY:
+            return list(_PRELOADS[request.intent])
+        normalized = request.message.lower()
+        target_date = current_time.date() + timedelta(days=1) if any(
+            marker in normalized for marker in ("明天", "明日", "tomorrow")
+        ) else current_time.date()
+        return [("get_today_workout", {"target_date": target_date.isoformat()})]
 
     def _bounded_context(self, context: AgentContext) -> AgentContext:
         values = deepcopy(context.model_dump(mode="python"))

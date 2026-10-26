@@ -80,7 +80,7 @@ def test_weekly_profile_honours_thinking_policy_and_is_independent_from_ai_plan_
     weekly = task_model_profile(configured, ModelTaskType.WEEKLY_REVIEW_ANALYSIS)
     plan = task_model_profile(configured, ModelTaskType.PLAN_DESIGN)
     ai_plan = task_model_profile(configured, ModelTaskType.AI_PLAN_GENERATION)
-    assert not weekly.thinking_enabled and not plan.thinking_enabled and not ai_plan.thinking_enabled
+    assert weekly.thinking_enabled and plan.thinking_enabled and not ai_plan.thinking_enabled
     enabled = task_model_profile(
         settings(COACH_AGENT_THINKING_MODE="enabled"),
         ModelTaskType.WEEKLY_REVIEW_ANALYSIS,
@@ -107,7 +107,9 @@ def test_reasoning_only_length_is_retried_with_bounded_larger_budget():
     assert result.attempts == 2
     assert [item["max_tokens"] for item in client.chat.completions.calls] == [16384, 24576]
     assert [item["timeout"] for item in client.chat.completions.calls] == [300, 300]
-    assert all(item["extra_body"] == {"thinking": {"type": "disabled"}} for item in client.chat.completions.calls)
+    assert all(item["extra_body"] == {"thinking": {"type": "enabled"}} for item in client.chat.completions.calls)
+    assert all(item["reasoning_effort"] == "high" for item in client.chat.completions.calls)
+    assert all("temperature" not in item for item in client.chat.completions.calls)
     assert all(
         "Simplified Chinese" in item["messages"][0]["content"]
         for item in client.chat.completions.calls

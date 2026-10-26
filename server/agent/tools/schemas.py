@@ -20,6 +20,10 @@ class EmptyToolInput(AgentContractModel):
     pass
 
 
+class WorkoutDateInput(AgentContractModel):
+    target_date: date | None = None
+
+
 class AgentEvidenceRead(AgentContractModel):
     metric: str = Field(max_length=80)
     value: float | int | str | None = None

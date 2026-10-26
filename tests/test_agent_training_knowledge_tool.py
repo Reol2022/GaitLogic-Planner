@@ -98,6 +98,8 @@ def test_tool_schema_is_strict_bounded_and_read_only() -> None:
         AgentIntent.TODAY_RECOMMENDATION,
         AgentIntent.EXPLAIN_RUNNER_STATE,
         AgentIntent.GENERAL_TRAINING_QUESTION,
+        AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+        AgentIntent.PLAN_ADJUSTMENT_ANALYSIS,
     }
     assert definition.input_schema["additionalProperties"] is False
     with pytest.raises(ValidationError):

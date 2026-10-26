@@ -39,10 +39,14 @@ from server.observability.tracing import NOOP_TRACER, SafeTracer, active_trace_h
 
 _PUBLIC_INTENTS = {
     AgentIntent.CASUAL_CONVERSATION,
+    AgentIntent.COACH_CAPABILITY_QUERY,
     AgentIntent.TODAY_RECOMMENDATION,
     AgentIntent.EXPLAIN_RUNNER_STATE,
     AgentIntent.GENERAL_TRAINING_QUESTION,
     AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+    AgentIntent.PLAN_ADJUSTMENT_ANALYSIS,
+    AgentIntent.PERSONAL_TRAINING_FACT_QUERY,
+    AgentIntent.PERSONAL_TRAINING_STATUS,
     AgentIntent.WEEKLY_REVIEW,
 }
 
@@ -238,6 +242,10 @@ class CoachAgentQueryService:
                     logger.warning("coach_provider_client_close_failed")
         context = agent.last_context
         usage = getattr(gateway, "last_usage", AgentProviderUsage())
+        response_metadata = getattr(gateway, "last_response_metadata", {})
+        effective_model = response_metadata.get("model")
+        if not isinstance(effective_model, str) or not effective_model:
+            effective_model = self.settings.coach_agent_model
         provider_status = initial_provider_status
         if initial_provider_status == "SUCCEEDED":
             # Provider delivery and Agent validation are independent.  A HTTP
@@ -254,7 +262,7 @@ class CoachAgentQueryService:
         try:
             self.usage_recorder.record(
                 provider=self.settings.coach_agent_provider,
-                model=self.settings.coach_agent_model,
+                model=effective_model,
                 usage=usage,
                 status=provider_status,
             )
@@ -262,9 +270,13 @@ class CoachAgentQueryService:
             logger.warning("coach_agent_usage_record_failed status=%s", provider_status)
 
         tool_results = context.tool_results if context is not None else []
+        model_profile = response_metadata.get("model_profile")
+        thinking_enabled = response_metadata.get("thinking_enabled")
         logger.info(
-            "coach_agent_task_result intent=%s tool_calls=%s valid_facts=%s validator_status=%s duration_ms=%.2f",
+            "coach_agent_task_result intent=%s profile=%s thinking_enabled=%s tool_calls=%s valid_facts=%s validator_status=%s duration_ms=%.2f",
             intent.value,
+            model_profile if isinstance(model_profile, str) else "unknown",
+            thinking_enabled if isinstance(thinking_enabled, bool) else False,
             len(tool_results),
             sum(
                 item.status == AgentToolStatus.SUCCEEDED

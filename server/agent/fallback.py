@@ -87,7 +87,7 @@ class DeterministicCoachFallback:
                 else "Hello, I am here. You can ask about training knowledge, recent execution, or recovery; personal analysis uses only verified training facts."
             )
             summary = "Coach is available"
-        elif intent == AgentIntent.PERSONAL_TRAINING_ANALYSIS:
+        elif intent in {AgentIntent.PERSONAL_TRAINING_ANALYSIS, AgentIntent.PLAN_ADJUSTMENT_ANALYSIS}:
             has_facts = any(
                 result.status == AgentToolStatus.SUCCEEDED
                 and isinstance(result.data, dict)

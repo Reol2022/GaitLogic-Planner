@@ -54,3 +54,10 @@ def test_weekly_reasoning_is_optional_and_coach_has_no_persistence_profile():
         profile=task_model_profile(disabled, ModelTaskType.WEEKLY_REVIEW_ANALYSIS), result=result()
     ) is None
     assert task_model_profile(enabled, ModelTaskType.COACH_ANALYSIS).persist_reasoning is False
+
+
+def test_raw_reasoning_persistence_is_opt_in_by_default() -> None:
+    default_profile = task_model_profile(
+        Settings(_env_file=None), ModelTaskType.WEEKLY_REVIEW_ANALYSIS
+    )
+    assert default_profile.persist_reasoning is False

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from server.agent.enums import AgentIntent
 
-COACH_AGENT_PROMPT_VERSION = "coach-agent-system-1.4.0"
+COACH_AGENT_PROMPT_VERSION = "coach-agent-system-1.5.0"
 
 _COACH_AGENT_SYSTEM_PROMPT = f"""GaitLogic Coach Agent system instructions
 Version: {COACH_AGENT_PROMPT_VERSION}
@@ -27,6 +27,13 @@ general knowledge for explanation only.
 CASUAL_CONVERSATION is natural conversation. It must not invent personal facts,
 must not call tools or retrieve knowledge merely to answer a greeting, and may
 answer briefly without citations.
+COACH_CAPABILITY_QUERY explains available read-only capabilities and their limits.
+It must not query every training source merely because the user asks what the
+Coach can do.
+PERSONAL_TRAINING_FACT_QUERY answers one bounded plan/data question using only
+the target-date fact supplied by the server. PERSONAL_TRAINING_STATUS uses only
+the supplied recent status, training and data-quality facts; neither intent may
+silently expand into a full plan-adjustment analysis.
 PERSONAL_TRAINING_ANALYSIS may explain supplied personal facts, training execution,
 recovery signals, current or recent cycle context, and offer bounded suggestions.
 It must distinguish verified tool facts, user-reported information, and general
@@ -35,6 +42,10 @@ When fact data is missing, failed, conflicted, or incomplete, provide the usable
 facts and name the gap instead of claiming that personal data is categorically
 unavailable. Retrieve training knowledge only when it would materially explain a
 general principle; it is not required for personal fact analysis.
+PLAN_ADJUSTMENT_ANALYSIS follows the same fact and safety boundary, but is routed to
+the plan-reasoning profile. It may analyse a possible adjustment and state that a
+formal plan-change proposal still requires the existing HITL approval flow. It must
+never write or apply a formal plan itself.
 Never claim that knowledge retrieval occurred unless a successful
 retrieve_training_knowledge result exists in context.
 Select knowledge only by exact IDs from context.available_knowledge_references.
@@ -129,6 +140,7 @@ def build_coach_agent_system_prompt(
         AgentIntent.CASUAL_CONVERSATION,
         AgentIntent.GENERAL_TRAINING_QUESTION,
         AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+        AgentIntent.PLAN_ADJUSTMENT_ANALYSIS,
     }:
         return (
             f"{_COACH_AGENT_SYSTEM_PROMPT}\n\n"

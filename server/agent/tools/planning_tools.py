@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from planner_core.enums import WorkoutMainTypeNormalized
 
 from server.agent.enums import AgentIntent
@@ -10,6 +12,7 @@ from server.agent.tools.schemas import (
     CurrentTrainingCycleOutput,
     EmptyToolInput,
     TodayWorkoutOutput,
+    WorkoutDateInput,
     TrainingCycleBlockRead,
     TrainingDataStatus,
 )
@@ -26,22 +29,26 @@ def _notice(code: str, message: str) -> AgentNotice:
 
 class GetTodayWorkoutTool(AgentTool):
     name = "get_today_workout"
-    description = "Read today's plan without changing or interpreting it as an automatic adjustment."
-    input_model = EmptyToolInput
+    description = "Read the authenticated runner's plan for today or one specified date; never change it."
+    input_model = WorkoutDateInput
     output_model = TodayWorkoutOutput
     allowed_intents = (
         AgentIntent.TODAY_RECOMMENDATION,
         AgentIntent.GENERAL_TRAINING_QUESTION,
         AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+        AgentIntent.PLAN_ADJUSTMENT_ANALYSIS,
+        AgentIntent.PERSONAL_TRAINING_FACT_QUERY,
     )
     provided_fact_domains = ("today_plan",)
 
     def __init__(self, dependencies: CoachAgentToolDependencies) -> None:
         self.dependencies = dependencies
 
-    def execute(self, arguments: EmptyToolInput, context: AgentContext) -> TodayWorkoutOutput:
-        del arguments
-        today, cycle, workouts = self.dependencies.today_workouts(context.user_id)
+    def execute(self, arguments: WorkoutDateInput, context: AgentContext) -> TodayWorkoutOutput:
+        target_date: date = arguments.target_date or context.current_time.date()
+        today, cycle, workouts = self.dependencies.today_workouts(
+            context.user_id, target_date=target_date
+        )
         if cycle is None:
             return TodayWorkoutOutput(
                 data_status=TrainingDataStatus.NOT_FOUND,
@@ -103,6 +110,7 @@ class GetCurrentTrainingCycleTool(AgentTool):
         AgentIntent.WEEKLY_REVIEW,
         AgentIntent.GENERAL_TRAINING_QUESTION,
         AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+        AgentIntent.PLAN_ADJUSTMENT_ANALYSIS,
     )
     provided_fact_domains = ("training_phase", "training_plan_context")
 

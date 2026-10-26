@@ -15,7 +15,7 @@ from planner_core.config import Settings
 from server.agent.enums import AgentIntent, AgentRiskLevel, AgentTraceEventType, AgentTraceStatus
 from server.agent.errors import AgentErrorCode
 from server.agent.gateway import AgentExecutionState, AgentLLMGateway
-from server.model_tasks import ModelTaskType, task_model_profile
+from server.model_tasks import TaskModelProfile, coach_intent_model_profile
 from server.agent.knowledge_references import build_knowledge_reference_catalog
 from server.agent.providers.errors import AgentProviderError
 from server.agent.providers.schemas import (
@@ -227,19 +227,21 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
         intent: AgentIntent,
+        profile: TaskModelProfile,
         max_output_tokens: int | None = None,
     ) -> Any:
-        profile = task_model_profile(self.settings, ModelTaskType.COACH_ANALYSIS)
         request: dict[str, Any] = {
             "model": profile.model,
             "messages": copy.deepcopy(messages),
             "response_format": self._response_format(intent),
             "max_tokens": max_output_tokens or profile.max_output_tokens,
-            "temperature": 0.2,
         }
-        request["extra_body"] = {
-            "thinking": {"type": "enabled" if profile.thinking_enabled else "disabled"}
-        }
+        if profile.thinking_enabled:
+            request["reasoning_effort"] = profile.reasoning_effort
+            request["extra_body"] = {"thinking": {"type": "enabled"}}
+        else:
+            request["temperature"] = 0.2
+            request["extra_body"] = {"thinking": {"type": "disabled"}}
         if tools:
             request["tools"] = tools
             request["tool_choice"] = "auto"
@@ -464,11 +466,12 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
         messages = state.messages
         safe_tools = [provider_tool_schema(tool) for tool in tools if tool.read_only]
         started = perf_counter()
+        profile = coach_intent_model_profile(self.settings, context.intent)
         trace.add_event(
             AgentTraceEventType.PROVIDER_CALL_STARTED,
             AgentTraceStatus.STARTED,
             provider_alias=self.settings.coach_agent_provider,
-            model_alias=self.settings.coach_agent_model,
+            model_alias=profile.model,
             response_format_mode=self.settings.coach_agent_response_format_mode,
         )
         policy = self._retry_policy()
@@ -478,9 +481,8 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     messages=messages,
                     tools=safe_tools,
                     intent=context.intent,
-                    max_output_tokens=task_model_profile(
-                        self.settings, ModelTaskType.COACH_ANALYSIS
-                    ).tokens_for_attempt(attempt),
+                    profile=profile,
+                    max_output_tokens=profile.tokens_for_attempt(attempt),
                 )
                 output = self._parse_response(
                     response,
@@ -489,18 +491,16 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     user_message,
                 )
                 finish_reason, content_text, reasoning_text = self._response_lengths(response.choices[0])
-                profile = task_model_profile(self.settings, ModelTaskType.COACH_ANALYSIS)
                 self.last_response_metadata = {
-                    "task_type": ModelTaskType.COACH_ANALYSIS.value,
-                    "model_profile": ModelTaskType.COACH_ANALYSIS.value,
+                    "task_type": profile.task_type.value,
+                    "model_profile": profile.profile_name,
+                    "model": profile.model,
                     "thinking_enabled": profile.thinking_enabled,
                     "tool_round": tool_round,
                     "finish_reason": finish_reason,
                     "reasoning_length": len(reasoning_text),
                     "content_length": len(content_text),
-                    "max_output_tokens": task_model_profile(
-                        self.settings, ModelTaskType.COACH_ANALYSIS
-                    ).tokens_for_attempt(attempt),
+                    "max_output_tokens": profile.tokens_for_attempt(attempt),
                     "retry_count": attempt,
                 }
                 if output.tool_calls:
@@ -530,7 +530,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     AgentTraceStatus.SUCCEEDED,
                     duration_ms=duration,
                     provider_alias=self.settings.coach_agent_provider,
-                    model_alias=self.settings.coach_agent_model,
+                    model_alias=profile.model,
                     response_format_mode=self.settings.coach_agent_response_format_mode,
                     prompt_tokens=self.last_usage.prompt_tokens,
                     completion_tokens=self.last_usage.completion_tokens,
@@ -542,10 +542,10 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                 )
                 return output
             except AgentProviderError as exc:
-                profile = task_model_profile(self.settings, ModelTaskType.COACH_ANALYSIS)
                 self.last_response_metadata = {
-                    "task_type": ModelTaskType.COACH_ANALYSIS.value,
-                    "model_profile": ModelTaskType.COACH_ANALYSIS.value,
+                    "task_type": profile.task_type.value,
+                    "model_profile": profile.profile_name,
+                    "model": profile.model,
                     "thinking_enabled": profile.thinking_enabled,
                     "tool_round": tool_round,
                     "finish_reason": exc.finish_reason,
@@ -560,7 +560,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                         AgentTraceEventType.PROVIDER_CALL_FAILED,
                         AgentTraceStatus.FAILED,
                         provider_alias=self.settings.coach_agent_provider,
-                        model_alias=self.settings.coach_agent_model,
+                        model_alias=profile.model,
                         response_format_mode=self.settings.coach_agent_response_format_mode,
                         provider_kind="chat",
                         attempt=attempt + 1,
@@ -589,7 +589,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     AgentTraceStatus.FAILED,
                     duration_ms=duration,
                     provider_alias=self.settings.coach_agent_provider,
-                    model_alias=self.settings.coach_agent_model,
+                    model_alias=profile.model,
                     response_format_mode=self.settings.coach_agent_response_format_mode,
                     safe_error_code=exc.code,
                     provider_kind="chat",
@@ -607,7 +607,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                         AgentTraceEventType.PROVIDER_CALL_FAILED,
                         AgentTraceStatus.FAILED,
                         provider_alias=self.settings.coach_agent_provider,
-                        model_alias=self.settings.coach_agent_model,
+                        model_alias=profile.model,
                         response_format_mode=self.settings.coach_agent_response_format_mode,
                         provider_kind="chat",
                         attempt=attempt + 1,
@@ -637,7 +637,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     AgentTraceStatus.FAILED,
                     duration_ms=duration,
                     provider_alias=self.settings.coach_agent_provider,
-                    model_alias=self.settings.coach_agent_model,
+                    model_alias=profile.model,
                     response_format_mode=self.settings.coach_agent_response_format_mode,
                     safe_error_code=code,
                     provider_kind="chat",
@@ -650,7 +650,7 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                 logger.warning(
                     "coach_provider_call_failed provider=%s model=%s code=%s",
                     self.settings.coach_agent_provider,
-                    self.settings.coach_agent_model,
+                    profile.model,
                     code.value,
                 )
                 raise AgentProviderError(code, category=failure.category) from exc

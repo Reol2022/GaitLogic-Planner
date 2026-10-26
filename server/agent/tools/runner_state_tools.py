@@ -21,6 +21,8 @@ _INTENTS = (
     AgentIntent.EXPLAIN_RUNNER_STATE,
     AgentIntent.GENERAL_TRAINING_QUESTION,
     AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+    AgentIntent.PLAN_ADJUSTMENT_ANALYSIS,
+    AgentIntent.PERSONAL_TRAINING_STATUS,
 )
 
 _LIMITATION_MESSAGES_ZH = {
@@ -156,6 +158,7 @@ class GetRunnerStateHistoryTool(AgentTool):
         AgentIntent.WEEKLY_REVIEW,
         AgentIntent.EXPLAIN_RUNNER_STATE,
         AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+        AgentIntent.PLAN_ADJUSTMENT_ANALYSIS,
     )
     provided_fact_domains = ("training_load", "recovery")
 

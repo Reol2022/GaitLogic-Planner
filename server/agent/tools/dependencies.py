@@ -70,8 +70,8 @@ class CoachAgentToolDependencies:
             as_of_date=as_of_date,
         )
 
-    def today_workouts(self, user_id: int):
-        today = local_today()
+    def today_workouts(self, user_id: int, *, target_date: date | None = None):
+        today = target_date or local_today()
         cycle = training_cycle_lifecycle_service.get_active_cycle(self.db, user_id)
         workouts = (
             planned_workout_service.get_today_workouts(self.db, today, user_id)

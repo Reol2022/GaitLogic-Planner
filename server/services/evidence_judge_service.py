@@ -80,10 +80,14 @@ REQUIRED_EVIDENCE_PROFILES: dict[str, RequiredEvidenceProfile] = {
 
 _INTENT_DOMAINS = {
     "CASUAL_CONVERSATION": [],
+    "COACH_CAPABILITY_QUERY": [],
     "TODAY_RECOMMENDATION": ["today_plan", "training_load", "recent_intensity", "recovery"],
     "EXPLAIN_RUNNER_STATE": ["training_load", "recent_intensity", "recovery", "subjective_fatigue"],
     "WEEKLY_REVIEW": ["plan_execution", "training_volume", "training_frequency", "recent_intensity", "recovery", "subjective_fatigue", "training_phase"],
     "PERSONAL_TRAINING_ANALYSIS": ["training_load", "plan_execution", "recovery", "training_phase"],
+    "PLAN_ADJUSTMENT_ANALYSIS": ["training_load", "plan_execution", "recovery", "training_phase"],
+    "PERSONAL_TRAINING_FACT_QUERY": ["today_plan"],
+    "PERSONAL_TRAINING_STATUS": ["training_load", "recent_intensity", "recovery"],
 }
 
 

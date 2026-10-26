@@ -176,7 +176,7 @@ class StructuredTaskProvider:
                 metadata={
                     "operation_type": "structured_task",
                     "task_type": profile.task_type.value,
-                    "model_profile": profile.task_type.value,
+                    "model_profile": profile.profile_name,
                     "thinking_enabled": profile.thinking_enabled,
                     "max_output_tokens": max_tokens,
                     "request_timeout_seconds": profile.request_timeout_seconds,
@@ -186,9 +186,9 @@ class StructuredTaskProvider:
                 root=inherited_handle is None and attempt == 0,
             ) as span:
                 try:
-                    response = self.client.chat.completions.create(
-                        model=profile.model,
-                        messages=[
+                    request = {
+                        "model": profile.model,
+                        "messages": [
                             {
                                 "role": "system",
                                 "content": (
@@ -208,14 +208,16 @@ class StructuredTaskProvider:
                                 ),
                             },
                         ],
-                        response_format=self._format(schema, profile),
-                        max_tokens=max_tokens,
-                        timeout=profile.request_timeout_seconds,
-                        temperature=0.2,
-                        extra_body={
-                            "thinking": {"type": "enabled" if profile.thinking_enabled else "disabled"}
-                        },
-                    )
+                        "response_format": self._format(schema, profile),
+                        "max_tokens": max_tokens,
+                        "timeout": profile.request_timeout_seconds,
+                        "extra_body": {"thinking": {"type": "enabled" if profile.thinking_enabled else "disabled"}},
+                    }
+                    if profile.thinking_enabled:
+                        request["reasoning_effort"] = profile.reasoning_effort
+                    else:
+                        request["temperature"] = 0.2
+                    response = self.client.chat.completions.create(**request)
                     value, reasoning, finish_reason, content = self._validate_response(response, schema)
                 except StructuredTaskProviderError as exc:
                     last_error = exc

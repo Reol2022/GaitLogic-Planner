@@ -82,9 +82,10 @@ class FakeDependencies:
         self.seen_user_ids.append(user_id)
         return self.quality.model_copy(update={"window_days": window_days})
 
-    def today_workouts(self, user_id: int):
+    def today_workouts(self, user_id: int, *, target_date=None):
         self.seen_user_ids.append(user_id)
-        return self.today
+        workout_date, cycle, workouts = self.today
+        return target_date or workout_date, cycle, workouts
 
     def current_cycle(self, user_id: int):
         self.seen_user_ids.append(user_id)

@@ -253,6 +253,12 @@ class Settings(BaseSettings):
     coach_fact_query_model: str | None = Field(
         default=None, validation_alias="COACH_FACT_QUERY_MODEL"
     )
+    coach_chat_fast_model: str | None = Field(
+        default=None, validation_alias="COACH_CHAT_FAST_MODEL"
+    )
+    coach_chat_fast_max_output_tokens: int = Field(
+        default=1024, ge=256, le=65536, validation_alias="COACH_CHAT_FAST_MAX_OUTPUT_TOKENS"
+    )
     coach_fact_query_max_output_tokens: int = Field(
         default=2048, ge=256, le=65536, validation_alias="COACH_FACT_QUERY_MAX_OUTPUT_TOKENS"
     )
@@ -261,6 +267,9 @@ class Settings(BaseSettings):
     )
     coach_analysis_max_output_tokens: int = Field(
         default=8192, ge=256, le=65536, validation_alias="COACH_ANALYSIS_MAX_OUTPUT_TOKENS"
+    )
+    coach_analysis_reasoning_effort: Literal["low", "high", "max"] = Field(
+        default="high", validation_alias="COACH_ANALYSIS_REASONING_EFFORT"
     )
     weekly_review_model: str | None = Field(
         default=None, validation_alias="WEEKLY_REVIEW_MODEL"
@@ -271,6 +280,9 @@ class Settings(BaseSettings):
     weekly_review_timeout_seconds: int = Field(
         default=300, ge=30, le=600, validation_alias="WEEKLY_REVIEW_TIMEOUT_SECONDS"
     )
+    weekly_review_reasoning_effort: Literal["low", "high", "max"] = Field(
+        default="high", validation_alias="WEEKLY_REVIEW_REASONING_EFFORT"
+    )
     plan_design_model: str | None = Field(
         default=None, validation_alias="PLAN_DESIGN_MODEL"
     )
@@ -279,6 +291,9 @@ class Settings(BaseSettings):
     )
     plan_design_timeout_seconds: int = Field(
         default=300, ge=30, le=600, validation_alias="PLAN_DESIGN_TIMEOUT_SECONDS"
+    )
+    plan_design_reasoning_effort: Literal["low", "high", "max"] = Field(
+        default="high", validation_alias="PLAN_DESIGN_REASONING_EFFORT"
     )
     ai_plan_generation_model: str | None = Field(
         default=None, validation_alias="AI_PLAN_GENERATION_MODEL"
@@ -293,10 +308,10 @@ class Settings(BaseSettings):
         default=1.5, ge=1.0, le=2.0, validation_alias="PROVIDER_TASK_RETRY_TOKEN_MULTIPLIER"
     )
     weekly_reasoning_persistence_enabled: bool = Field(
-        default=True, validation_alias="WEEKLY_REASONING_PERSISTENCE_ENABLED"
+        default=False, validation_alias="WEEKLY_REASONING_PERSISTENCE_ENABLED"
     )
     plan_design_reasoning_persistence_enabled: bool = Field(
-        default=True, validation_alias="PLAN_DESIGN_REASONING_PERSISTENCE_ENABLED"
+        default=False, validation_alias="PLAN_DESIGN_REASONING_PERSISTENCE_ENABLED"
     )
     coach_agent_daily_limit: int = Field(
         default=30,

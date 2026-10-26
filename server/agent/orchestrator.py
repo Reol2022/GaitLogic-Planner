@@ -847,6 +847,7 @@ class GaitLogicCoachAgent:
                         AgentIntent.EXPLAIN_RUNNER_STATE,
                         AgentIntent.GENERAL_TRAINING_QUESTION,
                         AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+                        AgentIntent.PLAN_ADJUSTMENT_ANALYSIS,
                     }
                     and AgentErrorCode.AGENT_VALIDATION_FAILED in validation.errors
                     and self.validator.permits_narrative_repair(output, validation)

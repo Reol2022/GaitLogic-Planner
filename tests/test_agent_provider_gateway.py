@@ -317,9 +317,10 @@ def test_json_object_request_is_exact_and_ignores_unknown_provider_settings() ->
         "messages",
         "response_format",
         "max_tokens",
-        "temperature",
         "extra_body",
+        "reasoning_effort",
     }
+    assert call["reasoning_effort"] == "high"
     provider_events = [
         event for event in trace.events if event.provider_alias is not None
     ]
@@ -353,6 +354,12 @@ def test_coach_analysis_honors_deployment_thinking_mode(
         "thinking": {"type": expected_type}
     }
     assert gateway.last_response_metadata["thinking_enabled"] == (thinking_mode == "enabled")
+    if thinking_mode == "enabled":
+        assert fake.completions.calls[0]["reasoning_effort"] == "high"
+        assert "temperature" not in fake.completions.calls[0]
+    else:
+        assert fake.completions.calls[0]["temperature"] == 0.2
+        assert "reasoning_effort" not in fake.completions.calls[0]
 
 
 def test_today_evidence_ids_materialize_to_canonical_public_text() -> None:
@@ -464,6 +471,8 @@ def test_json_object_and_thinking_disabled_are_combined_without_other_fields() -
     call = fake.completions.calls[0]
     assert call["response_format"] == {"type": "json_object"}
     assert call["extra_body"] == {"thinking": {"type": "disabled"}}
+    assert call["temperature"] == 0.2
+    assert "reasoning_effort" not in call
 
 
 def test_thinking_mode_enabled_calls_provider() -> None:

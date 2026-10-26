@@ -78,6 +78,18 @@ def test_casual_conversation_loads_no_tools_and_personal_analysis_loads_read_onl
     assert personal.current_cycle is not None
 
 
+def test_capability_fact_and_status_queries_load_only_required_facts() -> None:
+    capability, capability_trace = build(AgentIntent.COACH_CAPABILITY_QUERY)
+    fact, fact_trace = build(AgentIntent.PERSONAL_TRAINING_FACT_QUERY)
+    status, status_trace = build(AgentIntent.PERSONAL_TRAINING_STATUS)
+
+    assert completed_tools(capability_trace) == []
+    assert completed_tools(fact_trace) == ["get_today_workout"]
+    assert completed_tools(status_trace) == [
+        "get_runner_state", "get_recent_training", "get_training_data_quality"
+    ]
+
+
 def test_one_tool_failure_degrades_with_missing_reason() -> None:
     deps = FakeDependencies()
 
