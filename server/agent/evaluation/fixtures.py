@@ -35,6 +35,10 @@ _ALL = (
     AgentIntent.WEEKLY_REVIEW,
     AgentIntent.EXPLAIN_RUNNER_STATE,
     AgentIntent.GENERAL_TRAINING_QUESTION,
+    AgentIntent.PERSONAL_TRAINING_FACT_QUERY,
+    AgentIntent.PERSONAL_TRAINING_STATUS,
+    AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+    AgentIntent.PLAN_ADJUSTMENT_ANALYSIS,
 )
 _TOOL_CONTRACTS: dict[str, tuple[type[BaseModel], type[BaseModel], tuple[AgentIntent, ...]]] = {
     "get_runner_state": (EmptyToolInput, RunnerStateToolOutput, _ALL),
@@ -47,7 +51,13 @@ _TOOL_CONTRACTS: dict[str, tuple[type[BaseModel], type[BaseModel], tuple[AgentIn
     "get_today_workout": (
         EmptyToolInput,
         TodayWorkoutOutput,
-        (AgentIntent.TODAY_RECOMMENDATION, AgentIntent.GENERAL_TRAINING_QUESTION),
+        (
+            AgentIntent.TODAY_RECOMMENDATION,
+            AgentIntent.GENERAL_TRAINING_QUESTION,
+            AgentIntent.PERSONAL_TRAINING_FACT_QUERY,
+            AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+            AgentIntent.PLAN_ADJUSTMENT_ANALYSIS,
+        ),
     ),
     "get_current_training_cycle": (
         EmptyToolInput,
@@ -56,6 +66,8 @@ _TOOL_CONTRACTS: dict[str, tuple[type[BaseModel], type[BaseModel], tuple[AgentIn
             AgentIntent.TODAY_RECOMMENDATION,
             AgentIntent.WEEKLY_REVIEW,
             AgentIntent.GENERAL_TRAINING_QUESTION,
+            AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+            AgentIntent.PLAN_ADJUSTMENT_ANALYSIS,
         ),
     ),
     "get_training_rules": (TrainingRulesInput, TrainingRulesOutput, _ALL),

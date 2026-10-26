@@ -430,7 +430,11 @@ def test_invalid_today_evidence_protocol_is_rejected(
         ]
     )
     with pytest.raises(AgentProviderError) as exc:
-        run_gateway(fake, agent_context=today_context())
+        run_gateway(
+            fake,
+            configured=settings(COACH_AGENT_MAX_RETRIES=0),
+            agent_context=today_context(),
+        )
     assert exc.value.code == AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID
     assert len(fake.completions.calls) == 1
 
@@ -550,11 +554,83 @@ def test_invalid_native_tool_calls_are_model_output_errors(native) -> None:
         '{"intent":"EXPLAIN_RUNNER_STATE","answer":"x","extra":1}',
     ],
 )
-def test_invalid_output_is_rejected_without_retry(content: str) -> None:
+def test_invalid_output_is_rejected_when_format_repair_budget_is_disabled(content: str) -> None:
     fake = FakeClient([response(content=content)])
     with pytest.raises(AgentProviderError) as exc:
-        run_gateway(fake)
+        run_gateway(fake, configured=settings(COACH_AGENT_MAX_RETRIES=0))
     assert exc.value.code == AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID
+    assert len(fake.completions.calls) == 1
+
+
+def test_parsed_provider_response_is_distinct_from_valid_structured_output() -> None:
+    fake = FakeClient([response(content="not json")])
+
+    with pytest.raises(AgentProviderError):
+        gateway = OpenAICompatibleAgentGateway(
+            settings(COACH_AGENT_MAX_RETRIES=0), client_factory=lambda *_args: fake
+        )
+        gateway.generate(
+            system_instructions="safe fixed prompt",
+            user_message="Explain fictional state",
+            context=context(),
+            tools=[],
+            trace=AgentTrace(request_id=context().request_id),
+        )
+
+    assert gateway.last_response_metadata["provider_response_received"] is True
+    assert gateway.last_usage.status == "FAILED"
+
+
+def test_invalid_json_is_regenerated_once_without_replaying_raw_output() -> None:
+    valid = json.dumps(
+        {"intent": "EXPLAIN_RUNNER_STATE", "answer": "Safe regenerated answer."}
+    )
+    fake = FakeClient([response(content="not json"), response(content=valid)])
+
+    gateway, output, trace = run_gateway(fake)
+
+    assert output.answer == "Safe regenerated answer."
+    assert len(fake.completions.calls) == 2
+    repair_messages = fake.completions.calls[1]["messages"]
+    assert "not json" not in json.dumps(repair_messages)
+    assert any(
+        message["role"] == "system" and "strictly follows" in message["content"]
+        for message in repair_messages
+    )
+    assert gateway.last_response_metadata["format_repair_count"] == 1
+    assert trace.events[-2].failure_category == "OUTPUT_PARSE_FAILED"
+    assert trace.events[-2].final_status == "FORMAT_REPAIRING"
+
+
+def test_schema_invalid_output_is_regenerated_once_and_still_uses_contract() -> None:
+    valid = json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "Safe regenerated answer."})
+    fake = FakeClient([response(content='{"answer":"missing intent"}'), response(content=valid)])
+
+    _gateway, output, _trace = run_gateway(fake)
+
+    assert output.answer == "Safe regenerated answer."
+    assert len(fake.completions.calls) == 2
+    assert fake.completions.calls[1]["response_format"] == fake.completions.calls[0]["response_format"]
+
+
+def test_format_repair_is_bounded_to_one_regeneration() -> None:
+    fake = FakeClient([response(content="not json"), response(content="still not json")])
+
+    with pytest.raises(AgentProviderError) as exc:
+        run_gateway(fake)
+
+    assert exc.value.code == AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID
+    assert len(fake.completions.calls) == 2
+
+
+def test_native_tool_protocol_error_is_not_sent_to_format_repair() -> None:
+    invalid_tool = [SimpleNamespace(function=SimpleNamespace(name="get_runner_state", arguments="[]"))]
+    fake = FakeClient([response(tool_calls=invalid_tool)])
+
+    with pytest.raises(AgentProviderError) as exc:
+        run_gateway(fake)
+
+    assert exc.value.category == ProviderFailureCategory.PROVIDER_TOOL_PROTOCOL_ERROR
     assert len(fake.completions.calls) == 1
 
 
@@ -626,7 +702,7 @@ def test_overlong_output_is_rejected_without_retry() -> None:
         ]
     )
     with pytest.raises(AgentProviderError) as exc:
-        run_gateway(fake)
+        run_gateway(fake, configured=settings(COACH_AGENT_MAX_RETRIES=0))
     assert exc.value.code == AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID
     assert len(fake.completions.calls) == 1
 

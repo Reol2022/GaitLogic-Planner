@@ -10,6 +10,7 @@ from server.agent.knowledge_references import (
     KNOWLEDGE_TOOL_NAME,
     build_knowledge_reference_catalog,
 )
+from server.agent.reliability import CoachFailureCategory
 from server.agent.registry import AgentToolRegistry
 from server.agent.schemas import (
     AgentContext,
@@ -120,6 +121,8 @@ class AgentResponseValidator:
     def permits_narrative_repair(
         output: AgentModelOutput,
         result: AgentValidationResult,
+        *,
+        context: AgentContext | None = None,
     ) -> bool:
         """Allow one no-tool retry only for a safe, format/source-style failure.
 
@@ -128,6 +131,14 @@ class AgentResponseValidator:
         terminal validation failures.
         """
 
+        category = AgentResponseValidator.failure_category(output, result, context=context)
+        if category in {
+            CoachFailureCategory.CAPABILITY_BOUNDARY.value,
+            CoachFailureCategory.FACT_CONFLICT.value,
+            CoachFailureCategory.SAFETY_BOUNDARY.value,
+            CoachFailureCategory.PLAN_RULE_VIOLATION.value,
+        }:
+            return False
         if not result.errors or any(
             code
             in {
@@ -151,11 +162,18 @@ class AgentResponseValidator:
     def failure_category(
         output: AgentModelOutput,
         result: AgentValidationResult,
+        *,
+        context: AgentContext | None = None,
     ) -> str:
         """Return a safe coarse reason for traces and metrics only."""
 
+        text = "\n".join(
+            value for value in [output.answer or "", output.summary or ""] if value
+        ).lower()
+        if any(re.search(pattern, text, re.IGNORECASE) for pattern in _PLAN_MUTATION_PATTERNS):
+            return CoachFailureCategory.PLAN_RULE_VIOLATION.value
         if AgentErrorCode.AGENT_TOOL_NOT_ALLOWED in result.errors:
-            return "CAPABILITY_BOUNDARY"
+            return CoachFailureCategory.CAPABILITY_BOUNDARY.value
         if any(
             code in result.errors
             for code in {
@@ -163,18 +181,21 @@ class AgentResponseValidator:
                 AgentErrorCode.AGENT_TOOL_ARGUMENTS_INVALID,
             }
         ):
-            return "OUTPUT_CONTRACT"
+            return CoachFailureCategory.OUTPUT_SCHEMA_INVALID.value
         if AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED in result.errors:
-            return "CALL_BUDGET"
-        text = "\n".join(
-            value for value in [output.answer or "", output.summary or ""] if value
-        ).lower()
+            return CoachFailureCategory.CAPABILITY_BOUNDARY.value
         if any(
             re.search(pattern, text, re.IGNORECASE)
             for pattern in (*_MEDICAL_DIAGNOSIS_PATTERNS, *_SENSITIVE_OUTPUT_PATTERNS)
         ):
-            return "SAFETY_BOUNDARY"
-        return "EVIDENCE_OR_RESPONSE_POLICY"
+            return CoachFailureCategory.SAFETY_BOUNDARY.value
+        if context is not None:
+            violations = evidence_claim_violations(text, context.evidence_assessments)
+            if any(item.startswith("CONFLICTED_DOMAIN_OVERCLAIM:") for item in violations):
+                return CoachFailureCategory.FACT_CONFLICT.value
+            if violations:
+                return CoachFailureCategory.EVIDENCE_UNSUPPORTED.value
+        return CoachFailureCategory.EVIDENCE_UNSUPPORTED.value
 
     def validate_model_output(
         self,
