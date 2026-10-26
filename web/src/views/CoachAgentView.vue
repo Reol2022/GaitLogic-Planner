@@ -41,7 +41,15 @@
                 <span class="message-role">{{ item.role === "user" ? "你" : "AI 教练" }}</span>
                 <div class="message-bubble">
                   <p v-if="item.content" class="message-content">{{ item.content }}</p>
-                  <p v-else-if="item.status === 'pending'" class="message-state">正在生成安全回复…</p>
+                  <div v-else-if="item.status === 'pending'" class="execution-card">
+                    <span class="execution-current">{{ progressLabel(item.progress?.stage) }}</span>
+                    <details v-if="item.progress?.summary?.length" class="execution-details">
+                      <summary>查看已获取信息</summary>
+                      <p v-for="summary in item.progress.summary" :key="summary.code">
+                        {{ summary.message }}<template v-if="summary.count !== null && summary.count !== undefined">：{{ summary.count }} 条</template>
+                      </p>
+                    </details>
+                  </div>
                   <p v-else class="message-state">本轮回复未能完成，可重试。</p>
                   <div v-if="item.role === 'assistant' && item.warnings.length" class="notice-list warning">
                     <p v-for="notice in item.warnings" :key="notice.code">{{ notice.message }}</p>
@@ -101,18 +109,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, nextTick, onMounted, ref } from "vue";
+import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { ElButton, ElMessage, ElMessageBox } from "element-plus";
 import {
   createCoachConversation,
   deleteCoachConversation,
   getCoachAgentErrorMessage,
   getCoachConversationMessages,
+  getCoachConversationTurnStatus,
   listCoachConversations,
   sendCoachConversationMessage,
   updateCoachConversation,
 } from "@/api/coachAgent";
-import type { CoachConversation, CoachStoredMessage } from "@/types/coachAgent";
+import type { CoachConversation, CoachStoredMessage, CoachTurnProgress, CoachTurnStage } from "@/types/coachAgent";
 
 const quickPrompts = ["今天怎么练？", "看看最近状态", "帮我复盘本周", "讨论训练计划"];
 const conversations = ref<CoachConversation[]>([]);
@@ -126,6 +135,22 @@ const draft = ref("");
 const submitError = ref("");
 const retryPayload = ref<{ message: string; turnId: string } | null>(null);
 const messageListRef = ref<HTMLElement | null>(null);
+let progressPollToken = 0;
+
+const progressLabels: Record<CoachTurnStage, string> = {
+  QUEUED: "正在排队准备本轮分析",
+  CONTEXT_LOADING: "正在准备对话上下文",
+  FACTS_LOADING: "正在读取训练数据",
+  FACTS_READY: "已获取训练事实，正在组织分析",
+  GENERATING: "正在生成训练分析",
+  VALIDATING: "正在核对回答",
+  COMPLETED: "分析已完成",
+  FAILED: "本轮分析未能完成",
+};
+
+function progressLabel(stage?: CoachTurnStage): string {
+  return stage ? progressLabels[stage] : progressLabels.QUEUED;
+}
 
 const ConversationList = defineComponent({
   props: {
@@ -185,6 +210,7 @@ async function loadMessages(id: string): Promise<void> {
 }
 
 async function selectConversation(id: string): Promise<void> {
+  stopProgressPolling();
   activeConversationId.value = id;
   drawerOpen.value = false;
   await loadMessages(id);
@@ -215,17 +241,104 @@ async function sendMessage(): Promise<void> {
 }
 
 async function retryLastMessage(): Promise<void> {
-  if (retryPayload.value && !sending.value) await submit(retryPayload.value);
+  if (retryPayload.value && !sending.value) await submit(retryPayload.value, true);
 }
 
-async function submit(payload: { message: string; turnId: string }): Promise<void> {
+function stopProgressPolling(): void {
+  progressPollToken += 1;
+}
+
+function queuedProgress(): CoachTurnProgress {
+  return { stage: "QUEUED", sequence: 0, summary: [], terminal: false };
+}
+
+function showOptimisticTurn(payload: { message: string; turnId: string }, retry: boolean): string {
+  const localAssistantId = `pending-${payload.turnId}`;
+  if (retry) {
+    const failedIndex = [...messages.value]
+      .map((item) => item.role === "assistant" && item.status === "failed")
+      .lastIndexOf(true);
+    if (failedIndex >= 0) {
+      messages.value[failedIndex] = {
+        ...messages.value[failedIndex],
+        content: null,
+        status: "pending",
+        progress: queuedProgress(),
+      };
+      return messages.value[failedIndex].id;
+    }
+  }
+  const timestamp = new Date().toISOString();
+  const nextSequence = Math.max(0, ...messages.value.map((item) => item.sequence_no)) + 1;
+  messages.value.push(
+    {
+      id: `local-user-${payload.turnId}`,
+      role: "user",
+      content: payload.message,
+      status: "completed",
+      sequence_no: nextSequence,
+      evidence_refs: [],
+      created_at: timestamp,
+      warnings: [],
+      limitations: [],
+      tool_calls: [],
+    },
+    {
+      id: localAssistantId,
+      role: "assistant",
+      content: null,
+      status: "pending",
+      sequence_no: nextSequence + 1,
+      evidence_refs: [],
+      created_at: timestamp,
+      warnings: [],
+      limitations: [],
+      tool_calls: [],
+      progress: queuedProgress(),
+    },
+  );
+  void scrollToBottom();
+  return localAssistantId;
+}
+
+function applyProgress(localAssistantId: string, progress: CoachTurnProgress): void {
+  const index = messages.value.findIndex((item) => item.id === localAssistantId);
+  if (index >= 0) messages.value[index] = { ...messages.value[index], progress };
+}
+
+async function pollTurnProgress(
+  conversationId: string,
+  clientTurnId: string,
+  localAssistantId: string,
+): Promise<void> {
+  const token = ++progressPollToken;
+  let delayMs = 700;
+  while (token === progressPollToken && activeConversationId.value === conversationId) {
+    try {
+      const status = await getCoachConversationTurnStatus(conversationId, clientTurnId);
+      if (token !== progressPollToken || activeConversationId.value !== conversationId) return;
+      applyProgress(localAssistantId, status.progress);
+      if (status.progress.terminal || status.message_status !== "pending") return;
+    } catch {
+      // The first read may race the POST's durable turn reservation. Retrying
+      // retains the queued state instead of presenting a false failure.
+    }
+    await new Promise<void>((resolve) => window.setTimeout(resolve, delayMs));
+    delayMs = Math.min(2_000, Math.round(delayMs * 1.35));
+  }
+}
+
+async function submit(payload: { message: string; turnId: string }, retry = false): Promise<void> {
   if (!activeConversationId.value) return;
+  const conversationId = activeConversationId.value;
   sending.value = true;
   submitError.value = "";
   retryPayload.value = null;
+  const localAssistantId = showOptimisticTurn(payload, retry);
+  const poll = pollTurnProgress(conversationId, payload.turnId, localAssistantId);
   try {
-    const result = await sendCoachConversationMessage(activeConversationId.value, payload.message, payload.turnId);
-    await loadMessages(activeConversationId.value);
+    const result = await sendCoachConversationMessage(conversationId, payload.message, payload.turnId);
+    if (activeConversationId.value === conversationId) await loadMessages(conversationId);
     await refreshConversations();
     if (result.status !== "completed") {
       submitError.value = "本轮教练回复未完成，原问题已安全保存。";
@@ -235,6 +348,8 @@ async function submit(payload: { message: string; turnId: string }): Promise<voi
     submitError.value = getCoachAgentErrorMessage(error);
     retryPayload.value = payload;
   } finally {
+    stopProgressPolling();
+    await poll;
     sending.value = false;
   }
 }
@@ -255,6 +370,7 @@ async function removeConversation(id: string): Promise<void> {
     await ElMessageBox.confirm("删除后无法恢复该会话及其中消息，是否继续？", "删除会话", { type: "warning" });
     await deleteCoachConversation(id);
     if (activeConversationId.value === id) {
+      stopProgressPolling();
       activeConversationId.value = null;
       messages.value = [];
     }
@@ -274,6 +390,8 @@ onMounted(async () => {
   await refreshConversations();
   if (conversations.value[0]) await selectConversation(conversations.value[0].id);
 });
+
+onBeforeUnmount(stopProgressPolling);
 </script>
 
 <style scoped>
@@ -285,6 +403,6 @@ onMounted(async () => {
 .conversation-panel { border-right: 1px solid var(--el-border-color-light); padding: 12px; background: var(--el-fill-color-lighter); }.conversation-list { display: grid; gap: 8px; }.new-conversation { width: 100%; margin-bottom: 4px; }.sidebar-state { color: var(--el-text-color-secondary); text-align: center; }
 .conversation-item { display: flex; align-items: center; gap: 4px; border-radius: 8px; padding: 4px; }.conversation-item.active { background: var(--el-color-primary-light-9); }.conversation-select { min-width: 0; flex: 1; border: 0; background: transparent; text-align: left; padding: 8px; cursor: pointer; }.conversation-select strong, .conversation-select span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.conversation-select span { font-size: 12px; color: var(--el-text-color-secondary); margin-top: 3px; }.conversation-actions { display: flex; gap: 2px; }.conversation-actions button { border: 0; background: transparent; color: var(--el-text-color-secondary); cursor: pointer; padding: 4px; font-size: 12px; }
 .chat-panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; }.empty-chat { display: grid; place-content: center; min-height: 580px; text-align: center; padding: 28px; }.empty-chat h2 { margin-bottom: 8px; }.empty-chat p { color: var(--el-text-color-secondary); }.quick-prompts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 18px; }
-.message-list { flex: 1; overflow-y: auto; padding: 24px; display: grid; align-content: start; gap: 18px; }.message-loading { padding: 20px; }.chat-message { display: grid; gap: 5px; max-width: min(760px, 90%); }.chat-message.user { justify-self: end; }.message-role { font-size: 12px; color: var(--el-text-color-secondary); }.user .message-role { text-align: right; }.message-bubble { border-radius: 12px; padding: 12px 14px; background: var(--el-fill-color-light); }.user .message-bubble { background: var(--el-color-primary-light-8); }.message-content { margin: 0; white-space: pre-wrap; line-height: 1.65; }.message-state { margin: 0; color: var(--el-text-color-secondary); }.notice-list { margin-top: 10px; padding: 8px 10px; border-radius: 6px; font-size: 13px; }.notice-list p { margin: 0 0 4px; }.notice-list p:last-child { margin-bottom: 0; }.warning { background: var(--el-color-warning-light-9); }.limitation { background: var(--el-fill-color); }.evidence-details { margin-top: 10px; font-size: 13px; color: var(--el-text-color-secondary); }.evidence-details p { margin: 6px 0 0; }.submit-error { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin: 0 18px 8px; padding: 8px 10px; color: var(--el-color-danger); background: var(--el-color-danger-light-9); border-radius: 6px; }.composer { border-top: 1px solid var(--el-border-color-light); padding: 14px; }.composer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--el-text-color-secondary); font-size: 12px; }
+.message-list { flex: 1; overflow-y: auto; padding: 24px; display: grid; align-content: start; gap: 18px; }.message-loading { padding: 20px; }.chat-message { display: grid; gap: 5px; max-width: min(760px, 90%); }.chat-message.user { justify-self: end; }.message-role { font-size: 12px; color: var(--el-text-color-secondary); }.user .message-role { text-align: right; }.message-bubble { border-radius: 12px; padding: 12px 14px; background: var(--el-fill-color-light); }.user .message-bubble { background: var(--el-color-primary-light-8); }.message-content { margin: 0; white-space: pre-wrap; line-height: 1.65; }.message-state { margin: 0; color: var(--el-text-color-secondary); }.execution-card { display: grid; gap: 8px; min-width: 220px; }.execution-current { display: flex; align-items: center; gap: 8px; color: var(--el-text-color-regular); font-size: 14px; }.execution-current::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--el-color-primary); animation: coach-progress-pulse 1.1s ease-in-out infinite; }.execution-details { color: var(--el-text-color-secondary); font-size: 13px; }.execution-details summary { cursor: pointer; }.execution-details p { margin: 5px 0 0; }.notice-list { margin-top: 10px; padding: 8px 10px; border-radius: 6px; font-size: 13px; }.notice-list p { margin: 0 0 4px; }.notice-list p:last-child { margin-bottom: 0; }.warning { background: var(--el-color-warning-light-9); }.limitation { background: var(--el-fill-color); }.evidence-details { margin-top: 10px; font-size: 13px; color: var(--el-text-color-secondary); }.evidence-details p { margin: 6px 0 0; }.submit-error { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin: 0 18px 8px; padding: 8px 10px; color: var(--el-color-danger); background: var(--el-color-danger-light-9); border-radius: 6px; }.composer { border-top: 1px solid var(--el-border-color-light); padding: 14px; }.composer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--el-text-color-secondary); font-size: 12px; } @keyframes coach-progress-pulse { 0%, 100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
 @media (max-width: 760px) { .coach-chat-page { padding: 14px; }.coach-chat-header h1 { font-size: 22px; }.desktop-conversations { display: none; }.mobile-history { display: inline-flex; }.coach-chat-layout { display: block; min-height: 590px; }.message-list { padding: 16px; }.chat-message { max-width: 96%; }.composer-actions span { display: none; } }
 </style>

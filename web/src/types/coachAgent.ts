@@ -121,6 +121,29 @@ export interface CoachQueryResponse {
 
 export type CoachConversationStatus = "active" | "archived";
 export type CoachStoredMessageStatus = "pending" | "completed" | "failed";
+export type CoachTurnStage =
+  | "QUEUED"
+  | "CONTEXT_LOADING"
+  | "FACTS_LOADING"
+  | "FACTS_READY"
+  | "GENERATING"
+  | "VALIDATING"
+  | "COMPLETED"
+  | "FAILED";
+
+export interface CoachProgressItem {
+  code: string;
+  message: string;
+  count?: number | null;
+}
+
+export interface CoachTurnProgress {
+  stage: CoachTurnStage;
+  sequence: number;
+  updated_at?: string | null;
+  summary: CoachProgressItem[];
+  terminal: boolean;
+}
 
 export interface CoachConversation {
   id: string;
@@ -155,6 +178,7 @@ export interface CoachStoredMessage {
   limitations: CoachNotice[];
   tool_calls: CoachToolCallSummary[];
   today_recommendation?: CoachTodayRecommendation | null;
+  progress?: CoachTurnProgress | null;
 }
 
 export interface CoachMessagePage {
@@ -170,4 +194,12 @@ export interface CoachConversationMessageResult {
   status: CoachStoredMessageStatus;
   content?: string | null;
   response?: CoachQueryResponse | null;
+}
+
+export interface CoachConversationTurnStatus {
+  conversation_id: string;
+  message_id: string;
+  message_status: CoachStoredMessageStatus;
+  client_turn_id: string;
+  progress: CoachTurnProgress;
 }

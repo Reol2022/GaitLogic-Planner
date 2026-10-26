@@ -21,6 +21,7 @@ from server.schemas.coach_conversation import (
 )
 from server.services.coach_conversation_service import CoachConversationService
 from server.services.conversation_context_builder import ConversationContextBuilder
+from server.services.coach_turn_progress import CoachTurnStage
 
 
 @compiles(BigInteger, "sqlite")
@@ -226,6 +227,70 @@ def test_duplicate_pending_turn_is_rejected_without_creating_more_messages() -> 
             )
         )
         assert count == 2
+    finally:
+        db.close()
+
+
+def test_turn_progress_is_read_only_user_scoped_and_uses_real_counts() -> None:
+    db = _session()
+    try:
+        service = _service(db)
+        conversation = service.create(user_id=1, payload=CoachConversationCreate())
+        payload = CoachConversationMessageCreate(client_turn_id="progress_turn_01", message="分析最近训练")
+        _user, assistant, _replay, lease_id = service._reserve_turn(
+            user_id=1, conversation_id=conversation.id, payload=payload
+        )
+        assert service._update_turn_progress(
+            assistant_message_id=assistant.id,
+            client_turn_id=payload.client_turn_id,
+            lease_id=lease_id,
+            stage=CoachTurnStage.FACTS_READY,
+            summary=[{"code": "TRAINING_RECORDS", "message": "已读取训练记录", "count": 18}],
+        )
+        status = service.get_turn_status(
+            user_id=1, conversation_id=conversation.id, client_turn_id=payload.client_turn_id
+        )
+        assert status.message_status == "pending"
+        assert status.progress.stage == "FACTS_READY"
+        assert status.progress.summary[0].count == 18
+        assert status.progress.sequence >= 1
+        with pytest.raises(NotFoundError):
+            service.get_turn_status(
+                user_id=2, conversation_id=conversation.id, client_turn_id=payload.client_turn_id
+            )
+    finally:
+        db.close()
+
+
+def test_old_lease_cannot_write_progress_after_a_new_turn_starts() -> None:
+    db = _session()
+    try:
+        service = _service(db)
+        conversation = service.create(user_id=1, payload=CoachConversationCreate())
+        first_payload = CoachConversationMessageCreate(client_turn_id="progress_old_01", message="first")
+        _first_user, first_assistant, _replay, first_lease = service._reserve_turn(
+            user_id=1, conversation_id=conversation.id, payload=first_payload
+        )
+        row = db.scalar(select(CoachConversation).where(CoachConversation.public_id == conversation.id))
+        assert row is not None
+        row.processing_started_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=10)
+        db.commit()
+        next_payload = CoachConversationMessageCreate(client_turn_id="progress_new_02", message="second")
+        _next_user, next_assistant, _replay, next_lease = service._reserve_turn(
+            user_id=1, conversation_id=conversation.id, payload=next_payload
+        )
+        assert not service._update_turn_progress(
+            assistant_message_id=first_assistant.id,
+            client_turn_id=first_payload.client_turn_id,
+            lease_id=first_lease,
+            stage=CoachTurnStage.GENERATING,
+        )
+        current = service.get_turn_status(
+            user_id=1, conversation_id=conversation.id, client_turn_id=next_payload.client_turn_id
+        )
+        assert current.message_id == next_assistant.public_id
+        assert current.progress.stage == "QUEUED"
+        assert next_lease is not None
     finally:
         db.close()
 

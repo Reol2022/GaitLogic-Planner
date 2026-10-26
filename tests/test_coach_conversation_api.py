@@ -156,3 +156,23 @@ def test_conversation_api_is_user_scoped_and_idempotent(conversation_client) -> 
     assert client.patch(f"/api/coach/conversations/{conversation_id}", json={"title": "forbidden"}).status_code == 404
     assert client.delete(f"/api/coach/conversations/{conversation_id}").status_code == 404
     assert client.get("/api/coach/conversations").json()["items"] == []
+
+
+def test_turn_status_endpoint_returns_safe_terminal_snapshot_and_enforces_user_scope(conversation_client) -> None:
+    client, identity = conversation_client
+    conversation_id = _create_conversation(client)
+    assert _send(client, conversation_id, "api_progress_01", "合成进度请求").status_code == 200
+    status = client.get(
+        f"/api/coach/conversations/{conversation_id}/turns/api_progress_01/status"
+    )
+    assert status.status_code == 200
+    payload = status.json()
+    assert payload["message_status"] == "completed"
+    assert payload["progress"]["stage"] == "COMPLETED"
+    assert payload["progress"]["terminal"] is True
+    assert "prompt" not in str(payload).lower()
+
+    identity["user_id"] = 2
+    assert client.get(
+        f"/api/coach/conversations/{conversation_id}/turns/api_progress_01/status"
+    ).status_code == 404

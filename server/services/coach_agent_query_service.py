@@ -4,6 +4,7 @@ from datetime import datetime
 import logging
 from functools import lru_cache
 from time import perf_counter
+from typing import Any, Callable
 
 from sqlalchemy.orm import Session
 
@@ -152,7 +153,13 @@ class CoachAgentQueryService:
             generated_at=self.clock(),
         )
 
-    def query(self, *, user_id: int, payload: CoachQueryRequest) -> CoachQueryResponse:
+    def query(
+        self,
+        *,
+        user_id: int,
+        payload: CoachQueryRequest,
+        progress_callback: Callable[[str, list[Any] | None], None] | None = None,
+    ) -> CoachQueryResponse:
         # Only the declared intent reaches the trace boundary.  The message,
         # authenticated user, context and response remain in business memory.
         intent = payload.intent or self._infer_intent(payload.message, payload.conversation_context)
@@ -165,7 +172,12 @@ class CoachAgentQueryService:
             metadata={"intent": intent.value},
             root=existing_handle is None,
         ) as span:
-            response = self._query(user_id=user_id, payload=payload, intent=intent)
+            response = self._query(
+                user_id=user_id,
+                payload=payload,
+                intent=intent,
+                progress_callback=progress_callback,
+            )
             if response.status != "SUCCEEDED":
                 error_code = response.limitations[0].code if response.limitations else "COACH_RESPONSE_DEGRADED"
                 span.set_status(
@@ -199,6 +211,7 @@ class CoachAgentQueryService:
         user_id: int,
         payload: CoachQueryRequest,
         intent: AgentIntent,
+        progress_callback: Callable[[str, list[Any] | None], None] | None = None,
     ) -> CoachQueryResponse:
         request = AgentRequest.for_authenticated_user(
             user_id=user_id,
@@ -221,13 +234,28 @@ class CoachAgentQueryService:
                 db=self.db, gateway=gateway, settings=self.settings, tracer=self.tracer
             ),
         )
-        context_builder = AgentTrainingContextBuilder(registry=registry, limits=limits)
+        def report_progress(stage: str, results: list[Any] | None = None) -> None:
+            if progress_callback is None:
+                return
+            try:
+                progress_callback(stage, results)
+            except Exception:
+                # Progress persistence may use a separate transaction. It must
+                # never become a dependency of a Coach response.
+                return
+
+        context_builder = AgentTrainingContextBuilder(
+            registry=registry,
+            limits=limits,
+            progress_callback=report_progress,
+        )
         agent = GaitLogicCoachAgent(
             gateway=gateway,
             registry=registry,
             context_builder=context_builder,
             limits=limits,
             tracer=self.tracer,
+            progress_callback=lambda stage: report_progress(stage),
         )
         started = perf_counter()
         try:

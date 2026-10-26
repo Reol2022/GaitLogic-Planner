@@ -11,6 +11,7 @@ from server.schemas.coach_conversation import (
     CoachConversationMessageResult,
     CoachConversationPage,
     CoachConversationRead,
+    CoachConversationTurnStatusRead,
     CoachConversationUpdate,
     CoachMessagePage,
 )
@@ -110,6 +111,24 @@ def submit_conversation_message(
 ) -> CoachConversationMessageResult:
     return _conversation_service(db).send_message(
         user_id=int(current_user.id), conversation_id=conversation_id, payload=payload
+    )
+
+
+@router.get(
+    "/conversations/{conversation_id}/turns/{client_turn_id}/status",
+    response_model=CoachConversationTurnStatusRead,
+)
+def get_conversation_turn_status(
+    conversation_id: str,
+    client_turn_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+) -> CoachConversationTurnStatusRead:
+    """Read the persisted, safe execution snapshot for one client turn."""
+    return _conversation_service(db).get_turn_status(
+        user_id=int(current_user.id),
+        conversation_id=conversation_id,
+        client_turn_id=client_turn_id,
     )
 
 

@@ -3,6 +3,7 @@ import request from "./request";
 import type {
   CoachConversation,
   CoachConversationMessageResult,
+  CoachConversationTurnStatus,
   CoachConversationPage,
   CoachConversationStatus,
   CoachMessagePage,
@@ -86,6 +87,15 @@ export async function sendCoachConversationMessage(
     `/coach/conversations/${conversationId}/messages`,
     { client_turn_id: clientTurnId, message },
     { skipErrorMessage: true },
+  );
+}
+
+export async function getCoachConversationTurnStatus(
+  conversationId: string,
+  clientTurnId: string,
+): Promise<CoachConversationTurnStatus> {
+  return request.get<CoachConversationTurnStatus>(
+    `/coach/conversations/${conversationId}/turns/${clientTurnId}/status`,
   );
 }
 

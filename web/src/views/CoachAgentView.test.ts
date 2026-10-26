@@ -7,6 +7,7 @@ const api = vi.hoisted(() => ({
   deleteCoachConversation: vi.fn(),
   getCoachAgentErrorMessage: vi.fn(() => "请求失败"),
   getCoachConversationMessages: vi.fn(),
+  getCoachConversationTurnStatus: vi.fn(),
   listCoachConversations: vi.fn(),
   sendCoachConversationMessage: vi.fn(),
   updateCoachConversation: vi.fn(),
@@ -48,6 +49,13 @@ describe("CoachAgentView persistent chat", () => {
         id: "message-1", role: "assistant", content: "虚构安全回答。", status: "completed", sequence_no: 2,
         evidence_refs: [], warnings: [], limitations: [], tool_calls: [], created_at: "2026-10-01T08:00:00",
       }], page: 1, page_size: 100, total: 1,
+    });
+    api.getCoachConversationTurnStatus.mockResolvedValue({
+      conversation_id: conversation.id,
+      message_id: "message-2",
+      message_status: "completed",
+      client_turn_id: "synthetic_turn",
+      progress: { stage: "COMPLETED", sequence: 4, summary: [], terminal: true },
     });
   });
 

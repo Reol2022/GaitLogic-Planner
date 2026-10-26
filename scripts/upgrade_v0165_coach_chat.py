@@ -44,6 +44,16 @@ def upgrade(connection: Connection) -> None:
         connection.execute(
             text("ALTER TABLE `coach_conversations` ADD COLUMN processing_started_at DATETIME NULL")
         )
+    message_columns = {item["name"] for item in inspect(connection).get_columns("coach_messages")}
+    additions = {
+        "progress_stage": "VARCHAR(32) NOT NULL DEFAULT 'QUEUED'",
+        "progress_sequence": "INT NOT NULL DEFAULT 0",
+        "progress_summary_json": "JSON NULL",
+        "progress_updated_at": "DATETIME NULL",
+    }
+    for name, definition in additions.items():
+        if name not in message_columns:
+            connection.execute(text(f"ALTER TABLE `coach_messages` ADD COLUMN `{name}` {definition}"))
 
 
 def downgrade(connection: Connection, *, allow_destructive: bool) -> None:

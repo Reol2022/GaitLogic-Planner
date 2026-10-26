@@ -26,12 +26,16 @@ from server.schemas.coach_conversation import (
     CoachConversationMessageResult,
     CoachConversationPage,
     CoachConversationRead,
+    CoachConversationTurnStatusRead,
     CoachConversationUpdate,
     CoachMessagePage,
     CoachMessageRead,
+    CoachProgressItem,
+    CoachTurnProgressRead,
 )
 from server.services.coach_agent_query_service import CoachAgentQueryService
 from server.services.conversation_context_builder import ConversationContextBuilder
+from server.services.coach_turn_progress import CoachTurnStage, safe_facts_summary, stage_is_terminal
 
 
 MAX_TITLE_CHARS = 36
@@ -153,6 +157,35 @@ class CoachConversationService:
             total=total,
         )
 
+    def get_turn_status(
+        self, *, user_id: int, conversation_id: str, client_turn_id: str
+    ) -> CoachConversationTurnStatusRead:
+        """Read a stored turn snapshot without lifecycle maintenance or writes."""
+        conversation = self._get_conversation(user_id=user_id, public_id=conversation_id)
+        user_message = self.db.scalar(
+            select(CoachMessage).where(
+                CoachMessage.conversation_id == conversation.id,
+                CoachMessage.client_turn_id == client_turn_id,
+                CoachMessage.role == "user",
+            )
+        )
+        if user_message is None:
+            raise NotFoundError("Coach conversation turn not found.")
+        assistant_message = self.db.scalar(
+            select(CoachMessage)
+            .where(CoachMessage.reply_to_message_id == user_message.id)
+            .order_by(CoachMessage.sequence_no.desc())
+        )
+        if assistant_message is None:
+            raise NotFoundError("Coach conversation turn not found.")
+        return CoachConversationTurnStatusRead(
+            conversation_id=conversation_id,
+            message_id=assistant_message.public_id,
+            message_status=assistant_message.status,
+            client_turn_id=client_turn_id,
+            progress=self._progress_read(assistant_message),
+        )
+
     def send_message(
         self,
         *,
@@ -175,6 +208,12 @@ class CoachConversationService:
             if replay:
                 return self._result_from_message(conversation_id, assistant_message)
             try:
+                self._update_turn_progress(
+                    assistant_message_id=assistant_message.id,
+                    client_turn_id=payload.client_turn_id,
+                    lease_id=lease_id,
+                    stage=CoachTurnStage.CONTEXT_LOADING,
+                )
                 history_desc = list(
                     self.db.scalars(
                         select(CoachMessage)
@@ -199,13 +238,33 @@ class CoachConversationService:
                     context = self.context_builder.build(history)
                     context_span.add_metadata(context_token_count=context.estimated_tokens)
                 with self.tracer.span(handle, component="conversation", operation="coach.execute"):
-                    response = self.coach_service_factory(self.db, tracer=self.tracer).query(
-                        user_id=user_id,
-                        payload=CoachQueryRequest(
-                            message=user_message.content or "",
-                            conversation_context=context.messages,
-                        ),
+                    coach_payload = CoachQueryRequest(
+                        message=user_message.content or "",
+                        conversation_context=context.messages,
                     )
+                    progress_callback = lambda stage, results=None: self._update_turn_progress(
+                        assistant_message_id=assistant_message.id,
+                        client_turn_id=payload.client_turn_id,
+                        lease_id=lease_id,
+                        stage=CoachTurnStage(stage),
+                        summary=safe_facts_summary(results or [])
+                        if stage == CoachTurnStage.FACTS_READY.value
+                        else None,
+                    )
+                    coach_service = self.coach_service_factory(self.db, tracer=self.tracer)
+                    try:
+                        response = coach_service.query(
+                            user_id=user_id,
+                            payload=coach_payload,
+                            progress_callback=progress_callback,
+                        )
+                    except TypeError as exc:
+                        # Keep third-party/offline test adapters written before
+                        # v1.2.5 compatible; the production service always
+                        # accepts the callback. Do not swallow unrelated errors.
+                        if "progress_callback" not in str(exc):
+                            raise
+                        response = coach_service.query(user_id=user_id, payload=coach_payload)
                 if response.status in {"SUCCEEDED", "DEGRADED"} and response.answer:
                     finalized = self._complete_turn(
                         assistant_message_id=assistant_message.id,
@@ -277,9 +336,15 @@ class CoachConversationService:
             else:
                 assistant_message.status = "pending"
                 assistant_message.content = None
+                assistant_message.response_kind = None
                 assistant_message.response_metadata_json = None
                 assistant_message.evidence_refs_json = None
+                assistant_message.trace_id = None
                 assistant_message.completed_at = None
+                assistant_message.progress_stage = CoachTurnStage.QUEUED.value
+                assistant_message.progress_sequence = 0
+                assistant_message.progress_summary_json = None
+                assistant_message.progress_updated_at = now
             lease_id = str(uuid4())
             conversation.processing_turn_id = payload.client_turn_id
             conversation.processing_lease_id = lease_id
@@ -309,6 +374,9 @@ class CoachConversationService:
             role="assistant",
             status="pending",
             sequence_no=max_sequence + 2,
+            progress_stage=CoachTurnStage.QUEUED.value,
+            progress_sequence=0,
+            progress_updated_at=now,
         )
         self.db.add_all([user_message, assistant_message])
         self.db.flush()
@@ -324,6 +392,50 @@ class CoachConversationService:
         self.db.refresh(user_message)
         self.db.refresh(assistant_message)
         return user_message, assistant_message, False, lease_id
+
+    def _update_turn_progress(
+        self,
+        *,
+        assistant_message_id: int,
+        client_turn_id: str,
+        lease_id: str | None,
+        stage: CoachTurnStage,
+        summary: list[dict[str, str | int]] | None = None,
+    ) -> bool:
+        """Atomically persist an in-flight stage only for the active lease.
+
+        A separate GET request may read this committed snapshot while the
+        original POST is blocked on a provider.  The same lease conditions used
+        by finalization ensure a delayed attempt cannot overwrite a newer one.
+        """
+        if stage_is_terminal(stage):
+            return False
+        self.db.expire_all()
+        message = self.db.scalar(
+            select(CoachMessage).where(CoachMessage.id == assistant_message_id).with_for_update()
+        )
+        if message is None:
+            return False
+        conversation = self.db.scalar(
+            select(CoachConversation)
+            .where(CoachConversation.id == message.conversation_id)
+            .with_for_update()
+        )
+        if (
+            conversation is None
+            or message.status != "pending"
+            or conversation.processing_turn_id != client_turn_id
+            or conversation.processing_lease_id != lease_id
+        ):
+            self.db.rollback()
+            return False
+        message.progress_stage = stage.value
+        message.progress_sequence = int(message.progress_sequence or 0) + 1
+        if summary is not None:
+            message.progress_summary_json = summary
+        message.progress_updated_at = self.now()
+        self.db.commit()
+        return True
 
     def _complete_turn(
         self,
@@ -410,6 +522,11 @@ class CoachConversationService:
                 if response
                 else None
             )
+        message.progress_stage = (
+            CoachTurnStage.COMPLETED.value if succeeded else CoachTurnStage.FAILED.value
+        )
+        message.progress_sequence = int(message.progress_sequence or 0) + 1
+        message.progress_updated_at = self.now()
         message.completed_at = self.now()
         if succeeded:
             conversation.last_message_at = message.completed_at
@@ -441,6 +558,9 @@ class CoachConversationService:
                     assistant_message.response_kind = "INTERRUPTED"
                     assistant_message.response_metadata_json = {"error_code": "COACH_TURN_LEASE_EXPIRED"}
                     assistant_message.completed_at = now
+                    assistant_message.progress_stage = CoachTurnStage.FAILED.value
+                    assistant_message.progress_sequence = int(assistant_message.progress_sequence or 0) + 1
+                    assistant_message.progress_updated_at = now
         conversation.processing_turn_id = None
         conversation.processing_lease_id = None
         conversation.processing_started_at = None
@@ -527,6 +647,24 @@ class CoachConversationService:
             limitations=metadata.get("limitations", []),
             tool_calls=metadata.get("tool_calls", []),
             today_recommendation=metadata.get("today_recommendation"),
+            progress=CoachConversationService._progress_read(item),
+        )
+
+    @staticmethod
+    def _progress_read(item: CoachMessage) -> CoachTurnProgressRead:
+        stage = CoachTurnStage(item.progress_stage or CoachTurnStage.QUEUED.value)
+        raw_summary = item.progress_summary_json or []
+        summary = [
+            CoachProgressItem.model_validate(value)
+            for value in raw_summary
+            if isinstance(value, dict)
+        ]
+        return CoachTurnProgressRead(
+            stage=stage.value,
+            sequence=int(item.progress_sequence or 0),
+            updated_at=item.progress_updated_at,
+            summary=summary,
+            terminal=stage_is_terminal(stage),
         )
 
     def _result_from_message(

@@ -164,6 +164,13 @@ def test_coach_chat_migration_is_idempotent_and_enforces_integrity(mysql_engine)
         inspector = inspect(connection)
         columns = {item["name"] for item in inspector.get_columns("coach_conversations")}
         assert {"processing_turn_id", "processing_lease_id", "processing_started_at"} <= columns
+        message_columns = {item["name"] for item in inspector.get_columns("coach_messages")}
+        assert {
+            "progress_stage",
+            "progress_sequence",
+            "progress_summary_json",
+            "progress_updated_at",
+        } <= message_columns
         indexes = {item["name"] for item in inspector.get_indexes("coach_messages")}
         assert "ix_coach_messages_conversation_sequence" in indexes
         foreign_keys = inspector.get_foreign_keys("coach_messages")

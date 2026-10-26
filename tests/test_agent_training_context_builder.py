@@ -78,6 +78,23 @@ def test_casual_conversation_loads_no_tools_and_personal_analysis_loads_read_onl
     assert personal.current_cycle is not None
 
 
+def test_progress_callbacks_only_report_actual_preload_work() -> None:
+    registry = build_coach_agent_tool_registry(FakeDependencies(), limits=AgentLimits())
+    stages: list[tuple[str, int]] = []
+    builder = AgentTrainingContextBuilder(
+        registry=registry,
+        clock=lambda: NOW,
+        limits=AgentLimits(),
+        progress_callback=lambda stage, results: stages.append((stage, len(results))),
+    )
+    builder.build(AgentRequest(user_id=91, message="fictional", intent=AgentIntent.CASUAL_CONVERSATION))
+    assert stages == []
+    builder.build(AgentRequest(user_id=91, message="fictional", intent=AgentIntent.PERSONAL_TRAINING_ANALYSIS))
+    assert stages[0] == ("FACTS_LOADING", 0)
+    assert stages[-1][0] == "FACTS_READY"
+    assert stages[-1][1] == 6
+
+
 def test_capability_fact_and_status_queries_load_only_required_facts() -> None:
     capability, capability_trace = build(AgentIntent.COACH_CAPABILITY_QUERY)
     fact, fact_trace = build(AgentIntent.PERSONAL_TRAINING_FACT_QUERY)

@@ -104,6 +104,17 @@ def test_safe_direct_answer_uses_one_model_call() -> None:
     assert gateway.call_count == 1
 
 
+def test_model_and_validator_progress_callbacks_follow_real_execution() -> None:
+    stages: list[str] = []
+    gateway = MockAgentLLMGateway(direct_output())
+    agent = GaitLogicCoachAgent(gateway=gateway, progress_callback=stages.append)
+
+    response = agent.run(make_request())
+
+    assert response.status == AgentRunStatus.SUCCEEDED
+    assert stages == ["GENERATING", "VALIDATING"]
+
+
 def test_completed_context_tools_are_not_reoffered_to_model() -> None:
     request = make_request()
     initial_context = AgentContextBuilder().build(request)

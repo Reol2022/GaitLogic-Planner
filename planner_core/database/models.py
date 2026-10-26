@@ -330,6 +330,16 @@ class CoachMessage(IdMixin, TimestampMixin, Base):
     response_kind: Mapped[str | None] = mapped_column(String(32))
     evidence_refs_json: Mapped[list | None] = mapped_column(JSON)
     response_metadata_json: Mapped[dict | None] = mapped_column(JSON)
+    # A bounded, safe progress snapshot for the pending assistant response.
+    # It intentionally excludes prompts, tool payloads and provider reasoning.
+    progress_stage: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="QUEUED", server_default="QUEUED"
+    )
+    progress_sequence: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    progress_summary_json: Mapped[list | None] = mapped_column(JSON)
+    progress_updated_at: Mapped[datetime | None] = mapped_column(DateTime)
     proposal_ref: Mapped[str | None] = mapped_column(String(128))
     trace_id: Mapped[str | None] = mapped_column(String(36))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime)

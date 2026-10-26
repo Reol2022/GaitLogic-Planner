@@ -15,6 +15,16 @@ from server.schemas.coach_agent import (
 ConversationStatus = Literal["active", "archived"]
 MessageRole = Literal["user", "assistant"]
 MessageStatus = Literal["pending", "completed", "failed"]
+CoachTurnStage = Literal[
+    "QUEUED",
+    "CONTEXT_LOADING",
+    "FACTS_LOADING",
+    "FACTS_READY",
+    "GENERATING",
+    "VALIDATING",
+    "COMPLETED",
+    "FAILED",
+]
 
 
 class CoachConversationCreate(AgentContractModel):
@@ -36,6 +46,20 @@ class CoachConversationRead(AgentContractModel):
     message_count: int = Field(ge=0)
 
 
+class CoachProgressItem(AgentContractModel):
+    code: str = Field(min_length=1, max_length=64)
+    message: str = Field(min_length=1, max_length=120)
+    count: int | None = Field(default=None, ge=0)
+
+
+class CoachTurnProgressRead(AgentContractModel):
+    stage: CoachTurnStage
+    sequence: int = Field(ge=0)
+    updated_at: datetime | None = None
+    summary: list[CoachProgressItem] = Field(default_factory=list)
+    terminal: bool
+
+
 class CoachMessageRead(AgentContractModel):
     id: str
     role: MessageRole
@@ -52,6 +76,7 @@ class CoachMessageRead(AgentContractModel):
     limitations: list[dict[str, str]] = Field(default_factory=list)
     tool_calls: list[CoachToolCallRead] = Field(default_factory=list)
     today_recommendation: dict | None = None
+    progress: CoachTurnProgressRead | None = None
 
 
 class CoachConversationPage(AgentContractModel):
@@ -85,3 +110,11 @@ class CoachConversationMessageResult(AgentContractModel):
     status: MessageStatus
     content: str | None = None
     response: CoachQueryResponse | None = None
+
+
+class CoachConversationTurnStatusRead(AgentContractModel):
+    conversation_id: str
+    message_id: str
+    message_status: MessageStatus
+    client_turn_id: str
+    progress: CoachTurnProgressRead

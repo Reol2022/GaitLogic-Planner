@@ -4,7 +4,7 @@ import json
 from copy import deepcopy
 from datetime import timedelta
 from time import perf_counter
-from typing import Any
+from typing import Any, Callable
 
 from pydantic import ValidationError
 
@@ -120,9 +120,16 @@ def merge_agent_tool_results(context: AgentContext, new_results: list) -> AgentC
 class AgentTrainingContextBuilder(AgentContextBuilder):
     """Build intent-aware context exclusively through the registered tool boundary."""
 
-    def __init__(self, *, registry: AgentToolRegistry, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        registry: AgentToolRegistry,
+        progress_callback: Callable[[str, list[Any]], None] | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
         self.registry = registry
+        self.progress_callback = progress_callback
 
     def build(
         self,
@@ -145,6 +152,8 @@ class AgentTrainingContextBuilder(AgentContextBuilder):
         ):
             preloads.append((KNOWLEDGE_TOOL_NAME, {"query": request.message}))
         preload_limit = min(self.limits.max_tool_calls, len(preloads))
+        if preload_limit:
+            self._report_progress("FACTS_LOADING", [])
         for name, arguments in preloads[:preload_limit]:
             started = perf_counter()
             if trace is not None:
@@ -168,7 +177,20 @@ class AgentTrainingContextBuilder(AgentContextBuilder):
             results = list(context.tool_results)
             values = context.model_dump(mode="python")
             missing = dict(context.missing_reasons)
+        if preload_limit:
+            self._report_progress("FACTS_READY", list(context.tool_results))
         return self._bounded_context(context)
+
+    def _report_progress(self, stage: str, results: list[Any]) -> None:
+        if self.progress_callback is None:
+            return
+        try:
+            self.progress_callback(stage, results)
+        except Exception:
+            # A progress snapshot is auxiliary UX state, never an Agent input.
+            # In particular, a transient database failure must not turn a Coach
+            # analysis into a failed request.
+            return
 
     @staticmethod
     def _preloads_for_request(request: AgentRequest, current_time) -> list[tuple[str, dict[str, int | str]]]:

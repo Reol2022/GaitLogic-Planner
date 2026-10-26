@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections import Counter
 from time import perf_counter
+from typing import Callable
 from uuid import UUID
 
 from pydantic import ValidationError
@@ -92,6 +93,7 @@ class GaitLogicCoachAgent:
         tracer: SafeTracer | None = None,
         evidence_judge: EvidenceJudge | None = None,
         reflect_planner: EvidenceReflectPlanner | None = None,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> None:
         self.limits = limits or self._limits_from_settings()
         self.gateway = gateway
@@ -101,9 +103,20 @@ class GaitLogicCoachAgent:
         self.tracer = tracer or NOOP_TRACER
         self.evidence_judge = evidence_judge or EvidenceJudge()
         self.reflect_planner = reflect_planner or EvidenceReflectPlanner()
+        self.progress_callback = progress_callback
         self.last_trace: AgentTrace | None = None
         self.last_context: AgentContext | None = None
         self.last_evidence_result: EvidenceJudgeResult | None = None
+
+    def _report_progress(self, stage: str) -> None:
+        if self.progress_callback is None:
+            return
+        try:
+            self.progress_callback(stage)
+        except Exception:
+            # Progress persistence is an auxiliary UI concern and must not
+            # affect the safety or availability of a Coach execution.
+            return
 
     @staticmethod
     def _limits_from_settings() -> AgentLimits:
@@ -495,6 +508,7 @@ class GaitLogicCoachAgent:
         final_retry: bool = False,
         execution_state: AgentExecutionState | None = None,
     ) -> AgentModelOutput:
+        self._report_progress("GENERATING")
         started = perf_counter()
         trace.add_event(AgentTraceEventType.MODEL_CALL, AgentTraceStatus.STARTED)
         # Context construction deterministically preloads the facts required by
@@ -834,6 +848,7 @@ class GaitLogicCoachAgent:
                     update={"limitations": [self._notice(AgentErrorCode.AGENT_TOOL_EXECUTION_FAILED)]}
                 )
 
+            self._report_progress("VALIDATING")
             validation = self._validate_output(
                 output, context=context, final=not output.tool_calls
             )
