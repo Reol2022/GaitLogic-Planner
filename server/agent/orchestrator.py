@@ -657,6 +657,9 @@ class GaitLogicCoachAgent:
             )
             span.add_metadata(validator_result="VALID" if result.valid else "INVALID")
             if not result.valid:
+                span.add_metadata(
+                    failure_category=self.validator.failure_category(output, result)
+                )
                 span.set_status("FAILED", error_code=result.errors[0].value)
             return result
 
@@ -674,6 +677,11 @@ class GaitLogicCoachAgent:
             AgentTraceEventType.RESPONSE_VALIDATED,
             AgentTraceStatus.FAILED,
             safe_error_code=errors[0],
+            failure_category=(
+                self.validator.failure_category(output, result)
+                if output is not None
+                else "OUTPUT_CONTRACT"
+            ),
         )
         return self._finish(
             request=request,
@@ -834,10 +842,14 @@ class GaitLogicCoachAgent:
                     model_round + 1 < self.limits.max_model_calls
                     and not output.tool_calls
                     and request.intent in {
+                        AgentIntent.CASUAL_CONVERSATION,
                         AgentIntent.TODAY_RECOMMENDATION,
                         AgentIntent.EXPLAIN_RUNNER_STATE,
+                        AgentIntent.GENERAL_TRAINING_QUESTION,
+                        AgentIntent.PERSONAL_TRAINING_ANALYSIS,
                     }
                     and AgentErrorCode.AGENT_VALIDATION_FAILED in validation.errors
+                    and self.validator.permits_narrative_repair(output, validation)
                 ):
                     retry = self._retry_safe_narrative(
                         request=request,

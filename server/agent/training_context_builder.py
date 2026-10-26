@@ -20,6 +20,7 @@ from server.agent.schemas import AgentContext, AgentContextSeed, AgentNotice, Ag
 from server.agent.trace import AgentTrace
 
 _PRELOADS: dict[AgentIntent, tuple[tuple[str, dict[str, int | str]], ...]] = {
+    AgentIntent.CASUAL_CONVERSATION: (),
     AgentIntent.TODAY_RECOMMENDATION: (
         ("get_runner_state", {}),
         ("get_today_workout", {}),
@@ -41,6 +42,14 @@ _PRELOADS: dict[AgentIntent, tuple[tuple[str, dict[str, int | str]], ...]] = {
     ),
     AgentIntent.GENERAL_TRAINING_QUESTION: (
         ("get_training_rules", {"scope": "GENERAL"}),
+    ),
+    AgentIntent.PERSONAL_TRAINING_ANALYSIS: (
+        ("get_runner_state", {}),
+        ("get_runner_state_history", {"limit": 7}),
+        ("get_recent_training", {"days": 28, "limit": 20}),
+        ("get_current_training_cycle", {}),
+        ("get_today_workout", {}),
+        ("get_training_data_quality", {"window_days": 28}),
     ),
     AgentIntent.UNKNOWN: (),
 }

@@ -3,10 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 import logging
 from functools import lru_cache
+from time import perf_counter
 
 from sqlalchemy.orm import Session
 
 from planner_core.config import Settings, get_settings
+from server.agent.coach_task_classifier import CoachTaskClassifier
 from server.agent.enums import AgentIntent, AgentRiskLevel, AgentRunStatus, AgentToolStatus
 from server.agent.errors import AgentErrorCode
 from server.agent.fallback import DeterministicCoachFallback
@@ -36,9 +38,11 @@ from server.services.weekly_review_skill_runtime import build_weekly_review_skil
 from server.observability.tracing import NOOP_TRACER, SafeTracer, active_trace_handle
 
 _PUBLIC_INTENTS = {
+    AgentIntent.CASUAL_CONVERSATION,
     AgentIntent.TODAY_RECOMMENDATION,
     AgentIntent.EXPLAIN_RUNNER_STATE,
     AgentIntent.GENERAL_TRAINING_QUESTION,
+    AgentIntent.PERSONAL_TRAINING_ANALYSIS,
     AgentIntent.WEEKLY_REVIEW,
 }
 
@@ -90,13 +94,8 @@ class CoachAgentQueryService:
         self.tracer = tracer or NOOP_TRACER
 
     @staticmethod
-    def _infer_intent(message: str) -> AgentIntent:
-        lowered = message.lower()
-        if any(marker in lowered for marker in ("today", "今天", "今日", "跑什么", "该不该跑")):
-            return AgentIntent.TODAY_RECOMMENDATION
-        if any(marker in lowered for marker in ("runner state", "training state", "跑者状态", "训练状态")):
-            return AgentIntent.EXPLAIN_RUNNER_STATE
-        return AgentIntent.GENERAL_TRAINING_QUESTION
+    def _infer_intent(message: str, conversation_context=None) -> AgentIntent:
+        return CoachTaskClassifier.classify(message, conversation_context)
 
     def _limits(self) -> AgentLimits:
         return AgentLimits(
@@ -152,7 +151,7 @@ class CoachAgentQueryService:
     def query(self, *, user_id: int, payload: CoachQueryRequest) -> CoachQueryResponse:
         # Only the declared intent reaches the trace boundary.  The message,
         # authenticated user, context and response remain in business memory.
-        intent = payload.intent or self._infer_intent(payload.message)
+        intent = payload.intent or self._infer_intent(payload.message, payload.conversation_context)
         existing_handle = active_trace_handle()
         handle = existing_handle or self.tracer.start_trace()
         with self.tracer.span(
@@ -179,7 +178,7 @@ class CoachAgentQueryService:
         Weekly review remains an internal Coach capability used by its existing
         workflow. The standalone one-shot endpoint must not bypass that workflow.
         """
-        intent = payload.intent or self._infer_intent(payload.message)
+        intent = payload.intent or self._infer_intent(payload.message, payload.conversation_context)
         if intent in _DIRECT_PUBLIC_INTENTS:
             return None
         request = AgentRequest.for_authenticated_user(
@@ -226,6 +225,7 @@ class CoachAgentQueryService:
             limits=limits,
             tracer=self.tracer,
         )
+        started = perf_counter()
         try:
             agent_response = agent.run(request)
         finally:
@@ -240,7 +240,17 @@ class CoachAgentQueryService:
         usage = getattr(gateway, "last_usage", AgentProviderUsage())
         provider_status = initial_provider_status
         if initial_provider_status == "SUCCEEDED":
-            provider_status = "SUCCEEDED" if agent_response.status == AgentRunStatus.SUCCEEDED else "FAILED"
+            # Provider delivery and Agent validation are independent.  A HTTP
+            # 200 structured response that fails the validator must remain a
+            # provider success in operational usage, while the Agent response
+            # still reports VALIDATION_FAILED/DEGRADED to the caller.
+            provider_status = (
+                usage.status
+                if usage.status in {"SUCCEEDED", "FAILED"}
+                else "SUCCEEDED"
+                if agent_response.status == AgentRunStatus.SUCCEEDED
+                else "FAILED"
+            )
         try:
             self.usage_recorder.record(
                 provider=self.settings.coach_agent_provider,
@@ -250,6 +260,21 @@ class CoachAgentQueryService:
             )
         except Exception:
             logger.warning("coach_agent_usage_record_failed status=%s", provider_status)
+
+        tool_results = context.tool_results if context is not None else []
+        logger.info(
+            "coach_agent_task_result intent=%s tool_calls=%s valid_facts=%s validator_status=%s duration_ms=%.2f",
+            intent.value,
+            len(tool_results),
+            sum(
+                item.status == AgentToolStatus.SUCCEEDED
+                and isinstance(item.data, dict)
+                and item.data.get("data_status") not in {"NOT_FOUND", "UNKNOWN"}
+                for item in tool_results
+            ),
+            "VALID" if agent_response.status != AgentRunStatus.VALIDATION_FAILED else "INVALID",
+            (perf_counter() - started) * 1000,
+        )
 
         tool_calls = [
             CoachToolCallRead(

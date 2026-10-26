@@ -116,6 +116,7 @@ class RetrieveTrainingKnowledgeTool(AgentTool):
         AgentIntent.TODAY_RECOMMENDATION,
         AgentIntent.EXPLAIN_RUNNER_STATE,
         AgentIntent.GENERAL_TRAINING_QUESTION,
+        AgentIntent.PERSONAL_TRAINING_ANALYSIS,
     )
     provided_fact_domains = ("training_knowledge",)
 

@@ -20,6 +20,7 @@ _INTENTS = (
     AgentIntent.WEEKLY_REVIEW,
     AgentIntent.EXPLAIN_RUNNER_STATE,
     AgentIntent.GENERAL_TRAINING_QUESTION,
+    AgentIntent.PERSONAL_TRAINING_ANALYSIS,
 )
 
 _LIMITATION_MESSAGES_ZH = {
@@ -151,7 +152,11 @@ class GetRunnerStateHistoryTool(AgentTool):
     description = "Read bounded saved runner-state summaries without loading snapshot payloads."
     input_model = RunnerStateHistoryInput
     output_model = RunnerStateHistoryOutput
-    allowed_intents = (AgentIntent.WEEKLY_REVIEW, AgentIntent.EXPLAIN_RUNNER_STATE)
+    allowed_intents = (
+        AgentIntent.WEEKLY_REVIEW,
+        AgentIntent.EXPLAIN_RUNNER_STATE,
+        AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+    )
     provided_fact_domains = ("training_load", "recovery")
 
     def __init__(self, dependencies: CoachAgentToolDependencies, *, history_limit: int = 7) -> None:

@@ -80,6 +80,28 @@ class DeterministicCoachFallback:
                 else f"The current system state is {overall}. Model explanation is unavailable; rely on the recorded evidence and data quality."
             )
             summary = f"Runner State: {overall}"
+        elif intent == AgentIntent.CASUAL_CONVERSATION:
+            answer = (
+                "你好，我在这里。你可以问我训练知识、近期训练执行或恢复情况；涉及个人分析时，我只会使用当前已验证的训练事实。"
+                if chinese
+                else "Hello, I am here. You can ask about training knowledge, recent execution, or recovery; personal analysis uses only verified training facts."
+            )
+            summary = "Coach is available"
+        elif intent == AgentIntent.PERSONAL_TRAINING_ANALYSIS:
+            has_facts = any(
+                result.status == AgentToolStatus.SUCCEEDED
+                and isinstance(result.data, dict)
+                and result.data.get("data_status") not in {"NOT_FOUND", "UNKNOWN"}
+                for result in context.tool_results
+            )
+            answer = (
+                "模型解释暂不可用。本次已读取到部分训练事实，但不会据此自动修改正式课表；请以训练状态、近期执行和数据完整性为准。"
+                if chinese and has_facts
+                else "模型解释暂不可用。本次个人训练数据不完整，暂不生成个性化结论或修改正式课表。"
+                if chinese
+                else "Model explanation is unavailable. Personal training facts are incomplete, so no personalised conclusion or formal plan change is generated."
+            )
+            summary = "Personal analysis unavailable"
         else:
             answer = (
                 "模型解释暂不可用。当前只能提供已注册的公开训练规则摘要，不能生成新的训练结论。"

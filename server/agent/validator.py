@@ -116,6 +116,66 @@ class AgentResponseValidator:
             errors.append(AgentErrorCode.AGENT_UNKNOWN_INTENT)
         return self._result(errors)
 
+    @staticmethod
+    def permits_narrative_repair(
+        output: AgentModelOutput,
+        result: AgentValidationResult,
+    ) -> bool:
+        """Allow one no-tool retry only for a safe, format/source-style failure.
+
+        A retry cannot change the canonical context. Explicit capability escapes,
+        invalid tool use, medical language, and sensitive-output attempts remain
+        terminal validation failures.
+        """
+
+        if not result.errors or any(
+            code
+            in {
+                AgentErrorCode.AGENT_TOOL_NOT_ALLOWED,
+                AgentErrorCode.AGENT_TOOL_NOT_FOUND,
+                AgentErrorCode.AGENT_TOOL_ARGUMENTS_INVALID,
+                AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED,
+            }
+            for code in result.errors
+        ):
+            return False
+        text = "\n".join(
+            value
+            for value in [output.answer or "", output.summary or ""]
+            if value
+        ).lower()
+        unsafe_patterns = (*_MEDICAL_DIAGNOSIS_PATTERNS, *_SENSITIVE_OUTPUT_PATTERNS)
+        return not any(re.search(pattern, text, re.IGNORECASE) for pattern in unsafe_patterns)
+
+    @staticmethod
+    def failure_category(
+        output: AgentModelOutput,
+        result: AgentValidationResult,
+    ) -> str:
+        """Return a safe coarse reason for traces and metrics only."""
+
+        if AgentErrorCode.AGENT_TOOL_NOT_ALLOWED in result.errors:
+            return "CAPABILITY_BOUNDARY"
+        if any(
+            code in result.errors
+            for code in {
+                AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID,
+                AgentErrorCode.AGENT_TOOL_ARGUMENTS_INVALID,
+            }
+        ):
+            return "OUTPUT_CONTRACT"
+        if AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED in result.errors:
+            return "CALL_BUDGET"
+        text = "\n".join(
+            value for value in [output.answer or "", output.summary or ""] if value
+        ).lower()
+        if any(
+            re.search(pattern, text, re.IGNORECASE)
+            for pattern in (*_MEDICAL_DIAGNOSIS_PATTERNS, *_SENSITIVE_OUTPUT_PATTERNS)
+        ):
+            return "SAFETY_BOUNDARY"
+        return "EVIDENCE_OR_RESPONSE_POLICY"
+
     def validate_model_output(
         self,
         output: AgentModelOutput,

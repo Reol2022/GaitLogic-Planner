@@ -32,6 +32,7 @@ class GetTodayWorkoutTool(AgentTool):
     allowed_intents = (
         AgentIntent.TODAY_RECOMMENDATION,
         AgentIntent.GENERAL_TRAINING_QUESTION,
+        AgentIntent.PERSONAL_TRAINING_ANALYSIS,
     )
     provided_fact_domains = ("today_plan",)
 
@@ -101,6 +102,7 @@ class GetCurrentTrainingCycleTool(AgentTool):
         AgentIntent.TODAY_RECOMMENDATION,
         AgentIntent.WEEKLY_REVIEW,
         AgentIntent.GENERAL_TRAINING_QUESTION,
+        AgentIntent.PERSONAL_TRAINING_ANALYSIS,
     )
     provided_fact_domains = ("training_phase", "training_plan_context")
 

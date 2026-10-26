@@ -59,6 +59,25 @@ def test_general_is_minimal_and_unknown_loads_no_training_data() -> None:
     assert unknown.tool_results == []
 
 
+def test_casual_conversation_loads_no_tools_and_personal_analysis_loads_read_only_facts() -> None:
+    casual, casual_trace = build(AgentIntent.CASUAL_CONVERSATION)
+    personal, personal_trace = build(AgentIntent.PERSONAL_TRAINING_ANALYSIS)
+
+    assert completed_tools(casual_trace) == []
+    assert casual.tool_results == []
+    assert completed_tools(personal_trace) == [
+        "get_runner_state",
+        "get_runner_state_history",
+        "get_recent_training",
+        "get_current_training_cycle",
+        "get_today_workout",
+        "get_training_data_quality",
+    ]
+    assert personal.runner_state is not None
+    assert personal.recent_training is not None
+    assert personal.current_cycle is not None
+
+
 def test_one_tool_failure_degrades_with_missing_reason() -> None:
     deps = FakeDependencies()
 

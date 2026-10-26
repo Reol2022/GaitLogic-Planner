@@ -302,6 +302,25 @@ def test_context_builder_does_not_attempt_unregistered_knowledge_tool() -> None:
     )
 
 
+def test_personal_analysis_does_not_preload_knowledge_or_embedding() -> None:
+    retriever = FakeRetriever()
+    registry = build_coach_agent_tool_registry(
+        FakeDependencies(),
+        knowledge_tool=tool(retriever),
+    )
+    builder = AgentTrainingContextBuilder(registry=registry, clock=lambda: NOW)
+    request = AgentRequest(
+        user_id=4101,
+        message="请读取我的训练数据，并分析两周后的半马准备。",
+        intent=AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+    )
+
+    built = builder.build(request)
+
+    assert retriever.requests == []
+    assert all(result.tool_name != "retrieve_training_knowledge" for result in built.tool_results)
+
+
 def test_preloaded_knowledge_is_not_exposed_for_a_duplicate_model_tool_call() -> None:
     retriever = FakeRetriever()
     registry = build_coach_agent_tool_registry(
