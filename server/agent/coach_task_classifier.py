@@ -29,6 +29,15 @@ class CoachTaskClassifier:
         "\u6211\u7684\u8fd1\u671f\u8bad\u7ec3", "\u6211\u8fd1\u671f\u7684\u8bad\u7ec3",
         "\u6700\u8fd1\u56db\u5468", "\u8fd1\u56db\u5468", "\u8fd1\u671f\u8bad\u7ec3", "\u8fd1\u671f\u7684\u8bad\u7ec3", "\u8bad\u7ec3\u8bb0\u5f55",
     )
+    _PERSONAL_TRAINING_TIME_SCOPES = (
+        "\u672c\u6708\u8bad\u7ec3", "\u8fd9\u4e2a\u6708\u8bad\u7ec3", "\u4e0a\u4e2a\u6708\u8bad\u7ec3",
+        "\u8fd1\u4e00\u4e2a\u6708\u8bad\u7ec3", "\u8fd130\u5929\u8bad\u7ec3", "\u8fd1\u4e09\u5341\u5929\u8bad\u7ec3",
+        "this month's training", "this month training", "last month's training", "last 30 days training",
+    )
+    _PERSONAL_FACT_ACTIONS = (
+        "\u8bfb\u53d6", "\u67e5\u770b", "\u770b\u770b", "\u5206\u6790", "\u8bc4\u4f30", "\u6c47\u603b", "\u7edf\u8ba1",
+        "read", "show", "analyze", "analyse", "review",
+    )
     _FACT_QUERY_MARKERS = ("明天跑什么", "明日跑什么", "明天的计划", "明日的计划", "tomorrow's workout", "tomorrow workout")
     _STATUS_MARKERS = ("最近训练状态", "近期训练状态", "最近状态怎么样", "训练状态怎么样", "recent training status")
     _ANALYSIS_ACTIONS = ("优化", "调整", "分析", "评估", "建议", "安排", "optimize", "adjust", "analyse", "analyze")
@@ -79,7 +88,12 @@ class CoachTaskClassifier:
 
     @classmethod
     def _is_personal_read_request(cls, normalized: str) -> bool:
-        return any(marker in normalized for marker in cls._PERSONAL_READ_MARKERS)
+        if any(marker in normalized for marker in cls._PERSONAL_READ_MARKERS):
+            return True
+        return (
+            any(marker in normalized for marker in cls._PERSONAL_TRAINING_TIME_SCOPES)
+            and any(action in normalized for action in cls._PERSONAL_FACT_ACTIONS)
+        )
 
     @classmethod
     def _is_plan_adjustment_analysis(cls, normalized: str) -> bool:

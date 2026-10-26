@@ -18,6 +18,13 @@ def test_explicit_personal_training_read_request_uses_read_only_personal_analysi
     assert CoachTaskClassifier.classify(message) == AgentIntent.PERSONAL_TRAINING_ANALYSIS
 
 
+def test_personal_monthly_training_analysis_without_explicit_possessive_uses_facts_first() -> None:
+    assert (
+        CoachTaskClassifier.classify("读取本月训练并分析")
+        == AgentIntent.PERSONAL_TRAINING_ANALYSIS
+    )
+
+
 def test_greeting_is_casual_and_does_not_select_retrieval_profile() -> None:
     assert CoachTaskClassifier.classify("你好。") == AgentIntent.CASUAL_CONVERSATION
 
