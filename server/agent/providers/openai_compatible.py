@@ -64,6 +64,19 @@ _FORMAT_REPAIR_INSTRUCTION = (
     "call only when more read-only facts are required."
 )
 
+_NON_TODAY_MODEL_FIELDS = frozenset(
+    {"answer", "summary", "warnings", "limitations", "knowledge_reference_ids"}
+)
+_LEGACY_SERVER_OWNED_FIELDS = frozenset(
+    {
+        "intent",
+        "tool_calls",
+        "risk_level",
+        "used_tool_call_ids",
+        "today_recommendation",
+    }
+)
+
 
 def redact_provider_text(value: str) -> str:
     return _PHONE.sub("[REDACTED_PHONE]", _EMAIL.sub("[REDACTED_EMAIL]", value))
@@ -362,17 +375,43 @@ class OpenAICompatibleAgentGateway(AgentLLMGateway):
                     knowledge_reference_ids=provider_output.knowledge_reference_ids,
                     today_recommendation=facts.recommendation,
                 )
-            provider_output = ProviderAgentModelOutput.model_validate_json(stripped)
-            return AgentModelOutput.model_validate(
-                provider_output.model_dump(mode="python")
+            raw_output = json.loads(stripped)
+            if not isinstance(raw_output, dict):
+                raise ValueError("provider output must be a JSON object")
+            unknown_fields = set(raw_output) - _NON_TODAY_MODEL_FIELDS - _LEGACY_SERVER_OWNED_FIELDS
+            if unknown_fields:
+                raise ValueError("provider output contains unknown fields")
+            if raw_output.get("tool_calls") not in (None, []):
+                raise ValueError("JSON narrative cannot contain tool calls")
+            if raw_output.get("today_recommendation") is not None:
+                raise ValueError("non-TODAY narrative cannot contain a recommendation object")
+            provider_output = ProviderAgentModelOutput.model_validate(
+                {
+                    key: raw_output[key]
+                    for key in _NON_TODAY_MODEL_FIELDS
+                    if key in raw_output
+                }
             )
-        except ValidationError as exc:
-            error_types = {str(item.get("type", "")) for item in exc.errors()}
+            return AgentModelOutput(
+                answer=provider_output.answer,
+                summary=provider_output.summary,
+                intent=intent,
+                risk_level=AgentRiskLevel.UNKNOWN,
+                warnings=provider_output.warnings,
+                limitations=provider_output.limitations,
+                knowledge_reference_ids=provider_output.knowledge_reference_ids,
+            )
+        except (json.JSONDecodeError, ValidationError) as exc:
+            error_types = (
+                {str(item.get("type", "")) for item in exc.errors()}
+                if isinstance(exc, ValidationError)
+                else set()
+            )
             raise AgentProviderError(
                 AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID,
                 category=(
                     ProviderFailureCategory.PROVIDER_INVALID_JSON
-                    if "json_invalid" in error_types
+                    if isinstance(exc, json.JSONDecodeError) or "json_invalid" in error_types
                     else ProviderFailureCategory.PROVIDER_SCHEMA_ERROR
                 ),
             ) from exc

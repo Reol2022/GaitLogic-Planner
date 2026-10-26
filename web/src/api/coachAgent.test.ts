@@ -55,8 +55,8 @@ describe("coach agent api", () => {
   it.each([
     [401, "登录状态已失效，请重新登录"],
     [403, "该教练能力暂未开放"],
-    [400, "输入内容不符合要求"],
-    [422, "输入内容不符合要求"],
+    [400, "请求内容不符合要求，请检查后重试"],
+    [422, "请求内容不符合要求，请检查后重试"],
     [429, "请求过于频繁，请稍后再试"],
     [503, "AI 教练暂不可用"],
   ])("maps HTTP %s to a safe message", async (status, message) => {
@@ -73,6 +73,34 @@ describe("coach agent api", () => {
     post.mockRejectedValue({ isAxiosError: true, code: "ERR_NETWORK" });
     await expect(queryCoach({ message: "虚构问题" })).rejects.toThrow("暂时无法连接服务，请稍后重试");
     expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves a sanitized application error instead of masking every HTTP 400", () => {
+    expect(getCoachAgentErrorMessage({
+      isAxiosError: true,
+      response: {
+        status: 400,
+        data: { code: "TURN_ID_REUSED", message: "该消息已被其他内容占用，请重新发送。" },
+      },
+    })).toBe("该消息已被其他内容占用，请重新发送。");
+  });
+
+  it.each([
+    ["string_too_long", "message", "消息不能超过 4000 个字符"],
+    ["missing", "message", "消息内容不能为空"],
+    ["string_pattern_mismatch", "client_turn_id", "本次请求标识无效，请刷新页面后重试"],
+  ])("maps validation detail %s for %s without exposing raw input", (type, field, expected) => {
+    expect(getCoachAgentErrorMessage({
+      isAxiosError: true,
+      response: {
+        status: 400,
+        data: {
+          code: "VALIDATION_ERROR",
+          message: "请求参数不正确，请检查填写内容。",
+          detail: [{ type, loc: ["body", field], input: "sensitive raw input" }],
+        },
+      },
+    })).toBe(expected);
   });
 
   it("exposes the same safe message for wrapped request errors", () => {

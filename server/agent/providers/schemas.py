@@ -2,16 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-from uuid import UUID
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from server.agent.enums import AgentIntent, AgentRiskLevel
 from server.agent.schemas import (
     AgentNotice,
-    AgentToolInvocation,
-    MAX_CONTEXT_ITEMS,
-    MAX_MODEL_TOOL_CALLS,
     MAX_NOTICES,
 )
 
@@ -78,21 +72,18 @@ class ProviderTodayModelOutput(ProviderContractModel):
 
 
 class ProviderAgentModelOutput(ProviderContractModel):
-    """Non-TODAY structured output; TODAY uses ProviderTodayModelOutput."""
+    """Minimal model-owned narrative for non-TODAY responses.
 
-    answer: str | None = Field(default=None, max_length=12000)
+    Intent, tool calls, risk and tool-result identities are server-owned.  They
+    deliberately do not belong to this provider contract: DeepSeek Chat JSON
+    mode guarantees valid JSON, not conformance to a large JSON Schema.
+    """
+
+    answer: str = Field(min_length=1, max_length=12000)
     summary: str | None = Field(default=None, max_length=1000)
-    intent: AgentIntent
-    tool_calls: list[AgentToolInvocation] = Field(
-        default_factory=list,
-        max_length=MAX_MODEL_TOOL_CALLS,
-    )
-    risk_level: AgentRiskLevel = AgentRiskLevel.UNKNOWN
     warnings: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
     limitations: list[AgentNotice] = Field(default_factory=list, max_length=MAX_NOTICES)
-    used_tool_call_ids: list[UUID] = Field(default_factory=list, max_length=MAX_CONTEXT_ITEMS)
     knowledge_reference_ids: list[str] = Field(default_factory=list, max_length=6)
-    today_recommendation: None = None
 
     @field_validator("knowledge_reference_ids", mode="before")
     @classmethod
@@ -102,12 +93,7 @@ class ProviderAgentModelOutput(ProviderContractModel):
         return value
 
     @model_validator(mode="after")
-    def validate_tool_call_ids(self) -> "ProviderAgentModelOutput":
-        ids = [item.tool_call_id for item in self.tool_calls]
-        if len(ids) != len(set(ids)):
-            raise ValueError("tool_call_id must be unique")
-        if len(self.used_tool_call_ids) != len(set(self.used_tool_call_ids)):
-            raise ValueError("used_tool_call_ids must be unique")
+    def validate_knowledge_reference_ids(self) -> "ProviderAgentModelOutput":
         if len(self.knowledge_reference_ids) != len(set(self.knowledge_reference_ids)):
             raise ValueError("knowledge_reference_ids must be unique")
         if any(

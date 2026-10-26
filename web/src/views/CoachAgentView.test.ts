@@ -1,5 +1,7 @@
 import { flushPromises, shallowMount } from "@vue/test-utils";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import CoachConversationList from "@/components/coach/CoachConversationList.vue";
 import CoachAgentView from "./CoachAgentView.vue";
 
 const api = vi.hoisted(() => ({
@@ -86,5 +88,21 @@ describe("CoachAgentView persistent chat", () => {
       "今天怎么练？",
       expect.any(String),
     );
+  });
+
+  it("renames a conversation through the existing protected update API", async () => {
+    vi.spyOn(ElMessageBox, "prompt").mockResolvedValue(
+      { value: "  十月赛前训练  ", action: "confirm" } as never,
+    );
+    vi.spyOn(ElMessage, "success").mockImplementation(() => ({ close: vi.fn() }) as never);
+    api.updateCoachConversation.mockResolvedValue({ ...conversation, title: "十月赛前训练" });
+    const wrapper = mountPage();
+    await flushPromises();
+
+    wrapper.findComponent(CoachConversationList).vm.$emit("rename", conversation.id, conversation.title);
+    await flushPromises();
+
+    expect(api.updateCoachConversation).toHaveBeenCalledWith(conversation.id, { title: "十月赛前训练" });
+    expect(api.listCoachConversations).toHaveBeenCalledTimes(2);
   });
 });

@@ -11,12 +11,13 @@
 
     <div class="coach-chat-layout">
       <aside class="conversation-panel desktop-conversations">
-        <ConversationList
+        <CoachConversationList
           :items="conversations"
           :active-id="activeConversationId ?? undefined"
           :loading="conversationsLoading"
           @create="createConversation"
           @select="selectConversation"
+          @rename="renameConversation"
           @archive="archiveConversation"
           @delete="removeConversation"
         />
@@ -95,12 +96,13 @@
     </div>
 
     <el-drawer v-model="drawerOpen" title="历史会话" direction="ltr" size="86%" class="history-drawer">
-      <ConversationList
+      <CoachConversationList
         :items="conversations"
         :active-id="activeConversationId ?? undefined"
         :loading="conversationsLoading"
         @create="createConversation"
         @select="selectConversation"
+        @rename="renameConversation"
         @archive="archiveConversation"
         @delete="removeConversation"
       />
@@ -109,8 +111,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
-import { ElButton, ElMessage, ElMessageBox } from "element-plus";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import CoachConversationList from "@/components/coach/CoachConversationList.vue";
 import {
   createCoachConversation,
   deleteCoachConversation,
@@ -151,36 +154,6 @@ const progressLabels: Record<CoachTurnStage, string> = {
 function progressLabel(stage?: CoachTurnStage): string {
   return stage ? progressLabels[stage] : progressLabels.QUEUED;
 }
-
-const ConversationList = defineComponent({
-  props: {
-    items: { type: Array as () => CoachConversation[], required: true },
-    activeId: { type: String, default: null },
-    loading: { type: Boolean, default: false },
-  },
-  emits: ["create", "select", "archive", "delete"],
-  setup(props, { emit }) {
-    return () => h("div", { class: "conversation-list" }, [
-      h(ElButton, { type: "primary", class: "new-conversation", onClick: () => emit("create") }, () => "+ 新对话"),
-      props.loading ? h("p", { class: "sidebar-state" }, "正在加载…") : null,
-      ...props.items.map((item) => h("div", {
-        class: ["conversation-item", { active: item.id === props.activeId }],
-        key: item.id,
-      }, [
-        h("button", { class: "conversation-select", onClick: () => emit("select", item.id) }, [
-          h("strong", item.title),
-          h("span", `${item.message_count} 条消息`),
-        ]),
-        h("div", { class: "conversation-actions" }, [
-          item.status === "active"
-            ? h("button", { title: "归档", onClick: () => emit("archive", item.id) }, "归档")
-            : null,
-          h("button", { title: "删除", onClick: () => emit("delete", item.id) }, "删除"),
-        ]),
-      ])),
-    ]);
-  },
-});
 
 function turnId(): string {
   return crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -365,6 +338,31 @@ async function archiveConversation(id: string): Promise<void> {
   }
 }
 
+async function renameConversation(id: string, currentTitle: string): Promise<void> {
+  try {
+    const { value } = await ElMessageBox.prompt("输入新的对话名称", "重命名对话", {
+      inputValue: currentTitle,
+      inputPlaceholder: "例如：10 月训练分析",
+      inputValidator: (input) => {
+        const normalized = input.trim();
+        if (!normalized) return "对话名称不能为空";
+        if (normalized.length > 160) return "对话名称不能超过 160 个字符";
+        return true;
+      },
+      confirmButtonText: "保存",
+      cancelButtonText: "取消",
+      closeOnClickModal: false,
+    });
+    const title = value.trim();
+    if (title === currentTitle.trim()) return;
+    await updateCoachConversation(id, { title });
+    await refreshConversations();
+    ElMessage.success("对话名称已更新");
+  } catch (error) {
+    if (error !== "cancel" && error !== "close") ElMessage.error(getCoachAgentErrorMessage(error));
+  }
+}
+
 async function removeConversation(id: string): Promise<void> {
   try {
     await ElMessageBox.confirm("删除后无法恢复该会话及其中消息，是否继续？", "删除会话", { type: "warning" });
@@ -400,8 +398,7 @@ onBeforeUnmount(stopProgressPolling);
 .coach-chat-header h1 { margin: 4px 0 8px; font-size: 26px; }.coach-chat-header p { margin: 0; color: var(--el-text-color-secondary); }
 .eyebrow { color: var(--el-color-primary) !important; font-weight: 700; font-size: 13px; }.mobile-history { display: none; }
 .coach-chat-layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); min-height: 650px; border: 1px solid var(--el-border-color-light); border-radius: 14px; overflow: hidden; background: var(--el-bg-color); }
-.conversation-panel { border-right: 1px solid var(--el-border-color-light); padding: 12px; background: var(--el-fill-color-lighter); }.conversation-list { display: grid; gap: 8px; }.new-conversation { width: 100%; margin-bottom: 4px; }.sidebar-state { color: var(--el-text-color-secondary); text-align: center; }
-.conversation-item { display: flex; align-items: center; gap: 4px; border-radius: 8px; padding: 4px; }.conversation-item.active { background: var(--el-color-primary-light-9); }.conversation-select { min-width: 0; flex: 1; border: 0; background: transparent; text-align: left; padding: 8px; cursor: pointer; }.conversation-select strong, .conversation-select span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.conversation-select span { font-size: 12px; color: var(--el-text-color-secondary); margin-top: 3px; }.conversation-actions { display: flex; gap: 2px; }.conversation-actions button { border: 0; background: transparent; color: var(--el-text-color-secondary); cursor: pointer; padding: 4px; font-size: 12px; }
+.conversation-panel { border-right: 1px solid var(--el-border-color-light); padding: 16px 12px; background: linear-gradient(180deg, var(--el-fill-color-lighter), var(--el-bg-color)); }
 .chat-panel { display: flex; min-width: 0; min-height: 0; flex-direction: column; }.empty-chat { display: grid; place-content: center; min-height: 580px; text-align: center; padding: 28px; }.empty-chat h2 { margin-bottom: 8px; }.empty-chat p { color: var(--el-text-color-secondary); }.quick-prompts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 18px; }
 .message-list { flex: 1; overflow-y: auto; padding: 24px; display: grid; align-content: start; gap: 18px; }.message-loading { padding: 20px; }.chat-message { display: grid; gap: 5px; max-width: min(760px, 90%); }.chat-message.user { justify-self: end; }.message-role { font-size: 12px; color: var(--el-text-color-secondary); }.user .message-role { text-align: right; }.message-bubble { border-radius: 12px; padding: 12px 14px; background: var(--el-fill-color-light); }.user .message-bubble { background: var(--el-color-primary-light-8); }.message-content { margin: 0; white-space: pre-wrap; line-height: 1.65; }.message-state { margin: 0; color: var(--el-text-color-secondary); }.execution-card { display: grid; gap: 8px; min-width: 220px; }.execution-current { display: flex; align-items: center; gap: 8px; color: var(--el-text-color-regular); font-size: 14px; }.execution-current::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--el-color-primary); animation: coach-progress-pulse 1.1s ease-in-out infinite; }.execution-details { color: var(--el-text-color-secondary); font-size: 13px; }.execution-details summary { cursor: pointer; }.execution-details p { margin: 5px 0 0; }.notice-list { margin-top: 10px; padding: 8px 10px; border-radius: 6px; font-size: 13px; }.notice-list p { margin: 0 0 4px; }.notice-list p:last-child { margin-bottom: 0; }.warning { background: var(--el-color-warning-light-9); }.limitation { background: var(--el-fill-color); }.evidence-details { margin-top: 10px; font-size: 13px; color: var(--el-text-color-secondary); }.evidence-details p { margin: 6px 0 0; }.submit-error { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin: 0 18px 8px; padding: 8px 10px; color: var(--el-color-danger); background: var(--el-color-danger-light-9); border-radius: 6px; }.composer { border-top: 1px solid var(--el-border-color-light); padding: 14px; }.composer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--el-text-color-secondary); font-size: 12px; } @keyframes coach-progress-pulse { 0%, 100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
 @media (max-width: 760px) { .coach-chat-page { padding: 14px; }.coach-chat-header h1 { font-size: 22px; }.desktop-conversations { display: none; }.mobile-history { display: inline-flex; }.coach-chat-layout { display: block; min-height: 590px; }.message-list { padding: 16px; }.chat-message { max-width: 96%; }.composer-actions span { display: none; } }

@@ -13,7 +13,7 @@ def test_prompt_is_versioned_and_contains_safety_authority_rules() -> None:
     assert "medical diagnosis" in prompt
     assert "plan was changed" in prompt
     assert "UNKNOWN" in prompt
-    assert "strict AgentModelOutput JSON schema" in prompt
+    assert "compact provider JSON contract" in prompt
     assert "Return exactly one valid JSON object." in prompt
     assert "response format is json" in prompt
     assert "code and message" in prompt
@@ -31,7 +31,8 @@ def test_prompt_is_versioned_and_contains_safety_authority_rules() -> None:
     assert "Do not include text before or after the JSON object." in prompt
     assert '"knowledge_reference_ids":["knowledge_1"]' in prompt
     assert "perform this final contract check" in prompt
-    assert '"today_recommendation":null' in prompt
+    assert "return exactly these five top-level fields" in prompt
+    assert '"knowledge_reference_ids":[]' in prompt
     assert "chain of thought" in prompt
 
 

@@ -14,12 +14,38 @@ import type {
 const ERROR_MESSAGES: Record<number, string> = {
   401: "登录状态已失效，请重新登录",
   403: "该教练能力暂未开放",
-  400: "输入内容不符合要求",
-  422: "输入内容不符合要求",
+  400: "请求内容不符合要求，请检查后重试",
+  422: "请求内容不符合要求，请检查后重试",
   429: "请求过于频繁，请稍后再试",
   409: "当前对话正在生成回复，请等待完成后再发送",
   503: "AI 教练暂不可用",
 };
+
+interface CoachErrorDetail {
+  loc?: Array<string | number>;
+  type?: string;
+}
+
+interface CoachErrorBody {
+  code?: string | number;
+  message?: string;
+  detail?: CoachErrorDetail[];
+}
+
+function validationErrorMessage(body: CoachErrorBody | undefined): string | null {
+  if (body?.code !== "VALIDATION_ERROR" || !Array.isArray(body.detail)) return null;
+
+  for (const issue of body.detail) {
+    const field = issue.loc?.length ? issue.loc[issue.loc.length - 1] : undefined;
+    if (field === "message") {
+      if (issue.type === "string_too_long") return "消息不能超过 4000 个字符";
+      return "消息内容不能为空";
+    }
+    if (field === "client_turn_id") return "本次请求标识无效，请刷新页面后重试";
+    if (field === "conversation_id") return "会话标识无效，请重新打开该对话";
+  }
+  return null;
+}
 
 export class CoachAgentRequestError extends Error {
   constructor(
@@ -35,6 +61,12 @@ export function getCoachAgentErrorMessage(error: unknown): string {
   if (error instanceof CoachAgentRequestError) return error.message;
   if (!axios.isAxiosError(error)) return "暂时无法连接服务，请稍后重试";
   const status = error.response?.status;
+  const body = error.response?.data as CoachErrorBody | undefined;
+  const validationMessage = validationErrorMessage(body);
+  if (validationMessage) return validationMessage;
+  // Application errors are already sanitized by the API exception layer. Keep
+  // their actionable message instead of hiding every 400 behind one generic text.
+  if (typeof body?.message === "string" && body.message.trim()) return body.message.trim();
   if (status !== undefined && ERROR_MESSAGES[status]) return ERROR_MESSAGES[status];
   return "暂时无法连接服务，请稍后重试";
 }

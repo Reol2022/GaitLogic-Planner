@@ -273,6 +273,15 @@ def test_explicit_json_schema_preserves_exact_request_contract() -> None:
     schema_text = json.dumps(response_format["json_schema"]["schema"])
     assert "key_evidence_ids" not in schema_text
     assert '"key_evidence"' not in schema_text
+    assert set(response_format["json_schema"]["schema"]["properties"]) == {
+        "answer",
+        "summary",
+        "warnings",
+        "limitations",
+        "knowledge_reference_ids",
+    }
+    assert "intent" not in schema_text
+    assert "used_tool_call_ids" not in schema_text
 
 
 def test_today_json_schema_contains_only_narrative_and_evidence_ids() -> None:
@@ -549,8 +558,8 @@ def test_invalid_native_tool_calls_are_model_output_errors(native) -> None:
         "not json",
         "```json\n{}\n```",
         '{"intent":"EXPLAIN_RUNNER_STATE"',
-        '{"answer":"missing required intent"}',
-        '{"intent":"INVALID","answer":"x"}',
+        '{"summary":"missing required answer"}',
+        '{"answer":[]}',
         '{"intent":"EXPLAIN_RUNNER_STATE","answer":"x","extra":1}',
     ],
 )
@@ -604,13 +613,36 @@ def test_invalid_json_is_regenerated_once_without_replaying_raw_output() -> None
 
 def test_schema_invalid_output_is_regenerated_once_and_still_uses_contract() -> None:
     valid = json.dumps({"intent": "EXPLAIN_RUNNER_STATE", "answer": "Safe regenerated answer."})
-    fake = FakeClient([response(content='{"answer":"missing intent"}'), response(content=valid)])
+    fake = FakeClient([response(content='{"answer":[]}'), response(content=valid)])
 
     _gateway, output, _trace = run_gateway(fake)
 
     assert output.answer == "Safe regenerated answer."
     assert len(fake.completions.calls) == 2
     assert fake.completions.calls[1]["response_format"] == fake.completions.calls[0]["response_format"]
+
+
+def test_non_today_parser_ignores_legacy_server_owned_fields() -> None:
+    payload = {
+        "answer": "Facts were read and analysed.",
+        "summary": "Training analysis completed.",
+        "intent": "INVALID_PROVIDER_OWNED_VALUE",
+        "risk_level": "INVALID_PROVIDER_OWNED_VALUE",
+        "tool_calls": [],
+        "used_tool_call_ids": ["not-a-uuid"],
+        "today_recommendation": None,
+        "warnings": [],
+        "limitations": [],
+        "knowledge_reference_ids": [],
+    }
+    _gateway, output, _trace = run_gateway(
+        FakeClient([response(content=json.dumps(payload))])
+    )
+
+    assert output.intent == AgentIntent.EXPLAIN_RUNNER_STATE
+    assert output.answer == payload["answer"]
+    assert output.risk_level == AgentRiskLevel.UNKNOWN
+    assert output.used_tool_call_ids == []
 
 
 def test_format_repair_is_bounded_to_one_regeneration() -> None:

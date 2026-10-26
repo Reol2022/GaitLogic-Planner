@@ -129,13 +129,11 @@ def test_reference_ids_are_strict_for_both_provider_contracts() -> None:
     with pytest.raises(ValidationError):
         ProviderAgentModelOutput(
             answer="safe",
-            intent=AgentIntent.GENERAL_TRAINING_QUESTION,
             knowledge_reference_ids=["Knowledge_1"],
         )
     with pytest.raises(ValidationError):
         ProviderAgentModelOutput(
             answer="safe",
-            intent=AgentIntent.GENERAL_TRAINING_QUESTION,
             knowledge_reference_ids=["knowledge_1", "knowledge_1"],
         )
 
