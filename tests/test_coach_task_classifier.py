@@ -8,6 +8,16 @@ def test_utf8_recent_four_week_analysis_routes_to_personal_analysis() -> None:
     assert CoachTaskClassifier.classify(message) == AgentIntent.PERSONAL_TRAINING_ANALYSIS
 
 
+def test_personal_training_read_capability_question_does_not_trigger_rag_or_fact_loading() -> None:
+    message = "你可以读取我近期的训练吗"
+    assert CoachTaskClassifier.classify(message) == AgentIntent.COACH_CAPABILITY_QUERY
+
+
+def test_explicit_personal_training_read_request_uses_read_only_personal_analysis() -> None:
+    message = "读取我近四周的训练"
+    assert CoachTaskClassifier.classify(message) == AgentIntent.PERSONAL_TRAINING_ANALYSIS
+
+
 def test_greeting_is_casual_and_does_not_select_retrieval_profile() -> None:
     assert CoachTaskClassifier.classify("你好。") == AgentIntent.CASUAL_CONVERSATION
 

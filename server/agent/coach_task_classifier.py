@@ -20,7 +20,15 @@ class CoachTaskClassifier:
         "比赛", "恢复", "疲劳", "睡眠", "心率", "配速", "race", "my training",
         "my plan", "my mileage", "my recovery",
     )
-    _CAPABILITY_MARKERS = ("可以读取", "能读取", "能看", "可以看", "can you read", "can you access")
+    _CAPABILITY_MARKERS = (
+        "\u53ef\u4ee5\u8bfb\u53d6", "\u80fd\u8bfb\u53d6", "\u80fd\u770b", "\u53ef\u4ee5\u770b",
+        "can you read", "can you access",
+    )
+    _PERSONAL_READ_MARKERS = (
+        "\u8bfb\u53d6\u6211", "\u8bfb\u4e00\u4e0b\u6211", "\u67e5\u770b\u6211", "\u770b\u770b\u6211",
+        "\u6211\u7684\u8fd1\u671f\u8bad\u7ec3", "\u6211\u8fd1\u671f\u7684\u8bad\u7ec3",
+        "\u6700\u8fd1\u56db\u5468", "\u8fd1\u56db\u5468", "\u8fd1\u671f\u8bad\u7ec3", "\u8fd1\u671f\u7684\u8bad\u7ec3", "\u8bad\u7ec3\u8bb0\u5f55",
+    )
     _FACT_QUERY_MARKERS = ("明天跑什么", "明日跑什么", "明天的计划", "明日的计划", "tomorrow's workout", "tomorrow workout")
     _STATUS_MARKERS = ("最近训练状态", "近期训练状态", "最近状态怎么样", "训练状态怎么样", "recent training status")
     _ANALYSIS_ACTIONS = ("优化", "调整", "分析", "评估", "建议", "安排", "optimize", "adjust", "analyse", "analyze")
@@ -44,6 +52,8 @@ class CoachTaskClassifier:
             return AgentIntent.CASUAL_CONVERSATION
         if cls._is_capability_query(normalized):
             return AgentIntent.COACH_CAPABILITY_QUERY
+        if cls._is_personal_read_request(normalized):
+            return AgentIntent.PERSONAL_TRAINING_ANALYSIS
         if any(marker in normalized for marker in cls._FACT_QUERY_MARKERS):
             return AgentIntent.PERSONAL_TRAINING_FACT_QUERY
         if cls._is_plan_adjustment_analysis(normalized):
@@ -56,10 +66,20 @@ class CoachTaskClassifier:
 
     @classmethod
     def _is_capability_query(cls, normalized: str) -> bool:
-        has_data_scope = any(marker in normalized for marker in ("训练数据", "我的数据", "training data", "my data"))
+        has_data_scope = any(
+            marker in normalized
+            for marker in (
+                "\u8bad\u7ec3\u6570\u636e", "\u6211\u7684\u6570\u636e", "\u8fd1\u671f\u8bad\u7ec3", "\u8fd1\u671f\u7684\u8bad\u7ec3",
+                "\u8bad\u7ec3\u8bb0\u5f55", "training data", "my data",
+            )
+        )
         has_capability = any(marker in normalized for marker in cls._CAPABILITY_MARKERS)
         has_analysis_action = any(marker in normalized for marker in cls._ANALYSIS_ACTIONS)
         return has_data_scope and has_capability and not has_analysis_action
+
+    @classmethod
+    def _is_personal_read_request(cls, normalized: str) -> bool:
+        return any(marker in normalized for marker in cls._PERSONAL_READ_MARKERS)
 
     @classmethod
     def _is_plan_adjustment_analysis(cls, normalized: str) -> bool:
