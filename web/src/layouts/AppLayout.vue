@@ -414,6 +414,10 @@ onBeforeUnmount(() => {
 }
 
 .app-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
   overflow: hidden;
   border-right: 1px solid #22272d;
   background: #171a1d;
@@ -470,8 +474,22 @@ onBeforeUnmount(() => {
 }
 
 .side-menu {
+  height: calc(100vh - 72px);
+  overflow-x: hidden;
+  overflow-y: auto;
   border-right: 0;
   background: transparent;
+  scrollbar-width: thin;
+  scrollbar-color: #3b434d transparent;
+}
+
+.side-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.side-menu::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #3b434d;
 }
 
 .menu-section {
@@ -657,6 +675,8 @@ onBeforeUnmount(() => {
 @media (max-width: 768px) {
   .app-sidebar {
     display: none;
+    position: static;
+    height: auto;
   }
 
   .page-heading,
