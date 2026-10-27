@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from server.agent.enums import AgentIntent
 from server.agent.schemas import AgentContext, AgentNotice
 from server.agent.tool import AgentTool
+from server.agent.training_fact_consistency import check_recent_training_facts
 from server.agent.tools.dependencies import CoachAgentToolDependencies
 from server.agent.tools.schemas import (
     AgentDataQualityRead,
@@ -51,17 +54,24 @@ class GetRecentTrainingTool(AgentTool):
 
     def execute(self, arguments: RecentTrainingInput, context: AgentContext) -> RecentTrainingOutput:
         limit = min(arguments.limit, self.item_limit)
-        as_of_date = context.current_time.date()
+        as_of_date = arguments.end_date or context.current_time.date()
+        days = arguments.days or 7
         recent = self.dependencies.recent_training(
             context.user_id,
-            arguments.days,
+            days,
             limit,
             as_of_date=as_of_date,
+            start_date=arguments.start_date,
+            end_date=arguments.end_date,
         )
+        range_start = recent.start_date or (recent.as_of_date - timedelta(days=recent.window_days - 1))
+        range_end = recent.end_date or recent.as_of_date
         quality = self.dependencies.training_data_quality(
             context.user_id,
-            arguments.days,
+            recent.window_days,
             as_of_date=as_of_date,
+            start_date=range_start,
+            end_date=range_end,
         )
         if not recent.items:
             data_status = TrainingDataStatus.NOT_FOUND
@@ -74,21 +84,32 @@ class GetRecentTrainingTool(AgentTool):
             if quality.coverage
             else 0.0
         )
+        details_complete, issues = check_recent_training_facts(recent, visible_limit=limit)
         return RecentTrainingOutput(
             data_status=data_status,
             as_of=recent.as_of_date,
+            range_start=range_start,
+            range_end=range_end,
+            range_kind=arguments.range_kind or f"ROLLING_{recent.window_days}_DAYS",
+            range_label=arguments.range_label or f"最近 {recent.window_days} 天",
             items=[
                 RecentTrainingItem.model_validate(
                     item.model_dump(exclude={"is_key_session"})
                 )
                 for item in recent.items[:limit]
             ],
+            details_complete=details_complete,
             summary=RecentTrainingSummary(
                 total_sessions=recent.total_sessions,
                 total_distance_km=recent.total_distance_km,
                 completed_key_sessions=recent.completed_key_sessions,
                 rest_days=recent.rest_days,
+                planned_sessions_due=recent.planned_sessions_due,
+                completed_planned_sessions=recent.completed_planned_sessions,
+                unplanned_sessions=recent.unplanned_sessions,
+                completion_rate=recent.completion_rate,
             ),
+            fact_issues=issues,
             data_quality=AgentDataQualityRead(
                 level=("NONE" if quality.valid_workout_count == 0 else "PARTIAL" if quality.missing_fields else "COMPLETE"),
                 completeness=completeness,
@@ -119,7 +140,9 @@ class GetTrainingDataQualityTool(AgentTool):
         quality = self.dependencies.training_data_quality(
             context.user_id,
             arguments.window_days,
-            as_of_date=context.current_time.date(),
+            as_of_date=arguments.end_date or context.current_time.date(),
+            start_date=arguments.start_date,
+            end_date=arguments.end_date,
         )
         if quality.valid_workout_count == 0:
             status = TrainingDataStatus.UNKNOWN

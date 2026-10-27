@@ -7,7 +7,12 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from planner_core.database.models import DailyRecoveryCheckin, PlannedWorkout, WorkoutLog
+from planner_core.database.models import (
+    DailyRecoveryCheckin,
+    ExternalActivity,
+    PlannedWorkout,
+    WorkoutLog,
+)
 from planner_core.enums import (
     PlannedWorkoutLifecycleStatus,
     WorkoutMainTypeNormalized,
@@ -80,11 +85,11 @@ def _query_logs(db: Session, user_id: int, start_date: date, end_date: date) -> 
             .where(
                 WorkoutLog.user_id == user_id,
                 (PlannedWorkout.user_id == user_id) | (PlannedWorkout.id.is_(None)),
-                func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date) >= start_date,
-                func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date) <= end_date,
-                func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date) <= local_today(),
+                func.coalesce(WorkoutLog.activity_date, PlannedWorkout.workout_date) >= start_date,
+                func.coalesce(WorkoutLog.activity_date, PlannedWorkout.workout_date) <= end_date,
+                func.coalesce(WorkoutLog.activity_date, PlannedWorkout.workout_date) <= local_today(),
             )
-            .order_by(func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date), PlannedWorkout.sort_order, WorkoutLog.id)
+            .order_by(func.coalesce(WorkoutLog.activity_date, PlannedWorkout.workout_date), PlannedWorkout.sort_order, WorkoutLog.id)
         )
     )
 
@@ -112,17 +117,24 @@ def get_recent_training_read(
     days: int,
     limit: int,
     as_of_date: date | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> RecentTrainingRead:
     """Return bounded, normalized training facts using the shared log query."""
-    end_date = as_of_date or local_today()
-    start_date = end_date - timedelta(days=days - 1)
-    rows = _query_logs(db, user_id, start_date, end_date)
+    resolved_end = end_date or as_of_date or local_today()
+    resolved_start = start_date or (resolved_end - timedelta(days=days - 1))
+    if resolved_start > resolved_end or (resolved_end - resolved_start).days >= MAX_TREND_RANGE_DAYS:
+        raise BadRequestError("Invalid recent training date range.")
+    rows = [
+        row for row in _query_logs(db, user_id, resolved_start, resolved_end)
+        if row[0].status_normalized in COMPLETED_STATUSES
+    ]
     sessions: list[RecentTrainingSessionRead] = []
     distances: list[float] = []
     completed_key_sessions = 0
     for log, workout in reversed(rows):
-        workout_date = workout.workout_date if workout else log.activity_date
-        if workout_date is None:
+        actual_date = log.activity_date or (workout.workout_date if workout else None)
+        if actual_date is None:
             continue
         workout_type = (
             workout.main_type_normalized.value
@@ -138,8 +150,17 @@ def get_recent_training_read(
         completed_key_sessions += int(is_completed_key)
         sessions.append(
             RecentTrainingSessionRead(
-                date=workout_date,
+                date=actual_date,
+                planned_date=workout.workout_date if workout else None,
                 training_type=workout_type,
+                classification_basis="TRAINING_PLAN" if workout is not None else "ACTUAL_LOG",
+                association_status=(
+                    "MATCHED_CROSS_DATE"
+                    if workout is not None and workout.workout_date != actual_date
+                    else "MATCHED_SAME_DAY"
+                    if workout is not None
+                    else "UNPLANNED"
+                ),
                 planned_or_unplanned=("UNPLANNED" if log.is_unplanned or workout is None else "PLANNED"),
                 completion_status=log.status_normalized.value,
                 distance_km=round(distance, 2) if distance is not None else None,
@@ -156,8 +177,8 @@ def get_recent_training_read(
         db.scalar(
             select(func.count(func.distinct(PlannedWorkout.workout_date))).where(
                 PlannedWorkout.user_id == user_id,
-                PlannedWorkout.workout_date >= start_date,
-                PlannedWorkout.workout_date <= end_date,
+                PlannedWorkout.workout_date >= resolved_start,
+                PlannedWorkout.workout_date <= resolved_end,
                 PlannedWorkout.main_type_normalized
                 == WorkoutMainTypeNormalized.rest,
                 PlannedWorkout.lifecycle_status == PlannedWorkoutLifecycleStatus.planned,
@@ -165,14 +186,63 @@ def get_recent_training_read(
         )
         or 0
     )
+    due_filter = (
+        PlannedWorkout.user_id == user_id,
+        PlannedWorkout.workout_date >= resolved_start,
+        PlannedWorkout.workout_date <= resolved_end,
+        PlannedWorkout.workout_date <= resolved_end,
+        PlannedWorkout.main_type_normalized != WorkoutMainTypeNormalized.rest,
+        PlannedWorkout.lifecycle_status == PlannedWorkoutLifecycleStatus.planned,
+    )
+    planned_due = int(db.scalar(select(func.count()).select_from(PlannedWorkout).where(*due_filter)) or 0)
+    completed_planned = sum(
+        1
+        for _log, workout in rows
+        if workout is not None
+        and workout.workout_date is not None
+        and resolved_start <= workout.workout_date <= resolved_end
+        and workout.main_type_normalized != WorkoutMainTypeNormalized.rest
+    )
+    unresolved = int(
+        db.scalar(
+            select(func.count()).select_from(ExternalActivity).where(
+                ExternalActivity.user_id == user_id,
+                ExternalActivity.activity_date >= resolved_start,
+                ExternalActivity.activity_date <= resolved_end,
+                ExternalActivity.resolution_status.in_(["pending", "needs_review"]),
+                ExternalActivity.processing_status != "ignored",
+            )
+        )
+        or 0
+    )
+    stable_keys: list[str] = []
+    for log, _workout in rows:
+        key = log.activity_fingerprint or log.external_activity_id
+        if key:
+            stable_keys.append(str(key))
+    duplicates = len(stable_keys) - len(set(stable_keys))
+    cross_date = sum(
+        1
+        for log, workout in rows
+        if workout is not None and log.activity_date is not None and workout.workout_date != log.activity_date
+    )
     return RecentTrainingRead(
-        as_of_date=end_date,
-        window_days=days,
+        as_of_date=resolved_end,
+        start_date=resolved_start,
+        end_date=resolved_end,
+        window_days=(resolved_end - resolved_start).days + 1,
         items=sessions[:limit],
         total_sessions=len(sessions),
         total_distance_km=round(sum(distances), 2) if distances else None,
         completed_key_sessions=completed_key_sessions,
         rest_days=rest_days,
+        planned_sessions_due=planned_due,
+        completed_planned_sessions=completed_planned,
+        unplanned_sessions=sum(1 for _log, workout in rows if workout is None),
+        completion_rate=(round(completed_planned / planned_due, 4) if planned_due else None),
+        unresolved_activity_count=unresolved,
+        duplicate_candidate_count=max(0, duplicates),
+        cross_date_association_count=cross_date,
     )
 
 
@@ -182,10 +252,12 @@ def get_training_data_quality_read(
     user_id: int,
     window_days: int,
     as_of_date: date | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
 ) -> TrainingDataQualityRead:
     """Describe field coverage; coverage is completeness, never risk probability."""
-    end_date = as_of_date or local_today()
-    start_date = end_date - timedelta(days=window_days - 1)
+    end_date = end_date or as_of_date or local_today()
+    start_date = start_date or (end_date - timedelta(days=window_days - 1))
     completed = [
         log
         for log, _ in _query_logs(db, user_id, start_date, end_date)
@@ -209,7 +281,7 @@ def get_training_data_quality_read(
     dated = [log.activity_date for log in completed if log.activity_date is not None]
     return TrainingDataQualityRead(
         as_of_date=end_date,
-        window_days=window_days,
+        window_days=(end_date - start_date).days + 1,
         valid_workout_count=total,
         coverage=coverage,
         missing_fields=missing,

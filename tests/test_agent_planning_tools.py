@@ -1,11 +1,16 @@
+from datetime import timedelta
 from types import SimpleNamespace
 
 from planner_core.enums import WorkoutMainTypeNormalized, WorkoutStatusNormalized
 
 from server.agent.enums import AgentIntent
 from server.agent.schemas import AgentContext, AgentRequest
-from server.agent.tools.planning_tools import GetCurrentTrainingCycleTool, GetTodayWorkoutTool
-from server.agent.tools.schemas import EmptyToolInput, TrainingDataStatus
+from server.agent.tools.planning_tools import (
+    GetCurrentTrainingCycleTool,
+    GetTodayWorkoutTool,
+    GetTrainingPlanWindowTool,
+)
+from server.agent.tools.schemas import EmptyToolInput, TrainingDataStatus, TrainingPlanWindowInput
 from tests.agent_tool_fakes import FakeDependencies, NOW
 
 
@@ -58,10 +63,14 @@ def test_current_cycle_is_bounded_and_progress_is_not_invented() -> None:
     deps.cycle = SimpleNamespace(
         id=8, name="Fictional cycle", actual_start_date=NOW.date(), start_date=NOW.date(),
         actual_end_date=None, end_date=None, goal="Fictional race", blocks=blocks,
+        target_race_name="Fictional half marathon",
+        target_race_date=NOW.date() + timedelta(days=14),
     )
     output = GetCurrentTrainingCycleTool(deps, block_limit=2).execute(EmptyToolInput(), context())
     assert output.data_status == TrainingDataStatus.AVAILABLE
     assert output.progress is None
+    assert output.target_race_name == "Fictional half marathon"
+    assert output.target_race_date == NOW.date() + timedelta(days=14)
     assert len(output.weekly_structure) == 2
     assert all(len(item.focus or "") <= 240 for item in output.weekly_structure)
 
@@ -69,3 +78,18 @@ def test_current_cycle_is_bounded_and_progress_is_not_invented() -> None:
 def test_no_current_cycle_is_not_found() -> None:
     output = GetCurrentTrainingCycleTool(FakeDependencies()).execute(EmptyToolInput(), context())
     assert output.data_status == TrainingDataStatus.NOT_FOUND
+
+
+def test_future_plan_prefers_bounded_confirmed_cycle_race_date() -> None:
+    deps = FakeDependencies()
+    deps.cycle = SimpleNamespace(target_race_date=NOW.date() + timedelta(days=16))
+    output = GetTrainingPlanWindowTool(deps).execute(
+        TrainingPlanWindowInput(
+            start_date=NOW.date(),
+            end_date=NOW.date() + timedelta(days=14),
+            prefer_confirmed_race_date=True,
+        ),
+        context(),
+    )
+    assert output.range_end == NOW.date() + timedelta(days=16)
+    assert output.range_source == "CONFIRMED_CYCLE_RACE_DATE"

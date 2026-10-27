@@ -114,7 +114,12 @@ class McpToolAdapter:
                 )
                 for item in value.get("items", [])
             ],
-            summary=McpRecentTrainingSummary.model_validate(value["summary"]),
+            summary=McpRecentTrainingSummary.model_validate(
+                {
+                    key: value["summary"].get(key)
+                    for key in McpRecentTrainingSummary.model_fields
+                }
+            ),
             data_quality=McpDataQuality.model_validate(value["data_quality"]),
             missing_reasons=value.get("missing_reasons", []),
         )

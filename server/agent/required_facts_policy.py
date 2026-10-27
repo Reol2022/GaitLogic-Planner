@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from typing import Literal
 
 from server.agent.enums import AgentIntent
+from server.agent.training_date_range import parse_race_context, parse_training_date_range
 
 
 ToolPreload = tuple[str, dict[str, int | str]]
@@ -134,6 +135,51 @@ def resolve_required_facts_policy(
     *, intent: AgentIntent, message: str, current_time: datetime
 ) -> RequiredFactsPolicy:
     """Return the bounded policy for this request without executing any tool."""
+    if intent in {AgentIntent.PERSONAL_TRAINING_ANALYSIS, AgentIntent.PLAN_ADJUSTMENT_ANALYSIS}:
+        requested = parse_training_date_range(message, current_time)
+        recent_args = {
+            "start_date": requested.start_date.isoformat(),
+            "end_date": requested.end_date.isoformat(),
+            "range_kind": requested.kind,
+            "range_label": requested.label,
+            "limit": 50,
+        }
+        quality_args = {
+            "window_days": requested.days,
+            "start_date": requested.start_date.isoformat(),
+            "end_date": requested.end_date.isoformat(),
+        }
+        race = parse_race_context(message, current_time)
+        if race:
+            return RequiredFactsPolicy(
+                intent=intent,
+                required_fact_set=("runner_state", "recent_training", "current_cycle", "future_plan", "data_quality"),
+                tool_preloads=(
+                    ("get_runner_state", {}),
+                    ("get_recent_training", recent_args),
+                    ("get_current_training_cycle", {}),
+                    ("get_training_plan_window", {
+                        "start_date": current_time.date().isoformat(),
+                        "end_date": race.race_date.isoformat(),
+                        "prefer_confirmed_race_date": True,
+                    }),
+                    ("get_training_data_quality", quality_args),
+                ),
+                knowledge_retrieval="never",
+            )
+        return RequiredFactsPolicy(
+            intent=intent,
+            required_fact_set=_POLICIES[intent].required_fact_set,
+            tool_preloads=(
+                ("get_runner_state", {}),
+                ("get_runner_state_history", {"limit": 7}),
+                ("get_recent_training", recent_args),
+                ("get_current_training_cycle", {}),
+                ("get_today_workout", {}),
+                ("get_training_data_quality", quality_args),
+            ),
+            knowledge_retrieval="never",
+        )
     if intent != AgentIntent.PERSONAL_TRAINING_FACT_QUERY:
         return _POLICIES[intent]
 

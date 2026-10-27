@@ -44,6 +44,16 @@ def test_prompt_contains_no_credentials_or_user_data() -> None:
     assert "runner_id" not in lowered
 
 
+def test_personal_analysis_prompt_preserves_range_and_population_boundaries() -> None:
+    prompt = build_coach_agent_system_prompt()
+    assert "Never describe a natural month as a rolling 28-day period" in prompt
+    assert "Plan counts and completed activity" in prompt
+    assert "counts are different populations" in prompt
+    assert "date is the actual" in prompt
+    assert "execution date; planned_date is separate" in prompt
+    assert "A drop in volume alone does not prove either tapering" in prompt
+
+
 def test_explain_retry_prompt_forbids_new_numbers_and_tool_calls() -> None:
     prompt = build_coach_agent_system_prompt(
         final_retry=True,

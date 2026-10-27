@@ -25,6 +25,7 @@ _FIELD_BY_TOOL = {
     "get_recent_training": "recent_training",
     "get_today_workout": "today_workout",
     "get_current_training_cycle": "current_cycle",
+    "get_training_plan_window": "plan_window",
     "evaluate_today_workout": "today_evaluation",
     "get_training_data_quality": "data_quality",
 }

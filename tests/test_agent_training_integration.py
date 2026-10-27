@@ -13,10 +13,11 @@ from planner_core.database.models import (
     RunnerStateSnapshotRecord,
     RunnerStateSnapshotTriggerReceipt,
     TrainingCycle,
+    TrainingBlock,
     UserAccount,
     WorkoutLog,
 )
-from planner_core.enums import WorkoutStatusNormalized
+from planner_core.enums import BlockType, WorkoutMainTypeNormalized, WorkoutStatusNormalized
 from server.agent.enums import AgentIntent, AgentRiskLevel, AgentRunStatus, AgentToolStatus
 from server.agent.gateway import MockAgentLLMGateway
 from server.agent.orchestrator import GaitLogicCoachAgent
@@ -155,3 +156,61 @@ def test_orchestrator_uses_preloaded_context_without_real_provider() -> None:
         assert gateway.call_count == 1
         assert agent.last_context is not None
         assert agent.last_context.runner_state is not None
+
+
+def test_recent_training_uses_actual_date_and_excludes_unstarted_plan_logs() -> None:
+    _engine, factory = make_database()
+    with factory() as db:
+        cycle = TrainingCycle(user_id=901, name="synthetic cycle", start_date=date(2026, 7, 1), end_date=date(2026, 7, 31))
+        db.add(cycle)
+        db.flush()
+        block = TrainingBlock(
+            user_id=901, cycle_id=cycle.id, block_name="synthetic week",
+            block_type=BlockType.week, sort_order=1,
+            start_date=date(2026, 7, 20), end_date=date(2026, 7, 26),
+        )
+        db.add(block)
+        db.flush()
+        completed_plan = PlannedWorkout(
+            user_id=901, cycle_id=cycle.id, block_id=block.id,
+            workout_date=date(2026, 7, 20), session_index=1,
+            planned_content="synthetic quality session", sort_order=1,
+            main_type_normalized=WorkoutMainTypeNormalized.tempo,
+        )
+        unstarted_plan = PlannedWorkout(
+            user_id=901, cycle_id=cycle.id, block_id=block.id,
+            workout_date=date(2026, 7, 22), session_index=1,
+            planned_content="synthetic easy session", sort_order=2,
+            main_type_normalized=WorkoutMainTypeNormalized.easy,
+        )
+        db.add_all([completed_plan, unstarted_plan])
+        db.flush()
+        db.add_all([
+            WorkoutLog(
+                user_id=901, cycle_id=cycle.id, planned_workout_id=completed_plan.id,
+                activity_date=date(2026, 7, 21), status_normalized=WorkoutStatusNormalized.completed_normal,
+                actual_distance_km=10, workout_type="tempo", source_type="garmin_sync",
+            ),
+            WorkoutLog(
+                user_id=901, cycle_id=cycle.id, planned_workout_id=unstarted_plan.id,
+                activity_date=date(2026, 7, 22), status_normalized=WorkoutStatusNormalized.not_started,
+                workout_type="easy", source_type="manual",
+            ),
+        ])
+        db.commit()
+
+        registry = build_coach_agent_tool_registry(CoachAgentToolDependencies.from_session(db))
+        result = registry.invoke(
+            "get_recent_training",
+            {"start_date": "2026-07-20", "end_date": "2026-07-22", "limit": 20},
+            agent_context(901, AgentIntent.PERSONAL_TRAINING_ANALYSIS),
+        )
+
+        assert result.status == AgentToolStatus.SUCCEEDED
+        matching = [item for item in result.data["items"] if item["distance_km"] == 10.0]
+        assert matching[0]["date"] == "2026-07-21"
+        assert matching[0]["planned_date"] == "2026-07-20"
+        assert matching[0]["association_status"] == "MATCHED_CROSS_DATE"
+        assert result.data["summary"]["planned_sessions_due"] == 2
+        assert result.data["summary"]["completed_planned_sessions"] == 1
+        assert result.data["summary"]["completion_rate"] == 0.5

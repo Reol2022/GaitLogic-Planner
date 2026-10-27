@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from planner_core.enums import WorkoutMainTypeNormalized
 
@@ -14,6 +14,9 @@ from server.agent.tools.schemas import (
     TodayWorkoutOutput,
     WorkoutDateInput,
     TrainingCycleBlockRead,
+    TrainingPlanWindowInput,
+    TrainingPlanWindowItem,
+    TrainingPlanWindowOutput,
     TrainingDataStatus,
 )
 
@@ -45,7 +48,9 @@ class GetTodayWorkoutTool(AgentTool):
         self.dependencies = dependencies
 
     def execute(self, arguments: WorkoutDateInput, context: AgentContext) -> TodayWorkoutOutput:
-        target_date: date = arguments.target_date or context.current_time.date()
+        # Keep direct callers using the legacy EmptyToolInput compatible while
+        # the registry exposes the newer optional target_date contract.
+        target_date: date = getattr(arguments, "target_date", None) or context.current_time.date()
         today, cycle, workouts = self.dependencies.today_workouts(
             context.user_id, target_date=target_date
         )
@@ -135,6 +140,8 @@ class GetCurrentTrainingCycleTool(AgentTool):
                     name=_clean(reference_cycle.name, 128),
                     start_date=reference_cycle.actual_start_date or reference_cycle.start_date,
                     end_date=reference_cycle.actual_end_date or reference_cycle.end_date,
+                    target_race_name=_clean(getattr(reference_cycle, "target_race_name", None), 128),
+                    target_race_date=getattr(reference_cycle, "target_race_date", None),
                     goal=_clean(reference_cycle.goal, 255),
                     limitations=[
                         _notice(
@@ -178,6 +185,8 @@ class GetCurrentTrainingCycleTool(AgentTool):
             name=_clean(cycle.name, 128),
             start_date=cycle.actual_start_date or cycle.start_date,
             end_date=cycle.actual_end_date or cycle.end_date,
+            target_race_name=_clean(getattr(cycle, "target_race_name", None), 128),
+            target_race_date=getattr(cycle, "target_race_date", None),
             current_phase=_clean(current.phase_name, 128) if current else None,
             goal=_clean(cycle.goal, 255),
             progress=None,
@@ -190,6 +199,63 @@ class GetCurrentTrainingCycleTool(AgentTool):
                     focus=_clean(block.focus, 240),
                 )
                 for block in blocks[: self.block_limit]
+            ],
+            limitations=limitations,
+        )
+
+
+class GetTrainingPlanWindowTool(AgentTool):
+    name = "get_training_plan_window"
+    description = "Read a bounded future formal-plan window for the authenticated runner; never change it."
+    input_model = TrainingPlanWindowInput
+    output_model = TrainingPlanWindowOutput
+    allowed_intents = (
+        AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+        AgentIntent.PLAN_ADJUSTMENT_ANALYSIS,
+    )
+    provided_fact_domains = ("future_plan", "race_preparation")
+
+    def __init__(self, dependencies: CoachAgentToolDependencies) -> None:
+        self.dependencies = dependencies
+
+    def execute(self, arguments: TrainingPlanWindowInput, context: AgentContext) -> TrainingPlanWindowOutput:
+        range_end = arguments.end_date
+        range_source = "USER_STATED_RACE_DATE"
+        limitations: list[AgentNotice] = []
+        if arguments.prefer_confirmed_race_date:
+            cycle = self.dependencies.current_cycle(context.user_id)
+            confirmed_race_date = getattr(cycle, "target_race_date", None) if cycle else None
+            if (
+                confirmed_race_date is not None
+                and arguments.start_date <= confirmed_race_date <= arguments.start_date + timedelta(days=42)
+            ):
+                range_end = confirmed_race_date
+                range_source = "CONFIRMED_CYCLE_RACE_DATE"
+            elif confirmed_race_date is not None:
+                limitations.append(_notice(
+                    "CONFIRMED_RACE_OUTSIDE_PLAN_WINDOW",
+                    "已确认的目标赛事日期超出本次有界计划查询范围，未来计划仍按用户本轮所述日期读取。",
+                ))
+        workouts = self.dependencies.planned_workouts(
+            context.user_id,
+            start_date=arguments.start_date,
+            end_date=range_end,
+        )
+        return TrainingPlanWindowOutput(
+            data_status=TrainingDataStatus.AVAILABLE if workouts else TrainingDataStatus.NOT_FOUND,
+            range_start=arguments.start_date,
+            range_end=range_end,
+            range_source=range_source,
+            items=[
+                TrainingPlanWindowItem(
+                    date=item.workout_date,
+                    training_type=item.main_type_normalized.value,
+                    title=_clean(item.planned_content, 160) or "未命名训练",
+                    planned_distance_km=(float(item.planned_distance_km) if item.planned_distance_km is not None else None),
+                    completion_status=(item.workout_log.status_normalized.value if item.workout_log else None),
+                )
+                for item in workouts
+                if item.workout_date is not None
             ],
             limitations=limitations,
         )

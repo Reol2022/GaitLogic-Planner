@@ -18,7 +18,7 @@ from server.agent.orchestrator import GaitLogicCoachAgent
 from server.agent.providers.errors import AgentProviderError
 from server.agent.providers.openai_compatible import OpenAICompatibleAgentGateway
 from server.agent.providers.schemas import AgentProviderUsage
-from server.agent.schemas import AgentLimits, AgentNotice, AgentRequest
+from server.agent.schemas import AgentContext, AgentLimits, AgentNotice, AgentRequest
 from server.agent.tools.dependencies import CoachAgentToolDependencies
 from server.agent.tools.factory import build_coach_agent_tool_registry
 from server.agent.tools.knowledge_tools import build_configured_knowledge_tool
@@ -29,6 +29,7 @@ from server.schemas.coach_agent import (
     CoachQueryRequest,
     CoachQueryResponse,
     CoachToolCallRead,
+    CoachTrainingFactContextRead,
 )
 from server.services.coach_agent_usage_service import (
     CoachAgentRateLimiter,
@@ -54,6 +55,50 @@ _PUBLIC_INTENTS = {
 _DIRECT_PUBLIC_INTENTS = _PUBLIC_INTENTS - {AgentIntent.WEEKLY_REVIEW}
 
 logger = logging.getLogger(__name__)
+
+
+def _training_fact_context(context: AgentContext | None) -> CoachTrainingFactContextRead | None:
+    if context is None or not isinstance(context.recent_training, dict):
+        return None
+    data = context.recent_training
+    try:
+        issues = [
+            AgentNotice(code=str(item["code"]), message=str(item["message"]))
+            for item in data.get("fact_issues", [])
+            if isinstance(item, dict) and item.get("code") and item.get("message")
+        ]
+        quality = data.get("data_quality") if isinstance(data.get("data_quality"), dict) else {}
+        sources = sorted({
+            str(item.get("source"))
+            for item in data.get("items", [])
+            if isinstance(item, dict) and item.get("source")
+        })
+        return CoachTrainingFactContextRead(
+            range_start=data["range_start"],
+            range_end=data["range_end"],
+            range_label=str(data.get("range_label") or "训练统计区间"),
+            as_of=data.get("as_of") or data["range_end"],
+            sources=sources,
+            gaps=[str(value) for value in quality.get("missing_fields", [])],
+            issues=issues,
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _deduplicate_notices(
+    warnings: list[AgentNotice], limitations: list[AgentNotice]
+) -> tuple[list[AgentNotice], list[AgentNotice]]:
+    unique_warnings = list({item.code: item for item in warnings}.values())
+    warning_codes = {item.code for item in unique_warnings}
+    unique_limitations = list(
+        {
+            item.code: item
+            for item in limitations
+            if item.code not in warning_codes
+        }.values()
+    )
+    return unique_warnings[:20], unique_limitations[:20]
 
 
 @lru_cache(maxsize=16)
@@ -247,6 +292,7 @@ class CoachAgentQueryService:
         context_builder = AgentTrainingContextBuilder(
             registry=registry,
             limits=limits,
+            clock=self.clock,
             progress_callback=report_progress,
         )
         agent = GaitLogicCoachAgent(
@@ -332,6 +378,9 @@ class CoachAgentQueryService:
             item.status != AgentToolStatus.SUCCEEDED for item in context.tool_results
         )
         if agent_response.status == AgentRunStatus.SUCCEEDED and not context_has_tool_failure:
+            warnings, limitations = _deduplicate_notices(
+                agent_response.warnings, agent_response.limitations
+            )
             return CoachQueryResponse(
                 request_id=agent_response.request_id,
                 trace_id=agent_response.trace_id,
@@ -342,9 +391,10 @@ class CoachAgentQueryService:
                 risk_level=agent_response.risk_level,
                 today_recommendation=agent_response.today_recommendation,
                 tool_calls=tool_calls,
-                warnings=agent_response.warnings,
-                limitations=agent_response.limitations,
+                warnings=warnings,
+                limitations=limitations,
                 knowledge_references=knowledge_references,
+                training_fact_context=_training_fact_context(context),
                 provider_status=provider_status,
                 generated_at=self.clock(),
             )
@@ -400,6 +450,7 @@ class CoachAgentQueryService:
                 for notice in [*fallback.limitations, *failure_notices]
             }.values()
         )
+        warnings, limitations = _deduplicate_notices(fallback.warnings, limitations)
         return CoachQueryResponse(
             request_id=agent_response.request_id,
             trace_id=agent_response.trace_id,
@@ -410,8 +461,9 @@ class CoachAgentQueryService:
             risk_level=fallback.risk_level,
             today_recommendation=fallback.today_recommendation,
             tool_calls=tool_calls,
-            warnings=fallback.warnings,
+            warnings=warnings,
             limitations=limitations,
+            training_fact_context=_training_fact_context(context),
             provider_status=provider_status,
             generated_at=self.clock(),
         )

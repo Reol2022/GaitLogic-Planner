@@ -47,6 +47,8 @@ class CoachAgentToolDependencies:
         limit: int,
         *,
         as_of_date: date | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ):
         return training_load_service.get_recent_training_read(
             self.db,
@@ -54,6 +56,8 @@ class CoachAgentToolDependencies:
             days=days,
             limit=limit,
             as_of_date=as_of_date,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def training_data_quality(
@@ -62,12 +66,16 @@ class CoachAgentToolDependencies:
         window_days: int,
         *,
         as_of_date: date | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ):
         return training_load_service.get_training_data_quality_read(
             self.db,
             user_id=user_id,
             window_days=window_days,
             as_of_date=as_of_date,
+            start_date=start_date,
+            end_date=end_date,
         )
 
     def today_workouts(self, user_id: int, *, target_date: date | None = None):
@@ -85,6 +93,11 @@ class CoachAgentToolDependencies:
 
     def current_cycle_lifecycle(self, user_id: int):
         return training_cycle_lifecycle_service.get_lifecycle_snapshot(self.db, user_id)
+
+    def planned_workouts(self, user_id: int, *, start_date: date, end_date: date):
+        return planned_workout_service.list_planned_workouts(
+            self.db, user_id, start_date=start_date, end_date=end_date
+        )
 
     def training_rules(self, scope: str, limit: int):
         return training_rule_service.list_rules(

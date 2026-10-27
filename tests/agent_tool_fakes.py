@@ -66,10 +66,17 @@ class FakeDependencies:
         limit: int,
         *,
         as_of_date=None,
+        start_date=None,
+        end_date=None,
     ):
         del as_of_date
         self.seen_user_ids.append(user_id)
-        return self.recent.model_copy(update={"window_days": days, "items": self.recent.items[:limit]})
+        return self.recent.model_copy(update={
+            "window_days": days,
+            "start_date": start_date,
+            "end_date": end_date,
+            "items": self.recent.items[:limit],
+        })
 
     def training_data_quality(
         self,
@@ -77,8 +84,10 @@ class FakeDependencies:
         window_days: int,
         *,
         as_of_date=None,
+        start_date=None,
+        end_date=None,
     ):
-        del as_of_date
+        del as_of_date, start_date, end_date
         self.seen_user_ids.append(user_id)
         return self.quality.model_copy(update={"window_days": window_days})
 
@@ -100,6 +109,11 @@ class FakeDependencies:
             latest_completed_cycle=None,
             next_cycle=None,
         )
+
+    def planned_workouts(self, user_id: int, *, start_date: date, end_date: date):
+        del start_date, end_date
+        self.seen_user_ids.append(user_id)
+        return []
 
     def training_rules(self, scope: str, limit: int):
         return self.rules[:limit], len(self.rules)

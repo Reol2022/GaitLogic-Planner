@@ -111,6 +111,7 @@ class AgentContextSeed(AgentContractModel):
     recent_training: dict[str, JsonValue] | None = None
     today_workout: dict[str, JsonValue] | None = None
     current_cycle: dict[str, JsonValue] | None = None
+    plan_window: dict[str, JsonValue] | None = None
     today_evaluation: dict[str, JsonValue] | None = None
     applicable_rules: list[dict[str, JsonValue]] = Field(
         default_factory=list,
@@ -136,6 +137,7 @@ class AgentContext(AgentContractModel):
     recent_training: dict[str, JsonValue] | None = None
     today_workout: dict[str, JsonValue] | None = None
     current_cycle: dict[str, JsonValue] | None = None
+    plan_window: dict[str, JsonValue] | None = None
     today_evaluation: dict[str, JsonValue] | None = None
     applicable_rules: list[dict[str, JsonValue]] = Field(
         default_factory=list,

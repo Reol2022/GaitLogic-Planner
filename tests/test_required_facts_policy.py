@@ -32,6 +32,25 @@ def test_personal_analysis_requires_bounded_runner_facts_before_generation_witho
     assert policy.requires_knowledge_retrieval is False
 
 
+def test_current_month_uses_calendar_boundaries_instead_of_rolling_28_days() -> None:
+    policy = resolve(AgentIntent.PERSONAL_TRAINING_ANALYSIS, "读取本月训练并分析")
+    recent = dict(policy.tool_preloads)["get_recent_training"]
+    quality = dict(policy.tool_preloads)["get_training_data_quality"]
+    assert recent["start_date"] == "2026-10-01"
+    assert recent["end_date"] == "2026-10-26"
+    assert recent["range_kind"] == "CURRENT_CALENDAR_MONTH"
+    assert quality["window_days"] == 26
+
+
+def test_race_discussion_reads_future_plan_without_writing_user_date_to_cycle_state() -> None:
+    policy = resolve(AgentIntent.PERSONAL_TRAINING_ANALYSIS, "两周后有半马比赛，我该怎么调整")
+    assert dict(policy.tool_preloads)["get_training_plan_window"] == {
+        "start_date": "2026-10-26",
+        "end_date": "2026-11-09",
+        "prefer_confirmed_race_date": True,
+    }
+
+
 def test_general_knowledge_is_the_only_default_path_that_requires_rag() -> None:
     policy = resolve(AgentIntent.GENERAL_TRAINING_QUESTION)
     assert policy.required_fact_set == ("general_training_rules",)

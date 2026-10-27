@@ -206,6 +206,35 @@ def test_optional_intent_is_inferred_server_side(monkeypatch) -> None:
     assert result.intent == AgentIntent.TODAY_RECOMMENDATION
 
 
+def test_personal_analysis_exposes_safe_fact_range_and_deduplicates_notices(monkeypatch) -> None:
+    deps = configured_dependencies()
+    deps.recent = deps.recent.model_copy(update={
+        "total_sessions": 1,
+        "total_distance_km": 8,
+        "items": [],
+        "unresolved_activity_count": 1,
+    })
+    duplicate = AgentNotice(code="SYNTHETIC_NOTICE", message="Synthetic limitation.")
+    output = AgentModelOutput(
+        intent=AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+        answer="已读取请求范围内的训练事实，并保留关联限制。",
+        summary="训练事实已读取。",
+        risk_level=AgentRiskLevel.UNKNOWN,
+        warnings=[duplicate],
+        limitations=[duplicate],
+    )
+    result = service(monkeypatch, gateway=MockAgentLLMGateway(output), deps=deps).query(
+        user_id=1305,
+        payload=CoachQueryRequest(message="读取本月训练并分析"),
+    )
+    assert result.training_fact_context is not None
+    assert result.training_fact_context.range_start.isoformat() == "2026-07-01"
+    assert result.training_fact_context.range_end.isoformat() == "2026-07-22"
+    assert result.training_fact_context.range_label == "本月截至当前日期"
+    assert {item.code for item in result.warnings} & {"SYNTHETIC_NOTICE"}
+    assert "SYNTHETIC_NOTICE" not in {item.code for item in result.limitations}
+
+
 def test_tool_failure_degrades_instead_of_claiming_complete_data(monkeypatch) -> None:
     deps = configured_dependencies()
 

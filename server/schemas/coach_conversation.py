@@ -10,6 +10,7 @@ from server.schemas.coach_agent import (
     CoachKnowledgeReferenceRead,
     CoachQueryResponse,
     CoachToolCallRead,
+    CoachTrainingFactContextRead,
 )
 
 ConversationStatus = Literal["active", "archived"]
@@ -76,6 +77,7 @@ class CoachMessageRead(AgentContractModel):
     limitations: list[dict[str, str]] = Field(default_factory=list)
     tool_calls: list[CoachToolCallRead] = Field(default_factory=list)
     today_recommendation: dict | None = None
+    training_fact_context: CoachTrainingFactContextRead | None = None
     progress: CoachTurnProgressRead | None = None
 
 

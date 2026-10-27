@@ -172,6 +172,14 @@ def _status_quality(data: dict) -> tuple[EvidenceCoverage, EvidenceUsability, li
             limitations.append(str(item["code"]))
         elif isinstance(item, str):
             limitations.append(item)
+    fact_issue_codes = [
+        str(item.get("code"))
+        for item in data.get("fact_issues", []) or []
+        if isinstance(item, dict) and item.get("code")
+    ]
+    limitations.extend(fact_issue_codes)
+    if fact_issue_codes and status == "AVAILABLE":
+        return EvidenceCoverage.PARTIAL, EvidenceUsability.LIMITED, limitations
     if status == "AVAILABLE":
         return EvidenceCoverage.COMPLETE, EvidenceUsability.USABLE, limitations
     if status == "PARTIAL":
@@ -202,9 +210,9 @@ def _tool_evidence(result: AgentToolResult) -> list[EvidenceItem]:
     call_ref = f"tool:{result.tool_name}:{result.tool_call_id}"
     items: list[EvidenceItem] = []
     if result.tool_name == "get_recent_training":
-        end = _date(data.get("as_of"))
+        end = _date(data.get("range_end")) or _date(data.get("as_of"))
         rows = data.get("items", []) if isinstance(data.get("items"), list) else []
-        start = min((_date(row.get("date")) for row in rows if isinstance(row, dict)), default=None)
+        start = _date(data.get("range_start")) or min((_date(row.get("date")) for row in rows if isinstance(row, dict)), default=None)
         for domain, fact_key in (("training_volume", "recent_training"), ("training_frequency", "recent_training"), ("recent_intensity", "recent_training"), ("plan_execution", "plan_execution"), ("training_load", "recent_training")):
             items.append(_item(evidence_kind=EvidenceKind.DERIVED_FACT, source_kind=EvidenceSourceKind.TRAINING_LOG, source_ref=call_ref, domain=domain, fact_key=fact_key, canonical_identity=f"recent-training:{start}:{end}", period_start=start, period_end=end, coverage=coverage, usability=usability, limitations=limitations, derived_from=[str(row.get("date")) for row in rows if isinstance(row, dict)]))
         rpe_rows = [row for row in rows if isinstance(row, dict) and row.get("rpe") is not None]
@@ -235,6 +243,10 @@ def _tool_evidence(result: AgentToolResult) -> list[EvidenceItem]:
     elif result.tool_name == "get_today_workout":
         observed = _date(data.get("date"))
         items.append(_item(evidence_kind=EvidenceKind.PERSONAL_FACT, source_kind=EvidenceSourceKind.TRAINING_PLAN, source_ref=call_ref, domain="today_plan", fact_key="today_plan", canonical_identity=f"today-plan:{observed}", observed_at=observed, period_start=observed, period_end=observed, freshness=EvidenceFreshness.CURRENT, coverage=coverage, usability=usability, limitations=limitations))
+    elif result.tool_name == "get_training_plan_window":
+        start = _date(data.get("range_start"))
+        end = _date(data.get("range_end"))
+        items.append(_item(evidence_kind=EvidenceKind.PERSONAL_FACT, source_kind=EvidenceSourceKind.TRAINING_PLAN, source_ref=call_ref, domain="training_phase", fact_key="future_plan", canonical_identity=f"future-plan:{start}:{end}", period_start=start, period_end=end, freshness=EvidenceFreshness.CURRENT, coverage=coverage, usability=usability, limitations=limitations))
     elif result.tool_name == "get_current_training_cycle" and data.get("current_phase"):
         items.append(_item(evidence_kind=EvidenceKind.PERSONAL_FACT, source_kind=EvidenceSourceKind.TRAINING_PLAN, source_ref=call_ref, domain="training_phase", fact_key="training_phase", canonical_identity=f"cycle:{data.get('cycle_id')}:phase", period_start=_date(data.get("start_date")), period_end=_date(data.get("end_date")), coverage=coverage, usability=usability, limitations=limitations))
     elif result.tool_name == "evaluate_today_workout":

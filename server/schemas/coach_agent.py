@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -49,6 +49,16 @@ class CoachKnowledgeReferenceRead(AgentKnowledgeReference):
     pass
 
 
+class CoachTrainingFactContextRead(AgentContractModel):
+    range_start: date
+    range_end: date
+    range_label: str = Field(max_length=80)
+    as_of: date
+    sources: list[str] = Field(default_factory=list, max_length=10)
+    gaps: list[str] = Field(default_factory=list, max_length=20)
+    issues: list[AgentNotice] = Field(default_factory=list, max_length=20)
+
+
 class CoachQueryResponse(AgentContractModel):
     request_id: UUID
     trace_id: UUID
@@ -65,6 +75,7 @@ class CoachQueryResponse(AgentContractModel):
         default_factory=list,
         max_length=6,
     )
+    training_fact_context: CoachTrainingFactContextRead | None = None
     provider_status: Literal[
         "SUCCEEDED",
         "DISABLED",

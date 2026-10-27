@@ -11,6 +11,7 @@ from server.agent.tool import AgentTool
 from server.agent.tools.dependencies import CoachAgentToolDependencies
 from server.agent.tools.planning_tools import (
     GetCurrentTrainingCycleTool,
+    GetTrainingPlanWindowTool,
     GetTodayWorkoutTool,
 )
 from server.agent.tools.rule_tools import EvaluateTodayWorkoutTool, GetTrainingRulesTool
@@ -31,6 +32,7 @@ COACH_AGENT_TOOL_NAMES = frozenset(
         "get_recent_training",
         "get_today_workout",
         "get_current_training_cycle",
+        "get_training_plan_window",
         "get_training_rules",
         "evaluate_today_workout",
         "get_training_data_quality",
@@ -56,6 +58,7 @@ def build_coach_agent_tool_registry(
         GetRecentTrainingTool(dependencies, item_limit=bounded.max_recent_training_items),
         GetTodayWorkoutTool(dependencies),
         GetCurrentTrainingCycleTool(dependencies),
+        GetTrainingPlanWindowTool(dependencies),
         GetTrainingRulesTool(dependencies, rule_limit=bounded.max_rule_items),
         EvaluateTodayWorkoutTool(dependencies, item_limit=bounded.max_evidence_items),
         GetTrainingDataQualityTool(dependencies),
@@ -65,7 +68,7 @@ def build_coach_agent_tool_registry(
         if knowledge_tool.name != COACH_AGENT_KNOWLEDGE_TOOL_NAME:
             raise RuntimeError("Unexpected Coach knowledge tool.")
         registry.register(knowledge_tool)
-    # Existing construction remains the eight-tool compatibility surface.
+    # Existing tools plus the bounded future-plan reader remain read-only.
     # New capabilities are opt-in until the request has an actual provider or
     # a concrete WeeklyReviewGraph runner wired by its caller.
     if weather_provider is not None:

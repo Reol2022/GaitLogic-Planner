@@ -46,6 +46,8 @@ def test_recent_training_normalizes_sources_and_truncates_items() -> None:
     assert len(output.items) == 1
     assert output.items[0].source == "GARMIN"
     assert output.data_status == TrainingDataStatus.PARTIAL
+    assert output.details_complete is False
+    assert "TRAINING_DETAILS_TRUNCATED" in {item.code for item in output.fact_issues}
     assert "external_activity" not in output.model_dump_json().lower()
 
 
@@ -62,7 +64,7 @@ def test_data_quality_is_completeness_not_risk() -> None:
     assert output.limitations[0].message == "数据完整度只表示当前字段的可用情况，不代表医疗风险或模型置信度。"
 
 
-@pytest.mark.parametrize("days", [6, 29])
+@pytest.mark.parametrize("days", [0, 121])
 def test_data_quality_window_bounds(days: int) -> None:
     with pytest.raises(ValidationError):
         TrainingDataQualityInput(window_days=days)

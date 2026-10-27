@@ -50,6 +50,10 @@ describe("CoachAgentView persistent chat", () => {
       items: [{
         id: "message-1", role: "assistant", content: "虚构安全回答。", status: "completed", sequence_no: 2,
         evidence_refs: [], warnings: [], limitations: [], tool_calls: [], created_at: "2026-10-01T08:00:00",
+        training_fact_context: {
+          range_start: "2026-10-01", range_end: "2026-10-26", range_label: "本月截至当前日期",
+          as_of: "2026-10-26", sources: ["GARMIN"], gaps: ["rpe"], issues: [],
+        },
       }], page: 1, page_size: 100, total: 1,
     });
     api.getCoachConversationTurnStatus.mockResolvedValue({
@@ -68,6 +72,8 @@ describe("CoachAgentView persistent chat", () => {
     expect(api.listCoachConversations).toHaveBeenCalledTimes(1);
     expect(api.getCoachConversationMessages).toHaveBeenCalledWith("conversation-1");
     expect(wrapper.text()).toContain("虚构安全回答。");
+    expect(wrapper.text()).toContain("训练事实与统计口径");
+    expect(wrapper.text()).toContain("本月截至当前日期");
     expect(localSet).not.toHaveBeenCalled();
     localSet.mockRestore();
   });

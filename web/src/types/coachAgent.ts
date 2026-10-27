@@ -115,8 +115,19 @@ export interface CoachQueryResponse {
    * reference IDs, chunk IDs, paths, scores, or vectors.
    */
   knowledge_references?: CoachKnowledgeReference[];
+  training_fact_context?: CoachTrainingFactContext | null;
   provider_status: CoachProviderStatus;
   generated_at: string;
+}
+
+export interface CoachTrainingFactContext {
+  range_start: string;
+  range_end: string;
+  range_label: string;
+  as_of: string;
+  sources: string[];
+  gaps: string[];
+  issues: CoachNotice[];
 }
 
 export type CoachConversationStatus = "active" | "archived";
@@ -178,6 +189,7 @@ export interface CoachStoredMessage {
   limitations: CoachNotice[];
   tool_calls: CoachToolCallSummary[];
   today_recommendation?: CoachTodayRecommendation | null;
+  training_fact_context?: CoachTrainingFactContext | null;
   progress?: CoachTurnProgress | null;
 }
 

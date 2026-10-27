@@ -647,6 +647,7 @@ class CoachConversationService:
             limitations=metadata.get("limitations", []),
             tool_calls=metadata.get("tool_calls", []),
             today_recommendation=metadata.get("today_recommendation"),
+            training_fact_context=metadata.get("training_fact_context"),
             progress=CoachConversationService._progress_read(item),
         )
 
