@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from planner_core.database.models import PlannedWorkout, TrainingCycle, UserAccount, WorkoutLog
+from planner_core.database.models import DailyRecoveryCheckin, PlannedWorkout, TrainingCycle, UserAccount, WorkoutLog
 from planner_core.enums import PlannedWorkoutLifecycleStatus, WorkoutMainTypeNormalized
 from planner_core.utils.excel_parse import normalize_workout_main_type
 from server.domain.review_thresholds import HIGH_INTENSITY_TYPES, KEY_WORKOUT_TYPES
@@ -20,6 +20,7 @@ from server.schemas.runner_state import (
     InferredStatePlaceholders,
     IntensityMetrics,
     RecentTrainingMetrics,
+    RecoveryFacts,
     RunnerGoalContext,
     RunnerIdentityReference,
     RunnerStateDataQuality,
@@ -272,6 +273,53 @@ def _quality_level(confidence: float, completed_count: int) -> DataQualityLevel:
     return DataQualityLevel.LOW
 
 
+def _recovery_facts(
+    record: DailyRecoveryCheckin | None,
+    window_end: date,
+    objective_record: DailyRecoveryCheckin | None = None,
+) -> RecoveryFacts:
+    objective = objective_record or record
+    if record is None and objective is None:
+        return RecoveryFacts(
+            missing_fields=["sleep_duration_minutes", "hrv_value", "resting_heart_rate_bpm"],
+            limitations=["recovery_data_unavailable"],
+        )
+    assert objective is not None
+    age_days = max((window_end - objective.checkin_date).days, 0)
+    freshness = "CURRENT" if age_days <= 1 else "STALE"
+    missing = set(objective.device_missing_fields_json or [])
+    for field in ("sleep_duration_minutes", "hrv_value", "resting_heart_rate_bpm"):
+        if getattr(objective, field) is None:
+            missing.add(field)
+    if missing and freshness == "CURRENT":
+        freshness = "PARTIAL"
+    limitations = list(objective.device_limitations_json or [])
+    if age_days > 1:
+        limitations.append("recovery_data_stale")
+    source_record = record or objective
+    source = getattr(source_record.source, "value", source_record.source)
+    if record is not None and objective is not record:
+        objective_source = getattr(objective.source, "value", objective.source)
+        if objective_source != source:
+            source = "mixed"
+    return RecoveryFacts(
+        as_of_date=objective.checkin_date,
+        freshness=freshness,
+        source=str(source),
+        sleep_duration_minutes=objective.sleep_duration_minutes,
+        sleep_score=objective.sleep_score,
+        resting_heart_rate_bpm=objective.resting_heart_rate_bpm,
+        hrv_value=float(objective.hrv_value) if objective.hrv_value is not None else None,
+        hrv_metric=objective.hrv_metric,
+        average_stress=objective.average_stress,
+        body_battery_end=objective.body_battery_end,
+        subjective_fatigue=record.subjective_fatigue if record else None,
+        leg_feeling=record.leg_feeling if record else None,
+        missing_fields=sorted(missing),
+        limitations=sorted(set(limitations)),
+    )
+
+
 def build_runner_state_snapshot(
     *,
     runner_id: int,
@@ -283,6 +331,8 @@ def build_runner_state_snapshot(
     timezone_name: str,
     calculation_window_end: date | None = None,
     last_quality_date: date | None = None,
+    latest_recovery: DailyRecoveryCheckin | None = None,
+    latest_objective_recovery: DailyRecoveryCheckin | None = None,
 ) -> RunnerStateSnapshot:
     zone = ZoneInfo(timezone_name)
     if generated_at.tzinfo is None:
@@ -391,6 +441,7 @@ def build_runner_state_snapshot(
             long_run_distance_28d_km=metrics_28d.long_run_distance_km,
             days_since_last_quality_session=days_since_quality,
         ),
+        recovery=_recovery_facts(latest_recovery, window_end, latest_objective_recovery),
         inferred_state=InferredStatePlaceholders(),
         data_quality=RunnerStateDataQuality(
             data_quality_level=_quality_level(confidence, metrics_28d.completed_sessions),
@@ -461,6 +512,30 @@ class RunnerStateService:
                 ),
             )
         )
+        latest_recovery = self.db.scalar(
+            select(DailyRecoveryCheckin)
+            .where(
+                DailyRecoveryCheckin.user_id == current_user.id,
+                DailyRecoveryCheckin.checkin_date <= window_end,
+            )
+            .order_by(DailyRecoveryCheckin.checkin_date.desc())
+            .limit(1)
+        )
+        latest_objective_recovery = self.db.scalar(
+            select(DailyRecoveryCheckin)
+            .where(
+                DailyRecoveryCheckin.user_id == current_user.id,
+                DailyRecoveryCheckin.checkin_date <= window_end,
+                or_(
+                    DailyRecoveryCheckin.sleep_duration_minutes.is_not(None),
+                    DailyRecoveryCheckin.resting_heart_rate_bpm.is_not(None),
+                    DailyRecoveryCheckin.hrv_value.is_not(None),
+                    DailyRecoveryCheckin.body_battery_end.is_not(None),
+                ),
+            )
+            .order_by(DailyRecoveryCheckin.checkin_date.desc())
+            .limit(1)
+        )
         snapshot = build_runner_state_snapshot(
             runner_id=current_user.id,
             cycle=cycle,
@@ -471,6 +546,8 @@ class RunnerStateService:
             timezone_name=self.timezone_name,
             calculation_window_end=window_end,
             last_quality_date=last_quality_date,
+            latest_recovery=latest_recovery,
+            latest_objective_recovery=latest_objective_recovery,
         )
         logger.info(
             "runner_state_snapshot_generated runner_id=%s window_end=%s valid_workouts_28d=%s data_quality=%s",

@@ -51,6 +51,7 @@ from server.services.runner_state_snapshot_receipt_query_service import (
 from server.services.garmin_daily_state_sync_service import apply_garmin_daily_health
 from server.services.training_cycle_lifecycle_service import resolve_cycle_for_date
 from server.services.token_encryption_service import decrypt_token_payload, encrypt_token_payload
+from server.services.weekly_review_stats_service import local_today
 
 PROVIDER = "garmin"
 ACTIVE_STATUSES = {"connected", "reauthentication_required", "temporarily_unavailable"}
@@ -86,6 +87,14 @@ NORMALIZATION_VERSION = "garmin-activity-v1"
 SEGMENTATION_VERSION = "garmin-segmentation-v1"
 CLASSIFICATION_VERSION = "garmin-segment-classification-v1"
 logger = logging.getLogger(__name__)
+
+
+def _recovery_sync_range(job: ExternalSyncJob, today: date | None = None) -> tuple[date, date]:
+    """Return an activity-independent, provider-bounded recovery window."""
+    current_date = today or local_today()
+    end = min(job.requested_end.date() if job.requested_end else current_date, current_date)
+    requested_start = job.requested_start.date() if job.requested_start else end - timedelta(days=30)
+    return max(requested_start, end - timedelta(days=30)), end
 
 
 def _job_read(db: Session, user_id: int, job: ExternalSyncJob) -> ExternalSyncJobRead:
@@ -124,6 +133,9 @@ def get_connection_status(db: Session, user_id: int) -> GarminConnectionStatus:
         auto_sync_last_run_at=connection.auto_sync_last_run_at,
         last_authenticated_at=connection.last_authenticated_at,
         last_successful_sync_at=connection.last_successful_sync_at,
+        recovery_last_attempt_at=connection.recovery_last_attempt_at,
+        recovery_last_successful_sync_at=connection.recovery_last_successful_sync_at,
+        recovery_last_error_code=connection.recovery_last_error_code,
         last_error_code=connection.last_error_code,
         last_error_at=connection.last_error_at,
     )
@@ -506,6 +518,7 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
     successful_activity_count = 0
     fetched_count = 0
     failed_count = 0
+    recovery_change_count = 0
     try:
         sync_started = time.monotonic()
         connection = job.connection
@@ -571,19 +584,24 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
         if _is_sync_job_cancelled(db, job_id):
             return _cancelled_sync_outcome(db, job_id)
 
-        # Health data belongs to the same logical Garmin sync, but it is not a
-        # prerequisite for preserving successfully imported training activity.
-        # Use activity-local dates rather than the wall-clock sync date.
-        health_dates = sorted({activity.start_time_local.date() for activity in activities})
-        if health_dates:
-            try:
-                health_by_date = provider.fetch_recovery(health_dates[0], health_dates[-1])
-                for health in health_by_date:
-                    if health.recovery_date in health_dates:
-                        apply_garmin_daily_health(db, user_id=job.user_id, health=health)
-            except ProviderError as exc:
-                health_warning_codes.append(f"HEALTH_{exc.code}")
-                logger.warning("Garmin daily health sync unavailable job_id=%s error_code=%s", job_id, exc.code)
+        # Recovery facts are calendar-day facts, not activity-day facts. They
+        # must still refresh on rest days and when Garmin has no new activity.
+        health_start, health_end = _recovery_sync_range(job)
+        connection.recovery_last_attempt_at = datetime.utcnow()
+        try:
+            health_by_date = provider.fetch_recovery(health_start, health_end)
+            for health in health_by_date:
+                if health_start <= health.recovery_date <= health_end:
+                    _, recovery_changed = apply_garmin_daily_health(
+                        db, user_id=job.user_id, health=health
+                    )
+                    recovery_change_count += int(recovery_changed)
+            connection.recovery_last_successful_sync_at = datetime.utcnow()
+            connection.recovery_last_error_code = None
+        except ProviderError as exc:
+            connection.recovery_last_error_code = exc.code
+            health_warning_codes.append(f"HEALTH_{exc.code}")
+            logger.warning("Garmin daily health sync unavailable job_id=%s error_code=%s", job_id, exc.code)
 
         if _is_sync_job_cancelled(db, job_id):
             return _cancelled_sync_outcome(db, job_id)
@@ -617,7 +635,9 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
         job.created_log_count = material_counts.created_log_count
         job.updated_log_count = material_counts.updated_log_count
         job.unchanged_activity_count = unchanged_activity_count
-        job.runner_state_affecting_change_count = material_counts.runner_state_affecting_change_count
+        job.runner_state_affecting_change_count = (
+            material_counts.runner_state_affecting_change_count + recovery_change_count
+        )
         job.is_committed = True
         job.committed_at = datetime.utcnow()
         job.finished_at = datetime.utcnow()

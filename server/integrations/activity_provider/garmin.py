@@ -280,6 +280,9 @@ class GarminActivityProvider(ActivityProvider):
         field_name: str,
         limitations: list[str],
     ) -> Any:
+        if not hasattr(client, method_name):
+            limitations.append(f"garmin_{field_name}_unsupported")
+            return None
         try:
             return getattr(client, method_name)(*arguments)
         except Exception as exc:
@@ -288,7 +291,17 @@ class GarminActivityProvider(ActivityProvider):
             text = str(exc).lower()
             if any(token in text for token in ("401", "unauthorized", "authentication", "login failed", "429", "rate")):
                 _raise_safe_provider_error(exc, reauth="401" in text or "unauthorized" in text)
-            limitations.append(f"garmin_{field_name}_unavailable")
+            if any(token in text for token in ("timeout", "timed out", "connection", "network", "resolve host", "ssl")):
+                raise ProviderError(
+                    "RECOVERY_NETWORK_ERROR",
+                    "Garmin 恢复数据请求超时或网络不可用，请稍后重试。",
+                ) from exc
+            if "403" in text or "forbidden" in text:
+                limitations.append(f"garmin_{field_name}_access_denied")
+            elif "404" in text or "not found" in text or "no data" in text:
+                limitations.append(f"garmin_{field_name}_no_data")
+            else:
+                limitations.append(f"garmin_{field_name}_unavailable")
             return None
 
     def disconnect(self) -> None:
@@ -357,11 +370,14 @@ def _recovery_from_garmin_payloads(
 
     values = {
         "sleep_duration_minutes": sleep_minutes,
+        "sleep_score": _integer(_first(sleep_data, "overallSleepScore", "sleepScore")),
         "resting_heart_rate_bpm": _integer(_first(heart_data, "restingHeartRate", "restingHeartRateBpm")),
         "hrv_value": _number(_first(hrv_data, "lastNightAvg", "weeklyAvg", "hrvValue", "value")),
         "average_stress": _integer(_first(stress_data, "avgStressLevel", "averageStressLevel", "avgStress")),
+        "max_stress": _integer(_first(stress_data, "maxStressLevel", "maximumStressLevel", "maxStress")),
         "body_battery_end": body_battery_values[-1] if body_battery_values else None,
         "respiration_rate": _number(_first(respiration_data, "avgWakingRespirationValue", "avgRespirationValue", "averageRespiration")),
+        "pulse_ox": _number(_first(sleep_data, "averageSpO2Value", "avgSpO2", "pulseOx")),
     }
     missing = [name for name, value in values.items() if value is None]
     limitations = sorted(set(endpoint_limitations))
@@ -372,19 +388,22 @@ def _recovery_from_garmin_payloads(
         sleep_duration_minutes=values["sleep_duration_minutes"],
         sleep_start=_parse_datetime(_first(sleep_data, "sleepStartTimestampGMT", "sleepStartTimestampLocal")),
         sleep_end=_parse_datetime(_first(sleep_data, "sleepEndTimestampGMT", "sleepEndTimestampLocal")),
-        sleep_score=_integer(_first(sleep_data, "overallSleepScore", "sleepScore")),
+        sleep_score=values["sleep_score"],
         resting_heart_rate_bpm=values["resting_heart_rate_bpm"],
         hrv_value=values["hrv_value"],
         hrv_metric="MS" if values["hrv_value"] is not None else None,
         hrv_status=_string(_first(hrv_data, "status", "hrvStatus")),
         average_stress=values["average_stress"],
-        max_stress=_integer(_first(stress_data, "maxStressLevel", "maximumStressLevel", "maxStress")),
+        max_stress=values["max_stress"],
         body_battery_start=body_battery_values[0] if body_battery_values else None,
         body_battery_end=values["body_battery_end"],
         body_battery_high=max(body_battery_values) if body_battery_values else None,
         body_battery_low=min(body_battery_values) if body_battery_values else None,
         respiration_rate=values["respiration_rate"],
-        pulse_ox=_number(_first(sleep_data, "averageSpO2Value", "avgSpO2", "pulseOx")),
+        pulse_ox=values["pulse_ox"],
+        provider_updated_at=_parse_datetime(
+            _first(sleep_data, "lastUpdatedDate", "updatedAt", "calendarDate")
+        ),
         missing_fields=missing,
         limitations=limitations,
     )

@@ -403,6 +403,7 @@ class _FakeProvider:
     def __init__(self, activities: list[SimpleNamespace], *, fail_refresh: bool = False) -> None:
         self.activities = activities
         self.fail_refresh = fail_refresh
+        self.recovery_calls: list[tuple[date, date]] = []
 
     def restore_session(self, _token: dict) -> None:
         return None
@@ -411,6 +412,7 @@ class _FakeProvider:
         return self.activities
 
     def fetch_recovery(self, _start: date, _end: date) -> list[SimpleNamespace]:
+        self.recovery_calls.append((_start, _end))
         return []
 
     def refresh_session(self):
@@ -449,7 +451,8 @@ def _successful_process(session: Session, job: ExternalSyncJob, activity, _versi
 def test_no_activity_sync_commits_with_zero_material_change(mysql_factory, monkeypatch) -> None:
     with mysql_factory() as session:
         _user, _connection, job = _user_connection_job(session)
-        _install_fake_sync(monkeypatch, _FakeProvider([]), _successful_process)
+        provider = _FakeProvider([])
+        _install_fake_sync(monkeypatch, provider, _successful_process)
         outcome = garmin_sync_service.run_sync_job(session, job.id)
         assert outcome == GarminSyncRunOutcome(
             job_id=job.id,
@@ -460,6 +463,7 @@ def test_no_activity_sync_commits_with_zero_material_change(mysql_factory, monke
             committed=True,
             final_status="succeeded",
         )
+        assert len(provider.recovery_calls) == 1
 
 
 def test_partial_success_commits_successful_activity_only(mysql_factory, monkeypatch) -> None:

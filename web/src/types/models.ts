@@ -395,6 +395,9 @@ export interface GarminConnectionStatus {
   auto_sync_last_run_at?: string | null;
   last_authenticated_at?: string | null;
   last_successful_sync_at?: string | null;
+  recovery_last_attempt_at?: string | null;
+  recovery_last_successful_sync_at?: string | null;
+  recovery_last_error_code?: string | null;
   last_error_code?: string | null;
   last_error_at?: string | null;
 }
@@ -979,7 +982,24 @@ export interface RecoveryCheckinPayload {
 export interface RecoveryCheckin extends RecoveryCheckinPayload {
   id: number;
   checkin_date: string;
-  source: "manual";
+  source: "manual" | "garmin" | "mixed";
+  sleep_source?: string | null;
+  resting_heart_rate_source?: string | null;
+  sleep_score?: number | null;
+  average_stress?: number | null;
+  max_stress?: number | null;
+  body_battery_start?: number | null;
+  body_battery_end?: number | null;
+  body_battery_high?: number | null;
+  body_battery_low?: number | null;
+  respiration_rate?: number | string | null;
+  pulse_ox?: number | string | null;
+  device_provider?: string | null;
+  device_data_status?: "AVAILABLE" | "PARTIAL" | "UNAVAILABLE" | null;
+  device_synced_at?: string | null;
+  provider_updated_at?: string | null;
+  device_missing_fields_json?: string[];
+  device_limitations_json?: string[];
   created_at: string;
   updated_at: string;
 }

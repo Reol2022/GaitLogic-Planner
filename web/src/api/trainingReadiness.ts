@@ -12,6 +12,13 @@ export function getTodayRecoveryCheckin() {
   return request.get<RecoveryCheckin | null>("/recovery-checkins/today", { skipErrorMessage: true });
 }
 
+export function getLatestDeviceRecoveryCheckin(maxAgeDays = 2) {
+  return request.get<RecoveryCheckin | null>("/recovery-checkins/latest-device", {
+    params: { max_age_days: maxAgeDays },
+    skipErrorMessage: true,
+  });
+}
+
 export function saveTodayRecoveryCheckin(payload: RecoveryCheckinPayload) {
   return request.put<RecoveryCheckin>("/recovery-checkins/today", payload);
 }

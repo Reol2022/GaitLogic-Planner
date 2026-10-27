@@ -21,6 +21,9 @@ class GarminConnectionStatus(BaseModel):
     auto_sync_last_run_at: datetime | None = None
     last_authenticated_at: datetime | None = None
     last_successful_sync_at: datetime | None = None
+    recovery_last_attempt_at: datetime | None = None
+    recovery_last_successful_sync_at: datetime | None = None
+    recovery_last_error_code: str | None = None
     last_error_code: str | None = None
     last_error_at: datetime | None = None
 

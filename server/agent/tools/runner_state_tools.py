@@ -37,6 +37,23 @@ _LIMITATION_MESSAGES_ZH = {
     "rpe_incomplete_28d": "近 28 天部分训练缺少主观用力程度（RPE）记录。",
 }
 
+_RECOVERY_LIMITATION_MESSAGES = {
+    "recovery_data_unavailable": "当前没有可用的恢复数据。",
+    "recovery_data_stale": "最近一次恢复数据已过期，请先同步设备或补充主观感受。",
+}
+
+_RECOVERY_FIELD_LABELS = {
+    "sleep_duration_minutes": "睡眠时长",
+    "hrv_value": "HRV",
+    "resting_heart_rate_bpm": "静息心率",
+    "sleep_score": "睡眠评分",
+    "average_stress": "压力",
+    "max_stress": "最高压力",
+    "body_battery_end": "Body Battery",
+    "respiration_rate": "呼吸率",
+    "pulse_ox": "血氧",
+}
+
 
 def _value(value: object) -> str:
     return str(getattr(value, "value", value))
@@ -105,6 +122,28 @@ class GetRunnerStateTool(AgentTool):
         overall_state = _value(snapshot.fatigue.state) if snapshot.fatigue else "UNKNOWN"
         metrics = {
             **snapshot.recent_training.model_dump(mode="json"),
+            "recovery_as_of_date": (
+                snapshot.recovery.as_of_date.isoformat() if snapshot.recovery.as_of_date else None
+            ),
+            "recovery_freshness": snapshot.recovery.freshness,
+            "recovery_source": snapshot.recovery.source,
+            "recovery_available_fields": ",".join(
+                sorted(
+                    field
+                    for field in _RECOVERY_FIELD_LABELS
+                    if getattr(snapshot.recovery, field, None) is not None
+                )
+            ),
+            "recovery_missing_fields": ",".join(snapshot.recovery.missing_fields),
+            "sleep_duration_minutes": snapshot.recovery.sleep_duration_minutes,
+            "sleep_score": snapshot.recovery.sleep_score,
+            "resting_heart_rate_bpm": snapshot.recovery.resting_heart_rate_bpm,
+            "hrv_value": snapshot.recovery.hrv_value,
+            "hrv_metric": snapshot.recovery.hrv_metric,
+            "average_stress": snapshot.recovery.average_stress,
+            "body_battery_end": snapshot.recovery.body_battery_end,
+            "subjective_fatigue": snapshot.recovery.subjective_fatigue,
+            "leg_feeling": snapshot.recovery.leg_feeling,
             "hard_distance_ratio_7d": snapshot.intensity.hard_distance_ratio_7d,
             "hard_distance_ratio_28d": snapshot.intensity.hard_distance_ratio_28d,
             "quality_sessions_7d": snapshot.intensity.quality_sessions_7d,
@@ -124,6 +163,24 @@ class GetRunnerStateTool(AgentTool):
                 *(snapshot.inference_metadata.limitations if snapshot.inference_metadata else []),
             ][:20]
         ]
+        limitations.extend(
+            _notice(
+                "RECOVERY_DATA_LIMITATION",
+                _RECOVERY_LIMITATION_MESSAGES.get(item, "恢复数据存在暂不可用的设备指标。"),
+            )
+            for item in snapshot.recovery.limitations[:10]
+        )
+        if snapshot.recovery.missing_fields:
+            limitations.append(
+                _notice(
+                    "RECOVERY_DATA_INCOMPLETE",
+                    "恢复数据部分缺失："
+                    + "、".join(
+                        _RECOVERY_FIELD_LABELS.get(item, "设备指标")
+                        for item in snapshot.recovery.missing_fields[:10]
+                    ),
+                )
+            )
         return RunnerStateToolOutput(
             data_status=data_status,
             as_of_date=snapshot.identity.calculation_window_end,
@@ -140,7 +197,7 @@ class GetRunnerStateTool(AgentTool):
                 _notice(f"RISK_{_value(flag.code)}", flag.message)
                 for flag in snapshot.risk_flags[:20]
             ],
-            limitations=limitations,
+            limitations=limitations[:20],
             overall_readiness=(snapshot.inference_metadata.overall_readiness if snapshot.inference_metadata else None),
             domain_readiness=(snapshot.inference_metadata.domain_readiness if snapshot.inference_metadata else []),
             hard_blockers=(snapshot.inference_metadata.hard_blockers if snapshot.inference_metadata else []),

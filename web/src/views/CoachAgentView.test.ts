@@ -78,6 +78,29 @@ describe("CoachAgentView persistent chat", () => {
     localSet.mockRestore();
   });
 
+  it("scrolls to the latest message when opening and switching conversations", async () => {
+    const originalScrollHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollHeight");
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", { configurable: true, get: () => 960 });
+    const wrapper = mountPage();
+    await flushPromises();
+
+    const messageList = wrapper.find<HTMLElement>(".message-list").element;
+    expect(messageList.scrollTop).toBe(960);
+
+    messageList.scrollTop = 0;
+    wrapper.findComponent(CoachConversationList).vm.$emit("select", "conversation-2");
+    await flushPromises();
+
+    expect(api.getCoachConversationMessages).toHaveBeenLastCalledWith("conversation-2");
+    expect(messageList.scrollTop).toBe(960);
+
+    if (originalScrollHeight) {
+      Object.defineProperty(HTMLElement.prototype, "scrollHeight", originalScrollHeight);
+    } else {
+      Reflect.deleteProperty(HTMLElement.prototype, "scrollHeight");
+    }
+  });
+
   it("submits a message through the active persistent conversation", async () => {
     api.sendCoachConversationMessage.mockResolvedValue({
       conversation_id: conversation.id, message_id: "message-2", status: "completed", content: "虚构安全回答。",
