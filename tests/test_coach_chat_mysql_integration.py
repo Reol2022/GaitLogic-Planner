@@ -30,7 +30,7 @@ from server.schemas.coach_agent import CoachQueryResponse
 from server.schemas.coach_conversation import CoachConversationCreate, CoachConversationMessageCreate
 from server.services.coach_conversation_service import CoachConversationService
 from server.services.conversation_context_builder import ConversationContextBuilder
-from scripts.upgrade_v0165_coach_chat import upgrade
+from scripts.upgrade_v0167_coach_context_summary import upgrade
 
 
 TEST_DATABASE_URL = os.getenv("GAITLOGIC_COACH_CHAT_TEST_DATABASE_URL")
@@ -163,7 +163,18 @@ def test_coach_chat_migration_is_idempotent_and_enforces_integrity(mysql_engine)
     with mysql_engine.begin() as connection:
         inspector = inspect(connection)
         columns = {item["name"] for item in inspector.get_columns("coach_conversations")}
-        assert {"processing_turn_id", "processing_lease_id", "processing_started_at"} <= columns
+        assert {
+            "processing_turn_id",
+            "processing_lease_id",
+            "processing_started_at",
+            "context_summary_json",
+            "context_summary_version",
+            "context_summary_through_sequence",
+            "context_summary_updated_at",
+            "context_summary_status",
+            "context_summary_lease_id",
+            "context_summary_started_at",
+        } <= columns
         message_columns = {item["name"] for item in inspector.get_columns("coach_messages")}
         assert {
             "progress_stage",
@@ -222,22 +233,41 @@ def test_coach_chat_migration_is_idempotent_and_enforces_integrity(mysql_engine)
 
 @pytest.mark.mysql_integration
 def test_coach_chat_migration_upgrades_pre_progress_schema_idempotently(mysql_engine) -> None:
-    """A v1 Coach table can gain v1.2.5 progress columns without recreation."""
+    """Older Coach tables gain progress and Context v2.1 columns without recreation."""
     progress_columns = (
         "progress_stage",
         "progress_sequence",
         "progress_summary_json",
         "progress_updated_at",
     )
+    summary_columns = (
+        "context_summary_json",
+        "context_summary_version",
+        "context_summary_through_sequence",
+        "context_summary_updated_at",
+        "context_summary_status",
+        "context_summary_lease_id",
+        "context_summary_started_at",
+    )
     with mysql_engine.begin() as connection:
         for name in progress_columns:
             connection.execute(text(f"ALTER TABLE `coach_messages` DROP COLUMN `{name}`"))
+        for name in summary_columns:
+            connection.execute(text(f"ALTER TABLE `coach_conversations` DROP COLUMN `{name}`"))
         before = {item["name"] for item in inspect(connection).get_columns("coach_messages")}
         assert not set(progress_columns) & before
+        before_summary = {
+            item["name"] for item in inspect(connection).get_columns("coach_conversations")
+        }
+        assert not set(summary_columns) & before_summary
         upgrade(connection)
         upgrade(connection)
         after = {item["name"] for item in inspect(connection).get_columns("coach_messages")}
         assert set(progress_columns) <= after
+        after_summary = {
+            item["name"] for item in inspect(connection).get_columns("coach_conversations")
+        }
+        assert set(summary_columns) <= after_summary
 
 
 @pytest.mark.mysql_integration

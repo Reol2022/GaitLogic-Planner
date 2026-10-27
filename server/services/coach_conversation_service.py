@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from math import ceil
+from time import perf_counter
 from typing import Any
 from uuid import uuid4
 
@@ -35,6 +36,7 @@ from server.schemas.coach_conversation import (
 )
 from server.services.coach_agent_query_service import CoachAgentQueryService
 from server.services.conversation_context_builder import ConversationContextBuilder
+from server.services.conversation_summary import ConversationSummarizer, ConversationSummary
 from server.services.coach_turn_progress import CoachTurnStage, safe_facts_summary, stage_is_terminal
 
 
@@ -50,6 +52,7 @@ class CoachConversationService:
         *,
         coach_service_factory=CoachAgentQueryService,
         context_builder: ConversationContextBuilder | None = None,
+        summarizer: ConversationSummarizer | None = None,
         tracer: SafeTracer | None = None,
         now=None,
     ) -> None:
@@ -59,7 +62,9 @@ class CoachConversationService:
         self.context_builder = context_builder or ConversationContextBuilder(
             max_messages=settings.coach_conversation_history_messages,
             token_budget=settings.coach_conversation_history_token_budget,
+            summary_token_budget=settings.coach_conversation_summary_token_budget,
         )
+        self.summarizer = summarizer or ConversationSummarizer()
         self.processing_timeout = timedelta(
             seconds=settings.coach_conversation_turn_timeout_seconds
         )
@@ -214,33 +219,59 @@ class CoachConversationService:
                     lease_id=lease_id,
                     stage=CoachTurnStage.CONTEXT_LOADING,
                 )
-                history_desc = list(
+                conversation = self.db.get(CoachConversation, user_message.conversation_id)
+                if conversation is None:
+                    raise NotFoundError("Conversation was deleted before context could be built.")
+                existing_summary = ConversationSummary.from_json(conversation.context_summary_json)
+                history = list(
                     self.db.scalars(
                         select(CoachMessage)
                         .where(
                             CoachMessage.conversation_id == user_message.conversation_id,
                             CoachMessage.sequence_no < user_message.sequence_no,
+                            CoachMessage.sequence_no > existing_summary.through_sequence,
+                            CoachMessage.status == "completed",
                         )
-                        .order_by(CoachMessage.sequence_no.desc())
-                        # The builder ignores failed/pending rows. Fetch a
-                        # small multiple so those rows never require scanning
-                        # an entire long conversation.
-                        .limit(max(self.context_builder.max_messages * 2, 1))
+                        .order_by(CoachMessage.sequence_no)
                     )
                 )
-                history = list(reversed(history_desc))
                 with self.tracer.span(
                     handle,
                     component="conversation",
                     operation="context.build",
                     metadata={"message_count_bucket": self._bucket(len(history))},
                 ) as context_span:
-                    context = self.context_builder.build(history)
-                    context_span.add_metadata(context_token_count=context.estimated_tokens)
+                    context = self.context_builder.build(
+                        history,
+                        summary_content=existing_summary.render() if existing_summary.version else None,
+                    )
+                    summary_generated = False
+                    summary_failed = False
+                    if context.omitted_messages:
+                        refreshed_summary, summary_generated, summary_failed = self._refresh_context_summary(
+                            conversation_id=user_message.conversation_id,
+                            messages=context.omitted_messages,
+                        )
+                        context = self.context_builder.build(
+                            history,
+                            summary_content=refreshed_summary.render()
+                            if refreshed_summary.version
+                            else None,
+                        )
+                    context_span.add_metadata(
+                        context_token_count=context.total_estimated_tokens,
+                        conversation_recent_message_count=len(context.messages),
+                        conversation_recent_token_count=context.estimated_tokens,
+                        conversation_summary_used=bool(context.summary_content),
+                        conversation_summary_token_count=context.summary_estimated_tokens,
+                        conversation_summary_generated=summary_generated,
+                        conversation_summary_failed=summary_failed,
+                    )
                 with self.tracer.span(handle, component="conversation", operation="coach.execute"):
                     coach_payload = CoachQueryRequest(
                         message=user_message.content or "",
                         conversation_context=context.messages,
+                        conversation_summary=context.summary_content,
                     )
                     progress_callback = lambda stage, results=None: self._update_turn_progress(
                         assistant_message_id=assistant_message.id,
@@ -296,6 +327,106 @@ class CoachConversationService:
                 )
                 span.set_status("FAILED", error_code="CONVERSATION_EXECUTION_FAILED")
                 raise
+
+    def _refresh_context_summary(
+        self,
+        *,
+        conversation_id: int,
+        messages: list[CoachMessage],
+    ) -> tuple[ConversationSummary, bool, bool]:
+        """Incrementally summarize only completed messages leaving the window.
+
+        The summary lease mirrors turn leases: a delayed summary can neither
+        overwrite a newer one nor recreate a conversation deleted in between.
+        Summary errors deliberately fall back to the existing recent window.
+        """
+        if not messages:
+            return ConversationSummary(), False, False
+        target_sequence = max(item.sequence_no for item in messages)
+        conversation = self.db.scalar(
+            select(CoachConversation)
+            .where(CoachConversation.id == conversation_id)
+            .with_for_update()
+        )
+        if conversation is None:
+            return ConversationSummary(), False, True
+        previous = ConversationSummary.from_json(conversation.context_summary_json)
+        if conversation.context_summary_lease_id:
+            return previous, False, False
+        source_messages = list(
+            self.db.scalars(
+                select(CoachMessage)
+                .where(
+                    CoachMessage.conversation_id == conversation.id,
+                    CoachMessage.status == "completed",
+                    CoachMessage.sequence_no > previous.through_sequence,
+                    CoachMessage.sequence_no <= target_sequence,
+                )
+                .order_by(CoachMessage.sequence_no)
+            )
+        )
+        if not source_messages:
+            return previous, False, False
+        lease_id = str(uuid4())
+        conversation.context_summary_status = "GENERATING"
+        conversation.context_summary_lease_id = lease_id
+        conversation.context_summary_started_at = self.now()
+        self.db.commit()
+        started = perf_counter()
+        try:
+            generated = self.summarizer.summarize(
+                previous=previous,
+                messages=source_messages,
+                token_budget=self.context_builder.summary_token_budget,
+            )
+        except Exception:
+            self._mark_summary_failed(conversation_id=conversation_id, lease_id=lease_id)
+            return previous, False, True
+        conversation = self.db.scalar(
+            select(CoachConversation)
+            .where(CoachConversation.id == conversation_id)
+            .with_for_update()
+        )
+        if conversation is None or conversation.context_summary_lease_id != lease_id:
+            self.db.rollback()
+            return previous, False, True
+        conversation.context_summary_json = generated.to_json()
+        conversation.context_summary_version = generated.version
+        conversation.context_summary_through_sequence = generated.through_sequence
+        conversation.context_summary_updated_at = self.now()
+        conversation.context_summary_status = "IDLE"
+        conversation.context_summary_lease_id = None
+        conversation.context_summary_started_at = None
+        self.db.commit()
+        # This trace carries only bounded counts/timing, never summary text.
+        handle = active_trace_handle()
+        if handle is not None:
+            with self.tracer.span(
+                handle,
+                component="conversation",
+                operation="summary.refresh",
+                metadata={
+                    "conversation_summary_generated": True,
+                    "conversation_summary_token_count": self.context_builder._tokens(generated.render()),
+                    "latency": (perf_counter() - started) * 1000,
+                },
+            ):
+                pass
+        return generated, True, False
+
+    def _mark_summary_failed(self, *, conversation_id: int, lease_id: str) -> None:
+        conversation = self.db.scalar(
+            select(CoachConversation)
+            .where(CoachConversation.id == conversation_id)
+            .with_for_update()
+        )
+        if conversation is None or conversation.context_summary_lease_id != lease_id:
+            self.db.rollback()
+            return
+        conversation.context_summary_status = "FAILED"
+        conversation.context_summary_lease_id = None
+        conversation.context_summary_started_at = None
+        self.db.commit()
 
     def _reserve_turn(
         self, *, user_id: int, conversation_id: str, payload: CoachConversationMessageCreate

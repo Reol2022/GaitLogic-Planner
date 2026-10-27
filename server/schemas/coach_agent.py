@@ -17,6 +17,7 @@ from server.agent.schemas import (
     AgentTodayRecommendation,
     MAX_CONVERSATION_ITEMS,
     MAX_CONVERSATION_CHARS,
+    MAX_CONVERSATION_SUMMARY_CHARS,
     MAX_MESSAGE_LENGTH,
 )
 
@@ -28,6 +29,7 @@ class CoachQueryRequest(AgentContractModel):
         default_factory=list,
         max_length=MAX_CONVERSATION_ITEMS,
     )
+    conversation_summary: str | None = Field(default=None, max_length=MAX_CONVERSATION_SUMMARY_CHARS)
 
     @model_validator(mode="after")
     def validate_conversation_size(self) -> "CoachQueryRequest":

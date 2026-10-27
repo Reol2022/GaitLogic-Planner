@@ -277,6 +277,10 @@ class CoachConversation(IdMixin, TimestampMixin, Base):
         Index("ix_coach_conversations_user_updated", "user_id", "updated_at"),
         Index("ix_coach_conversations_user_status_updated", "user_id", "status", "updated_at"),
         CheckConstraint("status IN ('active', 'archived')", name="ck_coach_conversations_status"),
+        CheckConstraint(
+            "context_summary_status IN ('IDLE', 'GENERATING', 'FAILED')",
+            name="ck_coach_conversations_context_summary_status",
+        ),
         MYSQL_TABLE_ARGS,
     )
 
@@ -293,6 +297,21 @@ class CoachConversation(IdMixin, TimestampMixin, Base):
     # id, or superseded after its lease has expired.
     processing_lease_id: Mapped[str | None] = mapped_column(String(36))
     processing_started_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Conversation summaries are privacy-scoped linguistic context only. They
+    # never replace the latest training facts loaded through Coach tools.
+    context_summary_json: Mapped[dict | None] = mapped_column(JSON)
+    context_summary_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    context_summary_through_sequence: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    context_summary_updated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    context_summary_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="IDLE", server_default="IDLE"
+    )
+    context_summary_lease_id: Mapped[str | None] = mapped_column(String(36))
+    context_summary_started_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     user: Mapped[UserAccount] = relationship(back_populates="coach_conversations")
     messages: Mapped[list[CoachMessage]] = relationship(

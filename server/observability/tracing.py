@@ -109,6 +109,12 @@ SAFE_METADATA_KEYS = frozenset(
         "message_role",
         "message_count_bucket",
         "context_token_count",
+        "conversation_recent_message_count",
+        "conversation_recent_token_count",
+        "conversation_summary_used",
+        "conversation_summary_token_count",
+        "conversation_summary_generated",
+        "conversation_summary_failed",
         "tool_call_count",
         "error_category",
     }

@@ -207,6 +207,22 @@ class MetricsRecorder:
             self._record("gaitlogic.tool.duration", span.duration_ms, labels, kind="latency")
             if not success:
                 self._record("gaitlogic.tool.failures", 1, labels)
+        elif span.component == "conversation" and span.operation == "context.build":
+            self._record("gaitlogic.conversation.context_builds", 1, labels)
+            recent_tokens = span.metadata.get("conversation_recent_token_count")
+            if isinstance(recent_tokens, int):
+                self._record("gaitlogic.conversation.recent_context_tokens", recent_tokens, labels, kind="latency")
+            summary_tokens = span.metadata.get("conversation_summary_token_count")
+            if isinstance(summary_tokens, int):
+                self._record("gaitlogic.conversation.summary_context_tokens", summary_tokens, labels, kind="latency")
+            if span.metadata.get("conversation_summary_used") is True:
+                self._record("gaitlogic.conversation.summary_used", 1, labels)
+            if span.metadata.get("conversation_summary_failed") is True:
+                self._record("gaitlogic.conversation.summary_failures", 1, labels)
+        elif span.component == "conversation" and span.operation == "summary.refresh":
+            if span.metadata.get("conversation_summary_generated") is True:
+                self._record("gaitlogic.conversation.summary_generations", 1, labels)
+                self._record("gaitlogic.conversation.summary_duration", span.duration_ms, labels, kind="latency")
         elif domain_name == "rag.retrieve":
             self._record("gaitlogic.rag.retrievals", 1, labels)
             self._record("gaitlogic.rag.duration", span.duration_ms, labels, kind="latency")

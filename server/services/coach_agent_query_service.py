@@ -144,8 +144,10 @@ class CoachAgentQueryService:
         self.tracer = tracer or NOOP_TRACER
 
     @staticmethod
-    def _infer_intent(message: str, conversation_context=None) -> AgentIntent:
-        return CoachTaskClassifier.classify(message, conversation_context)
+    def _infer_intent(
+        message: str, conversation_context=None, conversation_summary: str | None = None
+    ) -> AgentIntent:
+        return CoachTaskClassifier.classify(message, conversation_context, conversation_summary)
 
     def _limits(self) -> AgentLimits:
         return AgentLimits(
@@ -207,7 +209,9 @@ class CoachAgentQueryService:
     ) -> CoachQueryResponse:
         # Only the declared intent reaches the trace boundary.  The message,
         # authenticated user, context and response remain in business memory.
-        intent = payload.intent or self._infer_intent(payload.message, payload.conversation_context)
+        intent = payload.intent or self._infer_intent(
+            payload.message, payload.conversation_context, payload.conversation_summary
+        )
         existing_handle = active_trace_handle()
         handle = existing_handle or self.tracer.start_trace()
         with self.tracer.span(
@@ -239,7 +243,9 @@ class CoachAgentQueryService:
         Weekly review remains an internal Coach capability used by its existing
         workflow. The standalone one-shot endpoint must not bypass that workflow.
         """
-        intent = payload.intent or self._infer_intent(payload.message, payload.conversation_context)
+        intent = payload.intent or self._infer_intent(
+            payload.message, payload.conversation_context, payload.conversation_summary
+        )
         if intent in _DIRECT_PUBLIC_INTENTS:
             return None
         request = AgentRequest.for_authenticated_user(
@@ -247,6 +253,7 @@ class CoachAgentQueryService:
             message=payload.message,
             intent=intent,
             conversation_context=payload.conversation_context,
+            conversation_summary=payload.conversation_summary,
         )
         return self._rejected(request, intent)
 
@@ -263,6 +270,7 @@ class CoachAgentQueryService:
             message=payload.message,
             intent=intent,
             conversation_context=payload.conversation_context,
+            conversation_summary=payload.conversation_summary,
         )
         if intent not in _PUBLIC_INTENTS:
             return self._rejected(request, intent)

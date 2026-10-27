@@ -326,16 +326,22 @@ class Settings(BaseSettings):
         validation_alias="COACH_AGENT_COOLDOWN_SECONDS",
     )
     coach_conversation_history_messages: int = Field(
-        default=16,
+        default=24,
         ge=2,
         le=40,
         validation_alias="COACH_CONVERSATION_HISTORY_MESSAGES",
     )
     coach_conversation_history_token_budget: int = Field(
-        default=1800,
+        default=4000,
         ge=256,
         le=8000,
         validation_alias="COACH_CONVERSATION_HISTORY_TOKEN_BUDGET",
+    )
+    coach_conversation_summary_token_budget: int = Field(
+        default=1200,
+        ge=256,
+        le=4000,
+        validation_alias="COACH_CONVERSATION_SUMMARY_TOKEN_BUDGET",
     )
     coach_conversation_turn_timeout_seconds: int = Field(
         default=180,

@@ -18,7 +18,7 @@ class CoachTaskClassifier:
         "我的训练", "我最近", "我的跑量", "我的计划", "读取我的", "训练数据",
         "帮我", "帮我优化", "帮我调整", "我该如何", "我应该如何", "半马", "马拉松",
         "比赛", "恢复", "疲劳", "睡眠", "心率", "配速", "race", "my training",
-        "my plan", "my mileage", "my recovery",
+        "my plan", "my mileage", "my recovery", "近期训练", "本月训练",
     )
     _CAPABILITY_MARKERS = (
         "\u53ef\u4ee5\u8bfb\u53d6", "\u80fd\u8bfb\u53d6", "\u80fd\u770b", "\u53ef\u4ee5\u770b",
@@ -49,6 +49,7 @@ class CoachTaskClassifier:
         cls,
         message: str,
         conversation_context: list[AgentConversationMessage] | None = None,
+        conversation_summary: str | None = None,
     ) -> AgentIntent:
         normalized = message.strip().lower()
         if any(marker in normalized for marker in cls._TODAY_MARKERS):
@@ -69,7 +70,9 @@ class CoachTaskClassifier:
             return AgentIntent.PLAN_ADJUSTMENT_ANALYSIS
         if any(marker in normalized for marker in cls._PERSONAL_MARKERS):
             return AgentIntent.PERSONAL_TRAINING_ANALYSIS
-        if cls._is_personal_follow_up(normalized, conversation_context or []):
+        if cls._is_personal_follow_up(
+            normalized, conversation_context or [], conversation_summary=conversation_summary
+        ):
             return AgentIntent.PERSONAL_TRAINING_ANALYSIS
         return AgentIntent.GENERAL_TRAINING_QUESTION
 
@@ -110,13 +113,23 @@ class CoachTaskClassifier:
         cls,
         normalized: str,
         conversation_context: list[AgentConversationMessage],
+        *,
+        conversation_summary: str | None = None,
     ) -> bool:
         if not normalized.startswith(cls._FOLLOW_UP_MARKERS):
             return False
         recent_user_messages = [
             item.content.lower() for item in conversation_context[-6:] if item.role == "user"
         ]
-        return any(
+        recent_indicates_personal_context = any(
             any(marker in previous for marker in cls._PERSONAL_MARKERS)
             for previous in recent_user_messages
         )
+        # The summary is only a linguistic routing hint, never a training
+        # fact. It lets a concise follow-up remain personal after the original
+        # user message falls outside the recent-message window.
+        summary_indicates_personal_context = bool(
+            conversation_summary
+            and any(marker in conversation_summary.lower() for marker in cls._PERSONAL_MARKERS)
+        )
+        return recent_indicates_personal_context or summary_indicates_personal_context

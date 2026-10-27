@@ -70,3 +70,14 @@ def test_follow_up_uses_history_only_for_routing_not_as_a_fact_source() -> None:
         AgentConversationMessage(role="assistant", content="我会读取当前可用训练事实。"),
     ]
     assert CoachTaskClassifier.classify("那应该怎么调整？", history) == AgentIntent.PERSONAL_TRAINING_ANALYSIS
+
+
+def test_follow_up_can_use_summary_as_a_non_authoritative_routing_hint() -> None:
+    summary = (
+        "Conversation summary (historical linguistic context; not authoritative training data):\n"
+        "- User-stated current goal: 我想分析我的近期训练。"
+    )
+    assert (
+        CoachTaskClassifier.classify("那应该怎么调整？", [], summary)
+        == AgentIntent.PERSONAL_TRAINING_ANALYSIS
+    )
