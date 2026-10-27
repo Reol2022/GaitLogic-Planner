@@ -16,6 +16,7 @@ MAX_MESSAGE_LENGTH = 4000
 MAX_CONVERSATION_ITEMS = 50
 MAX_CONVERSATION_ITEM_LENGTH = 2000
 MAX_CONVERSATION_CHARS = 12000
+MAX_CONVERSATION_SUMMARY_CHARS = 4800
 MAX_CONTEXT_ITEMS = 50
 MAX_CONTEXT_JSON_CHARS = 50000
 MAX_MODEL_TOOL_CALLS = 50
@@ -41,6 +42,7 @@ class AgentRequest(AgentContractModel):
         default_factory=list,
         max_length=MAX_CONVERSATION_ITEMS,
     )
+    conversation_summary: str | None = Field(default=None, max_length=MAX_CONVERSATION_SUMMARY_CHARS)
     request_id: UUID = Field(default_factory=uuid4)
 
     @model_validator(mode="after")
@@ -58,12 +60,14 @@ class AgentRequest(AgentContractModel):
         message: str,
         intent: AgentIntent,
         conversation_context: list[AgentConversationMessage] | None = None,
+        conversation_summary: str | None = None,
     ) -> "AgentRequest":
         return cls(
             user_id=user_id,
             message=message,
             intent=intent,
             conversation_context=conversation_context or [],
+            conversation_summary=conversation_summary,
             request_id=uuid4(),
         )
 
@@ -132,6 +136,7 @@ class AgentContext(AgentContractModel):
         default_factory=list,
         max_length=MAX_CONVERSATION_ITEMS,
     )
+    conversation_summary: str | None = Field(default=None, max_length=MAX_CONVERSATION_SUMMARY_CHARS)
     runner_state: dict[str, JsonValue] | None = None
     runner_state_history: dict[str, JsonValue] | None = None
     recent_training: dict[str, JsonValue] | None = None

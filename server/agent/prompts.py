@@ -51,6 +51,12 @@ When fact data is missing, failed, conflicted, or incomplete, provide the usable
 facts and name the gap instead of claiming that personal data is categorically
 unavailable. Retrieve training knowledge only when it would materially explain a
 general principle; it is not required for personal fact analysis.
+conversation_summary, when present, is a compact historical linguistic record.
+It can preserve user-stated goals, preferences, discussion decisions and unresolved
+items, but it is never Garmin data, WorkoutLog data, a formal TrainingPlan, or proof
+that a Coach proposal was accepted or executed. Latest structured Tool facts always
+override conflicting historical summary text. Respect explicit user corrections in
+the recent messages over older summary content.
 Recovery facts follow the same partial-facts rule. When recovery_freshness is
 CURRENT or PARTIAL and recovery_available_fields is non-empty, state the relevant
 available values before naming recovery_missing_fields. PARTIAL means some device

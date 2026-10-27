@@ -103,6 +103,7 @@ class AgentContextBuilder:
             current_time=now.astimezone(self.timezone),
             timezone=self.timezone_name,
             conversation_context=request.conversation_context,
+            conversation_summary=request.conversation_summary,
             runner_state=seed.runner_state,
             runner_state_history=seed.runner_state_history,
             recent_training=seed.recent_training,

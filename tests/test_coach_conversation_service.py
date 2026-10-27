@@ -21,6 +21,7 @@ from server.schemas.coach_conversation import (
 )
 from server.services.coach_conversation_service import CoachConversationService
 from server.services.conversation_context_builder import ConversationContextBuilder
+from server.services.conversation_summary import ConversationSummary
 from server.services.coach_turn_progress import CoachTurnStage
 
 
@@ -58,6 +59,7 @@ def _session() -> Session:
 class FakeCoach:
     responses: list[str] = ["completed"]
     seen_contexts: list[list[tuple[str, str]]] = []
+    seen_summaries: list[str | None] = []
 
     def __init__(self, _db, *, tracer) -> None:
         self.tracer = tracer
@@ -65,6 +67,7 @@ class FakeCoach:
     def query(self, *, user_id: int, payload):
         assert user_id == 1
         self.__class__.seen_contexts.append([(item.role, item.content) for item in payload.conversation_context])
+        self.__class__.seen_summaries.append(getattr(payload, "conversation_summary", None))
         state = self.__class__.responses.pop(0) if self.__class__.responses else "completed"
         if state == "unavailable":
             return CoachQueryResponse(
@@ -92,6 +95,7 @@ class FakeCoach:
 def _service(db: Session, *, sink: InMemoryTraceSink | None = None) -> CoachConversationService:
     FakeCoach.responses = ["completed"]
     FakeCoach.seen_contexts = []
+    FakeCoach.seen_summaries = []
     return CoachConversationService(
         db,
         coach_service_factory=FakeCoach,
@@ -435,5 +439,87 @@ def test_ten_turn_history_is_bounded_and_remains_in_stable_sequence_order() -> N
         assert len(FakeCoach.seen_contexts) == 10
         assert all(len(context) <= 4 for context in FakeCoach.seen_contexts)
         assert FakeCoach.seen_contexts[-1][0][1] == "合成连续问题 7"
+    finally:
+        db.close()
+
+
+def test_incremental_summary_preserves_user_corrections_without_treating_coach_advice_as_action() -> None:
+    db = _session()
+    try:
+        service = CoachConversationService(
+            db,
+            coach_service_factory=FakeCoach,
+            context_builder=ConversationContextBuilder(
+                max_messages=4, token_budget=300, summary_token_budget=220
+            ),
+        )
+        FakeCoach.responses = ["completed"] * 30
+        FakeCoach.seen_contexts = []
+        FakeCoach.seen_summaries = []
+        conversation = service.create(user_id=1, payload=CoachConversationCreate())
+        prompts = [
+            "我的目标是半马比赛，请围绕这个目标讨论。",
+            "我每周只能跑五天，不要自动修改课表。",
+            "请给一个训练建议。",
+            "我不同意刚才增加强度的建议。",
+            "我改成10公里比赛目标，半马目标不再适用。",
+        ] + [f"合成连续追问 {index}？" for index in range(25)]
+        for index, message in enumerate(prompts):
+            result = service.send_message(
+                user_id=1,
+                conversation_id=conversation.id,
+                payload=CoachConversationMessageCreate(
+                    client_turn_id=f"summary_turn_{index:04d}", message=message
+                ),
+            )
+            assert result.status == "completed"
+
+        row = db.scalar(select(CoachConversation).where(CoachConversation.public_id == conversation.id))
+        assert row is not None
+        summary = ConversationSummary.from_json(row.context_summary_json)
+        rendered = summary.render()
+        assert summary.version > 0
+        assert summary.through_sequence > 0
+        assert "10公里比赛目标" in (summary.current_goal or "")
+        assert "不同意" in rendered
+        assert "Coach proposal only; not confirmed or executed" in rendered
+        assert any(item is not None for item in FakeCoach.seen_summaries)
+        assert all(len(context) <= 4 for context in FakeCoach.seen_contexts)
+    finally:
+        db.close()
+
+
+def test_summary_failure_keeps_recent_context_and_does_not_block_chat() -> None:
+    class FailingSummarizer:
+        def summarize(self, **_kwargs):
+            raise RuntimeError("synthetic summary failure")
+
+    db = _session()
+    try:
+        service = CoachConversationService(
+            db,
+            coach_service_factory=FakeCoach,
+            context_builder=ConversationContextBuilder(
+                max_messages=2, token_budget=200, summary_token_budget=100
+            ),
+            summarizer=FailingSummarizer(),
+        )
+        FakeCoach.responses = ["completed"] * 5
+        FakeCoach.seen_contexts = []
+        FakeCoach.seen_summaries = []
+        conversation = service.create(user_id=1, payload=CoachConversationCreate())
+        for index in range(5):
+            assert service.send_message(
+                user_id=1,
+                conversation_id=conversation.id,
+                payload=CoachConversationMessageCreate(
+                    client_turn_id=f"failure_turn_{index:04d}", message=f"合成问题 {index}"
+                ),
+            ).status == "completed"
+        row = db.scalar(select(CoachConversation).where(CoachConversation.public_id == conversation.id))
+        assert row is not None
+        assert row.context_summary_status == "FAILED"
+        assert FakeCoach.seen_summaries[-1] is None
+        assert len(FakeCoach.seen_contexts[-1]) <= 2
     finally:
         db.close()

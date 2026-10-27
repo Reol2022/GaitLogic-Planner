@@ -1634,6 +1634,13 @@ CREATE TABLE IF NOT EXISTS `coach_conversations` (
   `processing_turn_id` VARCHAR(64) NULL,
   `processing_lease_id` VARCHAR(36) NULL,
   `processing_started_at` DATETIME NULL,
+  `context_summary_json` JSON NULL,
+  `context_summary_version` INT NOT NULL DEFAULT 0,
+  `context_summary_through_sequence` INT NOT NULL DEFAULT 0,
+  `context_summary_updated_at` DATETIME NULL,
+  `context_summary_status` VARCHAR(16) NOT NULL DEFAULT 'IDLE',
+  `context_summary_lease_id` VARCHAR(36) NULL,
+  `context_summary_started_at` DATETIME NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -1641,6 +1648,7 @@ CREATE TABLE IF NOT EXISTS `coach_conversations` (
   KEY `ix_coach_conversations_user_updated` (`user_id`, `updated_at`),
   KEY `ix_coach_conversations_user_status_updated` (`user_id`, `status`, `updated_at`),
   CONSTRAINT `ck_coach_conversations_status` CHECK (`status` IN ('active', 'archived')),
+  CONSTRAINT `ck_coach_conversations_context_summary_status` CHECK (`context_summary_status` IN ('IDLE', 'GENERATING', 'FAILED')),
   CONSTRAINT `fk_coach_conversations_user` FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
