@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
@@ -6,6 +6,7 @@ from server.agent.enums import AgentIntent
 from server.agent.schemas import AgentContext, AgentRequest
 from server.agent.tools.runner_state_tools import GetRunnerStateHistoryTool, GetRunnerStateTool
 from server.agent.tools.schemas import EmptyToolInput, RunnerStateHistoryInput, TrainingDataStatus
+from server.schemas.runner_state import RecoveryFacts
 from tests.agent_tool_fakes import FakeDependencies, NOW
 
 
@@ -33,6 +34,36 @@ def test_evidence_is_bounded() -> None:
     output = GetRunnerStateTool(deps, evidence_limit=1).execute(EmptyToolInput(), context())
     assert len(output.evidence) <= 3
     assert all("_" not in item.message for item in output.limitations)
+
+
+def test_partial_recovery_exposes_available_and_missing_fields_separately() -> None:
+    deps = FakeDependencies()
+    deps.snapshot = deps.snapshot.model_copy(
+        update={
+            "recovery": RecoveryFacts(
+                as_of_date=date(2026, 7, 22),
+                freshness="PARTIAL",
+                source="garmin",
+                sleep_duration_minutes=442,
+                resting_heart_rate_bpm=41,
+                hrv_value=81.0,
+                hrv_metric="MS",
+                missing_fields=["body_battery_end", "pulse_ox", "sleep_score"],
+            )
+        }
+    )
+
+    output = GetRunnerStateTool(deps).execute(EmptyToolInput(), context())
+
+    assert output.metrics["recovery_available_fields"] == (
+        "hrv_value,resting_heart_rate_bpm,sleep_duration_minutes"
+    )
+    assert output.metrics["recovery_missing_fields"] == (
+        "body_battery_end,pulse_ox,sleep_score"
+    )
+    assert output.metrics["sleep_duration_minutes"] == 442
+    assert output.metrics["hrv_value"] == 81.0
+    assert output.metrics["resting_heart_rate_bpm"] == 41
 
 
 def test_history_is_summary_only_and_bounded() -> None:

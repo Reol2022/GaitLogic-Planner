@@ -54,6 +54,15 @@ def test_personal_analysis_prompt_preserves_range_and_population_boundaries() ->
     assert "A drop in volume alone does not prove either tapering" in prompt
 
 
+def test_prompt_keeps_partial_recovery_facts_usable() -> None:
+    prompt = build_coach_agent_system_prompt()
+
+    assert "recovery_available_fields" in prompt
+    assert "PARTIAL means some device" in prompt
+    assert "metrics are available" in prompt
+    assert "must never be described as no recovery data" in prompt
+
+
 def test_explain_retry_prompt_forbids_new_numbers_and_tool_calls() -> None:
     prompt = build_coach_agent_system_prompt(
         final_retry=True,

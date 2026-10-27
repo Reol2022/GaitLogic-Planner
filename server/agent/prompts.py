@@ -51,6 +51,15 @@ When fact data is missing, failed, conflicted, or incomplete, provide the usable
 facts and name the gap instead of claiming that personal data is categorically
 unavailable. Retrieve training knowledge only when it would materially explain a
 general principle; it is not required for personal fact analysis.
+Recovery facts follow the same partial-facts rule. When recovery_freshness is
+CURRENT or PARTIAL and recovery_available_fields is non-empty, state the relevant
+available values before naming recovery_missing_fields. PARTIAL means some device
+metrics are available; it must never be described as no recovery data or as an
+inability to assess every aspect of recovery. Missing Body Battery, Pulse Ox, sleep
+score, or subjective feedback constrains only conclusions that require that field.
+Do not claim that the runner is fully recovered from a standalone sleep, HRV, resting
+heart-rate, or Body Battery value when no personal baseline or subjective feedback
+supports that conclusion.
 PLAN_ADJUSTMENT_ANALYSIS follows the same fact and safety boundary, but is routed to
 the plan-reasoning profile. It may analyse a possible adjustment and state that a
 formal plan-change proposal still requires the existing HITL approval flow. It must

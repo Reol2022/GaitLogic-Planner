@@ -127,6 +127,14 @@ class GetRunnerStateTool(AgentTool):
             ),
             "recovery_freshness": snapshot.recovery.freshness,
             "recovery_source": snapshot.recovery.source,
+            "recovery_available_fields": ",".join(
+                sorted(
+                    field
+                    for field in _RECOVERY_FIELD_LABELS
+                    if getattr(snapshot.recovery, field, None) is not None
+                )
+            ),
+            "recovery_missing_fields": ",".join(snapshot.recovery.missing_fields),
             "sleep_duration_minutes": snapshot.recovery.sleep_duration_minutes,
             "sleep_score": snapshot.recovery.sleep_score,
             "resting_heart_rate_bpm": snapshot.recovery.resting_heart_rate_bpm,
