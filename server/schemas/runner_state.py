@@ -247,6 +247,23 @@ class IntensityMetrics(BaseModel):
     days_since_last_quality_session: int | None = None
 
 
+class RecoveryFacts(BaseModel):
+    as_of_date: date | None = None
+    freshness: str = "UNAVAILABLE"
+    source: str | None = None
+    sleep_duration_minutes: int | None = None
+    sleep_score: int | None = None
+    resting_heart_rate_bpm: int | None = None
+    hrv_value: float | None = None
+    hrv_metric: str | None = None
+    average_stress: int | None = None
+    body_battery_end: int | None = None
+    subjective_fatigue: int | None = None
+    leg_feeling: int | None = None
+    missing_fields: list[str] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+
+
 class InferredStatePlaceholders(BaseModel):
     fitness_state: UnknownState = UnknownState.UNKNOWN
     fatigue_state: FatigueState = FatigueState.UNKNOWN
@@ -276,6 +293,7 @@ class RunnerStateSnapshot(BaseModel):
     goal_context: RunnerGoalContext
     recent_training: RecentTrainingMetrics
     intensity: IntensityMetrics
+    recovery: RecoveryFacts = Field(default_factory=RecoveryFacts)
     inferred_state: InferredStatePlaceholders
     data_quality: RunnerStateDataQuality
     derived_metrics: RunnerStateDerivedMetrics | None = None

@@ -19,6 +19,27 @@
     />
 
     <template v-if="todayReadiness">
+      <section class="panel recovery-device-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">设备恢复数据</h2>
+          <el-tag v-if="todayRecovery?.device_provider" effect="plain">Garmin</el-tag>
+        </div>
+        <div class="panel-body">
+          <div v-if="todayRecovery" class="recovery-device-grid">
+            <span><strong>昨晚睡眠</strong>{{ durationText(todayRecovery.sleep_duration_minutes) }}</span>
+            <span><strong>HRV</strong>{{ valueText(todayRecovery.hrv_value, todayRecovery.hrv_metric) }}</span>
+            <span><strong>静息心率</strong>{{ valueText(todayRecovery.resting_heart_rate_bpm, "bpm") }}</span>
+            <span><strong>Body Battery</strong>{{ valueText(todayRecovery.body_battery_end) }}</span>
+          </div>
+          <div class="device-meta">
+            <span>数据日期：{{ todayRecovery?.checkin_date || "暂无" }}</span>
+            <span>最近同步：{{ formatDateTime(garminStatus?.recovery_last_successful_sync_at || todayRecovery?.device_synced_at) }}</span>
+            <span v-if="todayRecovery?.device_missing_fields_json?.length">部分缺失：{{ todayRecovery.device_missing_fields_json.join("、") }}</span>
+            <span v-if="garminStatus?.recovery_last_error_code" class="device-warning">最近同步失败，已保留此前有效数据。</span>
+            <span v-if="!todayRecovery">尚无恢复数据；请先同步 Garmin，或填写设备无法获取的主观感受。</span>
+          </div>
+        </div>
+      </section>
       <section class="panel status-panel">
         <div class="panel-header">
           <h2 class="panel-title">当前状态</h2>
@@ -219,9 +240,6 @@
               <el-form-item label="HRV 类型">
                 <el-input v-model="checkinForm.hrv_metric" placeholder="如 rMSSD" />
               </el-form-item>
-              <el-form-item label="HRV 来源">
-                <el-input v-model="checkinForm.hrv_source" placeholder="如手动记录" />
-              </el-form-item>
               <el-form-item label="疼痛部位">
                 <el-input v-model="checkinForm.pain_location" />
               </el-form-item>
@@ -263,14 +281,18 @@ import type { ECharts } from "echarts";
 
 import {
   getTodayRecoveryCheckin,
+  getLatestDeviceRecoveryCheckin,
   getTodayReadiness,
   getTrainingLoadTrend,
   recalculateReadiness,
   saveTodayRecoveryCheckin,
 } from "@/api/trainingReadiness";
+import { getGarminStatus } from "@/api/garminSync";
 import { trackUsageEvent } from "@/api/usageEvents";
 import type {
   DailyTrainingLoad,
+  GarminConnectionStatus,
+  RecoveryCheckin,
   ReadinessDataQuality,
   RecoveryCheckinPayload,
   TrainingLoadSummaryRead,
@@ -359,6 +381,8 @@ const ScaleHelp = defineComponent({
 const loading = ref(false);
 const savingCheckin = ref(false);
 const todayReadiness = ref<TrainingReadinessToday | null>(null);
+const todayRecovery = ref<RecoveryCheckin | null>(null);
+const garminStatus = ref<GarminConnectionStatus | null>(null);
 const availabilityMessage = ref("");
 const availabilityType = ref<"info" | "warning" | "error">("info");
 const trendDays = ref(42);
@@ -366,6 +390,7 @@ const trendItems = ref<DailyTrainingLoad[]>([]);
 const loadChartRef = ref<HTMLDivElement | null>(null);
 const checkinDialogVisible = ref(false);
 const checkinForm = reactive<CheckinForm>(initialCheckinForm());
+const loadedObjectiveForm = ref<Pick<CheckinForm, "sleep_duration_hours" | "resting_heart_rate_bpm" | "hrv_value" | "hrv_metric"> | null>(null);
 let loadChart: ECharts | null = null;
 
 const summary = computed(() => todayReadiness.value?.assessment.metrics_json as TrainingLoadSummaryRead | undefined);
@@ -422,6 +447,16 @@ function formatDateTime(value?: string | null) {
   return value.replace("T", " ").slice(0, 16);
 }
 
+function durationText(value?: number | null) {
+  if (value == null) return "暂无";
+  return `${Math.floor(value / 60)} 小时 ${value % 60} 分`;
+}
+
+function valueText(value?: number | string | null, unit?: string | null) {
+  if (value == null || value === "") return "暂无";
+  return `${value}${unit ? ` ${unit}` : ""}`;
+}
+
 function readinessStatusLabel(value: TrainingStatus) {
   return {
     insufficient_data: "数据不足",
@@ -467,7 +502,14 @@ function handleAvailability(error: unknown) {
 
 async function loadToday() {
   try {
-    todayReadiness.value = await getTodayReadiness();
+    const [readiness, recovery, connection] = await Promise.all([
+      getTodayReadiness(),
+      getLatestDeviceRecoveryCheckin(),
+      getGarminStatus(true).catch(() => null),
+    ]);
+    todayReadiness.value = readiness;
+    todayRecovery.value = recovery;
+    garminStatus.value = connection;
     availabilityMessage.value = "";
     if (todayReadiness.value.assessment.status === "reduce_load") {
       trackUsageEvent("reduce_load_suggestion_viewed", {
@@ -545,6 +587,7 @@ async function reload() {
 
 function resetCheckinForm() {
   Object.assign(checkinForm, initialCheckinForm());
+  loadedObjectiveForm.value = null;
 }
 
 function applyCheckinToForm(value: RecoveryCheckinPayload | null) {
@@ -555,6 +598,12 @@ function applyCheckinToForm(value: RecoveryCheckinPayload | null) {
     sleep_duration_hours:
       value.sleep_duration_minutes == null ? null : Number((value.sleep_duration_minutes / 60).toFixed(1)),
   });
+  loadedObjectiveForm.value = {
+    sleep_duration_hours: checkinForm.sleep_duration_hours,
+    resting_heart_rate_bpm: checkinForm.resting_heart_rate_bpm,
+    hrv_value: checkinForm.hrv_value,
+    hrv_metric: checkinForm.hrv_metric,
+  };
 }
 
 async function openCheckinDialog() {
@@ -578,18 +627,13 @@ function blankToNull(value: string | null | undefined) {
 
 function buildCheckinPayload(): RecoveryCheckinPayload {
   const sleepHours = checkinForm.sleep_duration_hours;
-  return {
-    sleep_duration_minutes: sleepHours == null ? null : Math.round(sleepHours * 60),
+  const payload: RecoveryCheckinPayload = {
     sleep_quality: nullableScale(checkinForm.sleep_quality),
     subjective_fatigue: nullableScale(checkinForm.subjective_fatigue),
     muscle_soreness: nullableScale(checkinForm.muscle_soreness),
     stress_level: nullableScale(checkinForm.stress_level),
     mood_level: nullableScale(checkinForm.mood_level),
     leg_feeling: nullableScale(checkinForm.leg_feeling),
-    resting_heart_rate_bpm: checkinForm.resting_heart_rate_bpm ?? null,
-    hrv_value: checkinForm.hrv_value ?? null,
-    hrv_metric: blankToNull(checkinForm.hrv_metric),
-    hrv_source: blankToNull(checkinForm.hrv_source),
     pain_level: checkinForm.pain_level ?? 0,
     pain_location: blankToNull(checkinForm.pain_location),
     pain_trend: checkinForm.pain_trend || "unknown",
@@ -597,6 +641,20 @@ function buildCheckinPayload(): RecoveryCheckinPayload {
     illness_symptoms: blankToNull(checkinForm.illness_symptoms),
     notes: blankToNull(checkinForm.notes),
   };
+  const initial = loadedObjectiveForm.value;
+  if (!initial || sleepHours !== initial.sleep_duration_hours) {
+    payload.sleep_duration_minutes = sleepHours == null ? null : Math.round(sleepHours * 60);
+  }
+  if (!initial || checkinForm.resting_heart_rate_bpm !== initial.resting_heart_rate_bpm) {
+    payload.resting_heart_rate_bpm = checkinForm.resting_heart_rate_bpm ?? null;
+  }
+  if (!initial || checkinForm.hrv_value !== initial.hrv_value) {
+    payload.hrv_value = checkinForm.hrv_value ?? null;
+  }
+  if (!initial || checkinForm.hrv_metric !== initial.hrv_metric) {
+    payload.hrv_metric = blankToNull(checkinForm.hrv_metric);
+  }
+  return payload;
 }
 
 async function saveCheckin() {
@@ -681,6 +739,30 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.recovery-device-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.recovery-device-grid span {
+  display: grid;
+  gap: 4px;
+}
+
+.device-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 14px;
+  color: var(--app-text-secondary);
+  font-size: 13px;
+}
+
+.device-warning {
+  color: var(--el-color-warning-dark-2);
 }
 
 .signal-list :deep(.el-empty) {
@@ -781,6 +863,10 @@ onBeforeUnmount(() => {
   .readiness-grid,
   .readiness-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .recovery-device-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .chart {

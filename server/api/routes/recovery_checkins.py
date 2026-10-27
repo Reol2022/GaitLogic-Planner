@@ -42,6 +42,18 @@ def upsert_today_recovery_checkin(
     return recovery_checkin_service.upsert_today_checkin(db, current_user.id, payload)
 
 
+@router.get("/latest-device", response_model=RecoveryCheckinRead | None)
+def get_latest_device_recovery_checkin(
+    max_age_days: int = Query(default=2, ge=0, le=7),
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    _assert_available(db, current_user)
+    return recovery_checkin_service.get_latest_device_checkin(
+        db, current_user.id, max_age_days=max_age_days
+    )
+
+
 @router.get("/quick", response_model=RecoveryQuickRead)
 def get_quick_recovery_checkin(
     db: Session = Depends(get_db),

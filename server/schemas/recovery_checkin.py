@@ -32,6 +32,23 @@ class RecoveryCheckinRead(RecoveryCheckinPayload):
     id: int
     checkin_date: date
     source: RecoveryCheckinSource
+    sleep_source: str | None = None
+    resting_heart_rate_source: str | None = None
+    sleep_score: int | None = None
+    average_stress: int | None = None
+    max_stress: int | None = None
+    body_battery_start: int | None = None
+    body_battery_end: int | None = None
+    body_battery_high: int | None = None
+    body_battery_low: int | None = None
+    respiration_rate: Decimal | None = None
+    pulse_ox: Decimal | None = None
+    device_provider: str | None = None
+    device_data_status: str | None = None
+    device_synced_at: datetime | None = None
+    provider_updated_at: datetime | None = None
+    device_missing_fields_json: list[str] | None = None
+    device_limitations_json: list[str] | None = None
     created_at: datetime
     updated_at: datetime
 
