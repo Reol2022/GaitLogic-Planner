@@ -523,3 +523,102 @@ def test_summary_failure_keeps_recent_context_and_does_not_block_chat() -> None:
         assert len(FakeCoach.seen_contexts[-1]) <= 2
     finally:
         db.close()
+
+
+def test_stale_summary_lease_is_recovered_without_regressing_watermark() -> None:
+    db = _session()
+    try:
+        service = _service(db)
+        conversation = service.create(user_id=1, payload=CoachConversationCreate())
+        row = db.scalar(select(CoachConversation).where(CoachConversation.public_id == conversation.id))
+        assert row is not None
+        messages = []
+        for sequence_no in range(1, 7):
+            message = CoachMessage(
+                conversation_id=row.id,
+                role="user" if sequence_no % 2 else "assistant",
+                content=f"synthetic completed context {sequence_no}",
+                status="completed",
+                sequence_no=sequence_no,
+                client_turn_id=f"summary-stale-{sequence_no}" if sequence_no % 2 else None,
+            )
+            db.add(message)
+            messages.append(message)
+        row.context_summary_status = "GENERATING"
+        row.context_summary_lease_id = "expired-summary-lease"
+        row.context_summary_started_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=10)
+        db.commit()
+
+        summary, generated, failed = service._refresh_context_summary(
+            conversation_id=row.id,
+            messages=messages[:4],
+        )
+        assert generated is True
+        assert failed is False
+        assert summary.through_sequence == 4
+        db.expire_all()
+        refreshed = db.get(CoachConversation, row.id)
+        assert refreshed is not None
+        assert refreshed.context_summary_status == "IDLE"
+        assert refreshed.context_summary_lease_id is None
+        assert refreshed.context_summary_through_sequence == 4
+
+        duplicate, generated, failed = service._refresh_context_summary(
+            conversation_id=row.id,
+            messages=messages[:4],
+        )
+        assert generated is False
+        assert failed is False
+        assert duplicate.through_sequence == 4
+    finally:
+        db.close()
+
+
+def test_failed_summary_can_recover_without_advancing_watermark_on_failure() -> None:
+    class FailingSummarizer:
+        def summarize(self, **_kwargs):
+            raise RuntimeError("synthetic summary failure")
+
+    db = _session()
+    try:
+        conversation = CoachConversation(user_id=1, title="synthetic", status="active")
+        db.add(conversation)
+        db.flush()
+        messages = []
+        for sequence_no in range(1, 5):
+            message = CoachMessage(
+                conversation_id=conversation.id,
+                role="user" if sequence_no % 2 else "assistant",
+                content=f"synthetic recovery context {sequence_no}",
+                status="completed",
+                sequence_no=sequence_no,
+                client_turn_id=f"summary-failure-{sequence_no}" if sequence_no % 2 else None,
+            )
+            db.add(message)
+            messages.append(message)
+        db.commit()
+        failing = CoachConversationService(
+            db,
+            coach_service_factory=FakeCoach,
+            summarizer=FailingSummarizer(),
+        )
+        previous, generated, failed = failing._refresh_context_summary(
+            conversation_id=conversation.id, messages=messages
+        )
+        assert previous.through_sequence == 0
+        assert generated is False
+        assert failed is True
+        db.expire_all()
+        after_failure = db.get(CoachConversation, conversation.id)
+        assert after_failure is not None
+        assert after_failure.context_summary_status == "FAILED"
+        assert after_failure.context_summary_through_sequence == 0
+
+        recovered, generated, failed = _service(db)._refresh_context_summary(
+            conversation_id=conversation.id, messages=messages
+        )
+        assert generated is True
+        assert failed is False
+        assert recovered.through_sequence == 4
+    finally:
+        db.close()

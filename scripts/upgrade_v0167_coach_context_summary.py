@@ -26,6 +26,7 @@ SUMMARY_COLUMNS = {
     "context_summary_lease_id": "VARCHAR(36) NULL",
     "context_summary_started_at": "DATETIME NULL",
 }
+SUMMARY_STATUS_CONSTRAINT = "ck_coach_conversations_context_summary_status"
 
 
 def upgrade(connection: Connection) -> None:
@@ -38,6 +39,18 @@ def upgrade(connection: Connection) -> None:
             connection.execute(
                 text(f"ALTER TABLE `coach_conversations` ADD COLUMN `{name}` {definition}")
             )
+    constraints = {
+        item.get("name")
+        for item in inspect(connection).get_check_constraints("coach_conversations")
+    }
+    if SUMMARY_STATUS_CONSTRAINT not in constraints:
+        connection.execute(
+            text(
+                "ALTER TABLE `coach_conversations` "
+                f"ADD CONSTRAINT `{SUMMARY_STATUS_CONSTRAINT}` "
+                "CHECK (`context_summary_status` IN ('IDLE', 'GENERATING', 'FAILED'))"
+            )
+        )
 
 
 def main() -> None:

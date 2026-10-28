@@ -10,6 +10,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from threading import Event
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -24,12 +25,13 @@ from planner_core.database.models import AdminSystemSettings, CoachConversation,
 from server.agent.enums import AgentIntent, AgentRiskLevel
 from server.api.deps import get_db
 from server.api.routes import coach as coach_routes
-from server.common.exceptions import ConflictError
+from server.common.exceptions import ConflictError, NotFoundError
 from server.main import app
 from server.schemas.coach_agent import CoachQueryResponse
 from server.schemas.coach_conversation import CoachConversationCreate, CoachConversationMessageCreate
 from server.services.coach_conversation_service import CoachConversationService
 from server.services.conversation_context_builder import ConversationContextBuilder
+from server.services.conversation_summary import ConversationSummarizer
 from scripts.upgrade_v0167_coach_context_summary import upgrade
 
 
@@ -119,6 +121,16 @@ class _BlockingCoach:
         return _safe_response("Delayed synthetic MySQL Coach answer.")
 
 
+class _BlockingSummary:
+    entered = Event()
+    release = Event()
+
+    def summarize(self, **kwargs):
+        self.__class__.entered.set()
+        assert self.__class__.release.wait(timeout=10), "test did not release the synthetic summarizer"
+        return ConversationSummarizer().summarize(**kwargs)
+
+
 def _add_user(session: Session) -> int:
     row = UserAccount(username=f"coach-chat-mysql-{uuid4().hex[:12]}", password_hash="x", status="active")
     session.add(row)
@@ -131,6 +143,32 @@ def _service(session: Session, provider=_ImmediateCoach) -> CoachConversationSer
         session,
         coach_service_factory=provider,
         context_builder=ConversationContextBuilder(max_messages=8, token_budget=800),
+    )
+
+
+def _add_completed_summary_messages(session: Session, *, conversation_id: int, count: int) -> None:
+    for sequence_no in range(1, count + 1):
+        session.add(
+            CoachMessage(
+                public_id=str(uuid4()),
+                conversation_id=conversation_id,
+                role="user" if sequence_no % 2 else "assistant",
+                content=f"Synthetic persisted summary context {sequence_no}",
+                status="completed",
+                sequence_no=sequence_no,
+                client_turn_id=f"mysql-summary-{sequence_no}" if sequence_no % 2 else None,
+            )
+        )
+    session.commit()
+
+
+def _summary_source(session: Session, conversation_id: int):
+    return list(
+        session.scalars(
+            select(CoachMessage)
+            .where(CoachMessage.conversation_id == conversation_id)
+            .order_by(CoachMessage.sequence_no)
+        )
     )
 
 
@@ -175,6 +213,10 @@ def test_coach_chat_migration_is_idempotent_and_enforces_integrity(mysql_engine)
             "context_summary_lease_id",
             "context_summary_started_at",
         } <= columns
+        checks = {
+            item["name"] for item in inspector.get_check_constraints("coach_conversations")
+        }
+        assert "ck_coach_conversations_context_summary_status" in checks
         message_columns = {item["name"] for item in inspector.get_columns("coach_messages")}
         assert {
             "progress_stage",
@@ -250,6 +292,16 @@ def test_coach_chat_migration_upgrades_pre_progress_schema_idempotently(mysql_en
         "context_summary_started_at",
     )
     with mysql_engine.begin() as connection:
+        check_constraints = {
+            item["name"] for item in inspect(connection).get_check_constraints("coach_conversations")
+        }
+        if "ck_coach_conversations_context_summary_status" in check_constraints:
+            connection.execute(
+                text(
+                    "ALTER TABLE `coach_conversations` "
+                    "DROP CHECK `ck_coach_conversations_context_summary_status`"
+                )
+            )
         for name in progress_columns:
             connection.execute(text(f"ALTER TABLE `coach_messages` DROP COLUMN `{name}`"))
         for name in summary_columns:
@@ -268,6 +320,11 @@ def test_coach_chat_migration_upgrades_pre_progress_schema_idempotently(mysql_en
             item["name"] for item in inspect(connection).get_columns("coach_conversations")
         }
         assert set(summary_columns) <= after_summary
+        checks = {
+            item["name"]
+            for item in inspect(connection).get_check_constraints("coach_conversations")
+        }
+        assert "ck_coach_conversations_context_summary_status" in checks
 
 
 @pytest.mark.mysql_integration
@@ -454,3 +511,184 @@ def test_mysql_expired_lease_and_delete_reject_late_results(mysql_engine) -> Non
         assert late_db.scalar(select(CoachMessage).where(CoachMessage.id == new_assistant_id)) is None
     finally:
         late_db.close()
+
+
+@pytest.mark.mysql_integration
+def test_mysql_summary_lease_takeover_prevents_old_worker_overwrite(mysql_engine) -> None:
+    """A stale summary lease can be replaced, while its late worker loses CAS."""
+    SessionLocal = sessionmaker(bind=mysql_engine, class_=Session)
+    setup_db = SessionLocal()
+    try:
+        user_id = _add_user(setup_db)
+        conversation = _service(setup_db).create(user_id=user_id, payload=CoachConversationCreate())
+        row = setup_db.scalar(
+            select(CoachConversation).where(CoachConversation.public_id == conversation.id)
+        )
+        assert row is not None
+        conversation_pk = row.id
+        _add_completed_summary_messages(setup_db, conversation_id=conversation_pk, count=8)
+    finally:
+        setup_db.close()
+
+    _BlockingSummary.entered.clear()
+    _BlockingSummary.release.clear()
+
+    def first_refresh():
+        db = SessionLocal()
+        try:
+            service = CoachConversationService(
+                db,
+                coach_service_factory=_ImmediateCoach,
+                summarizer=_BlockingSummary(),
+                context_builder=ConversationContextBuilder(max_messages=2, token_budget=200),
+            )
+            return service._refresh_context_summary(
+                conversation_id=conversation_pk,
+                messages=_summary_source(db, conversation_pk),
+            )
+        finally:
+            db.close()
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        first = executor.submit(first_refresh)
+        assert _BlockingSummary.entered.wait(timeout=5), "first summary lease was not persisted"
+
+        contender_db = SessionLocal()
+        try:
+            contender = _service(contender_db)._refresh_context_summary(
+                conversation_id=conversation_pk,
+                messages=_summary_source(contender_db, conversation_pk),
+            )
+            assert contender[1:] == (False, False)
+            row = contender_db.get(CoachConversation, conversation_pk)
+            assert row is not None
+            row.context_summary_started_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=10)
+            contender_db.commit()
+        finally:
+            contender_db.close()
+
+        successor_db = SessionLocal()
+        try:
+            successor = _service(successor_db)._refresh_context_summary(
+                conversation_id=conversation_pk,
+                messages=_summary_source(successor_db, conversation_pk),
+            )
+            assert successor[1:] == (True, False)
+            assert successor[0].through_sequence == 8
+        finally:
+            successor_db.close()
+
+        _BlockingSummary.release.set()
+        late = first.result(timeout=10)
+        assert late[1:] == (False, True)
+
+    verify_db = SessionLocal()
+    try:
+        row = verify_db.get(CoachConversation, conversation_pk)
+        assert row is not None
+        assert row.context_summary_status == "IDLE"
+        assert row.context_summary_version == 1
+        assert row.context_summary_through_sequence == 8
+        duplicate = _service(verify_db)._refresh_context_summary(
+            conversation_id=conversation_pk,
+            messages=_summary_source(verify_db, conversation_pk),
+        )
+        assert duplicate[1:] == (False, False)
+        assert duplicate[0].through_sequence == 8
+    finally:
+        verify_db.close()
+
+
+@pytest.mark.mysql_integration
+@pytest.mark.parametrize("turn_count", [5, 15, 30, 50])
+def test_mysql_long_conversations_preserve_messages_and_summary_boundary(mysql_engine, turn_count: int) -> None:
+    SessionLocal = sessionmaker(bind=mysql_engine, class_=Session)
+    db = SessionLocal()
+    try:
+        user_id = _add_user(db)
+        service = CoachConversationService(
+            db,
+            coach_service_factory=_ImmediateCoach,
+            context_builder=ConversationContextBuilder(
+                max_messages=24, token_budget=4000, summary_token_budget=1200
+            ),
+        )
+        conversation = service.create(user_id=user_id, payload=CoachConversationCreate())
+        for index in range(turn_count):
+            result = service.send_message(
+                user_id=user_id,
+                conversation_id=conversation.id,
+                payload=CoachConversationMessageCreate(
+                    client_turn_id=f"mysql-long-{turn_count}-{index}",
+                    message=f"Synthetic long conversation turn {index}",
+                ),
+            )
+            assert result.status == "completed"
+
+        row = db.scalar(select(CoachConversation).where(CoachConversation.public_id == conversation.id))
+        assert row is not None
+        messages = _summary_source(db, row.id)
+        assert len(messages) == turn_count * 2
+        assert all(message.status == "completed" for message in messages)
+        if turn_count <= 5:
+            assert row.context_summary_through_sequence == 0
+        else:
+            assert row.context_summary_status == "IDLE"
+            assert row.context_summary_through_sequence > 0
+            recent = [item for item in messages if item.sequence_no > row.context_summary_through_sequence]
+            assert len(recent) <= 24
+            assert all(item.status == "completed" for item in recent)
+    finally:
+        db.close()
+
+
+@pytest.mark.mysql_integration
+def test_mysql_summary_ignores_failed_messages_and_remains_user_isolated(mysql_engine) -> None:
+    SessionLocal = sessionmaker(bind=mysql_engine, class_=Session)
+    db = SessionLocal()
+    try:
+        user_a = _add_user(db)
+        user_b = _add_user(db)
+        service = _service(db)
+        conversation_a = service.create(user_id=user_a, payload=CoachConversationCreate())
+        conversation_b = service.create(user_id=user_b, payload=CoachConversationCreate())
+        row_a = db.scalar(select(CoachConversation).where(CoachConversation.public_id == conversation_a.id))
+        row_b = db.scalar(select(CoachConversation).where(CoachConversation.public_id == conversation_b.id))
+        assert row_a is not None and row_b is not None
+        _add_completed_summary_messages(db, conversation_id=row_a.id, count=2)
+        db.add_all(
+            [
+                CoachMessage(
+                    public_id=str(uuid4()),
+                    conversation_id=row_a.id,
+                    role="user",
+                    content="failed content must not enter summary",
+                    status="failed",
+                    sequence_no=3,
+                    client_turn_id="mysql-summary-failed",
+                ),
+                CoachMessage(
+                    public_id=str(uuid4()),
+                    conversation_id=row_a.id,
+                    role="assistant",
+                    status="pending",
+                    sequence_no=4,
+                ),
+            ]
+        )
+        db.commit()
+        refreshed = service._refresh_context_summary(
+            conversation_id=row_a.id,
+            messages=[SimpleNamespace(sequence_no=4)],
+        )
+        assert refreshed[1:] == (True, False)
+        assert refreshed[0].through_sequence == 2
+        db.expire_all()
+        with pytest.raises(NotFoundError):
+            service.get(user_id=user_b, conversation_id=conversation_a.id)
+        row_b = db.get(CoachConversation, row_b.id)
+        assert row_b is not None
+        assert row_b.context_summary_json is None
+        assert row_b.context_summary_through_sequence == 0
+    finally:
+        db.close()

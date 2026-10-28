@@ -352,7 +352,14 @@ class CoachConversationService:
             return ConversationSummary(), False, True
         previous = ConversationSummary.from_json(conversation.context_summary_json)
         if conversation.context_summary_lease_id:
-            return previous, False, False
+            if not self._is_stale_summary_lease(conversation, self.now()):
+                return previous, False, False
+            # A summarizer may have crashed after it persisted its lease. The
+            # next bounded refresh takes over with a new lease; the late old
+            # worker can no longer pass the final lease comparison below.
+            conversation.context_summary_lease_id = None
+            conversation.context_summary_started_at = None
+            conversation.context_summary_status = "IDLE"
         source_messages = list(
             self.db.scalars(
                 select(CoachMessage)
@@ -427,6 +434,13 @@ class CoachConversationService:
         conversation.context_summary_lease_id = None
         conversation.context_summary_started_at = None
         self.db.commit()
+
+    def _is_stale_summary_lease(self, conversation: CoachConversation, now: datetime) -> bool:
+        if not conversation.context_summary_lease_id:
+            return False
+        if conversation.context_summary_started_at is None:
+            return True
+        return now - conversation.context_summary_started_at >= self.processing_timeout
 
     def _reserve_turn(
         self, *, user_id: int, conversation_id: str, payload: CoachConversationMessageCreate
