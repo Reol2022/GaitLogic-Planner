@@ -351,3 +351,19 @@ def test_main_mounts_remote_mcp_only_when_explicitly_enabled(monkeypatch: pytest
     assert response.status_code == 401
     assert response.json() == {"code": "UNAUTHENTICATED"}
     get_settings.cache_clear()
+
+
+def test_main_mcp_mount_runs_sdk_lifespan(monkeypatch: pytest.MonkeyPatch) -> None:
+    from server.mcp.context import McpRequestIdentity
+    from server.mcp.http import McpHttpSecurityMiddleware
+
+    monkeypatch.setenv("MCP_HTTP_ENABLED", "true")
+    monkeypatch.setenv("MCP_ALLOWED_HOSTS", "testserver")
+    monkeypatch.setattr(McpHttpSecurityMiddleware, "_authenticate", lambda *_args: (McpRequestIdentity(user_id=101), None))
+    get_settings.cache_clear()
+    from server.main import create_app
+
+    with TestClient(create_app()) as client:
+        result = _request(client, _headers(None, origin="http://localhost:5173"), "tools/list", {})
+    assert any(tool["name"] == "get_recent_training" for tool in result["result"]["tools"])
+    get_settings.cache_clear()

@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -59,10 +61,25 @@ from server.observability.http import trace_http_request
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    mcp_app = None
+    if settings.mcp_http_enabled:
+        from server.mcp.http import create_mcp_http_app
+
+        mcp_app = create_mcp_http_app()
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        if mcp_app is None:
+            yield
+        else:
+            async with mcp_app.app.router.lifespan_context(mcp_app.app):
+                yield
+
     app = FastAPI(
         title="Gaitlogic Planner API",
         version="0.16.3",
         description="Backend API for training plans, logs, dashboard stats, and pace rules.",
+        lifespan=lifespan,
     )
     app.add_middleware(
         CORSMiddleware,
@@ -134,10 +151,8 @@ def create_app() -> FastAPI:
 
     # Mount last: the SDK sub-application handles only /mcp, while existing
     # REST routes retain their original order and behavior.
-    if settings.mcp_http_enabled:
-        from server.mcp.http import create_mcp_http_app
-
-        app.mount("", create_mcp_http_app(), name="gaitlogic-mcp-http")
+    if mcp_app is not None:
+        app.mount("", mcp_app, name="gaitlogic-mcp-http")
 
     return app
 
