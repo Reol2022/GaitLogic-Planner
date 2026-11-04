@@ -183,6 +183,25 @@ def test_http_mcp_rejects_missing_and_invalid_tokens(http_dependencies, authoriz
     assert fake.seen_user_ids == []
 
 
+def test_http_mcp_rejects_signed_token_without_read_scope(http_dependencies) -> None:
+    dependencies, users, fake, _sessions = http_dependencies
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(users[101].id),
+        "iss": dependencies.settings.mcp_token_issuer,
+        "aud": dependencies.settings.mcp_token_audience,
+        "purpose": MCP_TOKEN_PURPOSE,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(minutes=10)).timestamp()),
+        "scope": "other:read",
+    }
+    with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
+        response = client.post("/mcp", headers=_headers(_sign_jwt_payload(payload)), json={})
+    assert response.status_code == 401
+    assert response.json() == {"code": "INSUFFICIENT_PERMISSION"}
+    assert fake.seen_user_ids == []
+
+
 @pytest.mark.parametrize("claim, value, expected", [("exp", 0, "TOKEN_EXPIRED"), ("aud", "other-mcp", "INVALID_TOKEN")])
 def test_http_mcp_rejects_expired_and_wrong_audience_tokens(http_dependencies, claim, value, expected) -> None:
     dependencies, users, fake, _sessions = http_dependencies

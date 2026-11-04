@@ -89,6 +89,7 @@ def _login_page(params: dict[str, str], message: str | None = None) -> HTMLRespo
 
 
 @router.get("/.well-known/oauth-authorization-server")
+@router.get("/.well-known/oauth-authorization-server/oauth")
 def oauth_metadata():
     if not _enabled():
         return _oauth_error("temporarily_unavailable", 404)

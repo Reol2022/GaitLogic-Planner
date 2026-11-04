@@ -78,6 +78,7 @@ class McpRecentTraining(McpContractModel):
     data_status: str = Field(min_length=1, max_length=32)
     as_of: date
     items: list[McpRecentTrainingItem] = Field(default_factory=list, max_length=20)
+    details_complete: bool | None = None
     summary: McpRecentTrainingSummary
     data_quality: McpDataQuality
     missing_reasons: list[str] = Field(default_factory=list, max_length=20)

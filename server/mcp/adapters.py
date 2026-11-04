@@ -114,6 +114,7 @@ class McpToolAdapter:
                 )
                 for item in value.get("items", [])
             ],
+            details_complete=value.get("details_complete"),
             summary=McpRecentTrainingSummary.model_validate(
                 {
                     key: value["summary"].get(key)
@@ -132,8 +133,10 @@ class McpToolAdapter:
             overall_state=value["overall_state"],
             risk_level=value["risk_level"],
             data_quality=McpDataQuality.model_validate(value["data_quality"]),
-            metrics=value["metrics"],
-            evidence=[McpEvidence.model_validate(item) for item in value.get("evidence", [])],
+            # Health and recovery metrics require a separately granted scope.
+            # Until that exists, avoid exposing dynamic metric/evidence payloads.
+            metrics={},
+            evidence=[],
             warnings=[cls._notice(item) for item in value.get("warnings", [])],
             limitations=[cls._notice(item) for item in value.get("limitations", [])],
         )

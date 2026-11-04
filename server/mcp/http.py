@@ -57,8 +57,11 @@ class McpHttpDependencies:
         return self.tracer or get_configured_tracer()
 
 
-def _safe_error(status_code: int, code: McpErrorCode) -> JSONResponse:
+def _safe_error(status_code: int, code: McpErrorCode, *, settings: Settings | None = None) -> JSONResponse:
     headers = {"WWW-Authenticate": "Bearer"} if status_code == 401 else {}
+    if status_code == 401 and settings is not None and settings.mcp_oauth_enabled:
+        resource_metadata = f"{settings.mcp_public_base_url.rstrip('/')}/.well-known/oauth-protected-resource/mcp"
+        headers["WWW-Authenticate"] = f'Bearer resource_metadata="{resource_metadata}"'
     return JSONResponse(status_code=status_code, content={"code": code.value}, headers=headers)
 
 
@@ -105,7 +108,7 @@ class McpHttpSecurityMiddleware:
                     )
                     root.set_status("FAILED", error_code=error.value)
                     root.add_metadata(status="FAILED", failure_category=error.value)
-                    await _safe_error(401, error)(scope, receive, send)
+                    await _safe_error(401, error, settings=self.dependencies.settings)(scope, receive, send)
                     return
                 auth_span.add_metadata(auth_status="SUCCEEDED", status="SUCCEEDED")
 

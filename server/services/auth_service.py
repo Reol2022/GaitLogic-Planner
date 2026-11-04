@@ -134,6 +134,7 @@ def create_mcp_access_token(user: UserAccount) -> str:
             "iss": settings.mcp_token_issuer,
             "aud": settings.mcp_token_audience,
             "purpose": MCP_TOKEN_PURPOSE,
+            "scope": "mcp:read",
             "iat": int(now.timestamp()),
             "exp": int((now + timedelta(minutes=settings.mcp_token_expire_minutes)).timestamp()),
         }
@@ -162,6 +163,8 @@ def decode_mcp_access_token(token: str) -> dict:
             raise McpTokenValidationError("INVALID_TOKEN")
         if payload.get("purpose") != MCP_TOKEN_PURPOSE:
             raise McpTokenValidationError("INVALID_TOKEN")
+        if "mcp:read" not in str(payload.get("scope", "")).split():
+            raise McpTokenValidationError("INSUFFICIENT_PERMISSION")
         if int(payload.get("sub", 0)) <= 0:
             raise McpTokenValidationError("INVALID_TOKEN")
         return payload

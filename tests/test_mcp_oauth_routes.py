@@ -20,10 +20,15 @@ def test_mcp_oauth_metadata_is_available_when_enabled(monkeypatch):
     get_settings.cache_clear()
     client = TestClient(create_app())
     metadata = client.get("/.well-known/oauth-authorization-server")
+    issuer_metadata = client.get("/.well-known/oauth-authorization-server/oauth")
     resource = client.get("/.well-known/oauth-protected-resource/mcp")
     assert metadata.status_code == 200
+    assert issuer_metadata.json() == metadata.json()
     assert metadata.json()["code_challenge_methods_supported"] == ["S256"]
     assert resource.json()["resource"] == "https://mcp.example.test/mcp"
+    challenge = client.post("/mcp", json={})
+    assert challenge.status_code == 401
+    assert challenge.headers["www-authenticate"] == 'Bearer resource_metadata="https://mcp.example.test/.well-known/oauth-protected-resource/mcp"'
     get_settings.cache_clear()
 
 
