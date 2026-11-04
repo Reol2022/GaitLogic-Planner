@@ -10,6 +10,15 @@
 
 ## v0.3.3 最终补充（2026-11-04）
 
+## Release Candidate 补充验收（2026-11-04）
+
+- 受限本机 MySQL 测试账号下，MCP 安全与业务回归 **53 passed，0 skipped**。使用全新历史 Schema 隔离数据库，依次执行部分 DDL 恢复、两次迁移及迁移后双用户 TCP OAuth／训练读取、刷新竞争和撤销，**3 passed，0 skipped**。
+- 随后在同一已迁移库扩充真实 TCP 验证：分别构造旧 issuer/audience 的签名 access token、缺少 grant 的签名 token 和缺少 resource/grant 的旧 refresh 记录，均遭拒绝；本次扩展回归 **2 passed**。
+- 真实 TCP 测试中，A 的 access token 无法用于 B；A 的 refresh token 无法为 B 换取 token；授权与兑换资源不一致、授权码重复兑换、无 grant 旧 access token 和无绑定旧 refresh token 均被拒绝。伪造 Host 与 X-Forwarded-Host 未改变配置的资源判定。
+- 历史迁移测试保留旧授权记录，先模拟一个 DDL 已提交的部分升级，再重复运行迁移；后续网络 E2E 在相同迁移库创建新授权并完成调用和撤销。旧 token 使用合成旧格式验证，非真实生产 token。未强制中断数据库进程，不能将此描述为原子回滚。
+- 7 天和 28 天合成查询、用户隔离、超过 20 条截断及训练服务 28 天字段对照通过；同一时点真实页面 API 对照仍 BLOCKED。空窗口及明细矛盾有合成测试，但尚未全部经独立网络客户端对照页面 API。
+- 本机合成 33 次调用 p50 76.81 ms、p95 541.33 ms，仅为局部验证。生产实际提交、域名和 Nginx 尚未核实；未执行生产迁移、部署或 ChatGPT 实际连接。
+
 - 两个不同资源标识对应两个本机 TCP MCP 服务；资源 A 令牌访问资源 B（包括伪造转发 Host）被拒绝。授权 A 后以错误 resource 兑换、授权码重放及跨 resource 刷新被拒绝；错误 audience 和缺少 grant 的旧令牌由独立 HTTP 安全测试覆盖。
 - 使用历史 `86831ad` OAuth DDL 建立独立空 MySQL 库，先模拟一项 DDL 已提交的中断状态，再执行迁移两次；旧记录保留、授权表及唯一索引建立。随后在同一数据库通过真实 TCP 完成新用户授权、调用训练工具、撤销与重启复验。此方法验证部分升级状态可恢复；未强行终止运行中的 DDL 进程，也未证明 DDL 事务可回滚。
 - 受限数据库账号运行的相关回归 **53 passed，0 skipped**；旧库升级并在该库执行双用户 TCP 和 MySQL 安全测试另 **3 passed，0 skipped**。一次合成 33 次工具请求 p50 78.53 ms、p95 538.16 ms。测试账号已删除；隔离测试数据库保留。

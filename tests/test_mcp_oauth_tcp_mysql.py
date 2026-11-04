@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import base64
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import hashlib
+import hmac
+import json
 import os
 import socket
 import subprocess
@@ -74,7 +76,7 @@ def test_real_tcp_two_user_training_isolation_and_revoke():
                     time.sleep(0.1)
             else:
                 pytest.fail("synthetic server failed readiness")
-            tokens = []
+            tokens, refresh_tokens = [], []
             for username in usernames:
                 registration = client.post(base + "/oauth/register", json={"redirect_uris": ["http://127.0.0.1/callback"]})
                 assert registration.status_code == 201
@@ -92,6 +94,7 @@ def test_real_tcp_two_user_training_isolation_and_revoke():
                 assert exchanged.status_code == 200
                 assert client.post(base + "/oauth/token", data={"grant_type": "authorization_code", "client_id": client_id, "code": code, "redirect_uri": form["redirect_uri"], "code_verifier": verifier, "resource": form["resource"]}).status_code == 400
                 tokens.append(exchanged.json()["access_token"])
+                refresh_tokens.append(exchanged.json()["refresh_token"])
 
             meta = {"io.modelcontextprotocol/protocolVersion": "2026-07-28", "io.modelcontextprotocol/clientCapabilities": {}, "io.modelcontextprotocol/clientInfo": {"name": "synthetic-tcp", "version": "1"}}
             for token in tokens:
@@ -116,6 +119,26 @@ def test_real_tcp_two_user_training_isolation_and_revoke():
                 pytest.fail("second synthetic resource failed readiness")
             replay = client.post(second_base + "/mcp", headers={"Authorization": "Bearer " + tokens[0], "Accept": "application/json, text/event-stream", "X-Forwarded-Host": f"127.0.0.1:{port}"}, json={})
             assert replay.status_code == 401
+            cross_refresh = client.post(second_base + "/oauth/token", data={"grant_type": "refresh_token", "client_id": client_ids[0], "refresh_token": refresh_tokens[0], "resource": second_base + "/mcp"})
+            assert cross_refresh.status_code == 400
+            metadata = client.get(base + "/.well-known/oauth-protected-resource/mcp", headers={"Host": "attacker.invalid", "X-Forwarded-Host": "attacker.invalid"})
+            assert metadata.status_code == 200 and metadata.json()["resource"] == base + "/mcp"
+            def b64(value):
+                return base64.urlsafe_b64encode(value).rstrip(b"=").decode()
+            legacy_header = b64(json.dumps({"alg": "HS256", "typ": "JWT"}, separators=(",", ":")).encode())
+            legacy_payload = b64(json.dumps({"sub": str(user_ids[0]), "iss": base + "/oauth", "aud": base + "/mcp", "scope": "mcp:read", "purpose": "mcp", "exp": int(time.time()) + 600}, separators=(",", ":")).encode())
+            legacy_body = legacy_header + "." + legacy_payload
+            legacy = legacy_body + "." + b64(hmac.new(b"fictional-tcp-oauth-secret", legacy_body.encode(), hashlib.sha256).digest())
+            assert client.post(base + "/mcp", headers={"Authorization": "Bearer " + legacy, "Accept": "application/json, text/event-stream"}, json={}).status_code == 401
+            previous_payload = b64(json.dumps({"sub": str(user_ids[0]), "iss": "gaitlogic-planner", "aud": "gaitlogic-mcp", "purpose": "mcp", "exp": int(time.time()) + 600}, separators=(",", ":")).encode())
+            previous_body = legacy_header + "." + previous_payload
+            previous_token = previous_body + "." + b64(hmac.new(b"fictional-tcp-oauth-secret", previous_body.encode(), hashlib.sha256).digest())
+            assert client.post(base + "/mcp", headers={"Authorization": "Bearer " + previous_token, "Accept": "application/json, text/event-stream"}, json={}).status_code == 401
+            legacy_refresh = "fictional-legacy-refresh"
+            with factory.begin() as db:
+                db.add(McpOAuthRefreshToken(token_hash=hashlib.sha256(legacy_refresh.encode()).hexdigest(), client_id=client_ids[0], user_id=user_ids[0], scopes_json=["mcp:read"], expires_at=datetime.utcnow() + timedelta(hours=1)))
+            legacy_exchange = client.post(base + "/oauth/token", data={"grant_type": "refresh_token", "client_id": client_ids[0], "refresh_token": legacy_refresh, "resource": base + "/mcp"})
+            assert legacy_exchange.status_code == 400
             invalid = client.post(base + "/mcp", headers={"Authorization": "Bearer " + tokens[0], "Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/call", "Mcp-Name": "get_recent_training"}, json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_recent_training", "arguments": {"days": 7, "user_id": user_ids[1]}, "_meta": meta}})
             assert invalid.status_code == 200 and invalid.json()["result"]["isError"] is True
             durations = []
