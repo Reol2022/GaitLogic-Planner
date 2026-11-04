@@ -114,7 +114,18 @@ class McpToolAdapter:
                 )
                 for item in value.get("items", [])
             ],
-            details_complete=value.get("details_complete"),
+            details_complete=(
+                False
+                if any(
+                    item.get("code") in {"TRAINING_DETAILS_TRUNCATED", "SESSION_SUMMARY_DETAIL_MISMATCH"}
+                    for item in value.get("fact_issues", [])
+                    if isinstance(item, dict)
+                )
+                else value.get("details_complete")
+            ),
+            range_start=value.get("range_start"),
+            range_end=value.get("range_end"),
+            fact_issues=value.get("fact_issues", []),
             summary=McpRecentTrainingSummary.model_validate(
                 {
                     key: value["summary"].get(key)

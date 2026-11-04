@@ -34,12 +34,34 @@ def test_mcp_oauth_metadata_is_available_when_enabled(monkeypatch):
     get_settings.cache_clear()
 
 
+def test_authorization_and_token_reject_missing_or_wrong_resource_before_db(monkeypatch):
+    from planner_core.config import get_settings
+
+    monkeypatch.setenv("MCP_HTTP_ENABLED", "true")
+    monkeypatch.setenv("MCP_OAUTH_ENABLED", "true")
+    monkeypatch.setenv("MCP_PUBLIC_BASE_URL", "https://mcp.example.test")
+    get_settings.cache_clear()
+    with TestClient(create_app()) as client:
+        for resource in (None, "https://other.example.test/mcp"):
+            params = {"response_type": "code", "code_challenge_method": "S256"}
+            if resource is not None:
+                params["resource"] = resource
+            response = client.get("/oauth/authorize", params=params)
+            assert response.status_code == 400
+            assert response.json()["error"] == "invalid_target"
+            response = client.post("/oauth/token", data={"grant_type": "authorization_code", **({"resource": resource} if resource else {})})
+            assert response.status_code == 400
+            assert response.json()["error"] == "invalid_target"
+    get_settings.cache_clear()
+
+
 def test_authorize_requires_registered_redirect_and_pkce(monkeypatch):
     from planner_core.config import get_settings
-    from sqlalchemy import create_engine
+    from sqlalchemy import create_engine, delete
     from sqlalchemy.engine import make_url
     from sqlalchemy.orm import sessionmaker
     from server.api.routes import mcp_oauth
+    from planner_core.database.models import McpOAuthClient
 
     test_url = os.environ.get("GAITLOGIC_COACH_CHAT_TEST_DATABASE_URL")
     if not test_url:
@@ -56,8 +78,13 @@ def test_authorize_requires_registered_redirect_and_pkce(monkeypatch):
     client = TestClient(create_app())
     registration = client.post("/oauth/register", json={"client_name": "test", "redirect_uris": ["https://chatgpt.com/callback"]})
     assert registration.status_code == 201
-    response = client.get("/oauth/authorize", params={"response_type": "code", "client_id": registration.json()["client_id"], "redirect_uri": "https://chatgpt.com/callback", "scope": "mcp:read", "code_challenge": _challenge("v" * 43), "code_challenge_method": "S256"})
-    assert response.status_code == 200
-    assert "登录并授权" in response.text
-    get_settings.cache_clear()
-    engine.dispose()
+    client_id = registration.json()["client_id"]
+    try:
+        response = client.get("/oauth/authorize", params={"response_type": "code", "client_id": client_id, "redirect_uri": "https://chatgpt.com/callback", "scope": "mcp:read", "resource": get_settings().mcp_public_base_url.rstrip("/") + "/mcp", "code_challenge": _challenge("v" * 43), "code_challenge_method": "S256"})
+        assert response.status_code == 200
+        assert "登录并授权" in response.text
+    finally:
+        with engine.begin() as connection:
+            connection.execute(delete(McpOAuthClient).where(McpOAuthClient.client_id == client_id))
+        get_settings.cache_clear()
+        engine.dispose()

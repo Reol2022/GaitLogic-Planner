@@ -1,3 +1,5 @@
+import secrets
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -31,7 +33,7 @@ def me(current_user: UserAccount = Depends(get_current_user)):
 
 
 @router.post("/mcp-token", response_model=McpTokenResponse)
-def issue_mcp_token(current_user: UserAccount = Depends(get_current_user)):
+def issue_mcp_token(current_user: UserAccount = Depends(get_current_user), db: Session = Depends(get_db)):
     """Mint a short-lived MCP-only token for the already authenticated user.
 
     This endpoint is a GaitLogic provisioning helper, not an OAuth discovery or
@@ -41,8 +43,14 @@ def issue_mcp_token(current_user: UserAccount = Depends(get_current_user)):
     from planner_core.config import get_settings
 
     settings = get_settings()
+    from planner_core.database.models import McpOAuthGrant
+
+    grant_id = secrets.token_urlsafe(32)
+    resource = settings.mcp_resource_uri or f"{settings.mcp_public_base_url.rstrip('/')}/mcp"
+    db.add(McpOAuthGrant(grant_id=grant_id, client_id="local-provisioning", user_id=current_user.id, resource_uri=resource))
+    db.commit()
     return McpTokenResponse(
-        access_token=auth_service.create_mcp_access_token(current_user),
+        access_token=auth_service.create_mcp_access_token(current_user, grant_id=grant_id),
         expires_in=settings.mcp_token_expire_minutes * 60,
     )
 

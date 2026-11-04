@@ -19,7 +19,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from planner_core.config import Settings, get_settings
-from planner_core.database.models import UserAccount
+from planner_core.database.models import McpOAuthGrant, UserAccount
 from planner_core.database.session import SessionLocal
 from server.mcp.context import (
     McpExecutionContext,
@@ -131,6 +131,12 @@ class McpHttpSecurityMiddleware:
         session: Session | None = None
         try:
             session = self.dependencies.session_factory()
+            grant_id = payload.get("grant_id")
+            if not isinstance(grant_id, str) or not grant_id:
+                return None, McpErrorCode.INVALID_TOKEN
+            grant = session.scalar(select(McpOAuthGrant).where(McpOAuthGrant.grant_id == grant_id))
+            if grant is None or grant.revoked_at is not None or grant.user_id != int(payload["sub"]) or grant.resource_uri != payload["aud"]:
+                return None, McpErrorCode.INVALID_TOKEN
             user = session.scalar(select(UserAccount).where(UserAccount.id == int(payload["sub"])))
             if user is None or user.status != "active":
                 return None, McpErrorCode.INSUFFICIENT_PERMISSION

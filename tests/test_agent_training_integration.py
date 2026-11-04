@@ -91,6 +91,10 @@ def test_two_users_are_isolated_and_tool_chain_issues_only_selects() -> None:
         first = registry.invoke("get_recent_training", {"days": 7, "limit": 20}, agent_context(901, AgentIntent.WEEKLY_REVIEW))
         second = registry.invoke("get_recent_training", {"days": 7, "limit": 20}, agent_context(902, AgentIntent.WEEKLY_REVIEW))
         assert first.status == second.status == AgentToolStatus.SUCCEEDED
+        assert first.data["items"][0]["record_ref"] == "workout_log:9101"
+        assert second.data["items"][0]["record_ref"] == "workout_log:9102"
+        repeated = registry.invoke("get_recent_training", {"days": 7, "limit": 20}, agent_context(901, AgentIntent.WEEKLY_REVIEW))
+        assert repeated.data["items"][0]["record_ref"] == first.data["items"][0]["record_ref"]
         assert first.data["summary"]["total_distance_km"] == 8.0
         assert second.data["summary"]["total_distance_km"] == 42.0
         assert "user_id" not in str(first.data)

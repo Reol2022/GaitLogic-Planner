@@ -1586,6 +1586,22 @@ CREATE TABLE IF NOT EXISTS `mcp_oauth_clients` (
   UNIQUE KEY `uq_mcp_oauth_client_id` (`client_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `mcp_oauth_grants` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `grant_id` VARCHAR(64) NOT NULL,
+  `client_id` VARCHAR(128) NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `resource_uri` VARCHAR(2048) NOT NULL,
+  `revoked_at` DATETIME NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_mcp_oauth_grant_id` (`grant_id`),
+  KEY `ix_mcp_oauth_grants_client_id` (`client_id`),
+  KEY `ix_mcp_oauth_grants_user_id` (`user_id`),
+  CONSTRAINT `fk_mcp_oauth_grant_user` FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `mcp_oauth_authorization_codes` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `code_hash` VARCHAR(64) NOT NULL,
@@ -1593,6 +1609,8 @@ CREATE TABLE IF NOT EXISTS `mcp_oauth_authorization_codes` (
   `user_id` BIGINT NOT NULL,
   `redirect_uri` VARCHAR(2048) NOT NULL,
   `code_challenge` VARCHAR(128) NOT NULL,
+  `resource_uri` VARCHAR(2048) NULL,
+  `grant_id` VARCHAR(64) NULL,
   `scopes_json` JSON NOT NULL,
   `expires_at` DATETIME NOT NULL,
   `consumed_at` DATETIME NULL,
@@ -1611,6 +1629,8 @@ CREATE TABLE IF NOT EXISTS `mcp_oauth_refresh_tokens` (
   `token_hash` VARCHAR(64) NOT NULL,
   `client_id` VARCHAR(128) NOT NULL,
   `user_id` BIGINT NOT NULL,
+  `resource_uri` VARCHAR(2048) NULL,
+  `grant_id` VARCHAR(64) NULL,
   `scopes_json` JSON NOT NULL,
   `expires_at` DATETIME NOT NULL,
   `revoked_at` DATETIME NULL,

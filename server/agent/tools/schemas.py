@@ -99,6 +99,7 @@ class RecentTrainingInput(AgentContractModel):
 
 
 class RecentTrainingItem(AgentContractModel):
+    record_ref: str | None = None
     date: date
     planned_date: date | None = None
     training_type: str

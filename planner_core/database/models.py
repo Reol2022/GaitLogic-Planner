@@ -2365,6 +2365,17 @@ class McpOAuthClient(IdMixin, TimestampMixin, Base):
     scopes_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
 
 
+class McpOAuthGrant(IdMixin, TimestampMixin, Base):
+    __tablename__ = "mcp_oauth_grants"
+    __table_args__ = (UniqueConstraint("grant_id", name="uq_mcp_oauth_grant_id"), MYSQL_TABLE_ARGS)
+
+    grant_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    client_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    resource_uri: Mapped[str] = mapped_column(String(2048), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
 class McpOAuthAuthorizationCode(IdMixin, TimestampMixin, Base):
     __tablename__ = "mcp_oauth_authorization_codes"
     __table_args__ = (UniqueConstraint("code_hash", name="uq_mcp_oauth_code_hash"), MYSQL_TABLE_ARGS)
@@ -2374,6 +2385,8 @@ class McpOAuthAuthorizationCode(IdMixin, TimestampMixin, Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
     redirect_uri: Mapped[str] = mapped_column(String(2048), nullable=False)
     code_challenge: Mapped[str] = mapped_column(String(128), nullable=False)
+    resource_uri: Mapped[str | None] = mapped_column(String(2048))
+    grant_id: Mapped[str | None] = mapped_column(String(64))
     scopes_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime)
@@ -2386,6 +2399,8 @@ class McpOAuthRefreshToken(IdMixin, TimestampMixin, Base):
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     client_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    resource_uri: Mapped[str | None] = mapped_column(String(2048))
+    grant_id: Mapped[str | None] = mapped_column(String(64))
     scopes_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime)

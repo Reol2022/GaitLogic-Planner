@@ -31,6 +31,19 @@ class Settings(BaseSettings):
         validation_alias="MCP_PUBLIC_BASE_URL",
     )
     mcp_oauth_enabled: bool = Field(default=False, validation_alias="MCP_OAUTH_ENABLED")
+    mcp_resource_uri: str | None = Field(default=None, validation_alias="MCP_RESOURCE_URI")
+
+    @field_validator("mcp_resource_uri")
+    @classmethod
+    def validate_mcp_resource_uri(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise ValueError("MCP_RESOURCE_URI must be an absolute HTTP(S) URL without credentials, query or fragment")
+        if parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+            raise ValueError("MCP_RESOURCE_URI requires HTTPS outside localhost")
+        return value
     mcp_oauth_refresh_token_expire_days: int = Field(
         default=30, ge=1, le=90, validation_alias="MCP_OAUTH_REFRESH_TOKEN_EXPIRE_DAYS"
     )

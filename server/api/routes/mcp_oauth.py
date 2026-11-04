@@ -6,10 +6,11 @@ import base64
 from datetime import datetime, timedelta
 import hashlib
 import html
+import re
 import secrets
 from urllib.parse import parse_qs, urlencode, urlparse
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -19,10 +20,12 @@ from planner_core.database.models import (
     McpOAuthAuthorizationCode,
     McpOAuthClient,
     McpOAuthRefreshToken,
+    McpOAuthGrant,
     UserAccount,
 )
 from planner_core.database.session import SessionLocal
 from server.services.auth_service import create_mcp_access_token, verify_password
+from server.api.deps import get_current_user
 
 
 router = APIRouter(tags=["mcp oauth"])
@@ -32,6 +35,10 @@ _CODE_TTL_MINUTES = 5
 
 def _base_url() -> str:
     return get_settings().mcp_public_base_url.rstrip("/")
+
+
+def _resource() -> str:
+    return get_settings().mcp_resource_uri or f"{_base_url()}/mcp"
 
 
 def _enabled() -> bool:
@@ -47,6 +54,8 @@ def _hash(value: str) -> str:
 
 
 def _pkce_challenge(verifier: str) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9._~-]{43,128}", verifier):
+        return ""
     return base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest()).rstrip(b"=").decode("ascii")
 
 
@@ -112,7 +121,7 @@ def protected_resource_metadata():
     if not _enabled():
         return _oauth_error("temporarily_unavailable", 404)
     return {
-        "resource": f"{_base_url()}/mcp",
+        "resource": _resource(),
         "authorization_servers": [f"{_base_url()}/oauth"],
         "scopes_supported": [_SCOPE],
         "bearer_methods_supported": ["header"],
@@ -141,6 +150,10 @@ def authorize_form(request: Request):
     if not _enabled():
         return _oauth_error("temporarily_unavailable", 404)
     params = _params(request)
+    if params.get("resource") != _resource():
+        return _oauth_error("invalid_target")
+    if params.get("scope", _SCOPE) != _SCOPE:
+        return _oauth_error("invalid_scope")
     if params.get("response_type") != "code" or params.get("code_challenge_method") != "S256":
         return _oauth_error("invalid_request")
     with SessionLocal() as db:
@@ -157,6 +170,10 @@ async def authorize_submit(request: Request):
     if not _enabled():
         return _oauth_error("temporarily_unavailable", 404)
     params = await _form_params(request)
+    if params.get("resource") != _resource():
+        return _oauth_error("invalid_target")
+    if params.get("scope", _SCOPE) != _SCOPE:
+        return _oauth_error("invalid_scope")
     if params.get("approve") != "yes":
         return _login_page(params, "必须确认授权。")
     with SessionLocal.begin() as db:
@@ -167,7 +184,9 @@ async def authorize_submit(request: Request):
         if params.get("code_challenge_method") != "S256" or not params.get("code_challenge"):
             return _login_page(params, "授权请求缺少 PKCE 校验。")
         code = secrets.token_urlsafe(32)
-        db.add(McpOAuthAuthorizationCode(code_hash=_hash(code), client_id=client.client_id, user_id=user.id, redirect_uri=params["redirect_uri"], code_challenge=params["code_challenge"], scopes_json=[_SCOPE], expires_at=datetime.utcnow() + timedelta(minutes=_CODE_TTL_MINUTES)))
+        grant_id = secrets.token_urlsafe(32)
+        db.add(McpOAuthGrant(grant_id=grant_id, client_id=client.client_id, user_id=user.id, resource_uri=params["resource"]))
+        db.add(McpOAuthAuthorizationCode(code_hash=_hash(code), client_id=client.client_id, user_id=user.id, redirect_uri=params["redirect_uri"], code_challenge=params["code_challenge"], resource_uri=params["resource"], grant_id=grant_id, scopes_json=[_SCOPE], expires_at=datetime.utcnow() + timedelta(minutes=_CODE_TTL_MINUTES)))
     query = {"code": code}
     if params.get("state"):
         query["state"] = params["state"]
@@ -179,6 +198,8 @@ async def token(request: Request):
     if not _enabled():
         return _oauth_error("temporarily_unavailable", 404)
     params = await _form_params(request)
+    if params.get("resource") != _resource():
+        return _oauth_error("invalid_target")
     grant_type, client_id = params.get("grant_type"), params.get("client_id")
     with SessionLocal.begin() as db:
         client = db.scalar(select(McpOAuthClient).where(McpOAuthClient.client_id == client_id))
@@ -186,23 +207,57 @@ async def token(request: Request):
             return _oauth_error("invalid_client", 401)
         if grant_type == "authorization_code":
             record = db.scalar(select(McpOAuthAuthorizationCode).where(McpOAuthAuthorizationCode.code_hash == _hash(params.get("code", ""))).with_for_update())
-            if record is None or record.client_id != client_id or record.consumed_at is not None or record.expires_at < datetime.utcnow() or record.redirect_uri != params.get("redirect_uri") or _pkce_challenge(params.get("code_verifier", "")) != record.code_challenge:
+            if record is None or record.resource_uri != params["resource"] or record.client_id != client_id or record.consumed_at is not None or record.expires_at < datetime.utcnow() or record.redirect_uri != params.get("redirect_uri") or _pkce_challenge(params.get("code_verifier", "")) != record.code_challenge:
                 return _oauth_error("invalid_grant")
             record.consumed_at = datetime.utcnow()
             user = db.get(UserAccount, record.user_id)
             scopes = record.scopes_json
+            grant_id = record.grant_id
         elif grant_type == "refresh_token":
             record = db.scalar(select(McpOAuthRefreshToken).where(McpOAuthRefreshToken.token_hash == _hash(params.get("refresh_token", ""))).with_for_update())
-            if record is None or record.client_id != client_id or record.revoked_at is not None or record.expires_at < datetime.utcnow():
+            if record is None or record.resource_uri != params["resource"] or record.client_id != client_id or record.expires_at < datetime.utcnow():
+                return _oauth_error("invalid_grant")
+            if record.revoked_at is not None:
+                compromised = db.scalar(select(McpOAuthGrant).where(McpOAuthGrant.grant_id == record.grant_id).with_for_update())
+                if compromised is not None and compromised.revoked_at is None:
+                    compromised.revoked_at = datetime.utcnow()
                 return _oauth_error("invalid_grant")
             record.revoked_at = datetime.utcnow()
             user = db.get(UserAccount, record.user_id)
             scopes = record.scopes_json
+            grant_id = record.grant_id
         else:
             return _oauth_error("unsupported_grant_type")
         if user is None or user.status != "active":
             return _oauth_error("invalid_grant")
+        grant = db.scalar(select(McpOAuthGrant).where(McpOAuthGrant.grant_id == grant_id).with_for_update())
+        if grant is None or grant.revoked_at is not None or grant.user_id != user.id or grant.client_id != client_id or grant.resource_uri != params["resource"]:
+            return _oauth_error("invalid_grant")
         refresh_token = secrets.token_urlsafe(48)
-        db.add(McpOAuthRefreshToken(token_hash=_hash(refresh_token), client_id=client_id, user_id=user.id, scopes_json=scopes, expires_at=datetime.utcnow() + timedelta(days=get_settings().mcp_oauth_refresh_token_expire_days)))
-        access_token = create_mcp_access_token(user)
+        db.add(McpOAuthRefreshToken(token_hash=_hash(refresh_token), client_id=client_id, user_id=user.id, resource_uri=params["resource"], grant_id=grant_id, scopes_json=scopes, expires_at=datetime.utcnow() + timedelta(days=get_settings().mcp_oauth_refresh_token_expire_days)))
+        access_token = create_mcp_access_token(user, grant_id=grant_id)
     return {"access_token": access_token, "token_type": "Bearer", "expires_in": get_settings().mcp_token_expire_minutes * 60, "refresh_token": refresh_token, "scope": " ".join(scopes)}
+
+
+@router.get("/api/mcp/authorizations")
+def list_authorizations(user: UserAccount = Depends(get_current_user)):
+    if not _enabled():
+        return _oauth_error("temporarily_unavailable", 404)
+    with SessionLocal() as db:
+        grants = db.scalars(select(McpOAuthGrant).where(McpOAuthGrant.user_id == user.id, McpOAuthGrant.revoked_at.is_(None))).all()
+        client_ids = sorted({grant.client_id for grant in grants})
+        clients = db.scalars(select(McpOAuthClient).where(McpOAuthClient.client_id.in_(client_ids))).all() if client_ids else []
+        names = {client.client_id: client.client_name for client in clients}
+        return {"clients": [{"client_id": client_id, "client_name": names.get(client_id)} for client_id in client_ids]}
+
+
+@router.post("/api/mcp/authorizations/{client_id}/revoke")
+def revoke_authorization(client_id: str, user: UserAccount = Depends(get_current_user)):
+    if not _enabled():
+        return _oauth_error("temporarily_unavailable", 404)
+    with SessionLocal.begin() as db:
+        grants = db.scalars(select(McpOAuthGrant).where(McpOAuthGrant.user_id == user.id, McpOAuthGrant.client_id == client_id).with_for_update()).all()
+        for grant in grants:
+            if grant.revoked_at is None:
+                grant.revoked_at = datetime.utcnow()
+    return {"revoked": True}

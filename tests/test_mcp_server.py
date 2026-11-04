@@ -104,6 +104,47 @@ def test_mcp_tools_return_structured_fictional_results_and_trusted_identity_only
     assert session.close.call_count == 3
 
 
+def test_recent_training_marks_inconsistent_detail_as_incomplete() -> None:
+    payload = {
+        "data_status": "PARTIAL", "as_of": "2026-07-22",
+        "range_start": "2026-06-25", "range_end": "2026-07-22",
+        "items": [], "details_complete": True,
+        "summary": {"total_sessions": 1, "total_distance_km": None, "completed_key_sessions": 0, "rest_days": 0},
+        "data_quality": {"level": "PARTIAL", "completeness": 0, "missing_fields": []},
+        "fact_issues": [{"code": "SESSION_SUMMARY_DETAIL_MISMATCH", "message": "Synthetic mismatch", "affected_metrics": ["total_sessions"]}],
+    }
+    result = McpToolAdapter._recent_training(payload)
+    assert result.details_complete is False
+    assert result.fact_issues[0].code == "SESSION_SUMMARY_DETAIL_MISMATCH"
+    assert str(result.range_start) == "2026-06-25"
+
+
+def test_recent_training_marks_truncated_details_without_recalculating_summary() -> None:
+    payload = {
+        "data_status": "AVAILABLE", "as_of": "2026-07-22", "items": [],
+        "details_complete": False,
+        "summary": {"total_sessions": 25, "total_distance_km": 180, "completed_key_sessions": 2, "rest_days": 2},
+        "data_quality": {"level": "COMPLETE", "completeness": 1, "missing_fields": []},
+        "fact_issues": [{"code": "TRAINING_DETAILS_TRUNCATED", "message": "Synthetic truncation", "affected_metrics": ["total_sessions"]}],
+    }
+    result = McpToolAdapter._recent_training(payload)
+    assert result.details_complete is False
+    assert result.summary.total_sessions == 25
+
+
+def test_mcp_recent_training_preserves_record_reference_and_source() -> None:
+    payload = {
+        "data_status": "AVAILABLE", "as_of": "2026-07-22",
+        "items": [{"record_ref": "workout_log:17", "date": "2026-07-21", "training_type": "easy", "planned_or_unplanned": "UNPLANNED", "completion_status": "completed", "source": "GARMIN"}],
+        "details_complete": True,
+        "summary": {"total_sessions": 1, "total_distance_km": None, "completed_key_sessions": 0, "rest_days": 0},
+        "data_quality": {"level": "COMPLETE", "completeness": 1, "missing_fields": []},
+    }
+    result = McpToolAdapter._recent_training(payload)
+    assert result.items[0].record_ref == "workout_log:17"
+    assert result.items[0].source == "GARMIN"
+
+
 def test_mcp_rejects_extra_identity_and_invalid_arguments_with_safe_code() -> None:
     server, _fake, _session = _server()
     for arguments in (

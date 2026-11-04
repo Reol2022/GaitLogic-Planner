@@ -55,6 +55,7 @@ class McpTodayPlan(McpContractModel):
 class McpRecentTrainingItem(McpContractModel):
     """Public training fact, deliberately excluding free-text workout reviews."""
 
+    record_ref: str | None = Field(default=None, max_length=80)
     date: date
     training_type: str = Field(max_length=80)
     planned_or_unplanned: str = Field(max_length=32)
@@ -74,11 +75,20 @@ class McpRecentTrainingSummary(McpContractModel):
     rest_days: int = Field(ge=0)
 
 
+class McpTrainingFactIssue(McpContractModel):
+    code: str = Field(max_length=80)
+    message: str = Field(max_length=300)
+    affected_metrics: list[str] = Field(default_factory=list, max_length=20)
+
+
 class McpRecentTraining(McpContractModel):
     data_status: str = Field(min_length=1, max_length=32)
     as_of: date
     items: list[McpRecentTrainingItem] = Field(default_factory=list, max_length=20)
     details_complete: bool | None = None
+    range_start: date | None = None
+    range_end: date | None = None
+    fact_issues: list[McpTrainingFactIssue] = Field(default_factory=list, max_length=20)
     summary: McpRecentTrainingSummary
     data_quality: McpDataQuality
     missing_reasons: list[str] = Field(default_factory=list, max_length=20)

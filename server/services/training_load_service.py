@@ -150,6 +150,7 @@ def get_recent_training_read(
         completed_key_sessions += int(is_completed_key)
         sessions.append(
             RecentTrainingSessionRead(
+                record_ref=f"workout_log:{log.id}",
                 date=actual_date,
                 planned_date=workout.workout_date if workout else None,
                 training_type=workout_type,

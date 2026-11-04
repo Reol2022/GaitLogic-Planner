@@ -25,8 +25,9 @@ def main() -> None:
             if urlsplit(self.path).path == "/callback" and params.get("state") == [state] and params.get("code"):
                 code_holder["code"] = params["code"][0]
                 self.send_response(200)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
                 self.end_headers()
-                self.wfile.write("授权已完成，可以关闭此页面。".encode())
+                self.wfile.write("授权已完成，可以关闭此页面。".encode("utf-8"))
             else:
                 self.send_error(400)
 
@@ -47,14 +48,14 @@ def main() -> None:
         registration = client.post(info["registration_endpoint"], json={"client_name": "GaitLogic local MCP probe", "redirect_uris": [CALLBACK]})
         registration.raise_for_status()
         client_id = registration.json()["client_id"]
-        params = {"response_type": "code", "client_id": client_id, "redirect_uri": CALLBACK, "scope": "mcp:read", "code_challenge": challenge, "code_challenge_method": "S256", "state": state}
+        params = {"response_type": "code", "client_id": client_id, "redirect_uri": CALLBACK, "scope": "mcp:read", "resource": BASE + "/mcp", "code_challenge": challenge, "code_challenge_method": "S256", "state": state}
         print("OAuth discovery: PASS", flush=True)
         print("请在浏览器中打开并登录授权：", info["authorization_endpoint"] + "?" + urlencode(params), flush=True)
         callback.handle_request()
         if "code" not in code_holder:
             print("OAuth authorization: BLOCKED", flush=True)
             return
-        token = client.post(info["token_endpoint"], data={"grant_type": "authorization_code", "client_id": client_id, "code": code_holder["code"], "redirect_uri": CALLBACK, "code_verifier": verifier})
+        token = client.post(info["token_endpoint"], data={"grant_type": "authorization_code", "client_id": client_id, "code": code_holder["code"], "redirect_uri": CALLBACK, "code_verifier": verifier, "resource": BASE + "/mcp"})
         token.raise_for_status()
         access_token = token.json()["access_token"]
         print("PKCE / token exchange: PASS", flush=True)

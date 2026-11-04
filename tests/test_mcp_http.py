@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 import pytest
@@ -33,6 +34,12 @@ class _Session:
 
     def scalar(self, query):
         params = query.compile().params
+        if "mcp_oauth_grants" in str(query):
+            grant_id = next(iter(params.values()))
+            if grant_id not in {"fictional-grant-101", "fictional-grant-202"}:
+                return None
+            settings = get_settings()
+            return SimpleNamespace(user_id=int(grant_id.rsplit("-", 1)[1]), revoked_at=None, resource_uri=settings.mcp_resource_uri or f"{settings.mcp_public_base_url.rstrip('/')}/mcp")
         user_id = next(value for key, value in params.items() if key.startswith("id"))
         return self.users.get(user_id)
 
@@ -67,7 +74,7 @@ def http_dependencies(monkeypatch: pytest.MonkeyPatch):
 
 
 def _token(user: UserAccount) -> str:
-    return create_mcp_access_token(user)
+    return create_mcp_access_token(user, grant_id=f"fictional-grant-{user.id}")
 
 
 def _headers(token: str | None, *, origin: str = ALLOWED_ORIGIN) -> dict[str, str]:
@@ -188,8 +195,8 @@ def test_http_mcp_rejects_signed_token_without_read_scope(http_dependencies) -> 
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(users[101].id),
-        "iss": dependencies.settings.mcp_token_issuer,
-        "aud": dependencies.settings.mcp_token_audience,
+        "iss": f"{dependencies.settings.mcp_public_base_url.rstrip('/')}/oauth",
+        "aud": dependencies.settings.mcp_resource_uri or f"{dependencies.settings.mcp_public_base_url.rstrip('/')}/mcp",
         "purpose": MCP_TOKEN_PURPOSE,
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=10)).timestamp()),
@@ -202,13 +209,49 @@ def test_http_mcp_rejects_signed_token_without_read_scope(http_dependencies) -> 
     assert fake.seen_user_ids == []
 
 
+def test_revoked_grant_rejects_previously_issued_access_token(http_dependencies, monkeypatch) -> None:
+    dependencies, users, fake, _sessions = http_dependencies
+    original = _Session.scalar
+
+    def revoked(session, query):
+        if "mcp_oauth_grants" in str(query):
+            return SimpleNamespace(user_id=101, revoked_at=datetime.now(timezone.utc), resource_uri=dependencies.settings.mcp_public_base_url.rstrip("/") + "/mcp")
+        return original(session, query)
+
+    monkeypatch.setattr(_Session, "scalar", revoked)
+    with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
+        response = client.post("/mcp", headers=_headers(_token(users[101])), json={})
+    assert response.status_code == 401
+    assert response.json()["code"] == "INVALID_TOKEN"
+    assert fake.seen_user_ids == []
+
+
+def test_grant_store_outage_fails_closed(http_dependencies, monkeypatch) -> None:
+    dependencies, users, fake, _sessions = http_dependencies
+    monkeypatch.setattr(_Session, "scalar", Mock(side_effect=RuntimeError("synthetic outage")))
+    with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
+        response = client.post("/mcp", headers=_headers(_token(users[101])), json={})
+    assert response.status_code == 401
+    assert fake.seen_user_ids == []
+
+
+def test_legacy_token_without_grant_is_rejected(http_dependencies) -> None:
+    dependencies, users, fake, _sessions = http_dependencies
+    token = create_mcp_access_token(users[101])
+    with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
+        response = client.post("/mcp", headers=_headers(token), json={})
+    assert response.status_code == 401
+    assert response.json()["code"] == "INVALID_TOKEN"
+    assert fake.seen_user_ids == []
+
+
 @pytest.mark.parametrize("claim, value, expected", [("exp", 0, "TOKEN_EXPIRED"), ("aud", "other-mcp", "INVALID_TOKEN")])
 def test_http_mcp_rejects_expired_and_wrong_audience_tokens(http_dependencies, claim, value, expected) -> None:
     dependencies, users, fake, _sessions = http_dependencies
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(users[101].id),
-        "iss": dependencies.settings.mcp_token_issuer,
+        "iss": f"{dependencies.settings.mcp_public_base_url.rstrip('/')}/oauth",
         "aud": dependencies.settings.mcp_token_audience,
         "purpose": MCP_TOKEN_PURPOSE,
         "iat": int(now.timestamp()),
