@@ -9,7 +9,7 @@
 **Plan smarter. Run calmer. Review honestly.**
 
 <p>
-  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.16.3-1976d2?style=for-the-badge" /></a>
+  <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.16.8-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
@@ -33,6 +33,12 @@
 </div>
 
 ---
+
+## v0.16.8 Garmin 同步修复与 MCP 授权体验
+
+- 修复 Garmin 和通用数据同步重试任务只排队、不执行的问题；新任务使用既有后台执行入口。
+- 更新 MCP 授权页面的布局与移动端体验，保留只读授权和现有安全校验。
+- Garmin 连接器使用项目锁定的 `garminconnect==0.2.36`、`garth==0.5.20`；升级后需核对依赖并重启服务。完整线上同步结果以实际验收为准。
 
 ## v0.16.3 DeepSeek Thinking 与智能周复盘收口
 

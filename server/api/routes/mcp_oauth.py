@@ -86,14 +86,37 @@ def _login_page(params: dict[str, str], message: str | None = None) -> HTMLRespo
         for key, value in params.items()
         if key in {"client_id", "redirect_uri", "state", "scope", "code_challenge", "code_challenge_method", "resource"}
     )
-    warning = f"<p>{html.escape(message)}</p>" if message else ""
-    body = f"""<!doctype html><html lang=\"zh-CN\"><meta charset=\"utf-8\"><title>授权 GaitLogic MCP</title>
-    <body><main><h1>授权 GaitLogic MCP</h1><p>登录后，ChatGPT 将只读访问你的训练计划、训练记录、Runner State 和训练知识引用。</p>{warning}
-    <form method=\"post\" action=\"/oauth/authorize\">{fields}
-    <label>用户名 <input name=\"username\" autocomplete=\"username\" required></label><br>
-    <label>密码 <input type=\"password\" name=\"password\" autocomplete=\"current-password\" required></label><br>
-    <label><input type=\"checkbox\" name=\"approve\" value=\"yes\" required> 我同意授予只读访问权限</label><br>
-    <button type=\"submit\">登录并授权</button></form></main></body></html>"""
+    warning = f'<div class="notice" role="alert">{html.escape(message)}</div>' if message else ""
+    body = f"""<!doctype html>
+    <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow"><title>授权连接 · GaitLogic</title>
+    <style>
+    *{{box-sizing:border-box}} body{{margin:0;background:#f3f6f4;color:#1c3027;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;line-height:1.6}}
+    .page{{min-height:100vh;display:grid;place-items:center;padding:32px 18px;background:radial-gradient(ellipse at 15% 0%,#dcefe4,transparent 40%),radial-gradient(ellipse at 100% 100%,#e0ece7,transparent 35%)}}
+    .card{{width:min(100%,490px);background:#fff;border:1px solid #e2ebe5;border-radius:22px;box-shadow:0 20px 60px rgba(24,62,43,.09);padding:36px}}
+    .brand{{display:flex;align-items:center;gap:11px;font-size:15px;font-weight:750;letter-spacing:.04em;color:#246445}}
+    .mark{{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:#226a48;color:white;font-size:18px}}
+    .eyebrow{{display:inline-block;margin-top:29px;padding:4px 10px;border-radius:20px;background:#eaf5ed;color:#397855;font-size:12px;font-weight:700}}
+    h1{{font-size:26px;line-height:1.3;margin:14px 0 8px;letter-spacing:-.02em}} .intro{{margin:0;color:#667a6e;font-size:14px}}
+    .permissions{{margin:22px 0;padding:16px 18px;border-radius:14px;background:#f5f8f6;border:1px solid #e7eeea}}
+    .permissions h2{{font-size:13px;margin:0 0 8px;color:#355444}} .permissions ul{{margin:0;padding-left:19px;color:#526b5b;font-size:13px}} .permissions li+li{{margin-top:3px}}
+    .notice{{margin:16px 0;color:#a6352b;background:#fff3f0;border:1px solid #f5d4cd;border-radius:10px;padding:10px 12px;font-size:13px}}
+    .field{{display:block;margin:16px 0 0;font-size:13px;font-weight:650;color:#385144}} .field input{{display:block;width:100%;margin-top:6px;padding:12px 13px;border:1px solid #d8e3db;border-radius:10px;font:inherit;font-size:14px;background:#fff;color:#1c3027;outline:none}}
+    .field input:focus{{border-color:#438d63;box-shadow:0 0 0 3px rgba(67,141,99,.14)}} .consent{{display:flex;align-items:flex-start;gap:10px;margin:20px 0;color:#53695a;font-size:13px;cursor:pointer}}
+    .consent input{{margin:4px 0 0;accent-color:#26744d;flex:none}} button{{width:100%;border:0;border-radius:11px;background:#246e49;color:white;font:inherit;font-weight:700;padding:13px;cursor:pointer}} button:hover{{background:#1c5e3d}} button:focus-visible{{outline:3px solid #91c5a5;outline-offset:3px}}
+    .foot{{margin:18px 0 0;text-align:center;color:#829287;font-size:12px}} @media(max-width:480px){{.page{{padding:16px}} .card{{padding:26px 22px;border-radius:18px}} h1{{font-size:23px}}}}
+    </style></head><body><main class="page"><section class="card" aria-labelledby="title">
+    <div class="brand"><span class="mark" aria-hidden="true">G</span><span>GAITLOGIC</span></div>
+    <span class="eyebrow">安全连接 · 只读授权</span><h1 id="title">连接 GaitLogic</h1>
+    <p class="intro">登录你的 GaitLogic 账号，授权应用读取训练信息，用于提供更贴合你的分析。</p>
+    <div class="permissions"><h2>授权后可读取</h2><ul><li>训练计划与训练记录</li><li>Runner State 与训练知识引用</li></ul></div>
+    {warning}<form method="post" action="/oauth/authorize">{fields}
+    <label class="field">用户名<input name="username" autocomplete="username" required></label>
+    <label class="field">密码<input type="password" name="password" autocomplete="current-password" required></label>
+    <label class="consent"><input type="checkbox" name="approve" value="yes" required><span>我已了解并同意授予上述只读访问权限。</span></label>
+    <button type="submit">登录并授权</button></form>
+    <p class="foot">请输入 GaitLogic 账号，并确认当前页面地址可信。</p>
+    </section></main></body></html>"""
     return HTMLResponse(body)
 
 

@@ -35,7 +35,7 @@ def _app_version() -> str:
     try:
         return version("gaitlogic-planner")
     except PackageNotFoundError:
-        return "0.16.3"
+        return "0.16.8"
 
 
 @lru_cache(maxsize=1)

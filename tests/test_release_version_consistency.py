@@ -8,7 +8,7 @@ from server.main import app
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_VERSION = "0.16.3"
+EXPECTED_VERSION = "0.16.8"
 
 
 def test_release_version_declarations_are_consistent() -> None:
@@ -50,6 +50,9 @@ def test_release_documents_declare_current_version_and_preserve_history() -> Non
         PROJECT_ROOT / "docs" / "release" / "v0.16.0.md"
     ).read_text(encoding="utf-8")
 
+    assert "v0.16.8" in readme
+    assert "v0.16.8" in readme_en
+    assert "## v0.16.8" in changelog
     assert "v0.16.3" in readme
     assert "v0.16.3" in readme_en
     assert "## v0.16.3" in changelog

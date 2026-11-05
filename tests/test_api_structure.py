@@ -24,7 +24,7 @@ def test_version_route_exposes_only_safe_build_fingerprint() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert set(payload) == {"app_version", "git_commit", "environment", "build_time"}
-    assert payload["app_version"] == "0.16.3"
+    assert payload["app_version"] == "0.16.8"
     assert re.fullmatch(r"(?:unknown|[0-9a-f]{7,40})", payload["git_commit"])
     assert "Gaitlogic-planner" not in str(payload)
 

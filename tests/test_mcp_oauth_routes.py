@@ -88,3 +88,15 @@ def test_authorize_requires_registered_redirect_and_pkce(monkeypatch):
             connection.execute(delete(McpOAuthClient).where(McpOAuthClient.client_id == client_id))
         get_settings.cache_clear()
         engine.dispose()
+
+
+def test_authorization_page_preserves_escaped_oauth_fields_and_errors():
+    from server.api.routes.mcp_oauth import _login_page
+
+    page = _login_page({"state": '"<script>', "untrusted": "ignored"}, '<unsafe>')
+    body = page.body.decode('utf-8')
+    assert 'name="state" value="&quot;&lt;script&gt;"' in body
+    assert '&lt;unsafe&gt;' in body
+    assert 'name="untrusted"' not in body
+    assert 'name="approve" value="yes" required' in body
+    assert 'name="password"' in body

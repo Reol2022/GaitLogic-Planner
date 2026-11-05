@@ -143,11 +143,15 @@ def get_sync_job(
 @router.post("/sync-jobs/{job_id}/retry", response_model=ExternalSyncJobRead)
 def retry_sync_job(
     job_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user),
 ) -> ExternalSyncJobRead:
     assert_data_sync_available(db, current_user)
-    return _facade(db, current_user).retry_sync_job(job_id)
+    job = _facade(db, current_user).retry_sync_job(job_id)
+    if job.status == "queued":
+        background_tasks.add_task(run_sync_job_in_background, job.id)
+    return job
 
 
 @router.get("/activities", response_model=DataSyncActivityListResponse)
