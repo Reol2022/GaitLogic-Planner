@@ -260,6 +260,7 @@ def activate_cycle(
     user_id: int,
     cycle_id: int,
     payload: TrainingCycleActivateRequest,
+    *, commit: bool = True,
 ) -> TrainingCycle:
     cycles = list(
         db.scalars(
@@ -276,8 +277,9 @@ def activate_cycle(
         if target.actual_start_date is None:
             target.actual_start_date = payload.effective_start_date
         target.activated_at = target.activated_at or datetime.utcnow()
-        db.commit()
-        db.refresh(target)
+        if commit:
+            db.commit()
+            db.refresh(target)
         return target
     if target.status != TrainingCycleStatus.draft:
         raise BadRequestError("Only draft cycles can be activated.")
@@ -299,8 +301,9 @@ def activate_cycle(
     target.activated_at = now
     target.actual_end_date = None
     target.completed_at = None
-    db.commit()
-    db.refresh(target)
+    if commit:
+        db.commit()
+        db.refresh(target)
     return target
 
 

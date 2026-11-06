@@ -1,4 +1,8 @@
 import request from "./request";
+import type {PlanContext} from '@/types/planContext';
+
+export function getAIPlanContext(){return request.get<PlanContext>('/ai-plan/context');}
+export function assessAIPlanContext(payload:AIPlanGeneratePayload){return request.post<PlanContext>('/ai-plan/context/assess',payload);}
 import type {
   AIPlanDraft,
   AIPlanExportFormat,
@@ -22,8 +26,8 @@ export function getAIPlanDraftDetail(id: number) {
   return request.get<AIPlanDraft>(`/ai-plan/drafts/${id}`);
 }
 
-export function applyAIPlanDraft(id: number, confirmHigh = false) {
-  return request.post<{ message: string; cycle_id: number }>(`/ai-plan/drafts/${id}/apply`, undefined, {
+export function applyAIPlanDraft(id: number, confirmHigh = false, activate = false) {
+  return request.post<{ message: string; cycle_id: number; cycle_status:string; activated:boolean }>(`/ai-plan/drafts/${id}/apply`, {activate}, {
     params: { confirm_high: confirmHigh },
   });
 }

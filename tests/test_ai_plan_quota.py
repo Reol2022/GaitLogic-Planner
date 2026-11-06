@@ -26,7 +26,9 @@ def mysql_session_factory():
     port = int(os.getenv("MYSQL_PORT", "3306"))
     user = os.getenv("MYSQL_USER", "root")
     password = os.getenv("MYSQL_PASSWORD", "")
-    database = f"gaitlogic_planner_ai_plan_test_{uuid4().hex[:12]}"
+    if host not in {'127.0.0.1','localhost'}:
+        pytest.fail('AI plan integration tests require an explicit local MySQL host')
+    database = f"gaitlogic_test_ai_plan_{uuid4().hex[:12]}"
 
     try:
         connection = pymysql.connect(
@@ -140,6 +142,7 @@ def ai_output() -> str:
             "target_race_name": "眉山东坡半马",
             "target_race_date": "2026-11-08",
             "target_result": "1:11:30",
+            "target_distance": "half_marathon",
             "summary": "稳步推进",
             "risk_notes": ["注意恢复"],
             "weeks": [
@@ -147,11 +150,11 @@ def ai_output() -> str:
                     "block_name": "Week 1",
                     "phase_name": "基础期",
                     "focus": "恢复接量",
-                    "planned_distance_km": 80,
+                    "planned_distance_km": 10,
                     "workouts": [
                         {
-                            "date": "2026-06-01",
-                            "weekday": "周一",
+                            "date": "2026-06-02",
+                            "weekday": "周二",
                             "planned_content": "轻松跑 10km",
                             "focus_note": "控制心率",
                             "planned_distance_km": 10,
@@ -164,11 +167,11 @@ def ai_output() -> str:
                     "block_name": "Week 2",
                     "phase_name": "基础期",
                     "focus": "稳定跑量",
-                    "planned_distance_km": 82,
+                    "planned_distance_km": 8,
                     "workouts": [
                         {
-                            "date": "2026-06-08",
-                            "weekday": "周一",
+                            "date": "2026-06-09",
+                            "weekday": "周二",
                             "planned_content": "恢复跑 8km",
                             "focus_note": "吸收训练",
                             "planned_distance_km": 8,
