@@ -18,6 +18,8 @@ from planner_core.database.models import (  # noqa: F401
     AIPlanJob,
     AIPlanQuota,
     AdminAISettings,
+    AdminAuditEvent,
+    AdminConfigRevision,
     AdminSystemSettings,
     BlockReview,
     DailyRecoveryCheckin,
@@ -81,6 +83,8 @@ def create_database_if_missing() -> None:
 def main() -> None:
     create_database_if_missing()
     Base.metadata.create_all(bind=engine)
+    from scripts.upgrade_admin_console import upgrade
+    upgrade(engine)
     print("Database gaitlogic_planner initialized successfully.")
 
 

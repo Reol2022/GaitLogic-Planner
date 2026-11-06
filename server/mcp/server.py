@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from typing import Annotated, Literal
+from datetime import date
+from mcp.types import ToolAnnotations
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
@@ -19,6 +21,7 @@ from server.mcp.schemas import (
     McpRunnerStateResult,
     McpTodayPlanResult,
 )
+from server.mcp.facts_v2 import McpRecoveryTrendResult, McpTrainingDetailResult
 
 
 class GaitLogicMcpServer(MCPServer):
@@ -32,9 +35,11 @@ class GaitLogicMcpServer(MCPServer):
 
     _ARGUMENT_NAMES = {
         "get_today_plan": frozenset(),
-        "get_recent_training": frozenset({"days", "limit"}),
+        "get_recent_training": frozenset({"days", "limit", "cursor", "start_date", "end_date"}),
         "get_runner_state": frozenset(),
         "retrieve_training_knowledge": frozenset({"query", "top_k", "categories", "tags", "language"}),
+        "get_recovery_trend": frozenset({"days"}),
+        "get_training_detail": frozenset({"record_ref"}),
     }
 
     async def call_tool(self, name, arguments, context=None):
@@ -43,7 +48,7 @@ class GaitLogicMcpServer(MCPServer):
             if set(arguments) - allowed:
                 raise ToolError("INVALID_ARGUMENT")
             if name == "get_recent_training":
-                for key, lower, upper in (("days", 1, 28), ("limit", 1, 20)):
+                for key, lower, upper in (("days", 1, 90), ("limit", 1, 20)):
                     value = arguments.get(key)
                     if value is not None and (
                         isinstance(value, bool)
@@ -51,6 +56,10 @@ class GaitLogicMcpServer(MCPServer):
                         or not lower <= value <= upper
                     ):
                         raise ToolError("INVALID_ARGUMENT")
+            if name == 'get_recovery_trend':
+                value = arguments.get('days', 7)
+                if type(value) is not int or not 1 <= value <= 28:
+                    raise ToolError('INVALID_ARGUMENT')
             if name == "retrieve_training_knowledge":
                 try:
                     RetrieveTrainingKnowledgeInput.model_validate(
@@ -74,7 +83,7 @@ def create_mcp_server(
     knowledge_tool_factory: KnowledgeToolFactory | None = None,
     knowledge_resource_service: McpKnowledgeResourceService | None = None,
 ) -> MCPServer:
-    """Create a server with four read-only tools plus safe knowledge primitives.
+    """Create a server with six read-only tools plus safe knowledge primitives.
 
     A production remote host must supply authenticated context in v0.15-B.  The
     command-line default purposely runs without identity, allowing protocol
@@ -102,25 +111,31 @@ def create_mcp_server(
         name="get_today_plan",
         description="Read today's plan for the trusted execution identity without changing it.",
         structured_output=True,
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False),
     )
     def get_today_plan() -> McpTodayPlanResult:
         return adapter.get_today_plan()
 
     @mcp.tool(
         name="get_recent_training",
-        description="Read bounded recent training facts for the trusted execution identity.",
+        description="Read training facts. For stable pagination use cursor='first' initially, then next_cursor with identical range arguments. Explicit date windows or days>28 use paged facts; legacy calls remain compatible. Summaries cover the full window, not each page.",
         structured_output=True,
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False),
     )
     def get_recent_training(
-        days: Annotated[int, Field(ge=1, le=28)] = 7,
+        days: Annotated[int, Field(ge=1, le=90)] = 7,
         limit: Annotated[int, Field(ge=1, le=20)] = 20,
+        cursor: Annotated[str | None, Field(max_length=2048)] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> McpRecentTrainingResult:
-        return adapter.get_recent_training(days=days, limit=limit)
+        return adapter.get_recent_training(days=days, limit=limit, cursor=cursor, start_date=start_date, end_date=end_date)
 
     @mcp.tool(
         name="get_runner_state",
         description="Read the current deterministic Runner State for the trusted execution identity.",
         structured_output=True,
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False),
     )
     def get_runner_state() -> McpRunnerStateResult:
         return adapter.get_runner_state()
@@ -129,6 +144,7 @@ def create_mcp_server(
         name="retrieve_training_knowledge",
         description="Retrieve canonical training-knowledge references without reading runner data or changing a plan.",
         structured_output=True,
+        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False),
     )
     def retrieve_training_knowledge(
         query: Annotated[str, Field(min_length=1, max_length=4000)],
@@ -144,6 +160,16 @@ def create_mcp_server(
             tags=tags,
             language=language,
         )
+
+    @mcp.tool(name='get_training_detail', description='Read persisted details and laps for a workout_log record_ref. Never infer missing segments. Identity is injected by the server.', structured_output=True,
+              annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False))
+    def get_training_detail(record_ref: Annotated[str, Field(pattern=r'^workout_log:[1-9][0-9]{0,17}$')]) -> McpTrainingDetailResult:
+        return adapter.get_training_detail(record_ref=record_ref)
+
+    @mcp.tool(name='get_recovery_trend', description='Read up to 28 calendar days of stored recovery facts. Requires separate mcp:recovery:read consent. Missing baselines and measurement timestamps remain unavailable.', structured_output=True,
+              annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False))
+    def get_recovery_trend(days: Annotated[int, Field(ge=1, le=28)] = 7) -> McpRecoveryTrendResult:
+        return adapter.get_recovery_trend(days=days)
 
     register_knowledge_primitives(mcp, knowledge_resource_service or McpKnowledgeResourceService())
 

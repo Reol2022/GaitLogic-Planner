@@ -8,6 +8,12 @@
 
 **Plan smarter. Run calmer. Review honestly.**
 
+集成候选版：Core Experience、移动端与自定义菜单、Gilo 教练对话、MCP 可信事实及独立管理控制台。验收范围见 [统一验收说明](docs/development/core-experience-and-mcp-v2-acceptance.md)，候选代码上传不等于线上已切换运行。
+
+管理控制台 MVP：[功能、迁移与启动说明](docs/development/admin-console-mvp.md)。运行 `npm run dev` 同时访问跑者端 `/` 与后台 `/admin.html#/login`；`npm run build` 同时打包两个入口，也支持 `npm run admin:build` 单独打包后台。尚未部署。
+
+AI Plan v2.0：已有训练事实、来源与用户约束进入统一 Plan Context；显式接受自动填写、生成前检查、硬约束校验及“仅保存 / 保存并启用”事务应用，见 [开发与验收报告](docs/development/ai-plan-personalization-v2.md)。
+
 <p>
   <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.16.8-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />

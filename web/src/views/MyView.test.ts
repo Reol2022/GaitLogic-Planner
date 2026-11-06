@@ -21,8 +21,9 @@ describe("MyView product entries", () => {
     const runnerLink = wrapper.findAll("a").find((link) => link.text().includes("训练状态"));
     expect(runnerLink).toBeDefined();
     expect(runnerLink?.attributes("data-path")).toBe("/runner-state");
-    const coachLink = wrapper.findAll("a").find((link) => link.text().includes("AI 教练"));
+    const coachLink = wrapper.findAll("a").find((link) => link.attributes('data-path')==='/coach');
     expect(coachLink).toBeDefined();
+    expect(coachLink?.text()).toContain('Gilo 教练');
     expect(coachLink?.attributes("data-path")).toBe("/coach");
     expect(wrapper.find('a[data-path="/weekly-review"]').exists()).toBe(true);
     expect(wrapper.find('a[data-path="/adaptive-weekly-review"]').exists()).toBe(false);

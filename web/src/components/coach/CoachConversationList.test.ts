@@ -25,7 +25,7 @@ describe("CoachConversationList", () => {
       global: { stubs },
     });
 
-    expect(wrapper.text()).toContain("训练对话");
+    expect(wrapper.text()).toContain("与 Gilo 的对话");
     expect(wrapper.text()).toContain("读取本月训练并分析");
     expect(wrapper.text()).toContain("4 条消息");
     expect(wrapper.find(".conversation-item").classes()).toContain("active");

@@ -2,6 +2,8 @@
     "version": "0.16.8",
     "name": "gaitlogic-planner-web",
     "scripts": {
+        "admin:dev": "vite --config ../vite.web.config.mjs",
+        "admin:build": "vite build --config ../vite.admin.config.mjs",
         "preview": "vite preview --config ../vite.web.config.mjs --host 0.0.0.0",
         "build": "vite build --config ../vite.web.config.mjs",
         "dev": "vite --config ../vite.web.config.mjs --host 0.0.0.0",

@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from planner_core.config import get_settings
-from planner_core.database.models import AdminAISettings
+from planner_core.database.models import AdminAISettings, AdminAuditEvent
 from server.schemas.admin_ai_settings import AdminAISettingsRead, AdminAISettingsUpdate
 
 SETTINGS_ROW_ID = 1
@@ -109,6 +109,8 @@ def update_admin_ai_settings(
     row.max_tokens_per_week = payload.max_tokens_per_week
     row.max_tokens_cap = payload.max_tokens_cap
     row.updated_by_id = admin_user_id
+    row.config_version += 1
+    db.add(AdminAuditEvent(actor_user_id=admin_user_id,action='LEGACY_AI_SETTINGS_UPDATED',target_type='ai_settings',target_id=row.id,changed_fields=sorted(payload.model_fields_set)))
     db.commit()
     db.refresh(row)
     return to_read_schema(row)

@@ -1,4 +1,4 @@
-"""Strict public response contracts for the three read-only MCP tools."""
+"""Strict public response contracts for read-only MCP tools."""
 
 from __future__ import annotations
 
@@ -66,6 +66,12 @@ class McpRecentTrainingItem(McpContractModel):
     average_heart_rate: int | None = None
     rpe: int | None = Field(default=None, ge=0, le=10)
     source: str = Field(max_length=32)
+    planned_training_type: str | None = Field(default=None, max_length=80)
+    actual_training_type: str | None = Field(default=None, max_length=80)
+    classification_basis: str | None = Field(default=None, max_length=40)
+    origin_source: str = Field(default="UNKNOWN", max_length=32)
+    record_source: Literal["WORKOUT_LOG"] = "WORKOUT_LOG"
+    verification_status: Literal["RECORDED_NOT_INDEPENDENTLY_VERIFIED"] = "RECORDED_NOT_INDEPENDENTLY_VERIFIED"
 
 
 class McpRecentTrainingSummary(McpContractModel):
@@ -92,6 +98,9 @@ class McpRecentTraining(McpContractModel):
     summary: McpRecentTrainingSummary
     data_quality: McpDataQuality
     missing_reasons: list[str] = Field(default_factory=list, max_length=20)
+    next_cursor: str | None = Field(default=None, max_length=2048)
+    summary_scope: Literal["FULL_QUERY_WINDOW"] = "FULL_QUERY_WINDOW"
+    planned_rest_days: int | None = Field(default=None, ge=0)
 
 
 class McpRunnerState(McpContractModel):
@@ -104,6 +113,8 @@ class McpRunnerState(McpContractModel):
     evidence: list[McpEvidence] = Field(default_factory=list, max_length=15)
     warnings: list[McpNotice] = Field(default_factory=list, max_length=20)
     limitations: list[McpNotice] = Field(default_factory=list, max_length=20)
+    assessment_status: Literal["ASSESSED", "PARTIALLY_ASSESSED", "INSUFFICIENT_DATA"] = "PARTIALLY_ASSESSED"
+    missing_evidence: list[str] = Field(default_factory=list, max_length=40)
 
 
 class _McpToolResult(McpContractModel):

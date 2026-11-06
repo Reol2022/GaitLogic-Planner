@@ -3,6 +3,7 @@ import type {
   DataSyncConnectionRead,
   DataSyncSummary,
   ExternalSyncJobRead,
+  ExternalActivityRead,
   GarminSyncPayload,
   ProviderListResponse,
 } from "@/types/models";
@@ -21,6 +22,10 @@ export function getDataSyncConnection(providerKey: string, skipErrorMessage = fa
 
 export function getDataSyncSummary(skipErrorMessage = false) {
   return request.get<DataSyncSummary>("/data-sync/summary", { skipErrorMessage });
+}
+
+export function listSyncedActivities(limit = 12) {
+  return request.get<{ activities: ExternalActivityRead[] }>("/data-sync/activities", { params: { limit }, skipErrorMessage: true });
 }
 
 export function updateDataSyncPreferences(

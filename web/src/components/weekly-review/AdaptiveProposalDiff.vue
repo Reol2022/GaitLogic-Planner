@@ -1,9 +1,9 @@
 <template>
   <section class="panel proposal-panel">
-    <header><div><h2>训练计划调整 Proposal</h2><p>只有你确认后，服务端才会重新校验并写入新计划版本。</p></div><el-tag>{{ proposal.status }}</el-tag></header>
+    <header><div><h2>下周调整草稿</h2><p>先比较原计划与建议。只有确认后，服务端才会重新校验并保存新版本。</p></div><el-tag>{{ proposalStatus(proposal.status) }}</el-tag></header>
     <el-alert v-for="warning in proposal.proposal.warnings" :key="warning" :title="warning" type="warning" :closable="false" show-icon />
     <article v-for="change in proposal.proposal.changes" :key="change.plan_id" class="change-card">
-      <div class="change-title"><strong>{{ change.date }}</strong><el-tag size="small">{{ change.action }}</el-tag></div>
+      <div class="change-title"><strong>{{ change.date }}</strong><el-tag size="small">{{ actionLabel(change.action) }}</el-tag></div>
       <div class="diff-grid">
         <div><span>原计划</span><p>{{ change.before.content }}</p><small>{{ distance(change.before.distance_km) }} · {{ change.before.main_type }}</small></div>
         <div class="after"><span>建议计划</span><p>{{ change.after.content }}</p><small>{{ distance(change.after.distance_km) }} · {{ change.after.main_type }}</small></div>
@@ -12,8 +12,8 @@
       <p class="evidence"><strong>规则证据：</strong>{{ change.rule_evidence.join("、") }}</p>
     </article>
     <div v-if="proposal.status === 'pending_approval'" class="actions">
-      <el-button @click="$emit('reject')">拒绝并保留原计划</el-button>
-      <el-button type="primary" @click="$emit('approve')">确认并创建新计划版本</el-button>
+      <el-button @click="$emit('reject')">不采用，保留原计划</el-button>
+      <el-button type="primary" @click="$emit('approve')">确认应用调整</el-button>
     </div>
   </section>
 </template>
@@ -23,6 +23,8 @@ import type { AdaptiveProposal } from "@/types/adaptivePlan";
 defineProps<{ proposal: AdaptiveProposal }>();
 defineEmits<{ approve: []; reject: [] }>();
 function distance(value: number | null) { return value === null ? "暂无数据" : `${value.toFixed(1)} km`; }
+function proposalStatus(value: string) { return ({ pending_approval: '等待你确认', approved: '已确认', applied: '已应用', rejected: '已拒绝', superseded: '已被新版本替代', invalidated: '需要重新生成' } as Record<string, string>)[value] || value; }
+function actionLabel(value: string) { return ({ keep: '保持不变', reduce: '降低训练量', replace: '替换训练', rest: '改为休息' } as Record<string, string>)[value] || value; }
 </script>
 
 <style scoped>

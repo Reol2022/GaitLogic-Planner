@@ -28,6 +28,8 @@ EXPECTED_TOOLS = {
     "get_recent_training",
     "get_runner_state",
     "retrieve_training_knowledge",
+    "get_training_detail",
+    "get_recovery_trend",
 }
 
 
@@ -75,14 +77,15 @@ def _list(server):
     return asyncio.run(run())
 
 
-def test_mcp_server_lists_only_four_strict_read_only_tools() -> None:
+def test_mcp_server_lists_only_six_strict_read_only_tools() -> None:
     server, _fake, _session = _server()
     tools = _list(server).tools
     assert {tool.name for tool in tools} == EXPECTED_TOOLS
     schemas = {tool.name: tool.input_schema for tool in tools}
     assert schemas["get_today_plan"].get("properties", {}) == {}
     assert schemas["get_runner_state"].get("properties", {}) == {}
-    assert set(schemas["get_recent_training"]["properties"]) == {"days", "limit"}
+    assert set(schemas["get_recent_training"]["properties"]) == {"days", "limit", "cursor", "start_date", "end_date"}
+    assert all(tool.annotations.read_only_hint is True for tool in tools)
     assert set(schemas["retrieve_training_knowledge"]["properties"]) == {
         "query", "top_k", "categories", "tags", "language"
     }
@@ -150,7 +153,7 @@ def test_mcp_rejects_extra_identity_and_invalid_arguments_with_safe_code() -> No
     for arguments in (
         {"user_id": 999},
         {"email": "fictional@example.test"},
-        {"days": 29},
+        {"days": 91},
         {"days": True},
     ):
         result = _call(server, "get_recent_training", arguments)

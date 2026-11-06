@@ -1,6 +1,22 @@
 <template>
   <div class="garmin-sync page-stack">
     <PageHeader title="Garmin 同步" subtitle="连接账号后，手动拉取跑步活动并写入训练日志。" />
+    <TrainingJourney active="record" />
+    <el-alert v-if="pageError" :title="pageError" type="error" :closable="false" show-icon />
+    <section v-if="latestJob" class="panel latest-sync" aria-live="polite">
+      <div class="section-head"><h2>{{ ['queued', 'running'].includes(latestJob.status) ? '当前同步' : '最近一次同步' }}</h2><el-tag :type="jobTagType(latestJob.status)">{{ formatStatusLabel(latestJob.status) }}</el-tag></div>
+      <p>{{ syncNextStep(latestJob.status, latestJob.error_code) }}</p>
+      <p v-if="latestJob.safe_error_message" class="sync-error">{{ latestJob.safe_error_message }}</p>
+      <p class="sync-meta">已读取 {{ latestJob.fetched_count }} 条 · 新增 {{ latestJob.created_count }} · 更新 {{ latestJob.updated_count }} · 待确认 {{ latestJob.needs_review_count }} · 失败 {{ latestJob.failed_count }}</p>
+      <p class="sync-meta">状态更新时间：{{ latestJob.updated_at }}<span v-if="pollingMessage"> · {{pollingMessage}}</span></p>
+      <div class="next-sync-actions">
+        <el-button v-if="['queued', 'running'].includes(latestJob.status)" :loading="isCancellingJob(latestJob.id)" @click="cancelJob(latestJob.id)">取消本次同步</el-button>
+        <el-button v-if="['failed', 'partially_succeeded'].includes(latestJob.status)" :disabled="hasActiveJob" :loading="retryingJobId === latestJob.id" @click="retryJob(latestJob.id)">重试同步</el-button>
+        <el-button v-if="latestJob.needs_review_count > 0" type="primary" @click="router.push('/todos')">确认活动关联</el-button>
+        <el-button v-if="['succeeded', 'partially_succeeded'].includes(latestJob.status)" @click="router.push('/today')">回到今日，补充感受</el-button>
+        <el-button text @click="router.push('/dashboard')">查看记录与趋势</el-button>
+      </div>
+    </section>
 
     <section class="status-band">
       <div>
@@ -51,7 +67,7 @@
 
     <section v-else class="panel sync-panel">
       <div class="sync-settings">
-        <span>同步后自动导入训练计划</span>
+        <span>将同步的实际活动写入训练日志（不会创建正式课表）</span>
         <el-switch
           v-model="status.auto_import_enabled"
           :loading="savingSettings"
@@ -63,7 +79,8 @@
       <div class="sync-options">
         <el-segmented v-model="syncForm.sync_mode" :options="syncOptions" />
         <template v-if="syncForm.sync_mode === 'custom_range'">
-          <el-date-picker v-model="customRange" type="datetimerange" start-placeholder="开始" end-placeholder="结束" />
+          <div v-if="compactViewport" class="mobile-date-range"><label>开始时间<input v-model="mobileRangeStart" type="datetime-local" /></label><label>结束时间<input v-model="mobileRangeEnd" type="datetime-local" /></label></div>
+          <el-date-picker v-else v-model="customRange" type="datetimerange" start-placeholder="开始" end-placeholder="结束" />
         </template>
         <el-button
           type="primary"
@@ -77,11 +94,21 @@
       </div>
     </section>
 
-    <section class="panel">
+    <details class="panel sync-history">
+      <summary>同步历史与错误详情（{{ jobs.length }}）</summary>
       <div class="section-head">
         <h2>同步任务</h2>
       </div>
-      <el-table :data="jobs" size="small" empty-text="暂无同步任务">
+      <div class="mobile-record-list" aria-label="同步任务卡片">
+        <MobileRecordCard v-for="job in jobs" :key="job.id" :title="`#${job.id} · ${formatStatusLabel(job.sync_mode)}`">
+          <template #status><el-tag :type="jobTagType(job.status)">{{formatStatusLabel(job.status)}}</el-tag></template>
+          <dl><div><dt>新增 / 更新</dt><dd>{{job.created_count}} / {{job.updated_count}}</dd></div><div><dt>待确认 / 失败</dt><dd>{{job.needs_review_count}} / {{job.failed_count}}</dd></div></dl>
+          <p v-if="job.safe_error_message">{{job.safe_error_message}}</p><RunnerStateSnapshotSyncStatus :result="job.runner_state_snapshot"/>
+          <template #actions><el-button v-if="['queued','running'].includes(job.status)" type="danger" plain :loading="isCancellingJob(job.id)" @click="cancelJob(job.id)">取消同步</el-button><el-button v-if="['failed','partially_succeeded'].includes(job.status)" :disabled="hasActiveJob" :loading="retryingJobId===job.id" @click="retryJob(job.id)">重试同步</el-button></template>
+        </MobileRecordCard>
+        <el-empty v-if="!jobs.length" description="暂无同步任务"/>
+      </div>
+      <el-table class="desktop-record-table" :data="jobs" size="small" empty-text="暂无同步任务">
         <el-table-column prop="id" label="ID" width="72" />
         <el-table-column label="模式" min-width="120">
           <template #default="{ row }">{{ formatStatusLabel(row.sync_mode) }}</template>
@@ -116,6 +143,8 @@
             </el-button>
             <el-button
               v-if="row.status === 'failed' || row.status === 'partially_succeeded'"
+              :disabled="hasActiveJob"
+              :loading="retryingJobId === row.id"
               size="small"
               text
               @click="retryJob(row.id)"
@@ -125,13 +154,22 @@
           </template>
         </el-table-column>
       </el-table>
-    </section>
+    </details>
 
     <section class="panel">
       <div class="section-head">
-        <h2>已同步活动</h2>
+        <h2>已同步活动 · 确认后补充感受</h2>
       </div>
-      <el-table :data="activities" size="small" empty-text="暂无活动">
+      <div class="mobile-record-list" aria-label="设备活动卡片">
+        <MobileRecordCard v-for="activity in activities" :key="activity.id" :title="`${activity.activity_date} · ${activity.activity_name || '跑步活动'}`">
+          <template #status><el-tag :type="activityTagType(activity.processing_status)">{{formatStatusLabel(activity.processing_status)}}</el-tag></template>
+          <dl><div><dt>距离</dt><dd>{{formatDistance(activity.distance_m)}}</dd></div><div><dt>时长</dt><dd>{{formatDuration(activity.duration_seconds)}}</dd></div><div><dt>配速</dt><dd>{{formatPace(activity.average_pace_seconds_per_km)}}</dd></div><div><dt>平均心率</dt><dd>{{activity.average_heart_rate_bpm ?? '暂无'}}</dd></div></dl>
+          <p>{{activity.planned_workout_id ? '已关联计划' : '尚未关联计划'}} · 日志 {{activity.workout_log_id ?? '未写入'}}</p>
+          <details><summary>查看处理详情</summary><p>解析：{{formatStatusLabel(activity.resolution_status)}} · 写入：{{formatStatusLabel(activity.apply_status)}}</p><p>复合训练：{{activity.composite_session_key?'是':'否'}}</p></details>
+          <template #actions><el-button v-if="activity.planned_workout_id" @click="goWorkoutLog(activity.planned_workout_id)">填写日志</el-button><el-button v-if="activity.processing_status==='needs_review'" @click="markUnplanned(activity.id)">记为计划外</el-button><el-button v-if="activity.processing_status!=='ignored'" @click="ignoreActivity(activity.id)">忽略活动</el-button><el-button @click="reprocessActivity(activity.id)">重新处理</el-button></template>
+        </MobileRecordCard><el-empty v-if="!activities.length" description="暂无活动"/>
+      </div>
+      <el-table class="desktop-record-table" :data="activities" size="small" empty-text="暂无活动">
         <el-table-column prop="activity_date" label="日期" width="112" />
         <el-table-column prop="activity_name" label="名称" min-width="180" show-overflow-tooltip />
         <el-table-column label="距离" width="100">
@@ -165,7 +203,7 @@
           <template #default="{ row }">{{ row.composite_session_key ? "是" : "否" }}</template>
         </el-table-column>
         <el-table-column label="待补 RPE" width="98">
-          <template #default="{ row }">{{ row.workout_log_id && row.processing_status !== "ignored" ? "待确认" : "-" }}</template>
+          <template #default="{ row }">{{ row.workout_log_id && row.processing_status !== "ignored" ? "请查看日志" : "-" }}</template>
         </el-table-column>
         <el-table-column label="操作" min-width="240" class-name="action-column">
           <template #default="{ row }">
@@ -182,7 +220,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, onActivated, onDeactivated, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { Close, Connection, Refresh, Upload } from "@element-plus/icons-vue";
@@ -201,6 +239,9 @@ import {
 } from "@/api/garminSync";
 import { getRequestErrorMessage } from "@/api/request";
 import RunnerStateSnapshotSyncStatus from "@/components/runner-state/RunnerStateSnapshotSyncStatus.vue";
+import MobileRecordCard from "@/components/common/MobileRecordCard.vue";
+import TrainingJourney from "@/components/common/TrainingJourney.vue";
+import { syncNextStep } from "@/utils/coreExperience";
 import type { ExternalActivityRead, ExternalSyncJobRead, GarminConnectionStatus, GarminSyncPayload } from "@/types/models";
 import {
   hasActiveSyncJobs,
@@ -220,7 +261,23 @@ const disconnecting = ref(false);
 const syncing = ref(false);
 const savingSettings = ref(false);
 const connectError = ref("");
+const pageError = ref('');
+const pollingMessage = ref('');
+const retryingJobId = ref<number | null>(null);
+const latestJob = computed(() => [...jobs.value].sort((a, b) => b.id - a.id)[0]);
+let pageActive = false;
 const customRange = ref<[Date, Date] | null>(null);
+const compactViewport=ref(window.innerWidth<=768),mobileRangeStart=ref(''),mobileRangeEnd=ref('');
+function resizeSyncViewport(){compactViewport.value=window.innerWidth<=768;}
+function dateTimeInputValue(date:Date){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}T${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;}
+watch(customRange,range=>{if(range){mobileRangeStart.value=dateTimeInputValue(range[0]);mobileRangeEnd.value=dateTimeInputValue(range[1]);}});
+watch([mobileRangeStart,mobileRangeEnd],([start,end])=>{
+  const a=new Date(start),b=new Date(end);
+  if(!start || !end || !Number.isFinite(a.getTime()) || !Number.isFinite(b.getTime())){customRange.value=null;return;}
+  if(customRange.value?.[0].getTime()!==a.getTime() || customRange.value?.[1].getTime()!==b.getTime())customRange.value=[a,b];
+});
+onMounted(()=>window.addEventListener('resize',resizeSyncViewport));
+onBeforeUnmount(()=>window.removeEventListener('resize',resizeSyncViewport));
 let pollTimer: ReturnType<typeof window.setTimeout> | null = null;
 let receiptPollCount = 0;
 let activeJobPollCount = 0;
@@ -257,11 +314,15 @@ const statusText = computed(() => {
 const hasActiveJob = computed(() => hasActiveSyncJobs(jobs.value));
 
 async function loadAll(options: { silent?: boolean } = {}) {
+  const generation = pollGeneration;
+  pageError.value = '';
+  pollingMessage.value = '';
   if (!options.silent) loading.value = true;
   try {
     status.value = await getGarminStatus();
     if (status.value.connected) {
       const [jobRows, activityRows] = await Promise.all([listGarminSyncJobs(), listGarminActivities()]);
+      if (!pageActive || generation !== pollGeneration) return;
       jobs.value = jobRows;
       activities.value = activityRows;
       if (hasActiveSyncJobs(jobRows)) {
@@ -280,6 +341,9 @@ async function loadAll(options: { silent?: boolean } = {}) {
       activities.value = [];
       stopPolling();
     }
+  } catch (error) {
+    pageError.value = getRequestErrorMessage(error);
+    stopPolling();
   } finally {
     if (!options.silent) loading.value = false;
   }
@@ -318,6 +382,9 @@ async function handleDisconnect() {
 }
 
 async function handleSync() {
+  if (syncing.value || hasActiveJob.value) return;
+  if (syncForm.sync_mode === 'custom_range' && !customRange.value) { ElMessage.warning('请选择完整的同步时间范围'); return; }
+  if(syncForm.sync_mode==='custom_range' && customRange.value && customRange.value[0]>=customRange.value[1]){ElMessage.warning('开始时间必须早于结束时间');return;}
   syncing.value = true;
   try {
     const payload: GarminSyncPayload = { sync_mode: syncForm.sync_mode };
@@ -348,10 +415,14 @@ async function handleAutoImportChange(value: string | number | boolean) {
 }
 
 async function retryJob(jobId: number) {
-  await retryGarminSyncJob(jobId);
-  await loadAll();
-  schedulePolling();
-  ElMessage.success("已重新加入同步队列");
+  if (hasActiveJob.value || retryingJobId.value !== null) return;
+  retryingJobId.value = jobId;
+  try {
+    await retryGarminSyncJob(jobId);
+    await loadAll();
+    if (hasActiveJob.value) schedulePolling();
+    ElMessage.success("已重新加入同步队列");
+  } finally { retryingJobId.value = null; }
 }
 
 function isCancellingJob(jobId: number) {
@@ -431,6 +502,7 @@ function activityTagType(value: string) {
 }
 
 function schedulePolling() {
+  if (!pageActive) return;
   if (pollTimer !== null) window.clearTimeout(pollTimer);
   const generation = pollGeneration;
   pollTimer = window.setTimeout(async () => {
@@ -451,6 +523,7 @@ async function pollSyncJobs(generation: number) {
         schedulePolling();
       } else {
         stopPolling();
+        pollingMessage.value = '已暂停自动刷新，可手动刷新或取消任务';
         ElMessage.info("同步任务仍在后台运行，已暂停自动刷新，可手动刷新或取消任务");
       }
       return;
@@ -467,12 +540,14 @@ async function pollSyncJobs(generation: number) {
       getGarminStatus(true),
       listGarminActivities(),
     ]);
+    if (generation !== pollGeneration || !pageActive) return;
     status.value = nextStatus;
     activities.value = activityRows;
   } catch {
     // Stop automatic polling on a network error. The user can refresh manually,
     // avoiding an endless request loop while the backend or Garmin is unavailable.
     stopPolling();
+    pollingMessage.value = '网络异常，已停止自动刷新。请检查网络后手动刷新。';
   }
 }
 
@@ -484,11 +559,15 @@ function stopPolling() {
   }
 }
 
-onMounted(loadAll);
+onMounted(() => { pageActive = true; void loadAll(); });
+onActivated(() => { if (!pageActive) { pageActive = true; void loadAll(); } });
+onDeactivated(() => { pageActive = false; stopPolling(); });
 onBeforeUnmount(stopPolling);
 </script>
 
 <style scoped>
+.mobile-date-range{display:grid;gap:12px;width:100%;min-width:0}.mobile-date-range label{display:grid;gap:8px;font-size:13px;color:var(--muted);min-width:0}.mobile-date-range input{min-height:44px;min-width:0;width:100%;max-width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:16px;background:var(--surface);color:var(--text);box-sizing:border-box}
+.latest-sync p{line-height:1.7}.sync-meta{font-size:13px;color:var(--muted);overflow-wrap:anywhere}.sync-error{color:var(--danger)}.sync-history>summary{cursor:pointer;font-weight:600;padding:4px 0 14px}.next-sync-actions{display:flex;gap:10px;flex-wrap:wrap}.next-sync-actions :deep(.el-button){margin-left:0}@media(max-width:600px){.next-sync-actions{display:grid}.next-sync-actions :deep(.el-button){width:100%}}
 .garmin-sync {
   gap: 14px;
 }
@@ -565,6 +644,7 @@ onBeforeUnmount(stopPolling);
 }
 
 @media (max-width: 768px) {
+  .sync-settings{align-items:flex-start;flex-direction:column;gap:12px}.sync-options :deep(.el-segmented){width:100%;max-width:100%;overflow-x:auto}.sync-options :deep(.el-segmented__group){min-width:max-content}.sync-options :deep(.el-segmented__item){min-height:44px}.sync-options :deep(.el-date-editor){width:100%;max-width:100%}.sync-options>.el-button,.actions>.el-button{min-height:44px}.actions{display:flex;flex-wrap:wrap}.actions>.el-button{flex:1;margin:0}.sync-panel,.sync-history{overflow:visible!important}
   .status-band,
   .form-footer,
   .sync-options {

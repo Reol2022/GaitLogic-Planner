@@ -1,6 +1,7 @@
 <template>
   <div class="page-stack data-sync-page">
     <PageHeader title="数据同步" subtitle="连接运动平台，统一同步跑步活动并写入训练闭环。" />
+    <nav class="experience-links" aria-label="数据同步下一步"><router-link to="/today">回到今日</router-link><router-link to="/todos">确认待关联活动</router-link><router-link to="/workout-import">不用设备，导入实际记录</router-link><router-link to="/welcome">继续使用引导</router-link></nav>
 
     <section class="sync-summary" v-if="summary">
       <div>

@@ -1,7 +1,7 @@
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from planner_core.database.models import UserAccount
+from planner_core.database.models import UserAccount, AdminAuditEvent
 from server.common.exceptions import BadRequestError, NotFoundError
 from server.schemas.admin_user import AdminUserUpdate
 
@@ -37,6 +37,7 @@ def update_user(
     user.nickname = payload.nickname
     user.role = payload.role
     user.status = payload.status
+    db.add(AdminAuditEvent(actor_user_id=current_admin_id,action='LEGACY_USER_UPDATED',target_type='user',target_id=user.id,changed_fields=sorted(payload.model_fields_set)))
     db.commit()
     db.refresh(user)
     return user

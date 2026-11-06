@@ -131,7 +131,7 @@ def test_streamable_http_tools_list_and_authenticated_calls(http_dependencies) -
         headers = _headers(_token(users[101]))
         listed = _request(client, headers, "tools/list", {})
         assert {item["name"] for item in listed["result"]["tools"]} == {
-            "get_today_plan", "get_recent_training", "get_runner_state", "retrieve_training_knowledge"
+            "get_today_plan", "get_recent_training", "get_runner_state", "retrieve_training_knowledge", "get_training_detail", "get_recovery_trend"
         }
         for name, arguments in (
             ("get_today_plan", {}),

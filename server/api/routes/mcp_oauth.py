@@ -30,6 +30,14 @@ from server.api.deps import get_current_user
 
 router = APIRouter(tags=["mcp oauth"])
 _SCOPE = "mcp:read"
+_RECOVERY_SCOPE = "mcp:recovery:read"
+
+
+def _requested_scopes(params: dict[str, str]) -> list[str] | None:
+    scopes = params.get("scope", _SCOPE).split()
+    if _SCOPE not in scopes or not set(scopes) <= {_SCOPE, _RECOVERY_SCOPE}:
+        return None
+    return sorted(set(scopes))
 _CODE_TTL_MINUTES = 5
 
 
@@ -87,6 +95,7 @@ def _login_page(params: dict[str, str], message: str | None = None) -> HTMLRespo
         if key in {"client_id", "redirect_uri", "state", "scope", "code_challenge", "code_challenge_method", "resource"}
     )
     warning = f'<div class="notice" role="alert">{html.escape(message)}</div>' if message else ""
+    recovery_consent = ('<label class="consent"><input type="checkbox" name="approve_recovery" value="yes" required><span>另外授权读取恢复历史：睡眠、HRV、静息心率及主观疲劳等。仅用于本应用的只读分析。</span></label>' if _RECOVERY_SCOPE in (_requested_scopes(params) or []) else '')
     body = f"""<!doctype html>
     <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow"><title>授权连接 · GaitLogic</title>
@@ -114,7 +123,7 @@ def _login_page(params: dict[str, str], message: str | None = None) -> HTMLRespo
     <label class="field">用户名<input name="username" autocomplete="username" required></label>
     <label class="field">密码<input type="password" name="password" autocomplete="current-password" required></label>
     <label class="consent"><input type="checkbox" name="approve" value="yes" required><span>我已了解并同意授予上述只读访问权限。</span></label>
-    <button type="submit">登录并授权</button></form>
+    {recovery_consent}<button type="submit">登录并授权</button></form>
     <p class="foot">请输入 GaitLogic 账号，并确认当前页面地址可信。</p>
     </section></main></body></html>"""
     return HTMLResponse(body)
@@ -135,7 +144,7 @@ def oauth_metadata():
         "grant_types_supported": ["authorization_code", "refresh_token"],
         "token_endpoint_auth_methods_supported": ["none"],
         "code_challenge_methods_supported": ["S256"],
-        "scopes_supported": [_SCOPE],
+        "scopes_supported": [_SCOPE, _RECOVERY_SCOPE],
     }
 
 
@@ -146,7 +155,7 @@ def protected_resource_metadata():
     return {
         "resource": _resource(),
         "authorization_servers": [f"{_base_url()}/oauth"],
-        "scopes_supported": [_SCOPE],
+        "scopes_supported": [_SCOPE, _RECOVERY_SCOPE],
         "bearer_methods_supported": ["header"],
     }
 
@@ -163,8 +172,14 @@ async def register_client(request: Request):
     if not isinstance(redirect_uris, list) or not redirect_uris or not all(isinstance(uri, str) and _allowed_redirect_uri(uri) for uri in redirect_uris):
         return _oauth_error("invalid_redirect_uri")
     client_id = secrets.token_urlsafe(32)
+    scope_text = payload.get('scope', _SCOPE)
+    if not isinstance(scope_text, str):
+        return _oauth_error('invalid_scope')
+    scopes = _requested_scopes({'scope':scope_text})
+    if scopes is None:
+        return _oauth_error('invalid_scope')
     with SessionLocal.begin() as db:
-        db.add(McpOAuthClient(client_id=client_id, client_name=str(payload.get("client_name") or "")[:255] or None, redirect_uris_json=redirect_uris, scopes_json=[_SCOPE]))
+        db.add(McpOAuthClient(client_id=client_id, client_name=str(payload.get("client_name") or "")[:255] or None, redirect_uris_json=redirect_uris, scopes_json=scopes))
     return JSONResponse(status_code=201, content={"client_id": client_id, "redirect_uris": redirect_uris, "grant_types": ["authorization_code", "refresh_token"], "response_types": ["code"], "token_endpoint_auth_method": "none"})
 
 
@@ -175,7 +190,7 @@ def authorize_form(request: Request):
     params = _params(request)
     if params.get("resource") != _resource():
         return _oauth_error("invalid_target")
-    if params.get("scope", _SCOPE) != _SCOPE:
+    if _requested_scopes(params) is None:
         return _oauth_error("invalid_scope")
     if params.get("response_type") != "code" or params.get("code_challenge_method") != "S256":
         return _oauth_error("invalid_request")
@@ -183,7 +198,7 @@ def authorize_form(request: Request):
         client = db.scalar(select(McpOAuthClient).where(McpOAuthClient.client_id == params.get("client_id")))
         if client is None or params.get("redirect_uri") not in (client.redirect_uris_json or []):
             return _oauth_error("invalid_request")
-    if params.get("scope", _SCOPE) != _SCOPE or not params.get("code_challenge"):
+    if _requested_scopes(params) is None or not params.get("code_challenge"):
         return _oauth_error("invalid_scope")
     return _login_page(params)
 
@@ -195,10 +210,12 @@ async def authorize_submit(request: Request):
     params = await _form_params(request)
     if params.get("resource") != _resource():
         return _oauth_error("invalid_target")
-    if params.get("scope", _SCOPE) != _SCOPE:
+    if _requested_scopes(params) is None:
         return _oauth_error("invalid_scope")
     if params.get("approve") != "yes":
         return _login_page(params, "必须确认授权。")
+    if _RECOVERY_SCOPE in (_requested_scopes(params) or []) and params.get("approve_recovery") != "yes":
+        return _login_page(params, "请单独确认恢复数据授权，或移除该权限后重新发起授权。")
     with SessionLocal.begin() as db:
         client = db.scalar(select(McpOAuthClient).where(McpOAuthClient.client_id == params.get("client_id")))
         user = db.scalar(select(UserAccount).where(UserAccount.username == params.get("username")))
@@ -209,7 +226,7 @@ async def authorize_submit(request: Request):
         code = secrets.token_urlsafe(32)
         grant_id = secrets.token_urlsafe(32)
         db.add(McpOAuthGrant(grant_id=grant_id, client_id=client.client_id, user_id=user.id, resource_uri=params["resource"]))
-        db.add(McpOAuthAuthorizationCode(code_hash=_hash(code), client_id=client.client_id, user_id=user.id, redirect_uri=params["redirect_uri"], code_challenge=params["code_challenge"], resource_uri=params["resource"], grant_id=grant_id, scopes_json=[_SCOPE], expires_at=datetime.utcnow() + timedelta(minutes=_CODE_TTL_MINUTES)))
+        db.add(McpOAuthAuthorizationCode(code_hash=_hash(code), client_id=client.client_id, user_id=user.id, redirect_uri=params["redirect_uri"], code_challenge=params["code_challenge"], resource_uri=params["resource"], grant_id=grant_id, scopes_json=_requested_scopes(params), expires_at=datetime.utcnow() + timedelta(minutes=_CODE_TTL_MINUTES)))
     query = {"code": code}
     if params.get("state"):
         query["state"] = params["state"]
@@ -256,9 +273,14 @@ async def token(request: Request):
         grant = db.scalar(select(McpOAuthGrant).where(McpOAuthGrant.grant_id == grant_id).with_for_update())
         if grant is None or grant.revoked_at is not None or grant.user_id != user.id or grant.client_id != client_id or grant.resource_uri != params["resource"]:
             return _oauth_error("invalid_grant")
+        requested = _requested_scopes(params) if 'scope' in params else scopes
+        if not scopes or _SCOPE not in scopes or not set(scopes) <= {_SCOPE, _RECOVERY_SCOPE} or requested is None or not set(requested) <= set(scopes):
+            db.rollback()
+            return _oauth_error("invalid_scope")
+        scopes = requested
         refresh_token = secrets.token_urlsafe(48)
         db.add(McpOAuthRefreshToken(token_hash=_hash(refresh_token), client_id=client_id, user_id=user.id, resource_uri=params["resource"], grant_id=grant_id, scopes_json=scopes, expires_at=datetime.utcnow() + timedelta(days=get_settings().mcp_oauth_refresh_token_expire_days)))
-        access_token = create_mcp_access_token(user, grant_id=grant_id)
+        access_token = create_mcp_access_token(user, grant_id=grant_id, scopes=scopes)
     return {"access_token": access_token, "token_type": "Bearer", "expires_in": get_settings().mcp_token_expire_minutes * 60, "refresh_token": refresh_token, "scope": " ".join(scopes)}
 
 

@@ -1,13 +1,15 @@
 <template>
   <div class="page-stack training-plan-page">
     <PageHeader title="训练计划" subtitle="默认展示当前正在进行的训练周期。" />
+    <TrainingJourney active="plan" />
+    <nav class="experience-links" aria-label="计划相关操作"><router-link to="/training-calendar">按日历查看</router-link><router-link to="/welcome">创建或导入计划</router-link><router-link :to="coachEntry('plan')">和教练讨论安排</router-link></nav>
 
     <section v-if="!loading && !overview?.has_active_cycle && overview?.lifecycle?.state !== 'completed'" class="empty-panel">
       <div>
         <strong>当前没有生效中的训练周期</strong>
-        <p>可以保留多个草稿周期，但首页、今日训练和计划中心只读取唯一 active 周期。</p>
+        <p>你可以先创建或导入一份计划，确认后再开始执行；也可以先记录训练。</p>
       </div>
-      <el-button type="primary" @click="router.push('/cycles')">去启用周期</el-button>
+      <div><el-button type="primary" @click="router.push('/welcome')">选择开始方式</el-button><el-button @click="router.push('/cycles')">已有计划：选择启用</el-button></div>
     </section>
 
     <section v-else-if="!loading && overview?.lifecycle?.state === 'completed'" class="empty-panel">
@@ -53,7 +55,7 @@
             </div>
             <div class="week-main">
               <p>{{ item.planned_content }}</p>
-              <span>{{ item.planned_distance_km || 0 }} km · {{ item.target_pace_text || "配速按体感执行" }}</span>
+              <span>{{ item.planned_distance_km == null ? '距离未设置' : `${item.planned_distance_km} km` }} · {{ item.target_pace_text || "配速未设置" }}</span>
             </div>
             <el-tag effect="plain">{{ statusLabel(item.workout_log?.status_normalized || "not_started") }}</el-tag>
           </article>
@@ -68,17 +70,13 @@
         </button>
       </section>
 
-      <section class="panel advanced-panel">
-        <el-collapse>
-          <el-collapse-item title="高级计划工具" name="advanced">
+      <section class="panel advanced-panel"><el-collapse><el-collapse-item title="高级计划工具" name="advanced">
             <div class="advanced-grid">
               <router-link v-for="link in overview?.advanced_links || []" :key="link.path" :to="link.path">
                 {{ link.label }}
               </router-link>
             </div>
-          </el-collapse-item>
-        </el-collapse>
-      </section>
+      </el-collapse-item></el-collapse></section>
     </template>
   </div>
 </template>
@@ -90,6 +88,8 @@ import { ArrowRight } from "@element-plus/icons-vue";
 import { getTrainingPlanOverview } from "@/api/simplifiedWorkflow";
 import type { TrainingPlanOverview } from "@/types/models";
 import { statusLabel } from "@/utils/statusLabels";
+import TrainingJourney from "@/components/common/TrainingJourney.vue";
+import { coachEntry } from "@/utils/coreExperience";
 
 const router = useRouter();
 const loading = ref(false);

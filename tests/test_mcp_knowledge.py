@@ -112,7 +112,7 @@ def test_knowledge_tool_requires_trusted_identity_and_degrades_when_index_is_una
         dependencies_factory=lambda _session: FakeDependencies(),
         knowledge_tool_factory=lambda: None,
     )
-    for server, expected in ((missing_identity, "AUTH_CONTEXT_MISSING"), (unavailable, "DATA_UNAVAILABLE")):
+    for server, expected in ((missing_identity, "AUTH_CONTEXT_MISSING"), (unavailable, "KNOWLEDGE_INDEX_UNAVAILABLE")):
         result = _run(
             _call_knowledge(server, {"query": "threshold training"})
         )

@@ -123,7 +123,7 @@ def _sign_jwt_payload(payload: dict) -> str:
     return f"{header_part}.{payload_part}.{b64url_encode(signature)}"
 
 
-def create_mcp_access_token(user: UserAccount, *, grant_id: str | None = None) -> str:
+def create_mcp_access_token(user: UserAccount, *, grant_id: str | None = None, scopes: list[str] | None = None) -> str:
     """Issue a short-lived JWT that is bound only to the MCP resource server."""
 
     settings = get_settings()
@@ -134,7 +134,7 @@ def create_mcp_access_token(user: UserAccount, *, grant_id: str | None = None) -
             "iss": f"{settings.mcp_public_base_url.rstrip('/')}/oauth",
             "aud": settings.mcp_resource_uri or f"{settings.mcp_public_base_url.rstrip('/')}/mcp",
             "purpose": MCP_TOKEN_PURPOSE,
-            "scope": "mcp:read",
+            "scope": " ".join(scopes if scopes is not None else ["mcp:read"]),
             "grant_id": grant_id,
             "iat": int(now.timestamp()),
             "exp": int((now + timedelta(minutes=settings.mcp_token_expire_minutes)).timestamp()),

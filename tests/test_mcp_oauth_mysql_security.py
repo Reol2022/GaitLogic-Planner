@@ -67,7 +67,7 @@ def test_two_user_oauth_token_rotation_and_revocation_on_isolated_mysql(monkeypa
             meta = {"io.modelcontextprotocol/protocolVersion": "2026-07-28", "io.modelcontextprotocol/clientCapabilities": {}, "io.modelcontextprotocol/clientInfo": {"name": "synthetic", "version": "1"}}
             tokens = []
             refreshes = []
-            for name in names:
+            for user_index, name in enumerate(names):
                 registration = client.post("/oauth/register", json={"redirect_uris": ["http://127.0.0.1/callback"]})
                 assert registration.status_code == 201
                 client_id = registration.json()["client_id"]
@@ -75,6 +75,11 @@ def test_two_user_oauth_token_rotation_and_revocation_on_isolated_mysql(monkeypa
                 verifier = "v" * 43
                 challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
                 form = {"client_id": client_id, "redirect_uri": "http://127.0.0.1/callback", "resource": "http://127.0.0.1:8000/mcp", "code_challenge": challenge, "code_challenge_method": "S256", "scope": "mcp:read", "approve": "yes", "username": name, "password": password}
+                if user_index == 1:
+                    form['scope'] = 'mcp:read mcp:recovery:read'
+                    without_consent = client.post('/oauth/authorize', data=form, follow_redirects=False)
+                    assert without_consent.status_code == 200 and 'approve_recovery' in without_consent.text
+                    form['approve_recovery'] = 'yes'
                 authorized = client.post("/oauth/authorize", data=form, follow_redirects=False)
                 assert authorized.status_code == 302
                 code = parse_qs(urlparse(authorized.headers["location"]).query)["code"][0]
@@ -86,6 +91,18 @@ def test_two_user_oauth_token_rotation_and_revocation_on_isolated_mysql(monkeypa
                 tokens.append(token.json()["access_token"])
                 refreshes.append(token.json()["refresh_token"])
             assert [int(decode_mcp_access_token(token)["sub"]) for token in tokens] == user_ids
+            assert 'mcp:recovery:read' not in decode_mcp_access_token(tokens[0])['scope'].split()
+            assert 'mcp:recovery:read' in decode_mcp_access_token(tokens[1])['scope'].split()
+            recovery_request = {'jsonrpc':'2.0', 'id':2, 'method':'tools/call', 'params':{'name':'get_recovery_trend', 'arguments':{'days':7}, '_meta':meta}}
+            outcomes = []
+            for access in tokens:
+                response = client.post('/mcp', headers={**headers, 'Mcp-Method':'tools/call', 'Mcp-Name':'get_recovery_trend', 'Authorization':'Bearer '+access}, json=recovery_request)
+                assert response.status_code == 200
+                outcomes.append(response.json()['result']['structuredContent'])
+            assert outcomes[0]['error']['code'] == 'INSUFFICIENT_PERMISSION'
+            assert outcomes[1]['status'] == 'SUCCEEDED'
+            escalation = client.post('/oauth/token', data={'grant_type':'refresh_token', 'client_id':client_ids[0], 'refresh_token':refreshes[0], 'resource':form['resource'], 'scope':'mcp:read mcp:recovery:read'})
+            assert escalation.status_code == 400 and escalation.json()['error'] == 'invalid_scope'
             request = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {"_meta": meta}}
             for token in tokens:
                 assert client.post("/mcp", headers={**headers, "Authorization": "Bearer " + token}, json=request).status_code == 200
@@ -102,6 +119,11 @@ def test_two_user_oauth_token_rotation_and_revocation_on_isolated_mysql(monkeypa
                 responses = list(pool.map(exchange, range(3)))
             assert sorted(response.status_code for response in responses[:2]) == [200, 400]
             assert responses[2].status_code == 200
+            narrowed = client.post('/oauth/token', data={'grant_type':'refresh_token', 'client_id':client_ids[1], 'refresh_token':responses[2].json()['refresh_token'], 'resource':form['resource'], 'scope':'mcp:read'})
+            assert narrowed.status_code == 200 and narrowed.json()['scope'] == 'mcp:read'
+            assert decode_mcp_access_token(narrowed.json()['access_token'])['scope'] == 'mcp:read'
+            reexpanded = client.post('/oauth/token', data={'grant_type':'refresh_token', 'client_id':client_ids[1], 'refresh_token':narrowed.json()['refresh_token'], 'resource':form['resource'], 'scope':'mcp:read mcp:recovery:read'})
+            assert reexpanded.status_code == 400 and reexpanded.json()['error'] == 'invalid_scope'
             rotated_refresh = next(response.json()["refresh_token"] for response in responses[:2] if response.status_code == 200)
             assert client.post("/oauth/token", data={**refresh_data, "refresh_token": rotated_refresh}).status_code == 400
             assert client.post("/mcp", headers={**headers, "Authorization": "Bearer " + tokens[0]}, json=request).status_code == 401

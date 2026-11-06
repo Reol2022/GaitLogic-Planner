@@ -4,6 +4,21 @@
       title="今日训练"
       :subtitle="showOnboarding ? '第一次使用：你的训练课表还在等待创建或分配。课表准备好后，今天的训练会显示在这里。' : undefined"
     />
+    <TrainingJourney active="train" />
+    <section class="panel today-focus" v-loading="loading" aria-label="今天的下一步">
+      <div class="focus-heading"><div><span class="focus-kicker">{{ today }} · {{ activeCycle?.name || '你的训练' }}</span><h2>先看安排，再决定下一步</h2></div><el-date-picker v-model="today" :clearable="false" value-format="YYYY-MM-DD" type="date" @change="load" /></div>
+      <el-alert v-if="loadError" :title="loadError" type="error" :closable="false" show-icon />
+      <article v-for="row in workouts" :key="row.id" class="focus-workout">
+        <div><el-tag :class="statusClass(row.workout_log?.status_normalized)" effect="plain">{{ labelFor(statusOptions, row.workout_log?.status_normalized) }}</el-tag><h3>{{ row.planned_content }}</h3><p>计划距离：{{ row.planned_distance_km == null ? '未设置' : `${row.planned_distance_km} km` }}<span v-if="row.target_pace_text"> · {{ row.target_pace_text }}</span></p></div>
+        <el-button type="primary" @click="goLog(row.id)">{{ row.workout_log ? '查看记录 / 补充感受' : '查看课表 / 记录训练' }}</el-button>
+      </article>
+      <p v-if="!loading && !loadError && !workouts.length" class="focus-empty">{{ showOnboarding ? '还没有课表？可以先创建计划，也可以只同步和记录训练。' : '所选日期没有课表。这不代表休息日，也不代表没有实际活动。' }}</p>
+      <div class="focus-actions"><el-button v-if="!workouts.length" type="primary" @click="router.push('/welcome')">选择开始方式</el-button><el-button v-if="connectedDataSources > 0" :loading="syncingLatest" @click="syncLatestActivity">同步最新活动</el-button><el-button v-else @click="router.push('/data-management')">导入或记录训练</el-button><el-button text @click="router.push(coachEntry('today', today))">请教练解释这天的安排</el-button></div>
+    </section>
+    <el-alert v-for="warning in importantRuleWarnings" :key="warning.rule_code" :title="warning.explanation" type="warning" show-icon :closable="false" />
+    <el-alert v-if="readinessNeedsAttention" :title="`${readinessStatusText}：${readinessReasonText}`" type="warning" show-icon :closable="false" />
+    <details v-if="!showOnboarding && !showNoActiveCycle" class="today-evidence">
+      <summary>查看训练状态、数据缺口与评估依据</summary>
     <div v-if="!showOnboarding && !showNoActiveCycle && readinessAvailable" class="daily-advice readiness-card">
       <div class="readiness-card-main">
         <strong>今日训练状态：{{ readinessStatusText }}</strong>
@@ -80,6 +95,7 @@
       </div>
     </section>
 
+    </details>
     <section
       v-if="!showOnboarding && !showNoActiveCycle && (dashboardTasks.length > 0 || connectedDataSources > 0)"
       class="today-hub"
@@ -95,19 +111,12 @@
       </div>
       <div class="today-hub-actions">
         <el-button v-if="dashboardTasks.length > 0" plain @click="router.push('/todos')">查看待办</el-button>
-        <el-button
-          v-if="connectedDataSources > 0"
-          type="primary"
-          plain
-          :loading="syncingLatest"
-          @click="syncLatestActivity"
-        >
-          同步最新活动
-        </el-button>
+        <el-button v-if="connectedDataSources > 0" type="primary" plain :loading="syncingLatest" @click="syncLatestActivity">同步最新活动</el-button>
       </div>
     </section>
 
-    <section v-if="showOnboarding" class="onboarding-card">
+    <details v-if="showOnboarding" class="today-evidence">
+      <summary>已有课表？查看导入与 AI 草稿入口</summary>
       <div class="onboarding-copy">
         <div class="onboarding-kicker">首次使用</div>
         <h3>欢迎使用 GaitLogic Planner</h3>
@@ -125,7 +134,7 @@
           <em>输入当前能力、目标赛事和训练偏好，先生成可编辑草稿。</em>
         </button>
       </div>
-    </section>
+    </details>
 
     <section v-else-if="showCompletedCycle" class="no-active-card">
       <div>
@@ -143,12 +152,14 @@
       <div>
         <div class="onboarding-kicker">当前周期</div>
         <h3>当前没有正在进行的训练周期</h3>
-        <p>系统可以保存多个训练周期，但首页和今日训练只显示唯一 active 周期的计划。请先启用一个草稿周期。</p>
+        <p>请选择一份当前要执行的计划；也可以先同步和记录活动，不必先创建计划。</p>
       </div>
       <el-button type="primary" @click="router.push('/cycles')">去启用周期</el-button>
     </section>
 
-    <div v-if="!showNoActiveCycle" class="toolbar">
+    <details v-if="!showNoActiveCycle" class="today-evidence">
+      <summary>更多课表管理与快速打卡</summary>
+    <div class="toolbar">
       <el-date-picker v-model="today" value-format="YYYY-MM-DD" type="date" @change="load" />
       <el-button :icon="Refresh" @click="load">刷新</el-button>
     </div>
@@ -227,6 +238,7 @@
       </div>
     </div>
 
+    </details>
     <el-dialog v-model="quickDialogVisible" title="快速训练打卡" width="560px">
       <el-form label-position="top" class="quick-form">
         <div class="form-grid">
@@ -319,6 +331,8 @@ import { EditPen, Refresh } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
 
 import RpeHelp from "@/components/RpeHelp.vue";
+import { coachEntry, localDate } from "@/utils/coreExperience";
+import TrainingJourney from "@/components/common/TrainingJourney.vue";
 import { listTodayWorkouts } from "@/api/plannedWorkouts";
 import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles";
 import { listTrainingBlocks } from "@/api/trainingBlocks";
@@ -343,7 +357,8 @@ import type {
 import { labelFor, statusOptions } from "@/types/options";
 
 const router = useRouter();
-const today = ref(new Date().toISOString().slice(0, 10));
+const today = ref(localDate());
+const loadError = ref('');
 const workouts = ref<PlannedWorkout[]>([]);
 const cycles = ref<TrainingCycle[]>([]);
 const activeCycle = ref<TrainingCycle | null>(null);
@@ -381,7 +396,9 @@ const readinessQualityText = computed(() => {
 });
 const readinessReasonText = computed(() => todayReadiness.value?.assessment.reasons_json?.[0] || "当前请按今日课表完成训练，并结合身体感受合理调整强度。");
 const readinessLoadChangeText = computed(() => {
-  const value = Number(todayReadiness.value?.assessment.metrics_json?.load_change_percentage);
+  const raw=todayReadiness.value?.assessment.metrics_json?.load_change_percentage;
+  if(raw===null || raw===undefined)return '暂无';
+  const value = Number(raw);
   if (!Number.isFinite(value)) return "暂无";
   return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 });
@@ -393,6 +410,8 @@ const ruleStatusTagType = computed(() => {
   if (action === "keep_plan" || action === "no_action") return "success";
   return "info";
 });
+const importantRuleWarnings = computed(() => (todayRuleEvaluation.value?.evaluation.matched_rules || []).filter(rule => ['caution', 'high', 'blocking'].includes(rule.severity)));
+const readinessNeedsAttention = computed(() => today.value === localDate() && !!todayReadiness.value && ['watch', 'reduce_load'].includes(todayReadiness.value.assessment.status));
 const ruleDataLimitedText = computed(() => {
   const readiness = todayRuleEvaluation.value?.decision_readiness;
   if (readiness === "BLOCKED" || todayRuleEvaluation.value?.data_limited) return "核心数据不足";
@@ -494,9 +513,15 @@ function resetQuickForm() {
 
 async function load() {
   loading.value = true;
+  loadError.value = '';
   try {
     workouts.value = await listTodayWorkouts(today.value);
     await Promise.all([loadReadiness(), loadDailyHub(), loadRuleEvaluation()]);
+  } catch {
+    workouts.value = [];
+    todayRuleEvaluation.value = null;
+    todayReadiness.value = null;
+    loadError.value = '训练加载失败，请稍后点击刷新。未加载不代表没有训练。';
   } finally {
     loading.value = false;
   }
@@ -538,6 +563,7 @@ async function loadDailyHub() {
 }
 
 async function loadReadiness() {
+  if (today.value !== localDate()) { todayReadiness.value = null; readinessMessage.value = ''; return; }
   try {
     todayReadiness.value = await getTodayReadiness();
     readinessMessage.value = "";
@@ -583,7 +609,7 @@ function openQuickCheckin(row: PlannedWorkout, status: "completed_normal" | "com
   resetQuickForm();
   Object.assign(quickForm, row.workout_log || {});
   quickForm.status_normalized = status;
-  quickForm.actual_distance_km = status === "completed_normal" ? Number(row.planned_distance_km || 0) : null;
+  quickForm.actual_distance_km = row.workout_log?.actual_distance_km ?? (status === "completed_normal" ? Number(row.planned_distance_km || 0) : null);
   quickForm.review_note = status === "completed_adjusted" ? quickForm.review_note || "调整后完成。" : quickForm.review_note;
   quickDialogVisible.value = true;
   trackUsageEvent("workout_quick_checkin_opened", { planned_workout_id: row.id });
@@ -671,6 +697,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.today-focus{padding:24px}.focus-heading{display:flex;justify-content:space-between;gap:16px;align-items:center}.focus-heading h2{margin:6px 0 18px;font-size:24px}.focus-kicker{color:var(--muted);font-size:13px}.focus-workout{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:18px 0;border-top:1px solid var(--line-soft)}.focus-workout h3{font-size:19px;line-height:1.6;white-space:pre-wrap;margin:10px 0}.focus-workout p,.focus-empty{color:var(--muted)}.focus-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}.focus-actions :deep(.el-button){margin-left:0}.today-evidence{padding:16px;border:1px solid var(--line-soft);border-radius:var(--card-radius);background:var(--surface)}.today-evidence>summary{cursor:pointer;color:var(--muted);font-weight:600}.today-evidence[open]>summary{margin-bottom:16px}@media(max-width:640px){.today-focus{padding:18px}.focus-heading,.focus-workout{align-items:stretch;flex-direction:column}.focus-heading :deep(.el-date-editor){max-width:100%}.focus-actions{display:grid}.focus-actions :deep(.el-button){width:100%;margin:0}}
 .onboarding-card {
   display: grid;
   grid-template-columns: minmax(260px, 0.78fr) minmax(360px, 1fr);
