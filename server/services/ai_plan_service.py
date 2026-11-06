@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 from planner_core.config import get_settings
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
 from planner_core.database.models import (
@@ -22,8 +23,9 @@ from planner_core.database.models import (
     TrainingBlock,
     TrainingCycle,
     WorkoutLog,
+    UserAccount,
 )
-from planner_core.enums import AIPlanDraftStatus, AIPlanJobStatus, BlockType, WorkoutStatusNormalized
+from planner_core.enums import AIPlanDraftStatus, AIPlanJobStatus, BlockType, WorkoutStatusNormalized, TrainingCycleStatus
 from planner_core.utils.excel_parse import normalize_workout_main_type
 from server.common.exceptions import BadRequestError, NotFoundError, ServiceUnavailableError, TooManyRequestsError
 from server.schemas.ai_plan import AIPlanGenerateRequest, AIPlanQuotaRead
@@ -34,6 +36,8 @@ from server.services.ai_coach_preference_service import (
 )
 from server.services.ai_plan_prompt import build_ai_plan_system_prompt, build_ai_plan_user_prompt
 from server.model_tasks import ModelTaskType, task_model_profile
+from server.services.ai_plan_context_service import build_plan_context
+from server.services.ai_plan_constraints import validate_plan_constraints
 
 MAX_INPUT_JSON_CHARS = 20000
 ALLOWED_MAIN_TYPES = {"REC", "E", "LSD", "M", "T1", "T2", "I", "R", "Rest", "Mixed"}
@@ -85,7 +89,7 @@ def check_ai_plan_quota(db: Session, user_id: int) -> AIPlanQuota:
     quota.daily_limit = runtime.ai_plan_daily_limit
     if quota.used_count >= quota.daily_limit:
         raise TooManyRequestsError("今日 AI 课表生成次数已用完。")
-    if quota.last_generated_at is not None:
+    if runtime.ai_plan_cooldown_seconds > 0 and quota.last_generated_at is not None:
         elapsed = (datetime.utcnow() - quota.last_generated_at).total_seconds()
         if elapsed < runtime.ai_plan_cooldown_seconds:
             raise TooManyRequestsError("AI 课表生成过于频繁，请稍后再试。")
@@ -98,7 +102,7 @@ def get_quota_status(db: Session, user_id: int) -> AIPlanQuotaRead:
     quota.daily_limit = runtime.ai_plan_daily_limit
     remaining = max(quota.daily_limit - quota.used_count, 0)
     can_generate = remaining > 0
-    if quota.last_generated_at is not None:
+    if runtime.ai_plan_cooldown_seconds > 0 and quota.last_generated_at is not None:
         elapsed = (datetime.utcnow() - quota.last_generated_at).total_seconds()
         if elapsed < runtime.ai_plan_cooldown_seconds:
             can_generate = False
@@ -211,7 +215,7 @@ def normalize_ai_generation_exception(exc: Exception) -> Exception:
         return ServiceUnavailableError("AI 模型服务暂时不可用，请稍后在历史草稿中查看结果或重新生成。")
     if "timeout" in lowered or "timed out" in lowered or "read timed out" in lowered:
         return ServiceUnavailableError("AI 模型响应超时，请稍后在历史草稿中查看结果或重新生成。")
-    return BadRequestError(f"AI 课表生成失败：{message}")
+    return BadRequestError("AI 课表生成失败，请稍后重试或联系管理员检查安全错误类别。")
 
 
 def parse_json_date(value: Any, field_name: str) -> date | None:
@@ -331,7 +335,7 @@ def save_draft(db: Session, job: AIPlanJob, output: dict[str, Any]) -> AIPlanDra
                     block_name=week.get("block_name"),
                     phase_name=week.get("phase_name"),
                     planned_content=workout.get("planned_content"),
-                    focus_note=workout.get("focus_note") or week.get("focus"),
+                    focus_note=((workout.get("focus_note") or week.get("focus") or '') + (f"\n计划时长：{workout['planned_duration_minutes']} 分钟" if workout.get('planned_duration_minutes') else '')),
                     planned_distance_km=Decimal(str(workout.get("planned_distance_km") or 0)),
                     main_type_raw=main_type_raw,
                     main_type_normalized=normalize_workout_main_type(main_type_raw),
@@ -350,8 +354,14 @@ def generate_ai_plan(db: Session, user_id: int, payload: AIPlanGenerateRequest) 
     runtime = get_effective_ai_settings(db)
     preference = get_or_create_preference(db, user_id)
     preference_json = preference_to_prompt_dict(preference)
+    context = build_plan_context(db, user_id, payload)
+    blockers = [issue.message for issue in context.feasibility if issue.severity == 'error']
+    if blockers:
+        raise BadRequestError('；'.join(blockers), error_code='AI_PLAN_CONSTRAINT_CONFLICT')
+    context_json = context.model_dump(mode='json')
     input_json = {
         **canonical_input(payload),
+        'plan_context': context_json,
         "ai_coach_preference": preference_json,
         "ai_runtime_settings": {
             "model": runtime.ai_model,
@@ -368,9 +378,15 @@ def generate_ai_plan(db: Session, user_id: int, payload: AIPlanGenerateRequest) 
         return cached
 
     quota = check_ai_plan_quota(db, user_id)
-    job = save_job(db, user_id, runtime.ai_model, prompt_hash, input_json)
+    try:
+        job = save_job(db, user_id, runtime.ai_model, prompt_hash, input_json)
+    except SQLAlchemyError:
+        db.rollback()
+        # Do not let a SQL exception expose the private context JSON in generic SQL logs.
+        raise ServiceUnavailableError('计划任务暂时无法保存，请稍后重试。') from None
     system_prompt = build_ai_plan_system_prompt()
-    user_prompt = build_ai_plan_user_prompt(payload, preference_json)
+    user_prompt = build_ai_plan_user_prompt(payload, preference_json, context_json)
+    job_id = job.id
     try:
         result = call_deepseek(system_prompt, user_prompt, payload.plan_weeks, runtime)
         if result.finish_reason == "length":
@@ -378,6 +394,8 @@ def generate_ai_plan(db: Session, user_id: int, payload: AIPlanGenerateRequest) 
         if not result.content.strip():
             raise BadRequestError("模型没有返回可用的最终正文。")
         output = validate_ai_output(result.content, expected_plan_weeks=payload.plan_weeks)
+        validate_plan_constraints(output, payload, preference_json.get('disabled_workout_types', []))
+        output['risk_notes'] = list(dict.fromkeys([*(output.get('risk_notes') or []), *[issue.message for issue in context.feasibility]]))
         job.output_json = output
         job.input_tokens = result.input_tokens
         job.output_tokens = result.output_tokens
@@ -386,11 +404,12 @@ def generate_ai_plan(db: Session, user_id: int, payload: AIPlanGenerateRequest) 
         job.finished_at = datetime.utcnow()
         quota.used_count += 1
         quota.last_generated_at = datetime.utcnow()
-        db.commit()
         return save_draft(db, job, output)
     except Exception as exc:
+        db.rollback()
+        job = db.get(AIPlanJob, job_id)
         job.status = AIPlanJobStatus.failed
-        job.error_message = str(exc)
+        job.error_message = getattr(exc, 'message', 'AI provider or persistence failure')[:1000]
         job.finished_at = datetime.utcnow()
         db.commit()
         if isinstance(exc, (BadRequestError, TooManyRequestsError, ServiceUnavailableError)):
@@ -430,10 +449,58 @@ def reject_draft(db: Session, draft_id: int, user_id: int) -> AIPlanDraft:
     return get_draft(db, draft.id, user_id)
 
 
-def apply_draft_to_training_plan(db: Session, draft_id: int, user_id: int) -> TrainingCycle:
+def apply_draft_to_training_plan(db: Session, draft_id: int, user_id: int, *, activate: bool = False, confirm_high: bool = False) -> TrainingCycle:
+    from server.services.training_rule_loop_service import validate_ai_plan_draft
+    # Rule evaluation may commit its own audit record. Do it before any business mutation.
+    validation = validate_ai_plan_draft(db, user_id, draft_id)
+    if validation.evaluation.final_action == 'block_auto_apply':
+        raise BadRequestError('规则校验阻止应用，请先修改草稿。')
+    if validation.evaluation.final_action == 'require_user_review' and not confirm_high:
+        raise BadRequestError('规则校验要求明确确认后再应用。')
+    try:
+        return _apply_draft_transaction(db, draft_id, user_id, activate=activate)
+    except Exception:
+        db.rollback()
+        raise
+
+
+def _apply_draft_transaction(db: Session, draft_id: int, user_id: int, *, activate: bool) -> TrainingCycle:
+    if db.scalar(select(UserAccount).where(UserAccount.id == user_id).with_for_update()) is None:
+        raise NotFoundError('User not found.')
+    db.scalar(select(AIPlanDraft).where(AIPlanDraft.id == draft_id, AIPlanDraft.user_id == user_id).with_for_update().execution_options(populate_existing=True))
     draft = get_draft(db, draft_id, user_id)
-    if draft.status == AIPlanDraftStatus.accepted:
-        raise BadRequestError("草稿已经应用过，不能重复应用。")
+    if draft.status != AIPlanDraftStatus.draft:
+        raise BadRequestError("仅待确认草稿可以应用，不能应用已拒绝或已采用的草稿。")
+    if not draft.start_date or not draft.end_date or draft.start_date > draft.end_date or not draft.workouts:
+        raise BadRequestError('草稿起止日期或课程不完整。')
+    if any(not item.workout_date or not draft.start_date <= item.workout_date <= draft.end_date for item in draft.workouts):
+        raise BadRequestError('草稿课程超出周期日期范围。')
+    job = db.scalar(select(AIPlanJob).where(AIPlanJob.id == draft.job_id, AIPlanJob.user_id == user_id))
+    if job and job.input_json and job.input_json.get('plan_context'):
+        request = AIPlanGenerateRequest.model_validate(job.input_json)
+        if draft.start_date != request.plan_start_date or draft.end_date != request.plan_start_date + timedelta(days=request.plan_weeks*7-1) or draft.target_race_date != request.target_race_date or draft.target_result != job.output_json.get('target_result'):
+            raise BadRequestError('草稿目标或日期与用户已确认的约束不同，请重新生成。')
+        validate_ai_output(job.output_json, expected_plan_weeks=request.plan_weeks)
+        validate_plan_constraints(job.output_json, request, (job.input_json.get('ai_coach_preference') or {}).get('disabled_workout_types', []))
+        originals = [item for week in job.output_json['weeks'] for item in week['workouts']]
+        if len(originals) != len(draft.workouts) or any(
+            original['date'] != saved.workout_date.isoformat()
+            or abs(original['planned_distance_km'] - float(saved.planned_distance_km or 0)) > .01
+            or original['main_type'] != saved.main_type_raw
+            or original['planned_content'] != saved.planned_content
+            for original, saved in zip(originals, draft.workouts)
+        ):
+            raise BadRequestError('草稿明细与已校验输出不同，请重新生成草稿。')
+    if activate:
+        cycles = list(db.scalars(select(TrainingCycle).where(TrainingCycle.user_id == user_id).with_for_update()))
+        if any(item.status == TrainingCycleStatus.active for item in cycles):
+            raise BadRequestError('已有启用周期，请先结束当前周期；或选择“仅保存，暂不启用”。')
+        for item in cycles:
+            if item.status == TrainingCycleStatus.completed:
+                start = item.actual_start_date or item.start_date
+                end = item.actual_end_date or item.end_date
+                if start and end and start <= draft.end_date and end >= draft.start_date:
+                    raise BadRequestError('新计划与已完成周期的日期重叠，请先调整日期。')
     existing = db.scalar(
         select(TrainingCycle).where(TrainingCycle.user_id == user_id, TrainingCycle.name == draft.title)
     )
@@ -450,12 +517,15 @@ def apply_draft_to_training_plan(db: Session, draft_id: int, user_id: int) -> Tr
         target_race_date=draft.target_race_date,
         target_result=draft.target_result,
         description=draft.summary,
+        status=TrainingCycleStatus.draft,
     )
     db.add(cycle)
     db.flush()
 
     blocks: dict[str, TrainingBlock] = {}
+    session_indices: dict[date, int] = {}
     for workout in draft.workouts:
+        session_indices[workout.workout_date] = session_indices.get(workout.workout_date, 0) + 1
         block_key = workout.block_name or "AI 训练块"
         if block_key not in blocks:
             block = TrainingBlock(
@@ -480,6 +550,7 @@ def apply_draft_to_training_plan(db: Session, draft_id: int, user_id: int) -> Tr
                 cycle_id=cycle.id,
                 block_id=block.id,
                 workout_date=workout.workout_date,
+                session_index=session_indices[workout.workout_date],
                 date_text=workout.workout_date.isoformat(),
                 weekday=workout.weekday,
                 month_text=f"{workout.workout_date.month}月",
@@ -502,6 +573,12 @@ def apply_draft_to_training_plan(db: Session, draft_id: int, user_id: int) -> Tr
         )
 
     draft.status = AIPlanDraftStatus.accepted
+    if activate:
+        # Reuse lifecycle status invariants; do not let it commit a partial application.
+        from server.services.training_cycle_lifecycle_service import activate_cycle
+        from server.schemas.training_cycle import TrainingCycleActivateRequest
+        db.flush()
+        activate_cycle(db, user_id, cycle.id, TrainingCycleActivateRequest(effective_start_date=cycle.start_date, complete_current_cycle=False), commit=False)
     db.commit()
     db.refresh(cycle)
     return cycle

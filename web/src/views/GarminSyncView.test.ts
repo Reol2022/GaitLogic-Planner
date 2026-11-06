@@ -87,6 +87,7 @@ describe("GarminSyncView receipt polling", () => {
           PageHeader: true,
           RouterLink: true,
           ElAlert: true,
+          ElEmpty: true,
           ElButton: true,
           ElCol: true,
           ElDatePicker: true,

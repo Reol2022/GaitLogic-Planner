@@ -16,6 +16,9 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock("@/api/coachAgent", () => api);
+const entryRoute = vi.hoisted(() => ({ query: {} as Record<string, string>,path:'/coach',hash:'' }));
+const entryRouter=vi.hoisted(()=>({replace:vi.fn().mockResolvedValue(undefined)}));
+vi.mock('vue-router', () => ({ useRoute: () => entryRoute,useRouter:()=>entryRouter }));
 
 const conversation = {
   id: "conversation-1",
@@ -28,7 +31,7 @@ const conversation = {
 };
 
 const stubs = {
-  ElButton: { template: "<button @click='$emit(\"click\")'><slot /></button>" },
+  ElButton: { emits: ['click'], template: "<button @click='$emit(\"click\")'><slot /></button>" },
   ElInput: {
     props: ["modelValue", "disabled"],
     emits: ["update:modelValue", "keydown"],
@@ -44,6 +47,7 @@ function mountPage() {
 
 describe("CoachAgentView persistent chat", () => {
   beforeEach(() => {
+    entryRoute.query = {};
     vi.clearAllMocks();
     api.listCoachConversations.mockResolvedValue({ items: [conversation], page: 1, page_size: 20, total: 1 });
     api.getCoachConversationMessages.mockResolvedValue({
@@ -76,6 +80,44 @@ describe("CoachAgentView persistent chat", () => {
     expect(wrapper.text()).toContain("本月截至当前日期");
     expect(localSet).not.toHaveBeenCalled();
     localSet.mockRestore();
+  });
+
+  it('shows Gilo branding without changing stored content or calling the provider on mount',async()=>{
+    const wrapper=mountPage();await flushPromises();expect(wrapper.text()).toContain('和 Gilo 聊训练');expect(wrapper.text()).toContain('Gilo · 洛教练');
+    expect(api.sendCoachConversationMessage).not.toHaveBeenCalled();expect(wrapper.find('.gilo-signal').exists()).toBe(false);wrapper.unmount();
+  });
+
+  it('stops working effects after a failed request and keeps retry available',async()=>{
+    api.sendCoachConversationMessage.mockRejectedValue(new Error('synthetic provider unavailable'));
+    const wrapper=mountPage();await flushPromises();await wrapper.find('textarea').setValue('合成训练问题');await wrapper.find('form').trigger('submit');await flushPromises();
+    expect(wrapper.find('.gilo-signal').exists()).toBe(false);expect(wrapper.find('.submit-error').text()).toContain('重试');expect(wrapper.find('.message-state').text()).toContain('未能完成');wrapper.unmount();
+  });
+
+  it('prepares a page question in a new conversation without sending or changing plans', async () => {
+    entryRoute.query = { topic: 'today', date: '2026-11-05' };
+    api.createCoachConversation.mockResolvedValue({ ...conversation, id: 'context-conversation' });
+    const wrapper = mountPage(); await flushPromises();
+    expect(api.createCoachConversation).not.toHaveBeenCalled();
+    await wrapper.findAll('button').find(b => b.text() === '放入新对话')!.trigger('click');
+    await flushPromises();
+    expect(api.createCoachConversation).toHaveBeenCalledTimes(1);
+    expect(wrapper.find('textarea').element.value).toContain('2026-11-05');
+    expect(api.sendCoachConversationMessage).not.toHaveBeenCalled();
+    expect(wrapper.find('.context-entry').exists()).toBe(false);
+    expect(entryRouter.replace).toHaveBeenCalledWith({path:'/coach',query:{},hash:''});
+    wrapper.unmount();
+  });
+
+  it('keeps entry after a failed create, and consumes only entry query parameters after success',async()=>{
+    entryRoute.query={topic:'today',date:'2026-11-06',from:'/my'};
+    const wrapper=mountPage();await flushPromises();
+    api.createCoachConversation.mockRejectedValueOnce(new Error('synthetic unavailable'));
+    await wrapper.findAll('button').find(b=>b.text()==='放入新对话')!.trigger('click');await flushPromises();
+    expect(wrapper.find('.context-entry').exists()).toBe(true);expect(entryRouter.replace).not.toHaveBeenCalled();
+    api.createCoachConversation.mockResolvedValueOnce({...conversation,id:'prepared-conversation'});
+    await wrapper.findAll('button').find(b=>b.text()==='放入新对话')!.trigger('click');await flushPromises();
+    expect(wrapper.find('.context-entry').exists()).toBe(false);expect(wrapper.find('textarea').element.value).toContain('2026-11-06');
+    expect(entryRouter.replace).toHaveBeenCalledWith({path:'/coach',query:{from:'/my'},hash:''});expect(api.sendCoachConversationMessage).not.toHaveBeenCalled();wrapper.unmount();
   });
 
   it("scrolls to the latest message when opening and switching conversations", async () => {

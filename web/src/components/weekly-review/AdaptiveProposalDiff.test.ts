@@ -50,13 +50,13 @@ describe("AdaptiveProposalDiff", () => {
     expect(wrapper.text()).toContain("10.0 km");
     expect(wrapper.text()).toContain("8.0 km");
     expect(wrapper.text()).toContain("FICTIONAL_RULE");
-    expect(wrapper.text()).toContain("确认并创建新计划版本");
-    expect(wrapper.text()).toContain("拒绝并保留原计划");
+    expect(wrapper.text()).toContain("确认应用调整");
+    expect(wrapper.text()).toContain("不采用，保留原计划");
   });
 
   it("does not show write actions after the proposal leaves pending state", () => {
     const wrapper = mountProposal("applied");
-    expect(wrapper.text()).not.toContain("确认并创建新计划版本");
+    expect(wrapper.text()).not.toContain("确认应用调整");
   });
 
   it("emits approve and reject without performing API calls itself", async () => {

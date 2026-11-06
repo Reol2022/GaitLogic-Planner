@@ -1743,6 +1743,8 @@ class AdminAISettings(IdMixin, TimestampMixin, Base):
     __tablename__ = "admin_ai_settings"
     __table_args__ = MYSQL_TABLE_ARGS
 
+    config_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+
     deepseek_base_url: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
@@ -1772,6 +1774,28 @@ class AdminAISettings(IdMixin, TimestampMixin, Base):
         back_populates="admin_ai_settings_updates",
         foreign_keys=[updated_by_id],
     )
+
+
+class AdminConfigRevision(IdMixin, Base):
+    __tablename__ = "admin_config_revisions"
+    __table_args__ = (Index("ix_admin_config_created", "created_at"), MYSQL_TABLE_ARGS)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("user_account.id", ondelete="SET NULL"))
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="DRAFT")
+    config_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    base_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class AdminAuditEvent(IdMixin, Base):
+    __tablename__ = "admin_audit_events"
+    __table_args__ = (Index("ix_admin_audit_created", "created_at"), MYSQL_TABLE_ARGS)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("user_account.id", ondelete="SET NULL"))
+    action: Mapped[str] = mapped_column(String(48), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_id: Mapped[int | None] = mapped_column(Integer)
+    changed_fields: Mapped[list] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
 
 class AdminSystemSettings(IdMixin, TimestampMixin, Base):

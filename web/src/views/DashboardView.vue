@@ -1,6 +1,6 @@
 <template>
   <div class="page-stack dashboard-page">
-    <PageHeader title="训练统计" :subtitle="`${currentCycleName} · 训练计划、完成情况、强度结构和身体反馈的实时概览。`">
+    <PageHeader title="记录与趋势" :subtitle="`${currentCycleName} · 统计范围以所选周期为准；设备活动与计划完成情况分开查看。`">
       <template #actions>
         <div class="hero-actions">
           <template v-if="!hasNoCycles && !hasNoActiveCycle">
@@ -25,7 +25,11 @@
         </div>
       </template>
     </PageHeader>
+    <nav class="experience-links" aria-label="训练记录入口">
+      <router-link to="/data-sync">查看实际设备活动</router-link><router-link to="/workout-import">导入训练记录</router-link><router-link to="/training-calendar">计划与完成日历</router-link><router-link to="/training-readiness">负荷与恢复</router-link><router-link to="/weekly-review">本周复盘</router-link><router-link :to="{ path: '/coach', query: { topic: 'recent' } }">分析最近训练</router-link>
+    </nav>
 
+    <RecentActivities />
     <section v-if="hasNoCycles" class="onboarding-card">
       <div class="onboarding-copy">
         <div class="onboarding-kicker">首次使用</div>
@@ -59,7 +63,7 @@
 
     <section v-else-if="hasNoActiveCycle" class="empty-data-card">
       <h3>当前没有正在进行的训练周期</h3>
-      <p>系统首页、今日训练和训练计划默认只显示 active 周期的数据。请先到训练周期页面启用一个草稿周期。</p>
+        <p>周期统计需要选择当前计划。实际设备活动仍可从上方“查看实际设备活动”进入，不代表没有训练。</p>
       <div>
         <el-button type="primary" @click="router.push('/cycles')">去启用周期</el-button>
       </div>
@@ -147,20 +151,9 @@
 
       <section class="chart-grid">
         <article class="chart-card wide">
-          <div class="chart-card-head">
-            <div>
-              <h3>计划 vs 实际公里</h3>
-              <p>{{ distanceModeHint }}</p>
-            </div>
-            <el-radio-group v-model="distanceMode" size="small" @change="renderDistanceChart">
-              <el-radio-button label="cycle">当前周期</el-radio-button>
-              <el-radio-button label="month">月跑量</el-radio-button>
-              <el-radio-button label="week">周跑量</el-radio-button>
-            </el-radio-group>
-          </div>
+          <div class="chart-card-head"><div><h3>计划 vs 实际公里</h3><p>{{distanceModeHint}}</p></div><el-radio-group v-model="distanceMode" size="small" @change="renderDistanceChart"><el-radio-button label="cycle">当前周期</el-radio-button><el-radio-button label="month">月跑量</el-radio-button><el-radio-button label="week">周跑量</el-radio-button></el-radio-group></div>
           <div ref="distanceChartRef" class="chart"></div>
         </article>
-
         <article class="chart-card wide">
           <div class="chart-card-head">
             <div>
@@ -202,6 +195,7 @@
 </template>
 
 <script setup lang="ts">
+import RecentActivities from '@/components/common/RecentActivities.vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { Refresh } from "@element-plus/icons-vue";
@@ -554,7 +548,7 @@ function renderCharts() {
   renderHealthChart();
 }
 
-function disposeCharts() {
+function disposeCharts(){
   distanceChart?.dispose();
   typeChart?.dispose();
   statusChart?.dispose();

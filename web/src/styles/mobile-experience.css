@@ -1,0 +1,41 @@
+/* Phone layout for the core journey. Never hide overflow on the document to
+   conceal a wide component; tables keep their own horizontal scroller. */
+@media (max-width: 768px) {
+  :root { --mobile-nav-height: calc(62px + env(safe-area-inset-bottom, 0px)); }
+  .app-shell, .app-shell > .el-container, .app-main { min-width: 0; }
+  .app-shell { min-height: 100dvh; }
+  .app-main { padding-bottom: calc(var(--mobile-nav-height) + 12px) !important; }
+  .app-main .page-stack { min-height: 0; }
+  .app-main .panel { min-width: 0; border-radius: 12px; }
+  .app-main .el-button:not(.is-circle) { min-height:44px; height:auto; white-space:normal; line-height:1.5; }
+  .training-journey a { min-height:44px; }
+  .app-main details > summary { min-height:44px; padding-top:10px; padding-bottom:10px; }
+  .experience-links { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  .experience-links a { min-height: 44px; padding: 10px; display:flex; align-items:center; justify-content:center; text-align:center; overflow-wrap:anywhere; }
+  .app-page-header__actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .app-page-header__actions .el-button { margin:0; min-height:44px; }
+  .el-dialog { margin: max(16px,env(safe-area-inset-top,0px)) auto !important; max-height: calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); overflow-y:auto; overscroll-behavior:contain; border-radius:14px; }
+  .el-dialog__body { overflow-wrap:anywhere; }
+  .el-dialog__footer { display:flex; flex-wrap:wrap; gap:8px; }
+  .el-dialog__footer .el-button { flex:1 1 110px; min-height:44px; margin:0; white-space:normal; height:auto; }
+  .el-message-box { max-width:calc(100vw - 28px); max-height:calc(100dvh - 32px); overflow-y:auto; }
+  .el-message-box__btns { display:flex; gap:8px; }
+  .el-message-box__btns .el-button { flex:1; min-height:44px; margin:0; white-space:normal; height:auto; }
+  .el-drawer__body { padding-bottom:calc(20px + env(safe-area-inset-bottom,0px)); overscroll-behavior:contain; }
+  .el-textarea__inner, .el-input__inner { font-size:16px; }
+  .adaptive-review-page .controls > .el-select, .adaptive-review-page .controls > .el-button { width:100%; min-height:44px; }
+  .adaptive-review-page .section-heading { align-items:flex-start; flex-wrap:wrap; }
+  .adaptive-review-page .narrative header, .proposal-panel > header { align-items:flex-start; flex-wrap:wrap; }
+  .adaptive-review-page .controls { gap:12px; }
+  .adaptive-review-page .controls .el-date-editor { min-width:0; max-width:100%; }
+  .adaptive-review-page .feedback-text { width:100%; }
+  .is-coach-route .app-main { padding:0 !important; }
+  .is-coach-route .site-filing-footer { display:none; }
+  .is-coach-route .mobile-content-back { display:none; }
+  .el-dropdown-menu__item { min-height:44px; }
+}
+@media (max-width: 380px) {
+  .experience-links { grid-template-columns:1fr; }
+  .el-date-picker { max-width:calc(100vw - 24px); }
+  .el-date-picker .el-picker-panel__content { width:auto; margin:10px; min-width:0; }
+}

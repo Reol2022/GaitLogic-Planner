@@ -8,15 +8,9 @@
             <h3>正在生成课表草稿</h3>
             <p>{{ generationStatusText }}</p>
           </div>
-          <el-progress
-            :percentage="generationProgress"
-            :stroke-width="10"
-            :show-text="false"
-            striped
-          />
           <div class="generation-meta">
-            <span>{{ generationProgress }}%</span>
-            <span>复杂计划可能需要 1-3 分钟，请保持当前页面打开</span>
+            <span>等待服务端返回</span>
+            <span>本接口暂不返回逐阶段进度，请勿重复提交</span>
           </div>
         </div>
       </div>
@@ -32,12 +26,34 @@
       </template>
     </PageHeader>
 
+    <section class="panel plan-context-panel" aria-label="自动获取训练基础">
+      <div class="panel-head"><div><h3>自动获取训练基础</h3><p>读取系统中已有记录，不会重新请求 Garmin；数据不会自动覆盖你填写的表单。</p></div><el-button :loading="contextLoading" :disabled="generating" @click="loadRunnerContext">{{ planContext ? '重新获取' : '获取训练基础' }}</el-button></div>
+      <template v-if="planContext">
+        <div class="context-metrics">
+          <div><span>近4周平均已记录跑量</span><strong>{{ trainingBasis?.recent_4w_avg_recorded_km ?? '未知' }} km/周</strong></div>
+          <div><span>训练频率（按训练日）</span><strong>{{ trainingBasis?.training_days_per_week_28d ?? '未知' }} 天/周</strong></div>
+          <div><span>最长单条活动</span><strong>{{ trainingBasis?.longest_recorded_activity?.distance_km ?? '未知' }} km</strong></div>
+          <div><span>近28天已完成记录</span><strong>{{ trainingBasis?.recent_28d_record_count ?? '未知' }} 条</strong></div>
+        </div>
+        <p class="form-help">统计截至 {{ planContext.as_of_date }}（{{ planContext.timezone }}）；日志更新 {{ trainingBasis?.last_record_updated_at || '未知' }}；最近成功同步 {{ planContext.runner_facts.last_sync_at || '未知' }}；最近同步状态 {{ planContext.runner_facts.last_sync_status || '未知' }}。</p>
+        <p v-for="item in planContext.runner_facts.performances || []" :key="item.distance+item.updated_at" class="form-help">已保存的用户自述成绩：{{ item.distance }} · {{ formatResult(item.result_seconds) }}（并非 Garmin 验证比赛成绩）</p>
+        <p v-if="!planContext.runner_facts.performances?.length" class="form-help">暂无可用成绩；可以在表单中补充自述成绩。</p>
+        <p v-if="!trainingBasis?.complete_for_recorded_data || trainingBasis?.recent_4w_avg_recorded_km === null" class="context-warning">训练基础部分缺失：未记录周不按零处理，待关联或缺失距离不用于完整跑量推断。</p>
+        <p v-if="planContext.runner_facts.recovery?.missing_fields?.length" class="form-help">恢复缺口：{{ planContext.runner_facts.recovery.missing_fields.join('、') }}。缺少单项指标不等于无法制定计划。</p>
+        <details><summary>查看来源与统计限制</summary><p v-for="text in trainingBasis?.limitations || []" :key="text" class="form-help">{{ text }}</p></details>
+        <el-button :disabled="!Object.keys(acceptedMileage(planContext)).length || generating" @click="acceptContextMileage">确认采用跑量到表单</el-button>
+      </template>
+      <p v-else-if="contextError" class="context-warning">{{ contextError }}。仍可手动填写；关闭“结合已有训练数据”后可使用纯表单生成。</p>
+      <el-checkbox v-model="form.use_training_context" :disabled="generating">生成时结合已有训练数据（重新读取，不用旧快照覆盖手动表单）</el-checkbox>
+      <div v-if="assessment" class="context-assessment"><h4>生成前检查</h4><p v-for="issue in assessment.feasibility" :key="issue.code" :class="{'context-warning':issue.severity==='error'}">{{ issue.message }}</p></div>
+    </section>
+
     <section class="ai-grid">
       <article class="panel ai-form-card">
         <div class="panel-head">
           <div>
             <h3>跑者与目标信息</h3>
-            <p>训练偏好会作为个人训练哲学传给模型，后续可升级为可保存的个人配置。</p>
+            <p>硬约束优先；偏好只在约束允许时采用。输入和训练事实快照随本次任务保存。</p>
           </div>
         </div>
 
@@ -69,9 +85,11 @@
             <el-form-item label="当前周跑量 km">
               <el-input-number v-model="form.current_weekly_mileage_km" :min="0" :max="300" style="width: 100%" />
               <div class="form-help">请填写你最近能够稳定完成的周跑量，而不是历史最高周跑量。</div>
+              <div class="form-help">{{ mileageSource(form.current_weekly_mileage_km,acceptedValues.current_weekly_mileage_km) }}</div>
             </el-form-item>
             <el-form-item label="最近 4 周平均跑量 km">
               <el-input-number v-model="form.recent_4w_avg_mileage_km" :min="0" :max="300" style="width: 100%" />
+              <div class="form-help">{{ mileageSource(form.recent_4w_avg_mileage_km,acceptedValues.recent_4w_avg_mileage_km) }}</div>
             </el-form-item>
           </div>
 
@@ -177,6 +195,9 @@
                   <el-option v-for="day in weekDays" :key="day" :label="day" :value="day" />
                 </el-select>
               </el-form-item>
+              <el-form-item label="每日可用时间（分钟，留空表示未限制；0表示不训练）"><div class="daily-time-grid"><label v-for="day in weekDays" :key="day">{{ day }}<el-input-number v-model="dailyMinutes[day]" :aria-label="`${day}可用分钟`" :min="0" :max="600" :controls="false" placeholder="不限" /></label></div></el-form-item>
+              <el-form-item label="长距离偏好日（软偏好）"><el-select v-model="form.long_run_preferred_day" clearable><el-option v-for="day in weekDays" :key="day" :value="day" :label="day" /></el-select></el-form-item>
+              <el-form-item label="不希望出现的课型（硬约束）"><el-select v-model="form.excluded_workout_types" multiple clearable><el-option v-for="type in ['REC','E','LSD','M','T1','T2','I','R','Mixed']" :key="type" :value="type" :label="type" /></el-select></el-form-item>
               <el-form-item label="训练偏好 / 训练哲学">
                 <el-input
                   v-model="form.training_preferences"
@@ -196,7 +217,7 @@
             <el-button
               type="primary"
               :loading="generating"
-              :disabled="generating || !quota?.can_generate || Boolean(dateConstraintError)"
+              :disabled="generating || assessing || !quota?.can_generate || Boolean(dateConstraintError)"
               @click="generate"
             >
               生成草稿
@@ -232,10 +253,12 @@
               :title="currentDraft.risk_notes.join('；')"
             />
           </div>
+          <details v-if="currentDraft.plan_context" class="context-assessment"><summary>本次生成依据与约束</summary><p>生成时快照：{{ currentDraft.plan_context.as_of_date }}，不是最新恢复结论。</p><template v-if="currentDraft.plan_context.hard_constraints"><p>每周最多 {{ currentDraft.plan_context.hard_constraints.available_training_days_per_week }} 天；固定休息日：{{ currentDraft.plan_context.hard_constraints.fixed_rest_days.join('、') || '未指定' }}；双跑：{{ currentDraft.plan_context.hard_constraints.can_double_run ? '允许' : '不允许' }}。</p><p>每日时间上限：{{ JSON.stringify(currentDraft.plan_context.hard_constraints.daily_available_minutes) }} 分钟；禁用课型：{{ currentDraft.plan_context.hard_constraints.excluded_workout_types.join('、') || '未指定' }}。</p></template><p v-for="issue in currentDraft.plan_context.feasibility" :key="issue.code">{{ issue.message }}</p></details>
           <div class="draft-actions">
             <el-button type="primary" :disabled="currentDraft.status !== 'draft' || applying" :loading="applying" @click="apply(currentDraft.id)">
-              采用这份计划
+              保存并启用
             </el-button>
+            <el-button :disabled="currentDraft.status !== 'draft' || applying" @click="apply(currentDraft.id,false)">仅保存，暂不启用</el-button>
             <el-button :disabled="generating" @click="currentDraft = null">返回修改</el-button>
             <el-button :disabled="generating" @click="generate">重新生成</el-button>
             <el-button :disabled="currentDraft.status !== 'draft'" @click="reject(currentDraft.id)">拒绝草稿</el-button>
@@ -299,7 +322,7 @@
           <template #default="{ row }">
             <div class="table-actions history-actions">
               <el-button size="small" @click="viewDraft(row.id)">查看</el-button>
-              <el-button size="small" type="primary" :disabled="row.status !== 'draft'" @click="apply(row.id)">应用</el-button>
+              <el-button size="small" type="primary" :disabled="row.status !== 'draft' || applying" @click="viewDraft(row.id)">预览与应用</el-button>
               <el-button size="small" :disabled="row.status !== 'draft'" @click="reject(row.id)">拒绝</el-button>
               <el-dropdown trigger="click" @command="(format) => downloadDraft(row, String(format))">
                 <el-button size="small" :icon="Download">导出</el-button>
@@ -320,7 +343,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Download } from "@element-plus/icons-vue";
@@ -333,14 +356,18 @@ import {
   getAIPlanDrafts,
   getAIPlanQuota,
   rejectAIPlanDraft,
+  getAIPlanContext,
+  assessAIPlanContext,
 } from "@/api/aiPlan";
 import { validateAiPlanDraft } from "@/api/ruleLoop";
 import { trackUsageEvent } from "@/api/usageEvents";
 import type { AIPlanDraft, AIPlanExportFormat, AIPlanGeneratePayload, AIPlanQuota, RaceDistance } from "@/types/models";
 import { statusLabel } from "@/utils/statusLabels";
+import {acceptedMileage,mileageSource} from '@/utils/planContext';
+import type {PlanContext} from '@/types/planContext';
 
 const router = useRouter();
-const today = new Date().toISOString().slice(0, 10);
+const today = formatLocalDate(new Date());
 const distanceOptions: Array<{ label: string; value: RaceDistance }> = [
   { label: "1500m", value: "1500m" },
   { label: "3000m", value: "3000m" },
@@ -379,16 +406,36 @@ const form = reactive<AIPlanGeneratePayload>({
   plan_weeks: 8,
   intensity_style: "standard",
   include_pace_guidance: true,
+  use_training_context:true,
+  excluded_workout_types:[],
+  long_run_preferred_day:null,
 });
+const dailyMinutes=reactive<Record<string,number|undefined>>({});
+const planContext=ref<PlanContext|null>(null),assessment=ref<PlanContext|null>(null);
+const contextLoading=ref(false),contextError=ref('');
+const acceptedValues=ref<Record<string,number>>({});
+const trainingBasis=computed(()=>planContext.value?.runner_facts.training);
+function formatResult(seconds:number){return `${Math.floor(seconds/3600)}:${String(Math.floor(seconds/60)%60).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;}
+async function loadRunnerContext(){
+  contextLoading.value=true;contextError.value='';
+  try{planContext.value=await getAIPlanContext();}catch{contextError.value='暂未获取训练基础，可重试';}finally{contextLoading.value=false;}
+}
+async function acceptContextMileage(){
+  if(!planContext.value)return;
+  const values=acceptedMileage(planContext.value);
+  if(!Object.keys(values).length)return;
+  try{await ElMessageBox.confirm('将覆盖表单中对应的跑量字段。每周训练天数、目标和其他约束不会改变，是否继续？','确认使用已记录跑量',{confirmButtonText:'采用统计值',cancelButtonText:'保留手动输入'});}catch{return;}
+  Object.assign(form,values);acceptedValues.value=values;
+}
+function generationPayload():AIPlanGeneratePayload{const minutes:Record<string,number>={};for(const [day,value] of Object.entries(dailyMinutes))if(typeof value==='number')minutes[day]=value;return {...form,daily_available_minutes:minutes,recent_pb_distance:form.recent_pb_distance || null,recent_pb_result:form.recent_pb_result || null,injury_notes:form.injury_notes || null,training_preferences:form.training_preferences || null,target_race_name:form.target_race_name || null,target_race_date:form.target_race_date || null,target_result:form.target_result || null,long_run_preferred_day:form.long_run_preferred_day || null};}
 
 const quota = ref<AIPlanQuota | null>(null);
 const drafts = ref<AIPlanDraft[]>([]);
 const currentDraft = ref<AIPlanDraft | null>(null);
 const generating = ref(false);
+const assessing=ref(false);
 const applying = ref(false);
-const generationProgress = ref(0);
 const loadingDrafts = ref(false);
-let generationTimer: ReturnType<typeof window.setInterval> | null = null;
 let generationStartedAt = 0;
 
 const groupedWorkouts = computed(() => {
@@ -444,11 +491,7 @@ const dateConstraintError = computed(() => {
 });
 
 const generationStatusText = computed(() => {
-  if (generationProgress.value < 28) return "正在整理跑者信息、目标赛事和训练偏好";
-  if (generationProgress.value < 58) return "正在规划周期结构与每周训练重点";
-  if (generationProgress.value < 86) return "正在生成每日训练内容和配速建议";
-  if (generationProgress.value < 100) return "正在校验草稿并准备预览";
-  return "草稿生成完成，正在刷新预览";
+  return "训练基础与约束已准备，正在等待模型生成与服务端校验结果。";
 });
 
 function parseLocalDate(value: string) {
@@ -490,22 +533,6 @@ function formatDateTime(value: string) {
   return value ? value.replace("T", " ").slice(0, 16) : "";
 }
 
-function startGenerationProgress() {
-  generationProgress.value = 4;
-  stopGenerationProgress();
-  generationTimer = window.setInterval(() => {
-    if (generationProgress.value >= 92) return;
-    const step = generationProgress.value < 35 ? 3 : generationProgress.value < 72 ? 2 : 1;
-    generationProgress.value = Math.min(generationProgress.value + step, 92);
-  }, 2300);
-}
-
-function stopGenerationProgress() {
-  if (!generationTimer) return;
-  window.clearInterval(generationTimer);
-  generationTimer = null;
-}
-
 async function loadQuota() {
   quota.value = await getAIPlanQuota();
 }
@@ -524,34 +551,30 @@ async function loadAll() {
 }
 
 async function generate() {
+  if(generating.value || assessing.value)return;
   if (dateConstraintError.value) {
     ElMessage.warning(dateConstraintError.value);
     return;
   }
+  const payload=generationPayload();
+  assessing.value=true;
+  try{
+    assessment.value=await assessAIPlanContext(payload);
+    if(assessment.value.feasibility.some(issue=>issue.severity==='error')){ElMessage.warning('约束存在冲突，请查看生成前检查。');return;}
+    if(assessment.value.feasibility.length){try{await ElMessageBox.confirm(assessment.value.feasibility.map(issue=>issue.message).join('\n'),'确认训练基础与限制',{confirmButtonText:'了解限制，生成草稿',cancelButtonText:'返回修改',type:'warning'});}catch{return;}}
+  }catch(error){ElMessage.error(getGenerateErrorMessage(error));return;}finally{assessing.value=false;}
   generating.value = true;
   generationStartedAt = Date.now();
   trackUsageEvent("ai_plan_generate_started");
-  startGenerationProgress();
   try {
-    const result = await generateAIPlan({
-      ...form,
-      recent_pb_distance: form.recent_pb_distance || null,
-      recent_pb_result: form.recent_pb_result || null,
-      injury_notes: form.injury_notes || null,
-      training_preferences: form.training_preferences || null,
-      target_race_name: form.target_race_name || null,
-      target_race_date: form.target_race_date || null,
-      target_result: form.target_result || null,
-    });
+    const result = await generateAIPlan(payload);
     currentDraft.value = await getAIPlanDraftDetail(result.draft_id);
-    generationProgress.value = 100;
     trackUsageEvent("ai_plan_generate_succeeded", { draft_id: result.draft_id });
     ElMessage.success("AI 课表草稿已生成");
     await loadAll();
   } catch (error) {
     const recovered = await recoverDraftAfterUncertainGeneration(error, generationStartedAt);
     if (recovered) {
-      generationProgress.value = 100;
       trackUsageEvent("ai_plan_generate_succeeded", { recovered: true });
       ElMessage.success("AI 课表草稿已生成，已自动刷新预览");
       return;
@@ -559,10 +582,8 @@ async function generate() {
     trackUsageEvent("ai_plan_generate_failed", { error_type: "request_failed" });
     ElMessage.error(getGenerateErrorMessage(error));
   } finally {
-    stopGenerationProgress();
     window.setTimeout(() => {
       generating.value = false;
-      generationProgress.value = 0;
     }, 350);
   }
 }
@@ -619,7 +640,7 @@ async function viewDraft(id: number) {
   currentDraft.value = await getAIPlanDraftDetail(id);
 }
 
-async function apply(id: number) {
+async function apply(id: number,activate=true) {
   if (applying.value) return;
   applying.value = true;
   try {
@@ -636,10 +657,14 @@ async function apply(id: number) {
         { confirmButtonText: "确认应用", cancelButtonText: "返回检查", type: "warning" },
       );
     }
-    const result = await applyAIPlanDraft(id, needsConfirm);
+    await ElMessageBox.confirm(activate?'保存并启用新周期。已有启用周期时不会自动替换，请先结束原周期。':'保存为正式周期草稿，暂不启用。','确认计划应用',{confirmButtonText:activate?'保存并启用':'仅保存',cancelButtonText:'返回预览'});
+    const result = await applyAIPlanDraft(id, needsConfirm,activate);
+    if(activate && (!result.activated || result.cycle_status!=='active'))throw new Error('服务端未确认周期已启用，请检查计划状态。');
     trackUsageEvent("ai_plan_applied", { draft_id: id, cycle_id: result.cycle_id });
-    ElMessage.success("计划已采用，接下来从今天的训练开始。");
-    await router.push("/today");
+    ElMessage.success(result.message);
+    await router.push({path:'/cycles',query:{cycle_id:String(result.cycle_id)}});
+  } catch(error) {
+    if(error!=='cancel' && error!=='close')ElMessage.error(getGenerateErrorMessage(error));
   } finally {
     applying.value = false;
   }
@@ -675,11 +700,11 @@ function safeFilename(value: string) {
   return value.replace(/[\\/:*?"<>|]/g, "-").replace(/\s+/g, "-").slice(0, 80) || "ai-plan-draft";
 }
 
-onMounted(loadAll);
-onBeforeUnmount(stopGenerationProgress);
+onMounted(()=>{void loadAll();void loadRunnerContext();});
 </script>
 
 <style scoped>
+.context-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:14px 0}.context-metrics span,.context-metrics strong{display:block}.context-metrics span{font-size:12px;color:#667085}.context-metrics strong{font-size:18px;margin-top:6px;color:#243b53}.context-warning{font-size:13px;line-height:1.7;color:#996016}.context-assessment{padding:12px;background:#f8fafc;margin-top:12px;border-radius:8px;font-size:13px;line-height:1.7}.daily-time-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;width:100%}.daily-time-grid label{display:grid;gap:4px;font-size:12px}.daily-time-grid :deep(.el-input-number){width:100%}.plan-context-panel>.el-checkbox{display:flex;white-space:normal;height:auto;min-height:44px;margin-top:12px}.plan-context-panel :deep(.el-checkbox__label){white-space:normal;line-height:1.6}.plan-context-panel details{font-size:13px;margin:10px 0}.plan-context-panel summary{cursor:pointer}@media(max-width:640px){.context-metrics{grid-template-columns:1fr 1fr}.daily-time-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.plan-context-panel .panel-head{align-items:flex-start;flex-direction:column}}
 .ai-plan-page .panel {
   padding: 22px;
 }
@@ -820,6 +845,9 @@ onBeforeUnmount(stopGenerationProgress);
   grid-template-columns: minmax(460px, 0.95fr) minmax(420px, 1.05fr);
   gap: 16px;
 }
+.ai-grid>article{min-width:0}
+.draft-actions{flex-wrap:wrap}
+.draft-actions>.el-button{margin-left:0}
 
 .panel-head {
   display: flex;

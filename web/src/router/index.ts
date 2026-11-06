@@ -4,6 +4,7 @@ import { getOnboardingStatus } from "@/api/onboarding";
 import { getSystemSettings } from "@/api/systemSettings";
 import { requestAuth } from "@/utils/authPrompt";
 import { getCachedAuthEntryMode } from "@/utils/systemSettingsCache";
+import { preferenceKey } from "@/utils/coreExperience";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -52,7 +53,7 @@ const router = createRouter({
       path: "/coach",
       name: "CoachAgent",
       component: () => import("@/views/CoachAgentView.vue"),
-      meta: { title: "AI 教练" },
+      meta: { title: "Gilo 教练" },
     },
     {
       path: "/today",
@@ -268,7 +269,9 @@ router.beforeEach(async (to) => {
     return "/today";
   }
 
-  if (token && to.name !== "Welcome" && !to.meta.public && !localStorage.getItem("gaitlogic_welcome_skipped")) {
+  const welcomeKey = preferenceKey(token, 'welcome-dismissed');
+  const welcomeDismissed = welcomeKey ? localStorage.getItem(welcomeKey) === '1' : false;
+  if (token && to.name !== "Welcome" && !to.meta.public && !welcomeDismissed) {
     try {
       const status = await getOnboardingStatus();
       if (status.should_show_welcome) return "/welcome";

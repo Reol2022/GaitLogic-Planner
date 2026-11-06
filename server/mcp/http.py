@@ -140,7 +140,7 @@ class McpHttpSecurityMiddleware:
             user = session.scalar(select(UserAccount).where(UserAccount.id == int(payload["sub"])))
             if user is None or user.status != "active":
                 return None, McpErrorCode.INSUFFICIENT_PERMISSION
-            return McpRequestIdentity(user_id=user.id), None
+            return McpRequestIdentity(user_id=user.id, scopes=frozenset(str(payload.get("scope", "")).split())), None
         except Exception:
             logger.warning("mcp_http_identity_lookup_failed code=MCP_HTTP_IDENTITY_LOOKUP_FAILED")
             return None, McpErrorCode.INTERNAL_SAFE_ERROR

@@ -1,6 +1,6 @@
 <template>
-  <el-container class="app-shell" :class="{ 'is-collapsed': sidebarCollapsed }">
-    <el-aside :width="sidebarCollapsed ? '72px' : '272px'" class="app-sidebar">
+  <el-container class="app-shell" :class="{ 'is-collapsed': sidebarCollapsed, 'is-coach-route': route.path === '/coach', 'has-mobile-back': showMobileBackToMy }">
+    <el-aside :width="sidebarCollapsed ? '72px' : '280px'" class="app-sidebar">
       <div class="brand">
         <div v-if="sidebarCollapsed" class="brand-mini" :title="`${APP_NAME} ${APP_VERSION_LABEL}`">GL</div>
         <div v-else class="brand-lockup">
@@ -12,81 +12,7 @@
         </div>
       </div>
 
-      <el-menu
-        :collapse="sidebarCollapsed"
-        :collapse-transition="false"
-        :default-active="route.path"
-        router
-        class="side-menu"
-      >
-        <div v-if="!sidebarCollapsed" class="menu-section">训练</div>
-        <el-menu-item index="/today">
-          <el-icon><Timer /></el-icon>
-          <template #title>今日训练</template>
-        </el-menu-item>
-        <el-menu-item index="/training-calendar">
-          <el-icon><Calendar /></el-icon>
-          <template #title>训练日历</template>
-        </el-menu-item>
-
-        <div v-if="!sidebarCollapsed" class="menu-section">计划</div>
-        <el-menu-item index="/training-plan">
-          <el-icon><List /></el-icon>
-          <template #title>训练计划</template>
-        </el-menu-item>
-
-        <div v-if="!sidebarCollapsed" class="menu-section">分析</div>
-        <el-menu-item index="/dashboard">
-          <el-icon><DataAnalysis /></el-icon>
-          <template #title>训练统计</template>
-        </el-menu-item>
-        <el-menu-item index="/training-readiness">
-          <el-icon><TrendCharts /></el-icon>
-          <template #title>负荷与恢复</template>
-        </el-menu-item>
-        <el-menu-item index="/coach">
-          <el-icon><ChatDotRound /></el-icon>
-          <template #title>AI 教练</template>
-        </el-menu-item>
-
-        <div v-if="!sidebarCollapsed" class="menu-section">我的</div>
-        <el-menu-item index="/todos">
-          <el-icon><Bell /></el-icon>
-          <template #title>待办中心</template>
-        </el-menu-item>
-        <el-menu-item v-if="garminSyncVisible" index="/data-sync">
-          <el-icon><Connection /></el-icon>
-          <template #title>数据同步</template>
-        </el-menu-item>
-        <el-menu-item index="/data-management">
-          <el-icon><FolderOpened /></el-icon>
-          <template #title>数据管理</template>
-        </el-menu-item>
-        <el-menu-item index="/feedback">
-          <el-icon><Message /></el-icon>
-          <template #title>反馈</template>
-        </el-menu-item>
-        <el-menu-item index="/my">
-          <el-icon><User /></el-icon>
-          <template #title>设置</template>
-        </el-menu-item>
-
-        <template v-if="isAdmin">
-          <div v-if="!sidebarCollapsed" class="menu-section">管理后台</div>
-          <el-menu-item index="/admin/ai-settings">
-            <el-icon><Setting /></el-icon>
-            <template #title>AI 设置</template>
-          </el-menu-item>
-          <el-menu-item index="/admin/system-settings">
-            <el-icon><Setting /></el-icon>
-            <template #title>系统设置</template>
-          </el-menu-item>
-          <el-menu-item index="/admin/rule-governance">
-            <el-icon><DataAnalysis /></el-icon>
-            <template #title>科学规则治理</template>
-          </el-menu-item>
-        </template>
-      </el-menu>
+      <SidebarNavigation :collapsed="sidebarCollapsed" :admin="isAdmin" :devices="garminSyncVisible" :preferences="sidebarPreferences" :can-configure="!!currentUser" @customize="menuSettingsOpen=true" />
     </el-aside>
 
     <el-container>
@@ -96,6 +22,7 @@
             class="collapse-button"
             circle
             :icon="sidebarCollapsed ? Expand : Fold"
+            :aria-label="sidebarCollapsed ? '展开侧边导航' : '收起侧边导航'"
             @click="sidebarCollapsed = !sidebarCollapsed"
           />
           <div class="mobile-brand" :title="`${APP_NAME} ${APP_VERSION_LABEL}`">
@@ -104,17 +31,19 @@
           </div>
           <div class="page-heading">
             <h1>{{ pageTitle }}</h1>
-            <p>训练计划、执行日志与跑量趋势</p>
+            <p>安排计划 · 执行训练 · 复盘调整</p>
           </div>
         </div>
         <div class="header-tools">
-          <span class="sync-text">本地训练台</span>
+          <router-link v-if="garminSyncVisible" class="sync-text" to="/data-sync">设备与同步</router-link>
           <el-button class="tool-icon" text :icon="Upload" @click="router.push('/data-management')" />
           <el-button class="tool-icon" text :icon="Bell" @click="router.push('/todos')" />
           <el-dropdown trigger="click" @command="handleHeaderSettingCommand">
-            <el-button class="tool-icon settings-trigger" text :icon="Setting" />
+            <el-button class="tool-icon settings-trigger" text :icon="Setting" aria-label="打开设置菜单" />
             <template #dropdown>
               <el-dropdown-menu>
+                <el-dropdown-item v-if="currentUser" command="customize-menu">自定义菜单</el-dropdown-item>
+                <el-dropdown-item v-if="isAdmin" command="admin-console">管理控制台</el-dropdown-item>
                 <el-dropdown-item command="toggle-tabs">
                   {{ tabsVisible ? "关闭导航栏" : "开启导航栏" }}
                 </el-dropdown-item>
@@ -165,12 +94,16 @@
       </el-main>
     </el-container>
 
-    <nav class="mobile-bottom-nav" aria-label="移动端导航">
-      <router-link v-for="item in mobileNavItems" :key="item.path" :to="item.path" class="mobile-nav-item">
-        <el-icon><component :is="item.icon" /></el-icon>
+    <nav class="mobile-bottom-nav" aria-label="移动端导航" :style="{gridTemplateColumns:`repeat(${mobileNavItems.length+1}, minmax(0,1fr))`}">
+      <router-link v-for="item in mobileNavItems" :key="item.path" :to="item.path" class="mobile-nav-item" :class="{ 'is-section-active': mobileActivePath === item.path }" :aria-current="mobileActivePath === item.path ? 'page' : undefined" :title="item.label">
+        <el-icon><component :is="mobileIcons[item.icon || 'home']" /></el-icon>
         <span>{{ item.label }}</span>
       </router-link>
+      <button type="button" class="mobile-nav-item" :class="{'is-section-active':!mobileActivePath}" aria-label="打开更多功能" :aria-expanded="mobileMenuOpen" @click="mobileMenuOpen=true"><el-icon><MoreFilled /></el-icon><span>更多</span></button>
     </nav>
+
+    <MobileNavigationDrawer v-model="mobileMenuOpen" :preferences="sidebarPreferences" :admin="isAdmin" :devices="garminSyncVisible" @customize="menuSettingsOpen=true" />
+    <SidebarPreferencesDialog v-model="menuSettingsOpen" :preferences="sidebarPreferences" :admin="isAdmin" :devices="garminSyncVisible" @save="saveMenuSettings" />
 
     <div
       v-if="tabContextMenu.visible"
@@ -209,11 +142,19 @@ import {
   TrendCharts,
   Upload,
   User,
+  House,
+  MoreFilled,
 } from "@element-plus/icons-vue";
 import { clearStoredToken, getCurrentUser, logoutUser } from "@/api/auth";
 import { listDataSyncProviders } from "@/api/dataSync";
 import AppVersion from "@/components/common/AppVersion.vue";
 import SiteFilingFooter from "@/components/SiteFilingFooter.vue";
+import SidebarNavigation from "@/components/common/SidebarNavigation.vue";
+import SidebarPreferencesDialog from "@/components/common/SidebarPreferencesDialog.vue";
+import MobileNavigationDrawer from '@/components/common/MobileNavigationDrawer.vue';
+import {ElMessage} from 'element-plus';
+import {configuredMobileNavigation,defaultSidebarPreferences,loadSidebarPreferences,normalizeSidebarPreferences,saveSidebarPreferences,sidebarPreferenceKey,type SidebarPreferences} from '@/utils/sidebarPreferences';
+import {sidebarGroups,sidebarSelection} from '@/utils/sidebarNavigation';
 import type { UserAccount } from "@/types/models";
 import { APP_NAME, APP_VERSION_LABEL } from "@/config/app";
 import { requestAuth } from "@/utils/authPrompt";
@@ -228,7 +169,29 @@ const router = useRouter();
 const currentUser = ref<UserAccount | null>(null);
 const garminSyncVisible = ref(false);
 const sidebarCollapsed = ref(false);
-const tabsVisible = ref(true);
+const sidebarPreferences=ref(defaultSidebarPreferences());
+const menuSettingsOpen=ref(false);
+const mobileMenuOpen=ref(false);
+watch(()=>currentUser.value?.id,()=>{
+  menuSettingsOpen.value=false;
+  mobileMenuOpen.value=false;
+  sidebarPreferences.value=loadSidebarPreferences(currentUser.value?.id ?? null);
+});
+function saveMenuSettings(value:SidebarPreferences){
+  if(!currentUser.value)return;
+  sidebarPreferences.value=normalizeSidebarPreferences(value);
+  const saved=saveSidebarPreferences(currentUser.value.id,sidebarPreferences.value);
+  menuSettingsOpen.value=false;
+  if(saved)ElMessage.success('菜单设置已保存');
+  else ElMessage.warning('浏览器不允许保存设置，本次已生效，刷新后可能恢复默认');
+}
+function syncMenuSettings(event:StorageEvent){
+  if(event.key===sidebarPreferenceKey(currentUser.value?.id ?? null) || event.key===null){
+    sidebarPreferences.value=loadSidebarPreferences(currentUser.value?.id ?? null);
+    menuSettingsOpen.value=false;
+  }
+}
+const tabsVisible = ref(false);
 const visitedTabs = ref<NavTab[]>([{ path: "/today", title: "今日训练" }]);
 const tabContextMenu = ref<{
   visible: boolean;
@@ -241,19 +204,26 @@ const tabContextMenu = ref<{
   y: 0,
   tab: null,
 });
-const mobileNavItems = [
-  { path: "/today", label: "今日", icon: Timer },
-  { path: "/training-calendar", label: "日历", icon: Calendar },
-  { path: "/training-plan", label: "计划", icon: List },
-  { path: "/dashboard", label: "分析", icon: DataAnalysis },
-  { path: "/my", label: "我的", icon: User },
-];
+const mobileIcons={home:House,calendar:Calendar,bell:Bell,chat:ChatDotRound,activity:TrendCharts,recovery:Timer,plan:List,device:Connection,user:User,settings:Setting} as Record<string,typeof House>;
+const mobileNavItems=computed(()=>configuredMobileNavigation(isAdmin.value,garminSyncVisible.value,sidebarPreferences.value));
 
 const pageTitle = computed(() => String(route.meta.title || "GaitLogic"));
+const primaryNavPath = computed(() => {
+  const path = route.path;
+  if (path.startsWith('/admin') || path === '/today' || path === '/coach') return path;
+  if (['/training-plan', '/training-calendar', '/cycles', '/blocks', '/workouts', '/ai-plan', '/plan-imports'].some(p => path === p || path.startsWith(p + '/'))) return '/training-plan';
+  if (['/dashboard', '/weekly-review', '/adaptive-weekly-review', '/runner-state', '/training-readiness'].includes(path)) return '/dashboard';
+  return '/my';
+});
 const displayName = computed(() => currentUser.value?.nickname || currentUser.value?.username || "访客");
 const userInitial = computed(() => displayName.value.slice(0, 1).toUpperCase());
 const activeTab = computed(() => route.path);
 const isAdmin = computed(() => currentUser.value?.role === "admin");
+const mobileActivePath=computed(()=>{
+  const exact=sidebarSelection(route.path,sidebarGroups(isAdmin.value,garminSyncVisible.value)).activePath;
+  if(mobileNavItems.value.some(item=>item.path===exact))return exact;
+  return mobileNavItems.value.some(item=>item.path===primaryNavPath.value)?primaryNavPath.value:null;
+});
 const showMobileBackToMy = computed(() => route.query.from === "/my" && route.path !== "/my");
 const mobileSwipeStart = ref<{ x: number; y: number; time: number } | null>(null);
 
@@ -324,6 +294,8 @@ function closeAllTabs() {
 }
 
 function handleHeaderSettingCommand(command: string | number) {
+  if(command==='customize-menu' && currentUser.value){menuSettingsOpen.value=true;return;}
+  if(command==='admin-console' && isAdmin.value){window.location.assign('/admin.html#/');return;}
   if (command === "toggle-tabs") {
     tabsVisible.value = !tabsVisible.value;
     closeTabContextMenu();
@@ -338,6 +310,9 @@ function handleMobileTouchStart(event: TouchEvent) {
   if (!showMobileBackToMy.value || window.innerWidth > 768) return;
   const touch = event.touches[0];
   if (!touch) return;
+  // Leave horizontal controls and text editing to the component itself.
+  const target=event.target;
+  if(touch.clientX>24 || (target instanceof Element && target.closest('input,textarea,select,button,a,[role="button"],.el-table,.el-segmented,.message-list'))){mobileSwipeStart.value=null;return;}
   mobileSwipeStart.value = {
     x: touch.clientX,
     y: touch.clientY,
@@ -355,7 +330,7 @@ function handleMobileTouchEnd(event: TouchEvent) {
   const deltaX = touch.clientX - start.x;
   const deltaY = Math.abs(touch.clientY - start.y);
   const elapsed = Date.now() - start.time;
-  if (start.x <= 90 && deltaX > 70 && deltaY < 55 && elapsed < 800) {
+  if (start.x <= 24 && deltaX > 70 && deltaY < 55 && elapsed < 800) {
     goBackToMy();
   }
 }
@@ -397,11 +372,13 @@ watch(() => route.fullPath, addVisitedTab, { immediate: true });
 
 onMounted(() => {
   loadCurrentUser();
+  window.addEventListener('storage',syncMenuSettings);
   window.addEventListener("click", closeTabContextMenu);
   window.addEventListener("scroll", closeTabContextMenu, true);
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener('storage',syncMenuSettings);
   window.removeEventListener("click", closeTabContextMenu);
   window.removeEventListener("scroll", closeTabContextMenu, true);
 });
@@ -417,19 +394,19 @@ onBeforeUnmount(() => {
   position: sticky;
   top: 0;
   align-self: flex-start;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
-  border-right: 1px solid #22272d;
-  background: #171a1d;
+  border-right: 1px solid #303030;
+  background: #1a1a1a;
   transition: width 0.2s ease;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  height: 72px;
-  padding: 0 18px;
-  border-bottom: 1px solid #282d33;
+  height: 100px;
+  padding: 0 24px;
+  border-bottom: 0;
 }
 
 .brand-lockup {
@@ -439,9 +416,9 @@ onBeforeUnmount(() => {
 }
 
 .brand-lockup strong {
-  font-size: 26px;
-  font-weight: 650;
-  letter-spacing: 0;
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -1.4px;
 }
 
 .brand-lockup small {
@@ -468,80 +445,9 @@ onBeforeUnmount(() => {
   height: 38px;
   margin: 0 auto;
   border-radius: 8px;
-  background: #1f8fff;
+  background: transparent;
   color: #ffffff;
   font-weight: 750;
-}
-
-.side-menu {
-  height: calc(100vh - 72px);
-  overflow-x: hidden;
-  overflow-y: auto;
-  border-right: 0;
-  background: transparent;
-  scrollbar-width: thin;
-  scrollbar-color: #3b434d transparent;
-}
-
-.side-menu::-webkit-scrollbar {
-  width: 6px;
-}
-
-.side-menu::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: #3b434d;
-}
-
-.menu-section {
-  padding: 16px 20px 7px;
-  color: #737d89;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-:deep(.el-menu) {
-  --el-menu-bg-color: transparent;
-  --el-menu-text-color: #d8dde3;
-  --el-menu-hover-bg-color: #23282f;
-  --el-menu-active-color: #ffffff;
-}
-
-:deep(.el-menu-item) {
-  height: 44px;
-  margin: 2px 10px;
-  border-radius: 6px;
-}
-
-:deep(.el-sub-menu .el-sub-menu__title) {
-  height: 44px;
-  margin: 2px 10px;
-  border-radius: 6px;
-  color: #d8dde3;
-}
-
-:deep(.el-sub-menu .el-sub-menu__title:hover) {
-  background: #23282f;
-}
-
-:deep(.el-sub-menu .el-menu-item) {
-  height: 40px;
-  margin-left: 22px;
-}
-
-:deep(.el-menu-item.is-active) {
-  background: #0b74de;
-}
-
-:deep(.el-menu-item .el-icon) {
-  color: #20a4ff;
-}
-
-:deep(.el-sub-menu .el-icon) {
-  color: #20a4ff;
-}
-
-:deep(.el-menu-item.is-active .el-icon) {
-  color: #ffffff;
 }
 
 .app-header {
@@ -755,13 +661,19 @@ onBeforeUnmount(() => {
     z-index: 2200;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    height: 62px;
+    min-height: 62px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     border-top: 1px solid #d8dde3;
     background: #ffffff;
     box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.1);
   }
 
   .mobile-nav-item {
+    border:0;
+    background:transparent;
+    padding:6px 4px;
+    cursor:pointer;
+    font-family:inherit;
     display: grid;
     place-items: center;
     align-content: center;
@@ -775,8 +687,10 @@ onBeforeUnmount(() => {
   .mobile-nav-item .el-icon {
     font-size: 20px;
   }
+  .mobile-nav-item span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mobile-nav-item:focus-visible{outline:2px solid #1686ce;outline-offset:-2px}
 
-  .mobile-nav-item.router-link-active {
+  .mobile-nav-item.is-section-active {
     color: #1976d2;
     font-weight: 700;
   }

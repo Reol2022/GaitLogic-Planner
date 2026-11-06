@@ -1,6 +1,7 @@
 <template>
   <div class="page-stack adaptive-review-page">
-    <PageHeader title="周复盘与自适应调整" subtitle="确定性事实负责边界，AI 负责解释，计划修改必须由你确认。" />
+    <PageHeader title="本周复盘与下周安排" subtitle="先看执行事实，再讨论调整；正式计划只在你明确确认后改变。" />
+    <TrainingJourney active="review" />
     <section class="panel controls">
       <el-select v-model="cycleId" placeholder="训练周期" @change="loadBlocks"><el-option v-for="cycle in cycles" :key="cycle.id" :label="cycle.name" :value="cycle.id" /></el-select>
       <el-select v-model="sourceBlockId" placeholder="复盘训练周" @change="chooseTarget"><el-option v-for="block in blocks" :key="block.id" :label="block.block_name" :value="block.id" /></el-select>
@@ -8,9 +9,12 @@
       <el-select v-if="history.length" v-model="selectedHistoryId" placeholder="历史周复盘" @change="loadHistoricalReview">
         <el-option v-for="item in history" :key="item.id" :label="`第 ${item.version} 版 · ${formatDateTime(item.created_at)}`" :value="item.id" />
       </el-select>
-      <el-button type="primary" :loading="loading" :disabled="!range || !cycleId || !sourceBlockId || !targetBlockId" @click="generate">生成周复盘</el-button>
+      <el-button type="primary" :loading="loading" :disabled="!range || !cycleId || !sourceBlockId || !targetBlockId" @click="generate">生成复盘与调整草稿</el-button>
     </section>
     <el-alert title="AI 周复盘不是医疗建议，也不会自动修改训练计划。" type="info" :closable="false" show-icon />
+    <el-alert v-if="pageError" :title="pageError" type="error" :closable="false" show-icon />
+    <p v-if="range && !targetBlockId" class="review-help">本周执行情况仍可查看。当前生成流程还需要选择下一训练周；可先在计划工具中完善安排，或与教练讨论。</p>
+    <nav class="experience-links"><router-link to="/training-plan">返回计划</router-link><router-link to="/blocks">管理训练周</router-link><router-link :to="coachEntry('week', range?.[0])">和教练讨论这一周</router-link></nav>
 
     <el-skeleton v-if="factsLoading" class="panel facts-loading" :rows="3" animated />
     <section v-else-if="summary" class="panel execution-summary">
@@ -21,16 +25,17 @@
       <div class="overview-metrics">
         <div><span>计划跑量</span><strong>{{ km(summary.metrics.planned_distance_km) }}</strong></div>
         <div><span>实际跑量</span><strong>{{ km(summary.metrics.actual_distance_km) }}</strong></div>
-        <div><span>完成率</span><strong>{{ percent(summary.metrics.completion_rate) }}</strong></div>
-        <div><span>完成天数</span><strong>{{ summary.metrics.completed_workout_days }}/{{ summary.metrics.planned_workout_days }}</strong></div>
+        <div><span>跑量完成比（整周）</span><strong>{{ percent(summary.metrics.completion_rate) }}</strong></div>
+        <div><span>已完成 / 计划课程</span><strong>{{ summary.metrics.completed_workout_days }}/{{ summary.metrics.planned_workout_days }}</strong></div>
       </div>
-      <div class="daily-review-grid">
+      <p class="review-help">跑量完成比 = 实际跑量 ÷ 整周计划跑量，不等于到期课程完成率。未来安排、未同步或未关联活动不应直接判断为漏练。</p>
+      <details><summary>展开每天的计划与实际</summary><div class="daily-review-grid">
         <article v-for="day in summary.metrics.daily_workouts" :key="day.planned_workout_id" class="daily-review-card">
           <div><strong>{{ day.date || "未定日期" }}</strong><el-tag size="small" effect="plain">{{ statusLabel(day.status) }}</el-tag></div>
           <p>{{ day.planned_content }}</p>
           <span>计划 {{ km(day.planned_distance_km) }} · 实际 {{ km(day.actual_distance_km) }} · RPE {{ day.rpe ?? "-" }}</span>
         </article>
-      </div>
+      </div></details>
       <div class="completion-notes">
         <p><strong>关键课：</strong>{{ summary.metrics.key_workouts.length }} 次，平均 RPE {{ summary.metrics.key_workout_avg_rpe ?? "-" }}</p>
         <p><strong>长距离：</strong>{{ summary.metrics.long_run ? "已纳入复盘" : "本周无长距离计划" }}</p>
@@ -84,7 +89,7 @@
       <el-input v-model="feedback.free_text" class="feedback-text" type="textarea" :rows="3" maxlength="1000" show-word-limit placeholder="补充时间安排或偏好（可选）" />
       <template #footer><el-button @click="feedbackVisible = false">取消</el-button><el-button type="primary" :loading="revising" @click="revise">提交反馈并生成</el-button></template>
     </el-dialog>
-    <el-empty v-if="!loading && !review" description="选择一周后生成可解释周复盘" />
+    <el-empty v-if="!loading && !factsLoading && !review && !legacyReview && !summary" description="选择训练周期和训练周后，先查看实际完成情况。没有计划时仍可查看设备活动。" />
   </div>
 </template>
 
@@ -102,6 +107,8 @@ import {
 } from "@/api/adaptivePlan";
 import type { AdaptiveProposal, LangGraphWeeklyReview } from "@/types/adaptivePlan";
 import { limitationMessage } from "@/utils/limitationDisplay";
+import TrainingJourney from "@/components/common/TrainingJourney.vue";
+import { coachEntry, localDate } from "@/utils/coreExperience";
 import { getActiveTrainingCycle, listTrainingCycles } from "@/api/trainingCycles";
 import { listTrainingBlocks } from "@/api/trainingBlocks";
 import { getWeeklyReview, getWeeklyReviewSummary, listWeeklyReviews } from "@/api/weeklyReviews";
@@ -123,6 +130,10 @@ const legacyReview = ref<WeeklyReviewDetail | null>(null);
 const proposal = ref<AdaptiveProposal | null>(null);
 const loading = ref(false);
 const factsLoading = ref(false);
+const pageError = ref('');
+let factsRequest = 0;
+let blockRequest = 0;
+let historyRequest = 0;
 const revising = ref(false);
 const feedbackVisible = ref(false);
 const maxProposalVersion = ref(3);
@@ -141,13 +152,22 @@ function currentWeek(): [string, string] {
   start.setDate(today.getDate() - day);
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
-  const text = (value: Date) => value.toISOString().slice(0, 10);
+  const text = localDate;
   return [text(start), text(end)];
 }
 
 async function loadBlocks() {
-  blocks.value = cycleId.value ? await listTrainingBlocks(cycleId.value) : [];
-  if (!sourceBlockId.value) sourceBlockId.value = blocks.value[blocks.value.length - 1]?.id || null;
+  const request = ++blockRequest;
+  ++factsRequest;
+  summary.value = null; review.value = null; proposal.value = null; legacyReview.value = null;
+  const rows = cycleId.value ? await listTrainingBlocks(cycleId.value) : [];
+  if (request !== blockRequest) return;
+  blocks.value = rows;
+  const today = localDate();
+  sourceBlockId.value = blocks.value.find(item => item.id === sourceBlockId.value)?.id
+    || blocks.value.find(item => item.start_date && item.end_date && item.start_date <= today && item.end_date >= today)?.id
+    || [...blocks.value].reverse().find(item => item.end_date && item.end_date < today)?.id
+    || blocks.value[0]?.id || null;
   chooseTarget();
 }
 
@@ -163,17 +183,22 @@ function chooseTarget() {
 }
 
 async function loadFacts() {
+  const request = ++factsRequest;
+  ++historyRequest;
+  factsLoading.value = false;
   summary.value = null;
   history.value = [];
   selectedHistoryId.value = null;
   legacyReview.value = null;
   if (!range.value || !cycleId.value || !sourceBlockId.value) return;
   factsLoading.value = true;
+  pageError.value = '';
   try {
     const [summaryResult, historyResult] = await Promise.all([
       getWeeklyReviewSummary(cycleId.value, sourceBlockId.value),
       listWeeklyReviews(cycleId.value),
     ]);
+    if (request !== factsRequest) return;
     summary.value = summaryResult;
     history.value = historyResult.items.filter((item) => (
       item.source_block_id === sourceBlockId.value
@@ -183,25 +208,30 @@ async function loadFacts() {
     selectedHistoryId.value = history.value[0]?.id || null;
     await loadHistoricalReview();
   } catch {
-    ElMessage.error("本周训练情况加载失败，请稍后重试。");
+    if (request === factsRequest) pageError.value = '本周训练情况加载失败，请重新选择训练周重试。未加载不代表没有训练。';
   } finally {
-    factsLoading.value = false;
+    if (request === factsRequest) factsLoading.value = false;
   }
 }
 
 async function loadHistoricalReview() {
+  const request = ++historyRequest;
+  const id = selectedHistoryId.value;
   review.value = null;
   proposal.value = null;
-  legacyReview.value = selectedHistoryId.value
-    ? await getWeeklyReview(selectedHistoryId.value)
-    : null;
+  legacyReview.value = null;
+  const result = id ? await getWeeklyReview(id) : null;
+  if (request === historyRequest && id === selectedHistoryId.value) legacyReview.value = result;
 }
 
 async function generate() {
+  if (loading.value) return;
   if (!range.value || !cycleId.value || !sourceBlockId.value || !targetBlockId.value) return;
   loading.value = true;
+  pageError.value = '';
+  const requestedSelection = `${cycleId.value}:${sourceBlockId.value}:${targetBlockId.value}`;
   try {
-    review.value = await generateLangGraphWeeklyReview({
+    const generated = await generateLangGraphWeeklyReview({
       week_start: range.value[0],
       week_end: range.value[1],
       cycle_id: cycleId.value,
@@ -209,9 +239,13 @@ async function generate() {
       target_block_id: targetBlockId.value,
       timezone: "Asia/Shanghai",
     });
+    if (requestedSelection !== `${cycleId.value}:${sourceBlockId.value}:${targetBlockId.value}`) return;
+    review.value = generated;
     proposal.value = review.value.proposal_record_id
       ? await getAdaptiveProposal(review.value.proposal_record_id)
       : null;
+  } catch {
+    pageError.value = '复盘未能完成，正式计划没有因此改变。请稍后重试。';
   } finally {
     loading.value = false;
   }
@@ -230,7 +264,7 @@ async function reject() {
   await ElMessageBox.confirm("拒绝后原计划保持不变。", "拒绝调整", { type: "warning" });
   await rejectAdaptiveProposal(proposal.value.id);
   proposal.value = await getAdaptiveProposal(proposal.value.id);
-  ElMessage.success("已拒绝 Proposal，原计划未修改");
+  ElMessage.success("已保留原计划，不采用本次调整");
 }
 
 function km(value?: number | null) { return `${Number(value || 0).toFixed(1)} km`; }
@@ -293,5 +327,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.controls{flex-wrap:wrap}.review-help{color:var(--muted);font-size:13px;line-height:1.7}.execution-summary summary{cursor:pointer;padding:12px 0;color:var(--muted)}
 .adaptive-review-page{gap:16px}.controls{display:flex;align-items:center;gap:12px;padding:16px}.narrative,.execution-summary{padding:18px}.narrative header,.proposal-meta,.section-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}.narrative h2,.section-heading h2{margin:0}.section-heading span{color:var(--muted);font-size:12px}.overview{font-size:15px;line-height:1.8}.review-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.review-grid article,.reference,.daily-review-card{padding:13px;border:1px solid var(--card-border);border-radius:10px}.review-grid h3{margin:0}.review-grid p,.reference p{line-height:1.7}.narrative :deep(.el-alert){margin-top:10px}.reference{margin-bottom:10px}.reference small{color:var(--muted)}.overview-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}.overview-metrics div,.completion-notes p{padding:12px;background:var(--surface-muted);border-radius:10px}.overview-metrics span{display:block;color:var(--muted);font-size:12px}.overview-metrics strong{display:block;margin-top:6px}.daily-review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.daily-review-card>div{display:flex;align-items:center;justify-content:space-between;gap:10px}.daily-review-card p{margin:10px 0;line-height:1.55}.daily-review-card>span{color:var(--muted);font-size:12px}.completion-notes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.completion-notes p{margin:0}.feedback-text{margin-top:14px}@media(max-width:600px){.controls{align-items:stretch;flex-direction:column}.controls :deep(.el-date-editor){width:100%}.review-grid,.daily-review-grid{grid-template-columns:1fr}.overview-metrics{grid-template-columns:repeat(2,1fr)}.completion-notes{grid-template-columns:1fr}.proposal-meta{align-items:flex-start;flex-direction:column}}
 </style>

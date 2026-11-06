@@ -105,6 +105,8 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix="/api")
     app.include_router(coach.router, prefix="/api")
     app.include_router(admin.router, prefix="/api")
+    from server.api.routes import admin_console
+    app.include_router(admin_console.router, prefix="/api")
     app.include_router(ai_plan.router, prefix="/api")
     app.include_router(ai_coach_preference.router, prefix="/api")
     app.include_router(excel.router, prefix="/api")

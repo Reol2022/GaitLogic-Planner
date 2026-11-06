@@ -44,6 +44,7 @@ from server.mcp.schemas import (
 from server.knowledge_retrieval.errors import KnowledgeCorpusError
 from server.observability.tracing import active_trace_handle, active_tracer
 from server.services.weekly_review_stats_service import APP_TIMEZONE
+from server.mcp.facts_v2 import read_training, read_training_detail, read_recovery, McpTrainingDetailResult, McpRecoveryTrendResult
 
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,10 @@ _ERROR_MESSAGES = {
     McpErrorCode.SERVICE_FAILURE: "The training data service could not complete this request.",
     McpErrorCode.INTERNAL_SAFE_ERROR: "The server could not safely complete this request.",
     McpErrorCode.DATA_UNAVAILABLE: "The requested training data is currently unavailable.",
+    McpErrorCode.INSUFFICIENT_PERMISSION: "An additional recovery-data authorization is required.",
+    McpErrorCode.KNOWLEDGE_INDEX_UNAVAILABLE: "The training knowledge index is not configured or unavailable.",
+    McpErrorCode.RETRIEVAL_TIMEOUT: "The training knowledge retrieval timed out.",
+    McpErrorCode.CURSOR_STALE: "Training facts changed; restart the query from its first page.",
 }
 
 
@@ -110,7 +115,10 @@ class McpToolAdapter:
             # Do not map ``brief_review``: it is free-text training-log content.
             items=[
                 McpRecentTrainingItem.model_validate(
-                    {key: item.get(key) for key in McpRecentTrainingItem.model_fields}
+                    {**{key: item[key] for key in McpRecentTrainingItem.model_fields if key in item},
+                     'planned_training_type': item.get('training_type') if item.get('classification_basis') == 'TRAINING_PLAN' else None,
+                     'actual_training_type': item.get('training_type') if item.get('classification_basis') == 'ACTUAL_LOG' else None,
+                     'training_type': 'unknown' if item.get('classification_basis') == 'TRAINING_PLAN' else item.get('training_type', 'unknown')}
                 )
                 for item in value.get("items", [])
             ],
@@ -138,18 +146,22 @@ class McpToolAdapter:
 
     @classmethod
     def _runner_state(cls, value: dict) -> McpRunnerState:
+        allowed = {'distance_7d_km', 'distance_28d_km', 'sessions_7d', 'sessions_28d', 'volume_ratio', 'completion_rate_7d', 'completion_rate_28d', 'previous_21d_weekly_average_km'}
+        metrics = {key: val for key, val in value.get('metrics', {}).items() if key in allowed and (val is None or type(val) in (int, float))}
+        evidence = [McpEvidence.model_validate(item) for item in value.get('evidence', []) if item.get('metric') in allowed][:15]
         return McpRunnerState(
             data_status=value["data_status"],
             as_of_date=value["as_of_date"],
             overall_state=value["overall_state"],
             risk_level=value["risk_level"],
             data_quality=McpDataQuality.model_validate(value["data_quality"]),
-            # Health and recovery metrics require a separately granted scope.
-            # Until that exists, avoid exposing dynamic metric/evidence payloads.
-            metrics={},
-            evidence=[],
+            # Keep legacy recovery privacy: expose sufficiency, not dynamic health payloads.
+            metrics=metrics,
+            evidence=evidence,
             warnings=[cls._notice(item) for item in value.get("warnings", [])],
             limitations=[cls._notice(item) for item in value.get("limitations", [])],
+            assessment_status='INSUFFICIENT_DATA' if value['data_status'] == 'UNKNOWN' else 'ASSESSED' if value['data_status'] == 'AVAILABLE' and evidence and not value.get('data_quality', {}).get('missing_fields') else 'PARTIALLY_ASSESSED',
+            missing_evidence=value.get('data_quality', {}).get('missing_fields', [])[:40],
         )
 
     @staticmethod
@@ -281,9 +293,12 @@ class McpToolAdapter:
                     "language": language,
                 }
             )
-            tool = self._knowledge_tool_factory()
+            try:
+                tool = self._knowledge_tool_factory()
+            except (ValueError, KnowledgeCorpusError):
+                return McpKnowledgeRetrievalResult(status='FAILED', error=self._error(McpErrorCode.KNOWLEDGE_INDEX_UNAVAILABLE))
             if tool is None:
-                return McpKnowledgeRetrievalResult(status="FAILED", error=self._error(McpErrorCode.DATA_UNAVAILABLE))
+                return McpKnowledgeRetrievalResult(status="FAILED", error=self._error(McpErrorCode.KNOWLEDGE_INDEX_UNAVAILABLE))
             context = self._agent_context(user_id)
             output = tool.execute(arguments, context)
             return McpKnowledgeRetrievalResult(
@@ -292,7 +307,9 @@ class McpToolAdapter:
         except ValidationError:
             return McpKnowledgeRetrievalResult(status="FAILED", error=self._error(McpErrorCode.INVALID_ARGUMENT))
         except KnowledgeCorpusError:
-            return McpKnowledgeRetrievalResult(status="FAILED", error=self._error(McpErrorCode.DATA_UNAVAILABLE))
+            return McpKnowledgeRetrievalResult(status="FAILED", error=self._error(McpErrorCode.KNOWLEDGE_INDEX_UNAVAILABLE))
+        except TimeoutError:
+            return McpKnowledgeRetrievalResult(status="FAILED", error=self._error(McpErrorCode.RETRIEVAL_TIMEOUT))
         except ValueError:
             return McpKnowledgeRetrievalResult(status="FAILED", error=self._error(McpErrorCode.SERVICE_FAILURE))
         except Exception:
@@ -393,7 +410,11 @@ class McpToolAdapter:
                 status="FAILED", error=self._error(McpErrorCode.INTERNAL_SAFE_ERROR)
             )
 
-    def get_recent_training(self, *, days: int = 7, limit: int = 20) -> McpRecentTrainingResult:
+    def get_recent_training(self, *, days: int = 7, limit: int = 20, cursor: str | None = None, start_date=None, end_date=None) -> McpRecentTrainingResult:
+        # Preserve the legacy registry-backed projection for existing bounded
+        # clients. Explicit windows, pagination and longer windows use v2 facts.
+        if cursor is not None or start_date is not None or end_date is not None or days > 28:
+            return self._read_fact(McpRecentTrainingResult, lambda db, uid: read_training(db, uid, days=days, limit=limit, cursor=None if cursor == 'first' else cursor, start_date=start_date, end_date=end_date))
         payload, error = self._invoke(
             mcp_tool_name="get_recent_training",
             agent_tool_name="get_recent_training",
@@ -406,9 +427,39 @@ class McpToolAdapter:
                 status="SUCCEEDED", data=self._recent_training(payload or {})
             )
         except (KeyError, ValidationError):
-            return McpRecentTrainingResult(
-                status="FAILED", error=self._error(McpErrorCode.INTERNAL_SAFE_ERROR)
-            )
+            return McpRecentTrainingResult(status='FAILED', error=self._error(McpErrorCode.INTERNAL_SAFE_ERROR))
+
+    def _read_fact(self, result_type, read, *, recovery: bool = False):
+        identity = self.execution_context.identity_provider()
+        if identity is None or self.execution_context.session_factory is None:
+            return result_type(status='FAILED', error=self._error(McpErrorCode.AUTH_CONTEXT_MISSING))
+        if recovery and 'mcp:recovery:read' not in identity.scopes:
+            return result_type(status='FAILED', error=self._error(McpErrorCode.INSUFFICIENT_PERMISSION))
+        session = None
+        try:
+            session = self.execution_context.session_factory()
+            return result_type(status='SUCCEEDED', data=read(session, identity.user_id))
+        except McpSafeError as exc:
+            return result_type(status='FAILED', error=self._error(exc.code))
+        except (ValueError, TypeError):
+            return result_type(status='FAILED', error=self._error(McpErrorCode.INVALID_ARGUMENT))
+        except Exception:
+            logger.warning('mcp_fact_read_failed code=MCP_FACT_READ_FAILED')
+            return result_type(status='FAILED', error=self._error(McpErrorCode.SERVICE_FAILURE))
+        finally:
+            if session is not None:
+                try:
+                    session.rollback()
+                except Exception:
+                    logger.warning('mcp_session_rollback_failed code=MCP_SESSION_ROLLBACK_FAILED')
+                finally:
+                    session.close()
+
+    def get_training_detail(self, *, record_ref: str) -> McpTrainingDetailResult:
+        return self._read_fact(McpTrainingDetailResult, lambda db, uid: read_training_detail(db, uid, record_ref))
+
+    def get_recovery_trend(self, *, days: int = 7) -> McpRecoveryTrendResult:
+        return self._read_fact(McpRecoveryTrendResult, lambda db, uid: read_recovery(db, uid, days), recovery=True)
 
     def get_runner_state(self) -> McpRunnerStateResult:
         payload, error = self._invoke(

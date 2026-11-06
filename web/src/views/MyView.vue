@@ -1,6 +1,7 @@
 <template>
   <div class="page-stack my-page">
     <PageHeader title="我的" subtitle="常用入口集中在这里，手机端可以从底部导航快速进入。" />
+    <nav class="experience-links" aria-label="使用帮助"><router-link to="/welcome">重新打开使用引导</router-link><router-link to="/training-plan">我的计划</router-link><router-link to="/dashboard">记录与趋势</router-link></nav>
 
     <section class="shortcut-grid">
       <router-link v-for="item in primaryItems" :key="item.path" :to="myEntryLink(item.path)" class="shortcut-card">
@@ -12,18 +13,14 @@
       </router-link>
     </section>
 
-    <section class="panel advanced-panel">
-      <el-collapse>
-        <el-collapse-item title="高级设置入口" name="advanced">
+    <section class="panel advanced-panel"><el-collapse><el-collapse-item title="高级设置入口" name="advanced">
           <div class="advanced-grid">
             <router-link v-for="item in advancedItems" :key="item.path" :to="myEntryLink(item.path)" class="advanced-link">
               <el-icon><component :is="item.icon" /></el-icon>
               <span>{{ item.title }}</span>
             </router-link>
           </div>
-        </el-collapse-item>
-      </el-collapse>
-    </section>
+    </el-collapse-item></el-collapse></section>
   </div>
 </template>
 
@@ -49,13 +46,13 @@ import { listDataSyncProviders } from "@/api/dataSync";
 const garminSyncVisible = ref(false);
 
 const allPrimaryItems = [
-  { path: "/coach", title: "AI 教练", desc: "基于训练事实和科学规则获得只读建议。", icon: ChatDotRound },
+  { path: "/coach", title: "Gilo 教练", desc: "读懂训练，讨论你的下一个目标。", icon: ChatDotRound },
   { path: "/runner-state", title: "训练状态", desc: "查看当前跑量趋势、训练执行和训练压力信号。", icon: TrendCharts },
   { path: "/todos", title: "待办中心", desc: "处理缺少感受、待确认活动和周复盘。", icon: Bell },
   { path: "/data-sync", title: "数据同步", desc: "连接运动平台并同步跑步活动", icon: Connection },
   { path: "/data-management", title: "数据管理", desc: "导入课表、补录训练和查看导入历史。", icon: FolderOpened },
   { path: "/feedback", title: "反馈", desc: "提交问题或使用建议", icon: Message },
-  { path: "/my", title: "设置", desc: "账号和使用偏好入口。", icon: Setting },
+  { path: "/ai-coach-preference", title: "教练偏好", desc: "调整训练讨论的个人偏好。", icon: Setting },
 ];
 
 const primaryItems = computed(() => allPrimaryItems.filter((item) => item.path !== "/data-sync" || garminSyncVisible.value));

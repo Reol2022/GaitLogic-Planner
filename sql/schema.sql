@@ -612,7 +612,34 @@ CREATE TABLE IF NOT EXISTS `ai_plan_quota` (
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `admin_config_revisions` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `actor_user_id` BIGINT NULL,
+  `status` VARCHAR(16) NOT NULL DEFAULT 'DRAFT',
+  `config_json` JSON NOT NULL,
+  `base_fingerprint` VARCHAR(64) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `published_at` DATETIME NULL,
+  PRIMARY KEY (`id`),
+  KEY `ix_admin_config_created` (`created_at`),
+  FOREIGN KEY (`actor_user_id`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `admin_audit_events` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `actor_user_id` BIGINT NULL,
+  `action` VARCHAR(48) NOT NULL,
+  `target_type` VARCHAR(32) NOT NULL,
+  `target_id` INT NULL,
+  `changed_fields` JSON NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_admin_audit_created` (`created_at`),
+  FOREIGN KEY (`actor_user_id`) REFERENCES `user_account` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `admin_ai_settings` (
+  `config_version` INT NOT NULL DEFAULT 0,
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `deepseek_base_url` VARCHAR(255) NOT NULL DEFAULT 'https://api.deepseek.com',
   `deepseek_model` VARCHAR(128) NOT NULL DEFAULT 'deepseek-v4-flash',

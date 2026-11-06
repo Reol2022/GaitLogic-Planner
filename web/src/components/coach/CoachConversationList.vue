@@ -3,8 +3,8 @@
     <div class="conversation-heading">
       <div class="heading-icon"><ChatDotRound /></div>
       <div>
-        <strong>训练对话</strong>
-        <span>继续之前的分析</span>
+        <strong>与 Gilo 的对话</strong>
+        <span>每一次训练，都值得被理解</span>
       </div>
     </div>
 
@@ -151,4 +151,6 @@ function formatConversationTime(value?: string | null): string {
 .conversation-action.danger:hover { color: var(--el-color-danger); background: var(--el-color-danger-light-9); }
 .conversation-action svg { width: 14px; height: 14px; }
 @media (hover: none) { .conversation-actions { opacity: 1; transform: none; } }
+.new-conversation{background:linear-gradient(115deg,#328fa1,#6a78b8);box-shadow:0 5px 16px #5480a321}.conversation-item.active{background:linear-gradient(110deg,#e6f2f4,#edf0fa);border-color:#cbdde8;box-shadow:inset 3px 0 0 #4196a8}.active .conversation-avatar{color:#39879b;background:#dceef2}
+@media(prefers-reduced-motion:reduce){.conversation-item,.conversation-actions{transition:none!important;transform:none!important}}
 </style>

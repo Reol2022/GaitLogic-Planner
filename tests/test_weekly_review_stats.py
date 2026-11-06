@@ -315,17 +315,36 @@ def test_weekly_review_generation_uses_mock_and_reuses_same_snapshot(db_session,
         ],
         "risk_notes": ["本结果不是医疗诊断"],
     }
-    monkeypatch.setattr(
-        weekly_review_ai_service,
-        "call_deepseek",
-        lambda *args, **kwargs: DeepSeekResult(content=__import__("json").dumps(payload), input_tokens=10, output_tokens=20, total_tokens=30),
-    )
+    # Production now uses two structured tasks, not the retired call_deepseek
+    # alias. Keep the regression entirely synthetic instead of reaching a provider.
+    from server.structured_task_provider import StructuredTaskResult
+    from server.weekly_review_graph.schemas import WeeklyReviewAnalysis, PlanDesignAnalysis
+    from planner_core.adaptive_plan.schemas import ProposalCandidateChange, PlanValue
+    calls = []
+    class FakeStructuredProvider:
+        def __init__(self, _settings): pass
+        def generate(self, *, schema, **_kwargs):
+            calls.append(schema)
+            if schema is WeeklyReviewAnalysis:
+                value=WeeklyReviewAnalysis(overall_assessment=payload['summary'],execution_assessment='合成执行分析',load_assessment='合成负荷分析',
+                    key_session_assessment='合成关键课分析',recovery_assessment='恢复信息有限',intensity_assessment='维持保守',
+                    positive_signals=payload['positive_points'],risk_signals=payload['attention_points'],recommended_direction=[payload['next_week_strategy']],warnings=payload['risk_notes'])
+            else:
+                assert schema is PlanDesignAnalysis
+                value=PlanDesignAnalysis(volume_direction='reduce',intensity_direction='reduce',quality_session_count=0,
+                    key_session_strategy='保留既有约束',long_run_strategy='不额外增加',recovery_spacing='保留恢复间隔',reason_summary='合成保守建议',
+                    candidate_adjustments=[ProposalCandidateChange(plan_id=payload['adjustments'][0]['planned_workout_id'],action=PlanAdjustmentAction.reduce,
+                        after=PlanValue(content='Easy 8km',distance_km=8,main_type='easy'),reason='合成保守调整',rule_evidence=['SYNTHETIC_CONSERVATIVE_LIMIT'])])
+            return StructuredTaskResult(value=value,reasoning_content='',finish_reason='stop',prompt_tokens=10,completion_tokens=20,
+                reasoning_tokens=0,content_length=100,attempts=1,max_output_tokens=1000)
+    monkeypatch.setattr(weekly_review_ai_service,'StructuredTaskProvider',FakeStructuredProvider)
     first = weekly_review_ai_service.generate_weekly_review(
         db_session, user.id, cycle_id, source_id, target_id
     )
     second = weekly_review_ai_service.generate_weekly_review(
         db_session, user.id, cycle_id, source_id, target_id
     )
+    assert calls == [WeeklyReviewAnalysis, PlanDesignAnalysis]
     assert first.report.status.value == "success"
     assert first.adjustment_draft is not None
     assert second.report.id == first.report.id

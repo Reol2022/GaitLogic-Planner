@@ -29,6 +29,7 @@ class McpRequestIdentity:
     """Server-injected identity; never exposed in an MCP schema or trace."""
 
     user_id: int
+    scopes: frozenset[str] = frozenset({"mcp:read"})
 
     def __post_init__(self) -> None:
         if self.user_id <= 0:

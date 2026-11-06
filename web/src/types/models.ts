@@ -880,6 +880,10 @@ export interface AIPlanGeneratePayload {
   plan_weeks: number;
   intensity_style: AIPlanIntensityStyle;
   include_pace_guidance: boolean;
+  daily_available_minutes?:Record<string,number>;
+  long_run_preferred_day?:string|null;
+  excluded_workout_types?:string[];
+  use_training_context?:boolean;
 }
 
 export interface AIPlanDraftWorkout {
@@ -913,6 +917,7 @@ export interface AIPlanDraft {
   created_at: string;
   updated_at: string;
   workouts?: AIPlanDraftWorkout[];
+  plan_context?:import('./planContext').PlanContext|null;
 }
 
 export interface AIPlanGenerateResult {

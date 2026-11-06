@@ -151,3 +151,7 @@ sql/*.jpg
 sql/*.jpeg
 sql/*.png
 sql/*.webp
+
+# Independent management-console build artifacts
+admin-dist/
+admin-vite-cache/
