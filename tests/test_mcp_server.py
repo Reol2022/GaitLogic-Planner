@@ -85,6 +85,8 @@ def test_mcp_server_lists_only_six_strict_read_only_tools() -> None:
     assert schemas["get_today_plan"].get("properties", {}) == {}
     assert schemas["get_runner_state"].get("properties", {}) == {}
     assert set(schemas["get_recent_training"]["properties"]) == {"days", "limit", "cursor", "start_date", "end_date"}
+    assert set(schemas['get_training_detail']['properties'])=={'record_ref','activity_ref'}
+    assert set(schemas['get_recovery_trend']['properties'])=={'days','start_date','end_date'}
     assert all(tool.annotations.read_only_hint is True for tool in tools)
     assert set(schemas["retrieve_training_knowledge"]["properties"]) == {
         "query", "top_k", "categories", "tags", "language"
@@ -161,6 +163,15 @@ def test_mcp_rejects_extra_identity_and_invalid_arguments_with_safe_code() -> No
         assert result.structured_content is None
         assert "INVALID_ARGUMENT" in str(result.content)
         assert "traceback" not in str(result.content).lower()
+
+
+def test_detail_and_recovery_reject_client_injected_identity_before_database() -> None:
+    server,_fake,session=_server()
+    for name,arguments in [('get_training_detail',{'record_ref':'workout_log:1','user_id':999}),
+        ('get_recovery_trend',{'days':7,'user_id':999})]:
+        result=_call(server,name,arguments)
+        assert result.is_error and 'INVALID_ARGUMENT' in str(result.content)
+    session.scalar.assert_not_called()
 
 
 def test_mcp_missing_identity_is_a_structured_safe_error() -> None:

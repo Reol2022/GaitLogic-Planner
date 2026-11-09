@@ -2,6 +2,75 @@
 
 记录日期：2026-11-04。该报告不包含用户训练明细、授权令牌或数据库凭据。
 
+## Facts v3.1 集成与只读验收（2026-11-09，最新结论）
+
+### Git 与 OAuth 继承关系
+
+- 初始 master/HEAD 为 `661dd6c`，工作分支 `codex/mcp-activity-facts-v3`。v3 实现最初仍是该分支的未提交工作树，不是另一条已部署发布线。
+- `git merge-base --is-ancestor 64b04eb HEAD` 返回0，历史 OAuth RC 已在祖先链中，不需要再次合并 RC。对比确认 resource_uri/grant_id 迁移、可信配置的 issuer/audience、授权码/刷新令牌绑定、授权撤销、访问令牌逐请求核验及刷新轮换仍存在。
+- 六工具共用 McpExecutionContext；HTTP 中间件从已验证的 Bearer 和有效 grant 注入用户与 scopes。恢复工具在创建数据 Session 前检查独立权限，不接受工具参数传入身份。
+- OAuth RC 后的主要变化是恢复只读范围及显式同意，没有替换资源绑定架构。Facts v3/v3.1 不需要新表或新的 OAuth Migration。
+- 无关的 `scripts/upgrade_v0130_adaptive_plan.py` 保留、不暂存。本轮只允许本地提交，不合并 master、不推送或部署。
+
+### 六工具接口契约
+
+| 工具 | 输入与范围 | 输出及权限 |
+| --- | --- | --- |
+| get_today_plan | 无参数 | 今日计划/无计划状态；mcp:read |
+| get_recent_training | days 1～90、limit 1～20；可给成对 start_date/end_date 或签名 cursor | 完整窗口汇总、有限明细及截断/事实问题；mcp:read。旧 days/limit 调用仍支持 |
+| get_runner_state | 无参数 | 当前派生状态、事实窗口及安全指标；mcp:read，不把状态标签当恢复测量 |
+| retrieve_training_knowledge | query、top_k 1～6、categories/tags/language | Canonical 引用或安全错误；mcp:read，不为契约测试调用真实 Embedding |
+| get_training_detail | workout_log 或 external_activity 引用；可选 activity_ref | 日志与活动分开、仅选中活动的已存 laps；20活动/100分段上限；mcp:read |
+| get_recovery_trend | days 1～28 或成对 start_date/end_date；拒绝未来和超28天 | 每日恢复、缺口及当前连接同步元数据；必须另有 mcp:recovery:read |
+
+独立 MCP Client 两次重新连接均发现六工具，检查 Description、Input/Output Schema、只读 annotations；真实 TCP tools/list 也检查新参数。发现工具不要求重新授权，申请独立恢复范围才需要显式同意。旧调用签名不变；若某客户端将旧输出模型设为禁止新增字段，它仍需刷新 Schema，不能宣称任意严格旧客户端都自动兼容。
+
+参数非法/越权字段由协议或输入边界拒绝；业务拒绝返回 status=FAILED 与安全 error。HTTP200、业务SUCCEEDED、事实完整和运动分析质量是不同概念。
+
+### 本轮复现并修复的缺陷
+
+1. 输出模型 ValidationError 被 ValueError 分支误归为 INVALID_ARGUMENT。现明确归为 INTERNAL_SAFE_ERROR，不输出原始验证详情。
+2. 当前 Garmin 连接失败曾被用于填充历史日缺口的 SYNC_FAILED 原因。现只保留顶层当前连接状态，历史日缺失原因依据该条存储记录，不能从今天的连接状态反推。旧有效数值不被覆盖。
+
+首次新增定向测试出现4 failed/5 passed：两个是上述真实缺陷，两个因 ORM 把 None 来源填成默认 manual，已改用明确的未知旧来源 Fixture。测试编写阶段还修正了一处错误导入。失败场景保留为回归，不删除或放宽断言。
+
+### 合成训练与页面后端对照
+
+- 固定7/28天边界、窗口外一天、跨月、计划/实际日期不同、实际日期缺失、休息计划下正跑量、未知来源及缺失距离均按相同事实输入对照 Training Service、MCP 和 Runner State，跑量与完成记录数一致；未修改规则阈值。
+- 单活动自动选中；多活动未选择不拼接 laps；显式选择只读该活动；直接活动引用 record=null。验证跨用户、非关联活动、20活动/100段截断、原lap index、心率、步频、缺失动力学和分段距离矛盾。存储 laps 完整返回不等于整场比赛覆盖完整。
+- 隔离 MySQL 上通过真实现有 HTTP 路由对照 `/api/workout-logs/{planned_workout_id}`、`/api/integrations/garmin/activities`、`/api/runner-state/current`，匹配引用、日期、距离、时长、心率和来源。认证身份为合成测试依赖，OAuth 验证由独立 TCP 组负责。页面活动列表没有 lap count 字段，不能称为页面分段数对照通过；未做真实浏览器登录验收。
+- SQL 写入拒绝器验证查询过程中没有业务写入。Recovery 的空/部分/失败、缺口、字段来源、独立scope、范围限制及不泄露自由文本均通过。
+
+### 真实账号只读结果与限制
+
+本轮只通过已有授权连接发起最近7天、28天、Runner State 三次只读调用，均 SUCCEEDED。没有登录、注册授权、手动兑换/刷新令牌、触发同步或写入生产数据。结果只在内存比较，随后清除；没有将真实训练/恢复值、引用或身份写入本报告或 Fixture。
+
+同一截止日两组真实跑量与 Runner State 仍不一致，记为 **FAIL（现有连接）**，不是 v3.1 已修复的真实证明。另行只读核实线上 current 仍为 `20261106-661dd6c9`、公开版本0.16.8，公开 git_commit 为 unknown；目录/manifest名称不能代替代码完整性校验，也不能据此独立证明宿主连接的实际目标URL。
+
+当前宿主只暴露旧四工具，无法用当前连接调用 v3 详情或恢复工具；本地候选也未获部署授权。真实活动/日志关联、真实分段、真实 Recovery、新代码与真实页面同口径对照均 **BLOCKED**，不是伪造的 NOT AVAILABLE（尚未查明账号是否有该类样本）。SDK 重新连接已验证，实际宿主工具缓存刷新未验证；不能仅凭四工具认定缓存是唯一原因，也需核对连接入口。没有读取或绕过独立恢复授权。
+
+### 本轮测试与性能
+
+| 分组 | 实际结果 | 时间 |
+| --- | --- | --- |
+| MCP契约、事实、权限、真实MySQL/TCP/OAuth | 105 passed、0 skipped | 59.18秒 |
+| 旧OAuth Schema迁移及迁移后TCP、轮换/撤销 | 3 passed、0 skipped | 48.51秒 |
+| Runner State、Coach、周复盘、AI Plan、Recovery定向回归 | 204 passed、0 skipped | 57.06秒 |
+| Garmin Recovery旧结构迁移 | 1 passed、0 skipped | 5.01秒 |
+| 前端 typecheck / 生产build | PASS / PASS | build 11.74秒 |
+
+组间有重叠，不累加冒充独立样本。未重跑本仓库所有测试。测试数据库仅为本机127.0.0.1:3307随机 gaitlogic_test_*，每组只清理自己创建的库；没有在生产压测。迁移测试保留旧无绑定记录、重复DDL及部分升级重试，不宣称MySQL DDL具有整体回滚。
+
+性能：单次选定活动详情在3项/20项关联活动下各5次，共n=10，均为6条SELECT（不含OAuth中间件），p50 7.37ms、最近秩p95 12.68ms，未观察到随关联数量增长的N+1。另一次本地TCP合成33调用p50 78.88ms、p95 639.12ms。样本小，仅为本机回归观测，不是生产吞吐或SLA。列表与分段均有上限；存储缺口不补造。
+
+### 集成结论
+
+**本地代码与OAuth集成：PASS，可进入受控集成审查。真实用户v3.1 E2E：PARTIAL/BLOCKED。直接生产发布验收：NOT READY。**
+
+还需单独授权受控候选验证/部署，确认客户端加载当前六工具；仅在确需读取恢复数据时完成相应scope授权，然后复验真实数据、页面对照及旧版统计差异。未解决阻塞前不能将本地合成通过写成生产已修复。本轮结束，不继续新增工具或自动部署。
+
+以下为历史阶段记录，不代表上述最新验收状态。
+
 ## v0.3 进展
 
 ## v0.3.1 安全开发进展（尚未完成验收）

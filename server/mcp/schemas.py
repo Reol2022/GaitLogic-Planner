@@ -115,6 +115,10 @@ class McpRunnerState(McpContractModel):
     limitations: list[McpNotice] = Field(default_factory=list, max_length=20)
     assessment_status: Literal["ASSESSED", "PARTIALLY_ASSESSED", "INSUFFICIENT_DATA"] = "PARTIALLY_ASSESSED"
     missing_evidence: list[str] = Field(default_factory=list, max_length=40)
+    training_date_basis: Literal['ACTIVITY_DATE_WITH_PLAN_FALLBACK'] = 'ACTIVITY_DATE_WITH_PLAN_FALLBACK'
+    training_window_end: date | None = None
+    training_window_start_7d: date | None = None
+    training_window_start_28d: date | None = None
 
 
 class _McpToolResult(McpContractModel):

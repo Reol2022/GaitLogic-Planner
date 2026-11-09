@@ -1,6 +1,7 @@
 """Thin MCP adapters over the existing request-scoped Coach tool registry."""
 
 from __future__ import annotations
+from datetime import date, timedelta
 
 from collections.abc import Callable
 from datetime import datetime
@@ -162,6 +163,9 @@ class McpToolAdapter:
             limitations=[cls._notice(item) for item in value.get("limitations", [])],
             assessment_status='INSUFFICIENT_DATA' if value['data_status'] == 'UNKNOWN' else 'ASSESSED' if value['data_status'] == 'AVAILABLE' and evidence and not value.get('data_quality', {}).get('missing_fields') else 'PARTIALLY_ASSESSED',
             missing_evidence=value.get('data_quality', {}).get('missing_fields', [])[:40],
+            training_window_end=value['as_of_date'],
+            training_window_start_7d=date.fromisoformat(str(value['as_of_date']))-timedelta(days=6),
+            training_window_start_28d=date.fromisoformat(str(value['as_of_date']))-timedelta(days=27),
         )
 
     @staticmethod
@@ -441,6 +445,10 @@ class McpToolAdapter:
             return result_type(status='SUCCEEDED', data=read(session, identity.user_id))
         except McpSafeError as exc:
             return result_type(status='FAILED', error=self._error(exc.code))
+        except ValidationError:
+            # Response validation is a stored-data/server problem, not bad input.
+            logger.warning('mcp_fact_validation_failed code=MCP_FACT_VALIDATION_FAILED')
+            return result_type(status='FAILED', error=self._error(McpErrorCode.INTERNAL_SAFE_ERROR))
         except (ValueError, TypeError):
             return result_type(status='FAILED', error=self._error(McpErrorCode.INVALID_ARGUMENT))
         except Exception:
@@ -455,11 +463,11 @@ class McpToolAdapter:
                 finally:
                     session.close()
 
-    def get_training_detail(self, *, record_ref: str) -> McpTrainingDetailResult:
-        return self._read_fact(McpTrainingDetailResult, lambda db, uid: read_training_detail(db, uid, record_ref))
+    def get_training_detail(self, *, record_ref: str, activity_ref: str | None = None) -> McpTrainingDetailResult:
+        return self._read_fact(McpTrainingDetailResult, lambda db, uid: read_training_detail(db, uid, record_ref, activity_ref))
 
-    def get_recovery_trend(self, *, days: int = 7) -> McpRecoveryTrendResult:
-        return self._read_fact(McpRecoveryTrendResult, lambda db, uid: read_recovery(db, uid, days), recovery=True)
+    def get_recovery_trend(self, *, days: int = 7, start_date=None, end_date=None) -> McpRecoveryTrendResult:
+        return self._read_fact(McpRecoveryTrendResult, lambda db, uid: read_recovery(db, uid, days, start_date=start_date, end_date=end_date), recovery=True)
 
     def get_runner_state(self) -> McpRunnerStateResult:
         payload, error = self._invoke(

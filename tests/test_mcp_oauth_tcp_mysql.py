@@ -101,6 +101,19 @@ def test_real_tcp_two_user_training_isolation_and_revoke():
                 listed = client.post(base + "/mcp", headers={"Authorization": "Bearer " + token, "Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2026-07-28", "Mcp-Method": "tools/list"}, json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {"_meta": meta}})
                 assert listed.status_code == 200
                 assert any(item["name"] == "get_recent_training" for item in listed.json()["result"]["tools"])
+                schemas={item['name']:item['inputSchema'] for item in listed.json()['result']['tools']}
+                assert set(schemas['get_training_detail']['properties'])=={'record_ref','activity_ref'}
+                assert set(schemas['get_recovery_trend']['properties'])=={'days','start_date','end_date'}
+            def factual_call(token,name,arguments):
+                response=client.post(base+'/mcp',headers={'Authorization':'Bearer '+token,'Accept':'application/json, text/event-stream',
+                    'MCP-Protocol-Version':'2026-07-28','Mcp-Method':'tools/call','Mcp-Name':name},
+                    json={'jsonrpc':'2.0','id':2,'method':'tools/call','params':{'name':name,'arguments':arguments,'_meta':meta}})
+                assert response.status_code==200
+                return response.json()['result']['structuredContent']
+            own_ref=next(iter(refs[0]))
+            assert factual_call(tokens[0],'get_training_detail',{'record_ref':own_ref})['status']=='SUCCEEDED'
+            assert factual_call(tokens[1],'get_training_detail',{'record_ref':own_ref})['error']['code']=='RESOURCE_NOT_FOUND'
+            assert factual_call(tokens[0],'get_recovery_trend',{'days':7})['error']['code']=='INSUFFICIENT_PERMISSION'
             with socket.socket() as second_socket:
                 second_socket.bind(("127.0.0.1", 0))
                 second_port = second_socket.getsockname()[1]

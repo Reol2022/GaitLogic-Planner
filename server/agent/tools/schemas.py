@@ -113,6 +113,7 @@ class RecentTrainingItem(AgentContractModel):
     average_heart_rate: int | None = None
     rpe: int | None = None
     source: str
+    origin_source: str = "UNKNOWN"
     brief_review: str | None = Field(default=None, max_length=240)
 
 

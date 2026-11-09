@@ -10,16 +10,17 @@ from datetime import date, timedelta
 from typing import Literal
 
 from pydantic import Field, model_validator
-from sqlalchemy import select
+from sqlalchemy import select, or_, func
 from sqlalchemy.orm import Session
 
-from planner_core.database.models import DailyRecoveryCheckin, ExternalActivity, ExternalActivityLap, PlannedWorkout, WorkoutLog, WorkoutLogExternalActivity
+from planner_core.database.models import DailyRecoveryCheckin, ExternalAccountConnection, ExternalActivity, ExternalActivityLap, PlannedWorkout, WorkoutLog, WorkoutLogExternalActivity
 from server.mcp.errors import McpErrorCode, McpSafeError
 from server.mcp.schemas import McpContractModel, McpRecentTrainingItem, McpRecentTraining, McpRecentTrainingSummary, McpTrainingFactIssue, McpDataQuality, _McpToolResult
 from server.services.auth_service import signing_key
 from server.services.training_load_service import _query_logs, _safe_source
 from server.services.weekly_review_stats_service import COMPLETED_STATUSES, local_today
 from server.domain.review_thresholds import KEY_WORKOUT_TYPES
+from server.services.training_fact_policy import origin_source, recorded_distance
 
 
 def _value(value):
@@ -38,10 +39,10 @@ def training_item(log: WorkoutLog, plan: PlannedWorkout | None) -> McpRecentTrai
         actual_training_type=actual, classification_basis='ACTUAL_LOG' if actual else 'UNKNOWN',
         planned_or_unplanned='UNPLANNED' if log.is_unplanned or plan is None else 'PLANNED',
         completion_status=str(_value(log.status_normalized)),
-        distance_km=float(log.actual_distance_km) if log.actual_distance_km is not None else None,
+        distance_km=recorded_distance(log.actual_distance_km),
         duration_seconds=log.actual_duration_seconds, average_pace_seconds_per_km=log.avg_pace_seconds_per_km,
         average_heart_rate=log.avg_heart_rate, rpe=log.rpe if log.rpe is not None and 0 <= log.rpe <= 10 else None,
-        source=_safe_source(log.source_type), origin_source='UNKNOWN',
+        source=_safe_source(log.source_type), origin_source=origin_source(log),
     )
 
 
@@ -112,13 +113,95 @@ class McpSegment(McpContractModel):
     duration_seconds: int | None
     average_pace_seconds_per_km: int | None
     quality: str = Field(max_length=32)
+    activity_ref: str | None = None
+    start_time: str | None = None
+    start_offset_seconds: int | None = None
+    timer_time_seconds: int | None = None
+    moving_time_seconds: int | None = None
+    average_heart_rate_bpm: int | None = None
+    max_heart_rate_bpm: int | None = None
+    average_cadence_spm: int | None = None
+    elevation_gain_m: float | None = None
+    lap_type: str | None = Field(default=None, max_length=64)
+
+
+class McpActivitySummary(McpContractModel):
+    activity_ref: str
+    date: date
+    source: str
+    start_time_local: str
+    timezone: str
+    distance_km: float | None
+    duration_seconds: int | None
+    average_pace_seconds_per_km: int | None
+    average_heart_rate_bpm: int | None
+    verification_status: Literal['PROVIDER_RECORDED_NOT_INDEPENDENTLY_VERIFIED'] = 'PROVIDER_RECORDED_NOT_INDEPENDENTLY_VERIFIED'
+
+
+class McpActivityDetail(McpActivitySummary):
+    start_time_utc: str | None = None
+    timer_time_seconds: int | None = None
+    moving_time_seconds: int | None = None
+    elapsed_time_seconds: int | None = None
+    max_heart_rate_bpm: int | None = None
+    average_cadence_spm: int | None = None
+    max_cadence_spm: int | None = None
+    elevation_gain_m: float | None = None
+    elevation_loss_m: float | None = None
+    calories_kcal: int | None = None
+    average_stride_length_m: float | None = None
+    average_vertical_ratio_percent: float | None = None
+    average_vertical_oscillation_cm: float | None = None
+    average_ground_contact_time_ms: float | None = None
+    ground_contact_balance_percent: float | None = None
+    average_running_power_w: int | None = None
+    max_running_power_w: int | None = None
+    data_quality: str
+    fetched_at: str | None = None
+    field_sources: dict[str, str] = Field(default_factory=dict)
+    missing_fields: list[str] = Field(default_factory=list)
+
+
+def _activity_summary(row):
+    distance = recorded_distance(row.distance_m)
+    return McpActivitySummary(activity_ref=f'external_activity:{row.id}', date=row.activity_date,
+        source=_safe_source(row.provider), start_time_local=row.start_time_local.isoformat(), timezone=row.timezone,
+        distance_km=round(distance / 1000, 5) if distance is not None else None,
+        duration_seconds=row.duration_seconds, average_pace_seconds_per_km=row.average_pace_seconds_per_km,
+        average_heart_rate_bpm=row.average_heart_rate_bpm)
+
+
+_ACTIVITY_METRICS = ('timer_time_seconds', 'moving_time_seconds', 'elapsed_time_seconds',
+    'max_heart_rate_bpm', 'average_cadence_spm', 'max_cadence_spm', 'elevation_gain_m', 'elevation_loss_m',
+    'calories_kcal', 'average_stride_length_m', 'average_vertical_ratio_percent', 'average_vertical_oscillation_cm',
+    'average_ground_contact_time_ms', 'ground_contact_balance_percent', 'average_running_power_w', 'max_running_power_w')
+
+
+def _activity_detail(row):
+    from datetime import timezone
+    metrics = {field: getattr(row, field) for field in _ACTIVITY_METRICS}
+    allowed = set(_ACTIVITY_METRICS) | {'distance_m', 'duration_seconds', 'average_heart_rate_bpm', 'average_pace_seconds_per_km'}
+    return McpActivityDetail(**_activity_summary(row).model_dump(), **metrics,
+        start_time_utc=row.start_time_utc.replace(tzinfo=timezone.utc).isoformat() if row.start_time_utc else None,
+        data_quality=row.data_quality, fetched_at=row.fetched_at.isoformat() if row.fetched_at else None,
+        field_sources={key:_safe_source(value) for key,value in (row.field_sources_json or {}).items() if key in allowed},
+        missing_fields=[field for field in sorted(allowed) if getattr(row,field) is None])
 
 
 class McpTrainingDetail(McpContractModel):
-    record: McpRecentTrainingItem
+    record: McpRecentTrainingItem | None
+    detail_scope: Literal['WORKOUT_LOG_SUMMARY', 'SELECTED_ACTIVITY'] = 'WORKOUT_LOG_SUMMARY'
+    linked_activity_count: int = 0
+    activities: list[McpActivitySummary] = Field(default_factory=list, max_length=20)
+    activities_complete: bool = True
+    selection_required: bool = False
+    selected_activity: McpActivityDetail | None = None
+    fact_issues: list[McpTrainingFactIssue] = Field(default_factory=list, max_length=20)
     segments_available: bool
     segments_complete: bool
     segments: list[McpSegment] = Field(default_factory=list, max_length=100)
+    segments_scope: Literal['STORED_LAPS_FOR_SELECTED_ACTIVITY'] = 'STORED_LAPS_FOR_SELECTED_ACTIVITY'
+    segment_distance_consistent: bool | None = None
     heart_rate_quality: Literal['UNKNOWN'] = 'UNKNOWN'
     limitations: list[str] = Field(default_factory=list, max_length=10)
 
@@ -135,23 +218,60 @@ class McpTrainingDetailResult(_FactResult):
     data: McpTrainingDetail | None = None
 
 
-def read_training_detail(db: Session, user_id: int, record_ref: str) -> McpTrainingDetail:
+def read_training_detail(db: Session, user_id: int, record_ref: str, activity_ref: str | None = None) -> McpTrainingDetail:
     import re
-    if not re.fullmatch(r'workout_log:[1-9][0-9]{0,17}', record_ref): raise McpSafeError(McpErrorCode.INVALID_ARGUMENT)
-    log = db.scalar(select(WorkoutLog).where(WorkoutLog.id == int(record_ref.split(':')[1]), WorkoutLog.user_id == user_id))
-    if log is None: raise McpSafeError(McpErrorCode.RESOURCE_NOT_FOUND)
-    plan = db.scalar(select(PlannedWorkout).where(PlannedWorkout.id == log.planned_workout_id, PlannedWorkout.user_id == user_id)) if log.planned_workout_id else None
-    if log.activity_date is None and (plan is None or plan.workout_date is None): raise McpSafeError(McpErrorCode.DATA_UNAVAILABLE)
-    activity_ids = select(WorkoutLogExternalActivity.external_activity_id).where(WorkoutLogExternalActivity.user_id == user_id, WorkoutLogExternalActivity.workout_log_id == log.id)
-    # Validate both link and activity ownership; never expose an unrelated lap.
-    ids = list(db.scalars(select(ExternalActivity.id).where(ExternalActivity.user_id == user_id, ExternalActivity.id.in_(activity_ids))).all())
-    if not ids and log.external_activity_id:
-        ids = list(db.scalars(select(ExternalActivity.id).where(ExternalActivity.user_id == user_id, ExternalActivity.external_activity_id == log.external_activity_id)).all())
-    laps = list(db.scalars(select(ExternalActivityLap).where(ExternalActivityLap.external_activity_id.in_(ids)).order_by(ExternalActivityLap.external_activity_id, ExternalActivityLap.lap_index).limit(101)).all()) if ids else []
-    return McpTrainingDetail(record=training_item(log, plan), segments_available=bool(laps), segments_complete=len(laps) <= 100,
-        segments=[McpSegment(index=index+1, role=lap.segment_role, distance_m=float(lap.distance_m) if lap.distance_m is not None else None,
-            duration_seconds=lap.duration_seconds, average_pace_seconds_per_km=lap.average_pace_seconds_per_km, quality=lap.data_quality) for index, lap in enumerate(laps[:100])],
-        limitations=['Only persisted laps are returned; roles and intensity are not inferred.', 'Heart-rate reliability is unknown; no device-quality diagnosis is inferred.'] + ([] if laps else ['No structured segments are stored.']))
+    pattern = r'(workout_log|external_activity):[1-9][0-9]{0,17}'
+    if not re.fullmatch(pattern, record_ref) or (activity_ref is not None and not re.fullmatch(r'external_activity:[1-9][0-9]{0,17}',activity_ref)):
+        raise McpSafeError(McpErrorCode.INVALID_ARGUMENT)
+    log = plan = selected = None
+    if record_ref.startswith('workout_log:'):
+        log = db.scalar(select(WorkoutLog).where(WorkoutLog.id == int(record_ref.split(':')[1]), WorkoutLog.user_id == user_id))
+        if log is None: raise McpSafeError(McpErrorCode.RESOURCE_NOT_FOUND)
+        plan = db.scalar(select(PlannedWorkout).where(PlannedWorkout.id == log.planned_workout_id, PlannedWorkout.user_id == user_id)) if log.planned_workout_id else None
+        if log.activity_date is None and (plan is None or plan.workout_date is None): raise McpSafeError(McpErrorCode.DATA_UNAVAILABLE)
+        links = select(WorkoutLogExternalActivity.external_activity_id).where(WorkoutLogExternalActivity.user_id == user_id, WorkoutLogExternalActivity.workout_log_id == log.id)
+        conditions = [ExternalActivity.id.in_(links), ExternalActivity.workout_log_id == log.id]
+        if log.external_activity_id:
+            conditions.append(ExternalActivity.external_activity_id == log.external_activity_id)
+        where = (ExternalActivity.user_id == user_id, or_(*conditions))
+    else:
+        if activity_ref is not None and activity_ref != record_ref: raise McpSafeError(McpErrorCode.INVALID_ARGUMENT)
+        where = (ExternalActivity.user_id == user_id, ExternalActivity.id == int(record_ref.split(':')[1]))
+    count = db.scalar(select(func.count()).select_from(ExternalActivity).where(*where))
+    activities = list(db.scalars(select(ExternalActivity).where(*where).order_by(ExternalActivity.start_time_local,ExternalActivity.id).limit(20)).all())
+    if activity_ref:
+        selected = db.scalar(select(ExternalActivity).where(*where, ExternalActivity.id == int(activity_ref.split(':')[1])))
+        if selected is None: raise McpSafeError(McpErrorCode.RESOURCE_NOT_FOUND)
+    elif count == 1:
+        selected = activities[0]
+    if log is None and not activities: raise McpSafeError(McpErrorCode.RESOURCE_NOT_FOUND)
+    # Never concatenate laps from warm-up, race and cooldown into one activity.
+    laps = list(db.scalars(select(ExternalActivityLap).where(ExternalActivityLap.external_activity_id == selected.id).order_by(ExternalActivityLap.lap_index).limit(101)).all()) if selected else []
+    issues = []
+    if log is not None and count and count <= 20 and log.actual_distance_km is not None and all(a.distance_m is not None for a in activities):
+        if abs(float(log.actual_distance_km)-sum(float(a.distance_m) for a in activities)/1000) > 0.02:
+            issues.append(McpTrainingFactIssue(code='LOG_ACTIVITY_DISTANCE_MISMATCH',message='Recorded log distance differs from linked activity distances; neither source is overwritten.',affected_metrics=['distance_km']))
+    segment_distance_consistent = None
+    if selected and selected.distance_m is not None and laps and len(laps) <= 100 and all(lap.distance_m is not None for lap in laps):
+        segment_distance_consistent = abs(float(selected.distance_m)-sum(float(lap.distance_m) for lap in laps)) <= 20
+        if not segment_distance_consistent:
+            issues.append(McpTrainingFactIssue(code='LAP_ACTIVITY_DISTANCE_MISMATCH',message='Stored lap distances do not match the selected activity distance; do not treat these laps as a complete race trace.',affected_metrics=['segments','distance_km']))
+    return McpTrainingDetail(record=training_item(log, plan) if log else None,
+        detail_scope='SELECTED_ACTIVITY' if selected else 'WORKOUT_LOG_SUMMARY', linked_activity_count=count,
+        activities=[_activity_summary(a) for a in activities], activities_complete=count <= 20,
+        selection_required=count > 1 and selected is None, selected_activity=_activity_detail(selected) if selected else None,
+        fact_issues=issues, segment_distance_consistent=segment_distance_consistent,
+        segments_available=bool(laps), segments_complete=bool(laps) and len(laps) <= 100,
+        segments=[McpSegment(index=lap.lap_index, role=lap.segment_role, distance_m=float(lap.distance_m) if lap.distance_m is not None else None,
+            duration_seconds=lap.duration_seconds, average_pace_seconds_per_km=lap.average_pace_seconds_per_km, quality=lap.data_quality,
+            activity_ref=f'external_activity:{selected.id}', start_time=lap.start_time.isoformat() if lap.start_time else None,
+            start_offset_seconds=lap.start_offset_seconds, timer_time_seconds=lap.timer_time_seconds, moving_time_seconds=lap.moving_time_seconds,
+            average_heart_rate_bpm=lap.average_heart_rate_bpm,max_heart_rate_bpm=lap.max_heart_rate_bpm,
+            average_cadence_spm=lap.average_cadence_spm,elevation_gain_m=lap.elevation_gain_m,lap_type=lap.lap_type) for lap in laps[:100]],
+        limitations=['Log totals are not individual race results. Select an activity when multiple are linked.',
+            'Stored laps are not necessarily kilometre splits. No GPS, raw payload, text notes or time-series are exported.',
+            'segments_complete only describes returned stored laps, not upstream sync completeness or full race coverage.',
+            'Provider measurements are not independently verified; no causal diagnosis is inferred.'] + ([] if laps else ['No selected activity with stored laps is available.']))
 
 
 class McpRecoveryDay(McpContractModel):
@@ -171,16 +291,31 @@ class McpRecoveryDay(McpContractModel):
     missing_fields: list[str]
     field_sources: dict[str, str] = Field(default_factory=dict)
     age_days: int = Field(ge=0)
+    sleep_quality: int | None = None
+    average_stress: int | None = None
+    max_stress: int | None = None
+    muscle_soreness: int | None = None
+    leg_feeling: int | None = None
+    body_battery_start: int | None = None
+    body_battery_high: int | None = None
+    body_battery_low: int | None = None
+    device_data_status: str = 'UNKNOWN'
+    provider_updated_at: str | None = None
+    missing_reasons: dict[str, Literal['NOT_RECORDED_OR_NOT_SYNCED', 'SYNC_FAILED', 'DEVICE_UNSUPPORTED']] = Field(default_factory=dict)
 
 
 class McpRecoveryTrend(McpContractModel):
     data_status: Literal['PARTIAL', 'AVAILABLE', 'EMPTY']
     as_of: date
     range_start: date
+    range_end: date
     timezone: Literal['Asia/Shanghai'] = 'Asia/Shanghai'
     daily_records: list[McpRecoveryDay] = Field(max_length=28)
     missing_dates: list[date] = Field(max_length=28)
     baseline: None = None
+    sync_status: Literal['NEVER_SYNCED','SYNCED','FAILED','UNKNOWN'] = 'UNKNOWN'
+    last_sync_attempt_at: str | None = None
+    last_successful_sync_at: str | None = None
     limitations: list[str]
 
 
@@ -188,27 +323,47 @@ class McpRecoveryTrendResult(_FactResult):
     data: McpRecoveryTrend | None = None
 
 
-def read_recovery(db: Session, user_id: int, days: int = 7) -> McpRecoveryTrend:
+def read_recovery(db: Session, user_id: int, days: int = 7, *, start_date: date | None = None, end_date: date | None = None) -> McpRecoveryTrend:
     if type(days) is not int or not 1 <= days <= 28: raise McpSafeError(McpErrorCode.INVALID_ARGUMENT)
-    end = local_today(); start = end-timedelta(days=days-1)
+    if (start_date is None) != (end_date is None): raise McpSafeError(McpErrorCode.INVALID_ARGUMENT)
+    end = end_date or local_today(); start = start_date or end-timedelta(days=days-1)
+    if start > end or end > local_today() or (end-start).days >= 28: raise McpSafeError(McpErrorCode.INVALID_ARGUMENT)
+    days = (end-start).days+1
     rows = list(db.scalars(select(DailyRecoveryCheckin).where(DailyRecoveryCheckin.user_id == user_id, DailyRecoveryCheckin.checkin_date >= start, DailyRecoveryCheckin.checkin_date <= end).order_by(DailyRecoveryCheckin.checkin_date)).all())
+    sync = db.execute(select(ExternalAccountConnection.recovery_last_attempt_at,ExternalAccountConnection.recovery_last_successful_sync_at,
+        ExternalAccountConnection.recovery_last_error_code).where(ExternalAccountConnection.user_id==user_id,
+            ExternalAccountConnection.provider=='garmin',ExternalAccountConnection.status=='connected').order_by(ExternalAccountConnection.id.desc()).limit(1)).first()
+    attempted,successful,error = sync if sync is not None else (None,None,None)
+    pending_attempt = attempted is not None and (successful is None or attempted > successful)
+    sync_status = 'FAILED' if pending_attempt and error else 'UNKNOWN' if pending_attempt else 'SYNCED' if successful else 'NEVER_SYNCED'
     records = []
-    fields = ('hrv_value', 'sleep_duration_minutes', 'resting_heart_rate_bpm', 'sleep_score', 'body_battery_end', 'subjective_fatigue')
+    fields = ('hrv_value', 'sleep_duration_minutes', 'resting_heart_rate_bpm', 'sleep_score', 'body_battery_end', 'subjective_fatigue',
+        'sleep_quality', 'average_stress', 'max_stress', 'muscle_soreness', 'leg_feeling', 'body_battery_start', 'body_battery_high', 'body_battery_low')
     for row in rows:
-        values = {field:getattr(row, field) for field in fields}
+        values = {field:getattr(row, field, None) for field in fields}
         if values['hrv_value'] is not None: values['hrv_value'] = float(values['hrv_value'])
         def safe_source(value):
             source = str(_value(value) or 'unknown').lower()
             return source if source in {'garmin','manual','mixed','unknown'} else 'unknown'
         # Historical hrv_metric can be a measurement kind, not a unit.
         unit = 'MS' if (row.hrv_metric or '').strip().lower() in {'ms', 'millisecond', 'milliseconds'} else None
+        status = str(getattr(row,'device_data_status',None) or 'UNKNOWN').upper()
+        if status not in {'AVAILABLE','PARTIAL','FAILED','SYNC_FAILED','UNSUPPORTED','UNAVAILABLE','EMPTY','SYNCED','UNKNOWN'}: status = 'UNKNOWN'
+        missing = [field for field,value in values.items() if value is None]
         records.append(McpRecoveryDay(date=row.checkin_date, source=safe_source(row.source), hrv_unit=unit, hrv_metric=row.hrv_metric,
-            age_days=(end-row.checkin_date).days,
-            field_sources={'hrv_value':safe_source(row.hrv_source), 'sleep_duration_minutes':safe_source(row.sleep_source), 'resting_heart_rate_bpm':safe_source(row.resting_heart_rate_source), 'sleep_score':safe_source(row.device_provider), 'body_battery_end':safe_source(row.device_provider), 'subjective_fatigue':'manual' if row.subjective_fatigue is not None else 'unknown'},
+            age_days=(local_today()-row.checkin_date).days, device_data_status=status,
+            provider_updated_at=row.provider_updated_at.isoformat() if getattr(row,'provider_updated_at',None) else None,
+            # Today's connection error cannot establish why an older day is missing.
+            missing_reasons={field:('SYNC_FAILED' if status in {'FAILED','SYNC_FAILED'} else 'DEVICE_UNSUPPORTED' if status=='UNSUPPORTED' else 'NOT_RECORDED_OR_NOT_SYNCED')
+                if field not in {'subjective_fatigue','muscle_soreness','leg_feeling','sleep_quality'} else 'NOT_RECORDED_OR_NOT_SYNCED' for field in missing},
+            field_sources={field:('manual' if values[field] is not None else 'unknown') if field in {'subjective_fatigue','muscle_soreness','leg_feeling','sleep_quality'} else
+                safe_source(row.hrv_source) if field=='hrv_value' else safe_source(row.sleep_source) if field=='sleep_duration_minutes' else
+                safe_source(row.resting_heart_rate_source) if field=='resting_heart_rate_bpm' else safe_source(row.device_provider) for field in fields},
             synced_at=row.device_synced_at.isoformat() if row.device_synced_at else None,
             updated_at=row.updated_at.isoformat() if row.updated_at else None,
-            missing_fields=[field for field, value in values.items() if value is None], **values))
+            missing_fields=missing, **values))
     dates = {row.date for row in records}
     missing_dates = [start+timedelta(days=n) for n in range(days) if start+timedelta(days=n) not in dates]
-    return McpRecoveryTrend(data_status='EMPTY' if not records else 'PARTIAL' if missing_dates or any(row.missing_fields for row in records) else 'AVAILABLE', as_of=end, range_start=start,
+    return McpRecoveryTrend(data_status='EMPTY' if not records else 'PARTIAL' if missing_dates or any(row.missing_fields for row in records) else 'AVAILABLE', as_of=end, range_start=start, range_end=end,
+        sync_status=sync_status,last_sync_attempt_at=attempted.isoformat() if attempted else None,last_successful_sync_at=successful.isoformat() if successful else None,
         daily_records=records, missing_dates=missing_dates, limitations=['Calendar-day recovery facts are not exact measurement timestamps.', 'No validated personal HRV baseline is stored in this projection; baseline is unavailable.', 'Subjective fatigue is distinct from session RPE; missing values are not zero.'])
