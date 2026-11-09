@@ -82,14 +82,13 @@ def _rounded_sum(values: list[float], digits: int) -> float | None:
 
 
 def _valid_nonnegative(value: Decimal | int | float | None) -> float | None:
-    if value is None:
-        return None
-    number = float(value)
-    return number if number >= 0 else None
+    from server.services.training_fact_policy import recorded_distance
+    return recorded_distance(value)
 
 
 def _effective_date(log: WorkoutLog, workout: PlannedWorkout | None) -> date | None:
-    return workout.workout_date if workout and workout.workout_date else log.activity_date
+    from server.services.training_fact_policy import recorded_date
+    return recorded_date(log, workout)
 
 
 def _effective_type(log: WorkoutLog, workout: PlannedWorkout | None) -> WorkoutMainTypeNormalized:
@@ -127,7 +126,11 @@ def _window_metrics(
 ) -> _WindowMetrics:
     window_rows = [row for row in rows if (day := _effective_date(*row)) is not None and start <= day <= end]
     window_planned = [item for item in planned if item.workout_date and start <= item.workout_date <= end and item.main_type_normalized != WorkoutMainTypeNormalized.rest]
-    non_rest_rows = [row for row in window_rows if row[0].status_normalized not in REST_STATUSES and _effective_type(*row) != WorkoutMainTypeNormalized.rest]
+    # A plan label cannot erase a completed record (including zero/unknown distance).
+    # Explicit recorded rest/cancelled statuses remain excluded.
+    non_rest_rows = [row for row in window_rows if row[0].status_normalized not in REST_STATUSES and
+                     (_effective_type(*row) != WorkoutMainTypeNormalized.rest or
+                      row[0].status_normalized in COMPLETED_STATUSES)]
     completed = [row for row in non_rest_rows if row[0].status_normalized in COMPLETED_STATUSES]
 
     completed_planned_ids = {
@@ -499,13 +502,13 @@ class RunnerStateService:
             )
         )
         last_quality_date = self.db.scalar(
-            select(func.max(func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date)))
+            select(func.max(func.coalesce(WorkoutLog.activity_date, PlannedWorkout.workout_date)))
             .select_from(WorkoutLog)
             .outerjoin(PlannedWorkout, PlannedWorkout.id == WorkoutLog.planned_workout_id)
             .where(
                 WorkoutLog.user_id == current_user.id,
                 WorkoutLog.status_normalized.in_(COMPLETED_STATUSES),
-                func.coalesce(PlannedWorkout.workout_date, WorkoutLog.activity_date) <= window_end,
+                func.coalesce(WorkoutLog.activity_date, PlannedWorkout.workout_date) <= window_end,
                 or_(
                     PlannedWorkout.main_type_normalized.in_([WorkoutMainTypeNormalized(item) for item in KEY_WORKOUT_TYPES]),
                     and_(PlannedWorkout.id.is_(None), WorkoutLog.workout_type.in_(KEY_WORKOUT_TYPES)),

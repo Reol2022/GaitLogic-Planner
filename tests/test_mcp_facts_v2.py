@@ -87,6 +87,7 @@ def test_detail_ownership_is_checked_before_lap_queries():
 
 def test_empty_recovery_keeps_dates_and_baseline_missing(monkeypatch):
     db = Mock(); db.scalars.return_value.all.return_value = []
+    db.execute.return_value.first.return_value = None
     monkeypatch.setattr(facts, 'local_today', lambda: date(2026,7,22))
     result = facts.read_recovery(db, 101)
     assert result.data_status == 'EMPTY' and result.baseline is None
@@ -113,6 +114,7 @@ def test_hrv_measurement_kind_is_not_fabricated_as_unit(monkeypatch, metric, uni
         subjective_fatigue=None, sleep_source=None, resting_heart_rate_source=None,
         device_provider='garmin', device_synced_at=None, updated_at=None)
     db = Mock(); db.scalars.return_value.all.return_value = [row]
+    db.execute.return_value.first.return_value = None
     monkeypatch.setattr(facts, 'local_today', lambda: date(2026,7,22))
     result = facts.read_recovery(db, 101)
     assert result.daily_records[0].hrv_unit == unit

@@ -29,6 +29,7 @@ from server.schemas.training_read import (
     TrainingDataQualityRead,
 )
 from server.services.weekly_review_stats_service import COMPLETED_STATUSES, REST_STATUSES, local_today
+from server.services.training_fact_policy import record_source, origin_source, recorded_distance
 
 MAX_TREND_RANGE_DAYS = 120
 EASY_TYPES = {WorkoutMainTypeNormalized.easy.value, WorkoutMainTypeNormalized.recovery.value}
@@ -95,12 +96,7 @@ def _query_logs(db: Session, user_id: int, start_date: date, end_date: date) -> 
 
 
 def _safe_source(value: str | None) -> str:
-    normalized = (value or "manual").strip().lower()
-    if normalized.startswith("garmin"):
-        return "GARMIN"
-    if "import" in normalized:
-        return "IMPORT"
-    return "MANUAL"
+    return record_source(value)
 
 
 def _brief_review(value: str | None, max_chars: int = 240) -> str | None:
@@ -141,7 +137,7 @@ def get_recent_training_read(
             if workout is not None
             else normalize_workout_main_type(log.workout_type).value
         )
-        distance = float(log.actual_distance_km) if log.actual_distance_km is not None else None
+        distance = recorded_distance(log.actual_distance_km)
         if distance is not None:
             distances.append(distance)
         is_completed_key = (
@@ -170,6 +166,7 @@ def get_recent_training_read(
                 average_heart_rate=log.avg_heart_rate,
                 rpe=log.rpe if log.rpe is not None and 0 <= log.rpe <= 10 else None,
                 source=_safe_source(log.source_type),
+                origin_source=origin_source(log),
                 brief_review=_brief_review(log.review_note),
                 is_key_session=is_completed_key,
             )

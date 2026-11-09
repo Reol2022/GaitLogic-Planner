@@ -38,8 +38,8 @@ class GaitLogicMcpServer(MCPServer):
         "get_recent_training": frozenset({"days", "limit", "cursor", "start_date", "end_date"}),
         "get_runner_state": frozenset(),
         "retrieve_training_knowledge": frozenset({"query", "top_k", "categories", "tags", "language"}),
-        "get_recovery_trend": frozenset({"days"}),
-        "get_training_detail": frozenset({"record_ref"}),
+        "get_recovery_trend": frozenset({"days", "start_date", "end_date"}),
+        "get_training_detail": frozenset({"record_ref", "activity_ref"}),
     }
 
     async def call_tool(self, name, arguments, context=None):
@@ -104,7 +104,7 @@ def create_mcp_server(
         name="gaitlogic-readonly",
         title="GaitLogic Planner",
         description="Read-only training facts from GaitLogic Planner.",
-        version="0.15.0-A",
+        version="0.16.8-facts-v3",
     )
 
     @mcp.tool(
@@ -161,15 +161,16 @@ def create_mcp_server(
             language=language,
         )
 
-    @mcp.tool(name='get_training_detail', description='Read persisted details and laps for a workout_log record_ref. Never infer missing segments. Identity is injected by the server.', structured_output=True,
+    @mcp.tool(name='get_training_detail', description='Read a workout_log or external_activity reference. A workout log may aggregate warm-up, race and cooldown; inspect activities then select activity_ref. Laps belong ONLY to the selected activity and are not necessarily kilometre splits. Never infer missing data. No GPS or raw payload.', structured_output=True,
               annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False))
-    def get_training_detail(record_ref: Annotated[str, Field(pattern=r'^workout_log:[1-9][0-9]{0,17}$')]) -> McpTrainingDetailResult:
-        return adapter.get_training_detail(record_ref=record_ref)
+    def get_training_detail(record_ref: Annotated[str, Field(pattern=r'^(workout_log|external_activity):[1-9][0-9]{0,17}$')],
+        activity_ref: Annotated[str | None, Field(pattern=r'^external_activity:[1-9][0-9]{0,17}$')] = None) -> McpTrainingDetailResult:
+        return adapter.get_training_detail(record_ref=record_ref, activity_ref=activity_ref)
 
-    @mcp.tool(name='get_recovery_trend', description='Read up to 28 calendar days of stored recovery facts. Requires separate mcp:recovery:read consent. Missing baselines and measurement timestamps remain unavailable.', structured_output=True,
+    @mcp.tool(name='get_recovery_trend', description='Read up to 28 calendar days of stored recovery facts, optionally by explicit start_date/end_date. Requires separate mcp:recovery:read consent. Missing baselines and measurement timestamps remain unavailable. No health text notes are returned.', structured_output=True,
               annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False))
-    def get_recovery_trend(days: Annotated[int, Field(ge=1, le=28)] = 7) -> McpRecoveryTrendResult:
-        return adapter.get_recovery_trend(days=days)
+    def get_recovery_trend(days: Annotated[int, Field(ge=1, le=28)] = 7, start_date: date | None = None, end_date: date | None = None) -> McpRecoveryTrendResult:
+        return adapter.get_recovery_trend(days=days,start_date=start_date,end_date=end_date)
 
     register_knowledge_primitives(mcp, knowledge_resource_service or McpKnowledgeResourceService())
 
