@@ -35,3 +35,12 @@ def origin_source(log):
     if declared:
         return declared.pop()
     return 'GARMIN' if record_source(log.source_type) == 'GARMIN' else 'UNKNOWN'
+
+
+def actual_training_type(log):
+    value = log.workout_type or None
+    if log.source_type == 'garmin_sync' and (log.field_sources_json or {}).get('workout_type') not in {'manual', 'garmin_actual'}:
+        return None
+    if value == 'rest' and log.actual_distance_km is not None and log.actual_distance_km > 0:
+        return None
+    return value

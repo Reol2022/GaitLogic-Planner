@@ -16,11 +16,13 @@ from sqlalchemy.orm import Session
 from planner_core.database.models import DailyRecoveryCheckin, ExternalAccountConnection, ExternalActivity, ExternalActivityLap, PlannedWorkout, WorkoutLog, WorkoutLogExternalActivity
 from server.mcp.errors import McpErrorCode, McpSafeError
 from server.mcp.schemas import McpContractModel, McpRecentTrainingItem, McpRecentTraining, McpRecentTrainingSummary, McpTrainingFactIssue, McpDataQuality, _McpToolResult
+from server.mcp.schemas import McpVersionedData
 from server.services.auth_service import signing_key
 from server.services.training_load_service import _query_logs, _safe_source
 from server.services.weekly_review_stats_service import COMPLETED_STATUSES, local_today
 from server.domain.review_thresholds import KEY_WORKOUT_TYPES
 from server.services.training_fact_policy import origin_source, recorded_distance
+from server.integrations.activity_provider.self_evaluation import activity_rpe, log_rpe_metadata
 
 
 def _value(value):
@@ -30,6 +32,8 @@ def _value(value):
 def training_item(log: WorkoutLog, plan: PlannedWorkout | None) -> McpRecentTrainingItem:
     planned = str(_value(plan.main_type_normalized)) if plan else None
     actual = log.workout_type or None
+    if log.source_type == 'garmin_sync' and (log.field_sources_json or {}).get('workout_type') not in {'manual', 'garmin_actual'}:
+        actual = None
     # A recorded type of rest is not a valid classification of a nonzero run.
     if actual == 'rest' and log.actual_distance_km is not None and log.actual_distance_km > 0:
         actual = None
@@ -42,6 +46,7 @@ def training_item(log: WorkoutLog, plan: PlannedWorkout | None) -> McpRecentTrai
         distance_km=recorded_distance(log.actual_distance_km),
         duration_seconds=log.actual_duration_seconds, average_pace_seconds_per_km=log.avg_pace_seconds_per_km,
         average_heart_rate=log.avg_heart_rate, rpe=log.rpe if log.rpe is not None and 0 <= log.rpe <= 10 else None,
+        rpe_metadata=log_rpe_metadata(log),
         source=_safe_source(log.source_type), origin_source=origin_source(log),
     )
 
@@ -139,6 +144,13 @@ class McpActivitySummary(McpContractModel):
 
 
 class McpActivityDetail(McpActivitySummary):
+    rpe: int | None = Field(default=None, ge=1, le=10)
+    rpe_evidence: dict[str, str | int | float | None] = Field(default_factory=dict)
+    average_speed_mps: float | None = None
+    max_speed_mps: float | None = None
+    pause_total_seconds: int | None = None
+    pause_basis: str = 'ELAPSED_MINUS_TIMER_WHEN_AVAILABLE_NOT_PAUSE_TIMELINE'
+    actual_training_type: str = 'UNKNOWN'
     start_time_utc: str | None = None
     timer_time_seconds: int | None = None
     moving_time_seconds: int | None = None
@@ -182,13 +194,18 @@ def _activity_detail(row):
     metrics = {field: getattr(row, field) for field in _ACTIVITY_METRICS}
     allowed = set(_ACTIVITY_METRICS) | {'distance_m', 'duration_seconds', 'average_heart_rate_bpm', 'average_pace_seconds_per_km'}
     return McpActivityDetail(**_activity_summary(row).model_dump(), **metrics,
+        rpe=activity_rpe(row).get('value'), rpe_evidence=activity_rpe(row),
+        average_speed_mps=row.average_speed_mps, max_speed_mps=row.max_speed_mps,
+        pause_total_seconds=(row.elapsed_time_seconds-row.timer_time_seconds
+            if row.elapsed_time_seconds is not None and row.timer_time_seconds is not None
+            and row.elapsed_time_seconds >= row.timer_time_seconds else None),
         start_time_utc=row.start_time_utc.replace(tzinfo=timezone.utc).isoformat() if row.start_time_utc else None,
         data_quality=row.data_quality, fetched_at=row.fetched_at.isoformat() if row.fetched_at else None,
         field_sources={key:_safe_source(value) for key,value in (row.field_sources_json or {}).items() if key in allowed},
         missing_fields=[field for field in sorted(allowed) if getattr(row,field) is None])
 
 
-class McpTrainingDetail(McpContractModel):
+class McpTrainingDetail(McpVersionedData):
     record: McpRecentTrainingItem | None
     detail_scope: Literal['WORKOUT_LOG_SUMMARY', 'SELECTED_ACTIVITY'] = 'WORKOUT_LOG_SUMMARY'
     linked_activity_count: int = 0
@@ -304,7 +321,7 @@ class McpRecoveryDay(McpContractModel):
     missing_reasons: dict[str, Literal['NOT_RECORDED_OR_NOT_SYNCED', 'SYNC_FAILED', 'DEVICE_UNSUPPORTED']] = Field(default_factory=dict)
 
 
-class McpRecoveryTrend(McpContractModel):
+class McpRecoveryTrend(McpVersionedData):
     data_status: Literal['PARTIAL', 'AVAILABLE', 'EMPTY']
     as_of: date
     range_start: date

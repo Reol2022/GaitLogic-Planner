@@ -127,6 +127,7 @@ class AgentContextSeed(AgentContractModel):
 
 
 class AgentContext(AgentContractModel):
+    workout_detail: dict[str, JsonValue] | None = None
     request_id: UUID
     user_id: int = Field(gt=0)
     intent: AgentIntent

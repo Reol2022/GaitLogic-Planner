@@ -179,6 +179,8 @@ class GetCurrentTrainingCycleTool(AgentTool):
             )
         return CurrentTrainingCycleOutput(
             data_status=TrainingDataStatus.AVAILABLE,
+            is_active=True,
+            target_result=_clean(getattr(cycle, "target_result", None), 64),
             lifecycle_status=lifecycle.state.value,
             transition=lifecycle.transition,
             cycle_id=cycle.id,

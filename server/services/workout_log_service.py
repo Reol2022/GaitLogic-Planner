@@ -50,6 +50,8 @@ def update_workout_log(
         data["pain_scale_version"] = PainScaleVersion.native_0_10
     for key, value in data.items():
         setattr(log, key, value)
+    if "rpe" in data:
+        log.field_sources_json = {**(log.field_sources_json or {}), "rpe": "manual"}
     log.subjective_status = _subjective_status(log)
     db.commit()
     db.refresh(log)

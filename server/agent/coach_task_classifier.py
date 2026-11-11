@@ -52,6 +52,10 @@ class CoachTaskClassifier:
         conversation_summary: str | None = None,
     ) -> AgentIntent:
         normalized = message.strip().lower()
+        if (any(marker in normalized for marker in ("分析", "复盘", "分段", "练得怎么样", "跑得怎么样", "analyse", "analyze"))
+            and any(marker in normalized for marker in ("今天", "今日", "昨天", "训练", "跑步", "workout_log:", "external_activity:"))
+            and not any(marker in normalized for marker in ("该怎么", "应该怎么", "计划怎么", "今天该", "今天应该"))):
+            return AgentIntent.PERSONAL_TRAINING_ANALYSIS
         if any(marker in normalized for marker in cls._TODAY_MARKERS):
             return AgentIntent.TODAY_RECOMMENDATION
         if any(marker in normalized for marker in cls._STATUS_MARKERS):

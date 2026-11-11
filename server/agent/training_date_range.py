@@ -44,6 +44,18 @@ def parse_training_date_range(message: str, current_time: datetime) -> TrainingD
         return TrainingDateRange(today - timedelta(days=6), today, "ROLLING_7_DAYS", "最近 7 天")
     if any(marker in text for marker in ("最近28天", "近28天", "最近四周", "近四周", "last 28 days")):
         return TrainingDateRange(today - timedelta(days=27), today, "ROLLING_28_DAYS", "最近 28 天")
+    if any(marker in text for marker in ("今天", "今日", "today")):
+        return TrainingDateRange(today, today, "LOCAL_DAY", "今天截至当前时间")
+    if any(marker in text for marker in ("昨天", "昨日", "yesterday")):
+        return TrainingDateRange(today-timedelta(days=1), today-timedelta(days=1), "LOCAL_DAY", "昨天")
+    explicit = re.search(r"(20\d{2})-(\d{2})-(\d{2})", text)
+    if explicit:
+        try:
+            target = date(*(int(v) for v in explicit.groups()))
+            if target <= today:
+                return TrainingDateRange(target,target,"EXPLICIT_DAY", "指定训练日期")
+        except ValueError:
+            pass
     return TrainingDateRange(today - timedelta(days=27), today, "ROLLING_28_DAYS", "最近 28 天")
 
 

@@ -9,6 +9,7 @@ from server.knowledge_retrieval.corpus_service import KnowledgeCorpusService
 from server.knowledge_retrieval.errors import KnowledgeCorpusError, KnowledgeNotFoundError
 from server.knowledge_retrieval.schemas import ID_PATTERN
 from server.observability.tracing import active_trace_handle, active_tracer
+from server.mcp.catalog import PRODUCT_VERSION, MCP_SERVER_VERSION, TOOL_ARGUMENTS
 
 
 CorpusFactory = Callable[[], KnowledgeCorpusService]
@@ -85,12 +86,7 @@ class McpKnowledgeResourceService:
             lambda: {
                 "status": "SUCCEEDED",
                 "data": {
-                    "exposed_tools": [
-                        "get_today_plan",
-                        "get_recent_training",
-                        "get_runner_state",
-                        "retrieve_training_knowledge",
-                    ],
+                    "exposed_tools": list(TOOL_ARGUMENTS),
                     "supported_resources": [
                         "gaitlogic://knowledge/catalog",
                         "gaitlogic://knowledge/docs/{document_key}",
@@ -98,7 +94,12 @@ class McpKnowledgeResourceService:
                     ],
                     "read_only": True,
                     "protocol": "MCP SDK 2.0 Streamable HTTP and stdio",
-                    "product_version": "0.15.0",
+                    "product_version": PRODUCT_VERSION,
+                    "mcp_server_version": MCP_SERVER_VERSION,
+                    "tool_scopes": {name: 'mcp:recovery:read' if name == 'get_recovery_trend' else 'mcp:read' for name in TOOL_ARGUMENTS},
+                    "pagination": {'tool': 'get_recent_training', 'first_cursor': 'first', 'max_page_size': 20,
+                                   'summary_scope': 'FULL_QUERY_WINDOW', 'max_days': 90},
+                    "client_refresh_required": 'Refresh or reconnect to rediscover tools and input schemas. New recovery scope requires separate consent.',
                 },
             },
         )

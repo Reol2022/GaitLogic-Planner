@@ -52,6 +52,7 @@ from server.services.garmin_daily_state_sync_service import apply_garmin_daily_h
 from server.services.training_cycle_lifecycle_service import resolve_cycle_for_date
 from server.services.token_encryption_service import decrypt_token_payload, encrypt_token_payload
 from server.services.weekly_review_stats_service import local_today
+from server.integrations.activity_provider.self_evaluation import apply_log_rpe, activity_rpe
 
 PROVIDER = "garmin"
 ACTIVE_STATUSES = {"connected", "reauthentication_required", "temporarily_unavailable"}
@@ -550,11 +551,16 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
         _publish_fetched_count(db, job_id, fetched_count)
         activity_errors: list[str] = []
         health_warning_codes: list[str] = []
+        detail_budget = 1  # Keep routine sync fast; explicit batches handle historical refresh.
         for provider_activity in activities:
             if _is_sync_job_cancelled(db, job_id):
                 return _cancelled_sync_outcome(db, job_id)
             activity_tracker = WorkoutLogMaterialChangeTracker()
             try:
+                if detail_budget and callable(getattr(provider, "fetch_activity_summary", None)):
+                    if _detail_refresh_due(db, job.user_id, provider_activity):
+                        detail_budget -= 1
+                        provider_activity = _enrich_activity_summary(provider, provider_activity)
                 with db.begin_nested():
                     result = _process_provider_activity(
                         db,
@@ -719,6 +725,7 @@ def _process_provider_activity(
     raw = db.scalar(
         select(ExternalActivityRaw).where(
             ExternalActivityRaw.provider == PROVIDER,
+            ExternalActivityRaw.user_id == job.user_id,
             ExternalActivityRaw.external_activity_id == provider_activity.external_activity_id,
             ExternalActivityRaw.payload_hash == payload_hash,
         )
@@ -740,6 +747,7 @@ def _process_provider_activity(
     activity = db.scalar(
         select(ExternalActivity).where(
             ExternalActivity.provider == PROVIDER,
+            ExternalActivity.user_id == job.user_id,
             ExternalActivity.external_activity_id == provider_activity.external_activity_id,
         )
     )
@@ -826,6 +834,7 @@ def _update_external_activity(
 
 
 def _copy_activity_metrics(activity: ExternalActivity, provider_activity: ProviderActivity) -> None:
+    previous_sources = dict(activity.field_sources_json or {})
     for field in [
         "distance_m",
         "duration_seconds",
@@ -860,10 +869,23 @@ def _copy_activity_metrics(activity: ExternalActivity, provider_activity: Provid
     activity.best_pace_seconds_per_km = _pace(provider_activity.max_speed_mps)
     activity.quality_warnings_json = _quality_warnings(activity)
     activity.data_quality = "warning" if activity.quality_warnings_json else "valid"
-    activity.field_sources_json = {field: PROVIDER for field in ["distance_m", "duration_seconds", "average_heart_rate_bpm"]}
+    activity.field_sources_json = {**previous_sources, **{field: PROVIDER for field in ["distance_m", "duration_seconds", "average_heart_rate_bpm"]}}
+    evidence = provider_activity.rpe_evidence
+    if evidence:
+        sources = dict(activity.field_sources_json)
+        sources["rpe_last_attempt"] = evidence
+        if evidence.get("value") is not None or not isinstance(sources.get("rpe_evidence"), dict):
+            sources["rpe_evidence"] = evidence
+        if provider_activity.details_fetched:
+            sources["details_fetched_at"] = evidence.get("fetched_at")
+        activity.field_sources_json = sources
 
 
 def _replace_laps(db: Session, activity: ExternalActivity, provider_activity: ProviderActivity) -> None:
+    if not provider_activity.laps:
+        # List-only sync or failed split request must not erase stored details.
+        # Empty upstream results are not proof that historical laps should vanish.
+        return
     # Do not replace laps with ``activity.laps.clear()`` followed by appends in
     # one unit-of-work flush. SQLAlchemy may INSERT the replacement rows before
     # DELETE-ing the orphans, which violates (external_activity_id, lap_index)
@@ -1085,7 +1107,8 @@ def _create_or_fill_log(
             timezone=activity.timezone,
             session_index=plan.session_index if plan else 1,
             sport_type="running",
-            workout_type=plan.main_type_raw if plan else None,
+            # A formal prescription is not evidence of what was executed.
+            workout_type=None,
             title=activity.activity_name,
             is_unplanned=plan is None,
             source_type="garmin_sync",
@@ -1209,11 +1232,48 @@ def _recalculate_log_from_linked_activities(db: Session, log: WorkoutLog) -> Non
             sources[field] = PROVIDER
     if log.status_normalized == WorkoutStatusNormalized.not_started:
         log.status_normalized = WorkoutStatusNormalized.completed_normal
+    log.field_sources_json = sources
+    apply_log_rpe(log, activities)
+    sources = dict(log.field_sources_json or {})
     if log.rpe is None or log.review_note is None:
         log.subjective_status = "pending"
     else:
         log.subjective_status = "completed"
     log.field_sources_json = sources
+
+
+def _detail_refresh_due(db: Session, user_id: int, summary: ProviderActivity) -> bool:
+    if summary.start_time_local.date() < local_today() - timedelta(days=27):
+        return False
+    existing = db.scalar(select(ExternalActivity).where(ExternalActivity.user_id == user_id,
+        ExternalActivity.provider == PROVIDER, ExternalActivity.external_activity_id == summary.external_activity_id))
+    latest = (existing.field_sources_json or {}).get("rpe_last_attempt", {}) if existing else {}
+    try:
+        attempted = datetime.fromisoformat(latest["fetched_at"]).replace(tzinfo=None)
+        return datetime.utcnow() - attempted >= timedelta(minutes=15)
+    except (KeyError, TypeError, ValueError):
+        return True
+
+
+def _enrich_activity_summary(provider, summary: ProviderActivity) -> ProviderActivity:
+    from dataclasses import fields, replace
+    try:
+        detail = provider.fetch_activity_summary(summary.external_activity_id)
+        if detail.external_activity_id != summary.external_activity_id:
+            raise ProviderError("ACTIVITY_DETAIL_MISMATCH", "Garmin 活动详情引用不一致。")
+        # Missing optional detail metrics never erase a complete list summary.
+        changes = {f.name: getattr(detail, f.name) for f in fields(detail)
+            if getattr(detail, f.name) is not None and f.name not in {"raw_payload", "laps"}}
+        changes["raw_payload"] = {**summary.raw_payload, "self_evaluation": {
+            key: value for key, value in detail.rpe_evidence.items() if key != "fetched_at"
+        }}
+        changes["laps"] = detail.laps or summary.laps
+        return replace(summary, **changes)
+    except ProviderError:
+        from datetime import timezone
+        summary.rpe_evidence = {"value": None, "missing_reason": "DETAIL_FETCH_FAILED",
+            "fetched_at": datetime.now(timezone.utc).isoformat()}
+        return summary
 
 
 def _can_fill_garmin_field(log: WorkoutLog, field: str, sources: dict[str, str]) -> bool:

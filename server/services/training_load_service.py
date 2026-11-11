@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
+from server.integrations.activity_provider.self_evaluation import log_rpe_metadata
+from server.services.training_fact_policy import actual_training_type
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -165,6 +167,9 @@ def get_recent_training_read(
                 average_pace_seconds_per_km=log.avg_pace_seconds_per_km,
                 average_heart_rate=log.avg_heart_rate,
                 rpe=log.rpe if log.rpe is not None and 0 <= log.rpe <= 10 else None,
+                rpe_metadata=log_rpe_metadata(log),
+                planned_training_type=str(getattr(workout.main_type_normalized, "value", workout.main_type_normalized)) if workout else None,
+                actual_training_type=actual_training_type(log),
                 source=_safe_source(log.source_type),
                 origin_source=origin_source(log),
                 brief_review=_brief_review(log.review_note),

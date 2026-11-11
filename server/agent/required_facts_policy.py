@@ -150,6 +150,19 @@ def resolve_required_facts_policy(
             "end_date": requested.end_date.isoformat(),
         }
         race = parse_race_context(message, current_time)
+        actual_detail_request = intent == AgentIntent.PERSONAL_TRAINING_ANALYSIS and (
+            requested.kind in {"LOCAL_DAY", "EXPLICIT_DAY"}
+            or "workout_log:" in message or "external_activity:" in message
+        )
+        if actual_detail_request and race is None:
+            # Reserve budget for the dependent single-activity query. The old
+            # six generic preloads exhausted the six-call budget before laps/RPE.
+            return RequiredFactsPolicy(
+                intent=intent, required_fact_set=("recent_training", "runner_state", "data_quality"),
+                tool_preloads=(("get_recent_training", recent_args), ("get_runner_state", {}),
+                    ("get_current_training_cycle", {}), ("get_training_data_quality", quality_args)),
+                knowledge_retrieval="never",
+            )
         if race:
             return RequiredFactsPolicy(
                 intent=intent,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -129,3 +129,65 @@ def test_fetch_activities_uses_working_paginated_api_and_date_filter() -> None:
     assert [row.external_activity_id for row in rows] == ["2"]
     assert FakeGarmin.split_calls == []
     assert FakeGarmin.instances[0].garth.timeout == GARMIN_API_TIMEOUT_SECONDS
+
+
+@pytest.mark.parametrize("utc_value", ["2026-11-10 11:00:00", "2026-11-10T11:00:00Z", "2026-11-10T19:00:00+08:00"])
+def test_evening_activity_is_filtered_by_utc_not_local_wall_clock(utc_value):
+    FakeGarmin.activity_pages = {0: [{
+        "activityId": "synthetic-evening", "startTimeLocal": "2026-11-10 19:00:00",
+        "startTimeGMT": utc_value, "activityType": {"typeKey": "running"},
+    }]}
+    provider = GarminActivityProvider()
+    provider.authenticate("runner@example.test", "fictional", "cn")
+    rows = provider.fetch_activities(datetime(2026, 11, 10, 10), datetime(2026, 11, 10, 13))
+    assert [r.external_activity_id for r in rows] == ["synthetic-evening"]
+    assert rows[0].start_time_local == datetime(2026, 11, 10, 19)
+    assert rows[0].start_time_utc == datetime(2026, 11, 10, 11)
+    assert FakeGarmin.split_calls == []
+
+
+@pytest.mark.parametrize("zone", ["Asia/Shanghai", {"timeZone": "Asia/Shanghai"}, {"unitKey": "Asia/Shanghai"}])
+def test_missing_gmt_uses_activity_timezone_instead_of_server_timezone(zone):
+    FakeGarmin.activity_pages = {0: [{
+        "activityId": "synthetic-fallback", "startTimeLocal": "2026-11-10 19:00:00",
+        "timeZoneUnitDTO": zone, "activityType": {"typeKey": "running"},
+    }]}
+    provider = GarminActivityProvider()
+    provider.authenticate("runner@example.test", "fictional", "cn")
+    rows = provider.fetch_activities(datetime(2026, 11, 10, 10), datetime(2026, 11, 10, 13))
+    assert [r.external_activity_id for r in rows] == ["synthetic-fallback"]
+    assert rows[0].timezone == "Asia/Shanghai"
+
+
+def test_utc_window_boundaries_cross_midnight_and_exclude_outside_activities():
+    FakeGarmin.activity_pages = {0: [
+        {"activityId": str(i), "startTimeLocal": local, "startTimeGMT": utc,
+         "activityType": {"typeKey": "running"}}
+        for i, local, utc in [
+            (4, "2026-11-11 08:00:01", "2026-11-11 00:00:01"),
+            (3, "2026-11-11 08:00:00", "2026-11-11 00:00:00"),
+            (2, "2026-11-11 00:30:00", "2026-11-10 16:30:00"),
+            (1, "2026-11-11 00:29:59", "2026-11-10 16:29:59"),
+        ]
+    ]}
+    provider = GarminActivityProvider()
+    provider.authenticate("runner@example.test", "fictional", "cn")
+    # Offset-aware ranges must represent the same instants as naive UTC jobs.
+    local_zone = timezone(timedelta(hours=8))
+    rows = provider.fetch_activities(datetime(2026, 11, 11, 0, 30, tzinfo=local_zone),
+                                     datetime(2026, 11, 11, 8, tzinfo=local_zone))
+    assert [r.external_activity_id for r in rows] == ["3", "2"]
+
+
+def test_negative_offset_activity_uses_gmt_and_unknown_zone_does_not_guess():
+    FakeGarmin.activity_pages = {0: [
+        {"activityId": "valid", "startTimeLocal": "2026-11-10 06:00:00",
+         "startTimeGMT": "2026-11-10T14:00:00Z", "timeZoneId": "America/Los_Angeles",
+         "activityType": {"typeKey": "running"}},
+        {"activityId": "invalid", "startTimeLocal": "2026-11-10 06:00:00",
+         "timeZoneId": "Not/A_Zone", "activityType": {"typeKey": "running"}},
+    ]}
+    provider = GarminActivityProvider()
+    provider.authenticate("runner@example.test", "fictional", "cn")
+    rows = provider.fetch_activities(datetime(2026, 11, 10, 13), datetime(2026, 11, 10, 15))
+    assert [r.external_activity_id for r in rows] == ["valid"]

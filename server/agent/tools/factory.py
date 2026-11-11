@@ -24,12 +24,14 @@ from server.agent.tools.training_tools import (
     GetTrainingDataQualityTool,
 )
 from server.agent.tools.weather import GetWeatherTool, WeatherProvider
+from server.agent.tools.workout_detail import GetWorkoutDetailTool
 
 COACH_AGENT_TOOL_NAMES = frozenset(
     {
         "get_runner_state",
         "get_runner_state_history",
         "get_recent_training",
+        "get_workout_detail",
         "get_today_workout",
         "get_current_training_cycle",
         "get_training_plan_window",
@@ -56,6 +58,7 @@ def build_coach_agent_tool_registry(
         GetRunnerStateTool(dependencies, evidence_limit=bounded.max_evidence_items),
         GetRunnerStateHistoryTool(dependencies, history_limit=bounded.max_history_items),
         GetRecentTrainingTool(dependencies, item_limit=bounded.max_recent_training_items),
+        GetWorkoutDetailTool(dependencies),
         GetTodayWorkoutTool(dependencies),
         GetCurrentTrainingCycleTool(dependencies),
         GetTrainingPlanWindowTool(dependencies),

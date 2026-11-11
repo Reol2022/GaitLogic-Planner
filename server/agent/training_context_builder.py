@@ -20,6 +20,7 @@ from server.agent.schemas import AgentContext, AgentContextSeed, AgentNotice, Ag
 from server.agent.trace import AgentTrace
 
 _FIELD_BY_TOOL = {
+    "get_workout_detail": "workout_detail",
     "get_runner_state": "runner_state",
     "get_runner_state_history": "runner_state_history",
     "get_recent_training": "recent_training",
@@ -123,6 +124,17 @@ class AgentTrainingContextBuilder(AgentContextBuilder):
             results = list(context.tool_results)
             values = context.model_dump(mode="python")
             missing = dict(context.missing_reasons)
+        if request.intent.value == "PERSONAL_TRAINING_ANALYSIS" and "get_workout_detail" in available_tools:
+            import re
+            explicit = re.search(r"(?:workout_log|external_activity):[1-9][0-9]{0,17}", request.message)
+            recent = context.recent_training or {}
+            items = recent.get("items", [])
+            single_day = recent.get("range_start") == recent.get("range_end") and recent.get("range_start") is not None
+            target_ref = explicit.group(0) if explicit else (
+                items[0].get("record_ref") if single_day and len(items)==1 and recent.get("details_complete") else None)
+            if target_ref and len(context.tool_results) < self.limits.max_tool_calls:
+                result = self.registry.invoke("get_workout_detail", {"record_ref":target_ref}, context)
+                context = merge_agent_tool_results(context,[result])
         if preload_limit:
             self._report_progress("FACTS_READY", list(context.tool_results))
         return self._bounded_context(context)

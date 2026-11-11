@@ -19,6 +19,9 @@ class RecentTrainingSessionRead(BaseModel):
     average_pace_seconds_per_km: int | None = None
     average_heart_rate: int | None = None
     rpe: int | None = None
+    rpe_metadata: dict[str, str | int | None] = Field(default_factory=dict)
+    planned_training_type: str | None = None
+    actual_training_type: str | None = None
     source: str
     origin_source: str = "UNKNOWN"
     brief_review: str | None = Field(default=None, max_length=240)

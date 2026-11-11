@@ -31,6 +31,7 @@ from server.mcp.errors import McpErrorCode
 from server.mcp.adapters import KnowledgeToolFactory
 from server.mcp.knowledge import McpKnowledgeResourceService
 from server.mcp.server import create_mcp_server
+from server.mcp.catalog import MCP_SERVER_VERSION
 from server.observability.factory import get_configured_tracer
 from server.observability.tracing import SafeTracer
 from server.services.auth_service import McpTokenValidationError, decode_mcp_access_token
@@ -76,6 +77,14 @@ class McpHttpSecurityMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+
+        original_send = send
+        async def versioned_send(message):
+            if message['type'] == 'http.response.start':
+                headers = [(k, v) for k, v in message.get('headers', []) if k.lower() != b'x-gaitlogic-mcp-version']
+                message = {**message, 'headers': [*headers, (b'x-gaitlogic-mcp-version', MCP_SERVER_VERSION.encode('ascii'))]}
+            await original_send(message)
+        send = versioned_send
 
         request = Request(scope, receive=receive)
         tracer = self.dependencies.active_tracer

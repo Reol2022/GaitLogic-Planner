@@ -3,9 +3,11 @@ from __future__ import annotations
 import logging
 import secrets
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from server.integrations.activity_provider.self_evaluation import normalize_rpe
 
 from server.integrations.activity_provider.base import (
     ActivityProvider,
@@ -20,6 +22,7 @@ MFA_STATE_CACHE: dict[str, dict[str, Any]] = {}
 GARTH_TOKEN_FORMAT = "garth_oauth_v1"
 GARTH_TIMEOUT_SECONDS = 120
 GARMIN_API_TIMEOUT_SECONDS = 120
+GARMIN_DETAIL_TIMEOUT_SECONDS = 15
 ACTIVITY_PAGE_SIZE = 100
 MAX_ACTIVITY_PAGES = 20
 
@@ -147,6 +150,9 @@ class GarminActivityProvider(ActivityProvider):
         client = self._require_client()
         client.garth.timeout = GARMIN_API_TIMEOUT_SECONDS
         activities: list[ProviderActivity] = []
+        # Sync jobs persist naive UTC, not the activity's local wall clock.
+        range_start = _as_naive_utc(start)
+        range_end = _as_naive_utc(end)
         try:
             for page in range(MAX_ACTIVITY_PAGES):
                 # Keep this call identical to the proven China-region script.
@@ -174,11 +180,9 @@ class GarminActivityProvider(ActivityProvider):
                         # requests and leaving jobs at fetched_count=0 for a
                         # long time. Split enrichment must not block ingestion.
                         activity = _activity_from_payload(row)
+                        activity_time = _activity_start_utc(activity)
                     except ProviderError:
                         continue
-                    activity_time = activity.start_time_local.replace(tzinfo=None)
-                    range_start = start.replace(tzinfo=None)
-                    range_end = end.replace(tzinfo=None)
                     if activity_time < range_start:
                         reached_older_activity = True
                         continue
@@ -200,10 +204,24 @@ class GarminActivityProvider(ActivityProvider):
     def fetch_activity_summary(self, external_activity_id: str) -> ProviderActivity:
         client = self._require_client()
         try:
-            payload = client.get_activity(external_activity_id)
+            payload = _bounded_detail_call(client, client.get_activity, external_activity_id)
         except Exception as exc:
             raise ProviderError("ACTIVITY_FETCH_FAILED", "Garmin 活动详情拉取失败。") from exc
-        return _activity_from_payload(payload, client)
+        # Detail summaries are nested, unlike get_activities() list records.
+        if not isinstance(payload, dict):
+            raise ProviderError("ACTIVITY_PARSE_FAILED", "Garmin 活动详情格式不正确。")
+        summary = payload.get("summaryDTO")
+        flattened = {**(summary if isinstance(summary, dict) else {}), **payload}
+        activity = _activity_from_payload(flattened)
+        activity.rpe_evidence = normalize_rpe(payload)
+        activity.details_fetched = True
+        try:
+            activity.laps = _laps_from_payload(_bounded_detail_call(client, client.get_activity_splits, external_activity_id))
+            activity.laps_fetched = True
+        except Exception:
+            # Summary/RPE success is independent of split availability.
+            activity.laps_fetched = False
+        return activity
 
     def fetch_activity_splits(self, external_activity_id: str) -> list[ProviderLap]:
         client = self._require_client()
@@ -492,8 +510,8 @@ def _activity_from_payload(payload: dict[str, Any], client: Any | None = None) -
         activity_type=raw_type,
         activity_subtype=_text(_first(payload, "activityTypeDTO", "activityType", "activitySubTypeDTO")),
         start_time_local=start_time,
-        timezone=_text(_first(payload, "timeZoneUnitDTO", "timeZoneId")) or "Asia/Shanghai",
-        start_time_utc=_parse_datetime(_first(payload, "startTimeGMT", "startTimeUTC")),
+        timezone=_activity_timezone(payload),
+        start_time_utc=_parse_utc_datetime(_first(payload, "startTimeGMT", "startTimeUTC")),
         source_updated_at=_parse_datetime(_first(payload, "lastUpdatedDate", "updateDate")),
         distance_m=_decimal(_first(payload, "distance", "sumDistance")),
         duration_seconds=_seconds(_first(payload, "duration", "elapsedDuration")),
@@ -605,6 +623,55 @@ def _int(value: Any) -> int | None:
 
 def _seconds(value: Any) -> int | None:
     return _int(value)
+
+
+def _bounded_detail_call(client, method, activity_id):
+    garth = getattr(client, "garth", None)
+    previous = getattr(garth, "timeout", None)
+    if garth is not None:
+        garth.timeout = GARMIN_DETAIL_TIMEOUT_SECONDS
+    try:
+        return method(activity_id)
+    finally:
+        if garth is not None:
+            garth.timeout = previous
+
+
+def _as_naive_utc(value: datetime) -> datetime:
+    """Naive sync timestamps are UTC; aware timestamps retain their instant."""
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _parse_utc_datetime(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return _as_naive_utc(value)
+    if value is None:
+        return None
+    try:
+        return _as_naive_utc(datetime.fromisoformat(str(value).strip().replace("Z", "+00:00")))
+    except ValueError:
+        return None
+
+
+def _activity_timezone(payload: dict[str, Any]) -> str:
+    value = _first(payload, "timeZoneUnitDTO", "timeZoneId")
+    if isinstance(value, dict):
+        value = _first(value, "timeZone", "timeZoneId", "unitKey")
+    return _text(value) or "Asia/Shanghai"
+
+
+def _activity_start_utc(activity: ProviderActivity) -> datetime:
+    if activity.start_time_utc is not None:
+        return _as_naive_utc(activity.start_time_utc)
+    local = activity.start_time_local
+    if local.tzinfo is not None:
+        return _as_naive_utc(local)
+    try:
+        return _as_naive_utc(local.replace(tzinfo=ZoneInfo(activity.timezone)))
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise ProviderError("ACTIVITY_PARSE_FAILED", "Garmin 活动时区无法识别。") from exc
 
 
 def _parse_datetime(value: Any) -> datetime | None:

@@ -86,6 +86,9 @@ class ProviderActivity:
     garmin_recovery_time_seconds: int | None = None
     raw_payload: dict[str, Any] = field(default_factory=dict)
     laps: list[ProviderLap] = field(default_factory=list)
+    rpe_evidence: dict[str, Any] = field(default_factory=dict)
+    details_fetched: bool = False
+    laps_fetched: bool = False
 
 
 @dataclass(slots=True)

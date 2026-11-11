@@ -139,6 +139,7 @@ class McpToolAdapter:
                 {
                     key: value["summary"].get(key)
                     for key in McpRecentTrainingSummary.model_fields
+                    if key in value['summary']
                 }
             ),
             data_quality=McpDataQuality.model_validate(value["data_quality"]),
@@ -147,7 +148,7 @@ class McpToolAdapter:
 
     @classmethod
     def _runner_state(cls, value: dict) -> McpRunnerState:
-        allowed = {'distance_7d_km', 'distance_28d_km', 'sessions_7d', 'sessions_28d', 'volume_ratio', 'completion_rate_7d', 'completion_rate_28d', 'previous_21d_weekly_average_km'}
+        allowed = {'distance_7d_km', 'distance_28d_km', 'sessions_7d', 'sessions_28d', 'completed_sessions_7d', 'completed_sessions_28d', 'volume_ratio', 'completion_rate_7d', 'completion_rate_28d', 'previous_21d_weekly_average_km'}
         metrics = {key: val for key, val in value.get('metrics', {}).items() if key in allowed and (val is None or type(val) in (int, float))}
         evidence = [McpEvidence.model_validate(item) for item in value.get('evidence', []) if item.get('metric') in allowed][:15]
         return McpRunnerState(
@@ -166,6 +167,14 @@ class McpToolAdapter:
             training_window_end=value['as_of_date'],
             training_window_start_7d=date.fromisoformat(str(value['as_of_date']))-timedelta(days=6),
             training_window_start_28d=date.fromisoformat(str(value['as_of_date']))-timedelta(days=27),
+            metric_definitions={
+                'sessions_7d': 'Non-rest log records, including non-completed records; not completed workouts.',
+                'sessions_28d': 'Non-rest log records, including non-completed records; not completed workouts.',
+                'completed_sessions_7d': 'Completed workout logs in the 7-day window; comparable to recent training total_sessions for the same dates.',
+                'completed_sessions_28d': 'Completed workout logs in the 28-day window; comparable to recent training total_sessions for the same dates.',
+            },
+            training_load_risk_level=value['risk_level'],
+            recovery_evidence_status='PARTIAL' if value.get('metrics', {}).get('recovery_available_fields') and value.get('metrics', {}).get('recovery_freshness') in {'CURRENT', 'PARTIAL'} else 'UNKNOWN',
         )
 
     @staticmethod
@@ -426,6 +435,12 @@ class McpToolAdapter:
         )
         if error is not None:
             return McpRecentTrainingResult(status="FAILED", error=self._error(error))
+        summary = payload.get('summary') if payload else None
+        total = summary.get('total_sessions') if isinstance(summary, dict) else None
+        if type(total) is int and total > len(payload.get('items', [])):
+            # Old clients can omit cursor on page one and still receive a valid
+            # next_cursor. Keep the full-window aggregate separate from a page.
+            return self._read_fact(McpRecentTrainingResult, lambda db, uid: read_training(db, uid, days=days, limit=limit))
         try:
             return McpRecentTrainingResult(
                 status="SUCCEEDED", data=self._recent_training(payload or {})

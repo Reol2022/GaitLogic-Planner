@@ -353,6 +353,7 @@ def _import_logs(
             log.avg_pace_seconds_per_km = parse_pace_seconds_per_km(row["均配"])
             log.avg_heart_rate = _optional_int(row["均心率"])
             log.rpe = _optional_int(row["RPE"])
+            log.field_sources_json = {**(log.field_sources_json or {}), "rpe": "excel_import"}
             log.i_effective_km = parse_decimal(row["I有效km"])
             log.t1_effective_km = parse_decimal(row["T1有效km"])
             log.t2_effective_km = parse_decimal(row["T2有效km"])

@@ -14,6 +14,7 @@ from server.knowledge_retrieval.enums import KnowledgeCategory
 from server.agent.tools.knowledge_tools import RetrieveTrainingKnowledgeInput
 from server.mcp.adapters import DependenciesFactory, KnowledgeToolFactory, McpToolAdapter
 from server.mcp.context import McpExecutionContext
+from server.mcp.catalog import MCP_SERVER_VERSION, TOOL_ARGUMENTS
 from server.mcp.knowledge import McpKnowledgeResourceService, register_knowledge_primitives
 from server.mcp.schemas import (
     McpKnowledgeRetrievalResult,
@@ -33,14 +34,7 @@ class GaitLogicMcpServer(MCPServer):
     a tool call.
     """
 
-    _ARGUMENT_NAMES = {
-        "get_today_plan": frozenset(),
-        "get_recent_training": frozenset({"days", "limit", "cursor", "start_date", "end_date"}),
-        "get_runner_state": frozenset(),
-        "retrieve_training_knowledge": frozenset({"query", "top_k", "categories", "tags", "language"}),
-        "get_recovery_trend": frozenset({"days", "start_date", "end_date"}),
-        "get_training_detail": frozenset({"record_ref", "activity_ref"}),
-    }
+    _ARGUMENT_NAMES = TOOL_ARGUMENTS
 
     async def call_tool(self, name, arguments, context=None):
         allowed = self._ARGUMENT_NAMES.get(name)
@@ -104,7 +98,7 @@ def create_mcp_server(
         name="gaitlogic-readonly",
         title="GaitLogic Planner",
         description="Read-only training facts from GaitLogic Planner.",
-        version="0.16.8-facts-v3",
+        version=MCP_SERVER_VERSION,
     )
 
     @mcp.tool(

@@ -245,6 +245,29 @@ class KnowledgeIndexService:
                 store.build(records)
             finally:
                 store.close()
+            if self.vector_store_name == "qdrant_dense_v1":
+                # Reopen as runtime readers do: embedded Qdrant can also
+                # normalize vectors when loading its persisted collection.
+                store = self._store(staging, index_id=manifest.index_id, dimensions=dimensions)
+                try:
+                    # Qdrant persists float32 (and may renormalize cosine vectors).
+                    # Seal the actual persisted representation, after verifying that
+                    # storage changed neither payload nor meaningful vector values.
+                    persisted = store.records()
+                    self._check_persisted_records(records, persisted)
+                    manifest = build_index_manifest(
+                        corpus_root_hash=corpus.root_hash,
+                        corpus_manifest_sha256=file_sha256(self.corpus_manifest_path),
+                        embedding_provider=provider.provider_name,
+                        embedding_model=provider.model_name,
+                        embedding_dimensions=dimensions,
+                        embedding_normalized=provider.normalized,
+                        records=persisted,
+                        warnings=warnings,
+                        vector_store=self.vector_store_name,
+                    )
+                finally:
+                    store.close()
             write_index_manifest(staging / INDEX_MANIFEST_FILENAME, manifest)
             self._validate_directory(staging, corpus.root_hash)
             if target.exists():
@@ -271,6 +294,23 @@ class KnowledgeIndexService:
             raise
         finally:
             provider.close()
+
+    @staticmethod
+    def _check_persisted_records(
+        original: list[VectorRecord], persisted: list[VectorRecord]
+    ) -> None:
+        expected = {record.chunk_id: record for record in original}
+        if len(persisted) != len(expected) or len({r.chunk_id for r in persisted}) != len(expected):
+            raise KnowledgeIndexError("Vector store changed record identities.")
+        for record in persisted:
+            source = expected.get(record.chunk_id)
+            if source is None or source.model_dump(exclude={"vector"}) != record.model_dump(exclude={"vector"}):
+                raise KnowledgeIndexError("Vector store changed record metadata.")
+            if len(source.vector) != len(record.vector) or not all(
+                math.isclose(a, b, rel_tol=1e-5, abs_tol=1e-7)
+                for a, b in zip(source.vector, record.vector, strict=True)
+            ):
+                raise KnowledgeIndexError("Vector store changed vector values.")
 
     def _validate_directory(
         self,
