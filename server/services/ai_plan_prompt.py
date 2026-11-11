@@ -4,6 +4,7 @@ import json
 from typing import Any
 
 from server.schemas.ai_plan import AIPlanGenerateRequest
+from server.services.ai_plan_calendar import plan_calendar
 
 
 def build_ai_plan_system_prompt() -> str:
@@ -60,6 +61,7 @@ JSON 必须符合以下结构：
   "target_race_name": "目标赛事名称",
   "target_race_date": "YYYY-MM-DD",
   "target_result": "目标成绩",
+  "target_distance": "half_marathon",
   "summary": "计划总体说明",
   "risk_notes": ["风险提示1"],
   "weeks": [
@@ -75,6 +77,7 @@ JSON 必须符合以下结构：
           "planned_content": "具体训练内容",
           "focus_note": "目的：本次训练目的；注意：执行要点；降级：状态不佳时如何安全调整",
           "planned_distance_km": 10,
+          "planned_duration_minutes": 60,
           "main_type": "E",
           "target_pace_text": "4:45-5:30/km"
         }
@@ -100,6 +103,9 @@ JSON 必须符合以下结构：
 14. 如果用户可以双跑，也只能谨慎安排，且不应默认天天双跑。
 15. 如果用户不能双跑，不得安排双跑。
 16. 非 Rest 训练的 focus_note 必须包含明确目的、注意事项和降级建议。
+17. 顶层 target_distance 必须与用户输入一致，所有非休息课程提供 planned_duration_minutes。
+18. 计划周按开始日起连续7天划分。比赛位于最后一周时，该周截止比赛日，允许不足7天，不得补课到比赛后。
+19. 以服务端给出的起止日期与每周日期范围为准，不能自行对齐自然周或修改开始日期。
 
 安全边界：
 你不是医生，不提供医疗诊断。
@@ -125,6 +131,11 @@ def build_ai_plan_user_prompt(
     coach_preference: dict[str, Any] | None = None,
     plan_context: dict[str, Any] | None = None,
 ) -> str:
+    calendar = plan_calendar(request.plan_start_date, request.plan_weeks, request.target_race_date)
+    contract = {'start_date': request.plan_start_date.isoformat(), 'end_date': calendar.end.isoformat(),
+                'target_race_date': request.target_race_date.isoformat() if request.target_race_date else None,
+                'target_result': request.target_result, 'target_distance': request.target_distance.value,
+                'week_date_ranges': calendar.week_ranges}
     if plan_context is not None:
         return '\n'.join([
             '请依据以下统一 Plan Context 生成训练计划草稿，只输出原有结构的 JSON。',
@@ -134,7 +145,8 @@ def build_ai_plan_user_prompt(
             '未知周不是零跑量；sync_coverage_verified=false 时不能声称设备数据完全同步。',
             'feasibility 警告需进入 risk_notes；仅 error 级矛盾阻止生成，挑战性目标不是承诺。',
             'weeks 数量等于 plan_weeks；每周按计划开始日起连续7天划分。周跑量必须等于当周课程距离之和。',
-            '顶层 start_date 为计划起始日，end_date 为起始日 + plan_weeks*7 - 1天；目标日期和成绩不得改写。',
+            '顶层日期与目标字段严格使用以下输出契约。最后一周可不足7天，不能延长到比赛之后。',
+            '服务端输出契约：' + json.dumps(contract, ensure_ascii=False),
             '输出 target_distance 与输入一致。Rest为0km且不计训练天数；非休息课程不能超过每周可训练天数。',
             '每日时间上限为分钟；所有非休息课程增加 planned_duration_minutes，双跑按同日总时间检查。',
             '长距离偏好日是软偏好，不能凌驾于固定休息日；不要在单条文本里隐藏双跑或禁用课型。',
@@ -145,6 +157,7 @@ def build_ai_plan_user_prompt(
     plan_weeks = data.get("plan_weeks")
     lines = [
         "请根据以下用户信息生成结构化训练计划草稿。",
+        '服务端输出契约：' + json.dumps(contract, ensure_ascii=False),
         f"非常重要：必须完整生成 {plan_weeks} 周，weeks 数组长度必须等于 {plan_weeks}，不能只输出第一周或部分周。",
         "",
         "跑者基本信息：",

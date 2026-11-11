@@ -14,6 +14,7 @@ from planner_core.database.models import AIPlanCoachPreference, ExternalSyncJob,
 from server.schemas.ai_plan import AIPlanGenerateRequest, PlanContextRead, PlanContextIssue, WEEKDAYS
 from server.services import training_cycle_lifecycle_service, training_load_service
 from server.services.ai_coach_preference_service import preference_to_prompt_dict
+from server.services.ai_plan_calendar import plan_calendar
 from server.services.runner_state_service import RunnerStateService
 from server.services.weekly_review_stats_service import APP_TIMEZONE, COMPLETED_STATUSES, local_today
 
@@ -92,11 +93,12 @@ def assess_feasibility(payload: AIPlanGenerateRequest, facts: dict) -> list[Plan
     available = [day for day in WEEKDAYS if day not in payload.fixed_rest_days and payload.daily_available_minutes.get(day, 1) > 0]
     if len(available) < payload.available_training_days_per_week:
         issue('TRAINING_DAYS_CONFLICT', '可训练天数与固定休息日或每日时间冲突，请修改约束。', 'error')
-    if payload.target_race_date and payload.target_race_date < payload.plan_start_date:
-        issue('RACE_BEFORE_PLAN', '比赛日期早于计划开始日期。', 'error')
+    calendar = plan_calendar(payload.plan_start_date, payload.plan_weeks, payload.target_race_date)
+    if calendar.error:
+        issue('RACE_BEFORE_PLAN' if payload.target_race_date < payload.plan_start_date else 'PLAN_WEEKS_EXCEED_RACE', calendar.error, 'error')
     if payload.target_race_date and 0 <= (payload.target_race_date - payload.plan_start_date).days < 28:
         issue('SHORT_PREPARATION', '距离比赛不足4周，适合有限准备与调整，不宜假设短期可大幅提升能力。')
-    if payload.target_race_date and payload.target_race_date > payload.plan_start_date + timedelta(days=payload.plan_weeks * 7 - 1):
+    if payload.target_race_date and payload.target_race_date > calendar.end:
         issue('RACE_OUTSIDE_PLAN', '比赛在本计划结束后，本草稿不覆盖完整备赛周期。')
     if payload.long_run_preferred_day in payload.fixed_rest_days:
         issue('LONG_RUN_REST_CONFLICT', '长距离偏好日与固定休息日冲突：休息日优先，长距离需改日。')
@@ -159,6 +161,8 @@ def build_plan_context(db: Session, user_id: int, payload: AIPlanGenerateRequest
     if payload:
         data = payload.model_dump(mode='json')
         context.hard_constraints = {key: data[key] for key in ['target_distance','target_result','target_race_date','plan_start_date','plan_weeks','available_training_days_per_week','fixed_rest_days','daily_available_minutes','can_double_run','excluded_workout_types']}
+        calendar = plan_calendar(payload.plan_start_date, payload.plan_weeks, payload.target_race_date)
+        context.hard_constraints.update(plan_end_date=calendar.end.isoformat(), week_date_ranges=calendar.week_ranges)
         context.hard_constraints['excluded_workout_types'] = sorted(set(payload.excluded_workout_types + (context.soft_preferences.get('disabled_workout_types') or [])))
         context.user_reported = {key: data[key] for key in ['runner_level','recent_pb_distance','recent_pb_result','current_weekly_mileage_km','recent_4w_avg_mileage_km','injury_notes']}
         pb, target = _seconds(payload.recent_pb_result), _seconds(payload.target_result)

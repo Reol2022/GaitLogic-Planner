@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -38,10 +39,12 @@ from server.services.ai_plan_prompt import build_ai_plan_system_prompt, build_ai
 from server.model_tasks import ModelTaskType, task_model_profile
 from server.services.ai_plan_context_service import build_plan_context
 from server.services.ai_plan_constraints import validate_plan_constraints
+from server.services.ai_plan_calendar import plan_calendar
 
 MAX_INPUT_JSON_CHARS = 20000
 ALLOWED_MAIN_TYPES = {"REC", "E", "LSD", "M", "T1", "T2", "I", "R", "Rest", "Mixed"}
 HIGH_INTENSITY_TYPES = {"T1", "T2", "I", "R", "Mixed"}
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -52,6 +55,15 @@ class DeepSeekResult:
     total_tokens: int | None = None
     finish_reason: str | None = None
     reasoning_length: int = 0
+
+
+class AIPlanOutputError(BadRequestError):
+    def __init__(self, category: str, reason: str):
+        self.category = category
+        super().__init__(
+            f'模型已返回课表，但{reason}。本次未保存为可应用草稿，未扣除成功生成额度。',
+            error_code='AI_PLAN_' + category,
+        )
 
 
 def canonical_input(payload: AIPlanGenerateRequest) -> dict[str, Any]:
@@ -309,6 +321,81 @@ def validate_ai_output(
     return data
 
 
+def validate_generated_plan(content: str, payload: AIPlanGenerateRequest, disabled_types=()) -> dict:
+    """Only fill absent request metadata; never rewrite workouts or conflicts."""
+    try:
+        data = dict(load_ai_json(content))
+    except BadRequestError:
+        raise AIPlanOutputError('OUTPUT_PARSE_FAILED', '返回内容不是完整有效的 JSON') from None
+    calendar = plan_calendar(payload.plan_start_date, payload.plan_weeks, payload.target_race_date)
+    # These are authoritative user inputs, not invented model training facts.
+    for key, value in {
+        'start_date': payload.plan_start_date.isoformat(), 'end_date': calendar.end.isoformat(),
+        'target_race_date': payload.target_race_date.isoformat() if payload.target_race_date else None,
+        'target_result': payload.target_result, 'target_distance': payload.target_distance.value,
+    }.items():
+        data.setdefault(key, value)
+    try:
+        validate_ai_output(data, expected_plan_weeks=payload.plan_weeks)
+    except BadRequestError as exc:
+        if exc.message == 'AI output has consecutive high-intensity workouts.':
+            raise AIPlanOutputError('SAFETY_BOUNDARY', '安排了连续两天高强度训练，已按训练安全规则拦截') from None
+        # Do not expose model-supplied field values or raw parser exceptions.
+        reasons = {
+            'planned_distance_km must be numeric.': '训练距离字段不是数字',
+            'workout planned_content is required.': '缺少具体训练内容',
+            'workout target_pace_text is required.': '缺少配速字段（无配速建议时也需提供空字段）',
+            'workout focus_note is required for non-rest workouts.': '缺少训练目的、执行注意与降级说明',
+        }
+        if exc.message.startswith('AI output weeks count mismatch:'):
+            reason = f'返回周数不等于请求的 {payload.plan_weeks} 周'
+        else:
+            reason = reasons.get(exc.message, '课表字段、日期或训练类型不符合输出格式')
+        raise AIPlanOutputError('OUTPUT_SCHEMA_INVALID', reason) from None
+    if not isinstance(data.get('title'), str) or not data['title'].strip() or len(data['title']) > 128:
+        raise AIPlanOutputError('OUTPUT_SCHEMA_INVALID', '计划标题缺失或过长')
+    risks = data.get('risk_notes')
+    if not isinstance(risks, list) or not risks or len(risks) > 30 or any(not isinstance(item,str) or not item.strip() for item in risks):
+        raise AIPlanOutputError('OUTPUT_SCHEMA_INVALID', '缺少有效的风险提示列表')
+    try:
+        validate_plan_constraints(data, payload, disabled_types)
+    except BadRequestError as exc:
+        # Constraint messages are fixed server-authored explanations, not raw output.
+        reason = exc.message.removeprefix('计划未通过约束检查：').rstrip('。')
+        raise AIPlanOutputError('CONSTRAINT_VIOLATION', reason) from None
+    return data
+
+
+def generate_validated_plan(system_prompt, user_prompt, payload, runtime, disabled_types=()):
+    """At most one schema retry. Safety/constraint violations never retry here."""
+    results = []
+    prompt = user_prompt
+    for attempt in range(2):
+        result = call_deepseek(system_prompt, prompt, payload.plan_weeks, runtime)
+        results.append(result)
+        if result.finish_reason == 'length':
+            raise AIPlanOutputError('OUTPUT_TRUNCATED', '模型输出达到长度上限，课表正文不完整；可缩短本次计划周数后再试')
+        if not result.content.strip():
+            raise AIPlanOutputError('OUTPUT_EMPTY', '模型未返回可用的课表正文')
+        try:
+            output = validate_generated_plan(result.content, payload, disabled_types)
+        except AIPlanOutputError as exc:
+            retry = attempt == 0 and exc.category in {'OUTPUT_PARSE_FAILED', 'OUTPUT_SCHEMA_INVALID'}
+            logger.warning('ai_plan_output_validation category=%s attempt=%s retry=%s', exc.category, attempt + 1, retry)
+            if not retry:
+                raise
+            prompt = user_prompt + '\n\n上次输出未通过结构校验，原因：' + exc.message.split('。本次')[0] + '。请重新输出完整JSON，严格遵守输出契约与全部训练安全约束，不省略任何周或课程。本次最多进行一次格式重试。'
+            continue
+        def total(field):
+            values = [getattr(item, field) for item in results]
+            return sum(values) if all(value is not None for value in values) else None
+        usage = DeepSeekResult(content=result.content, input_tokens=total('input_tokens'),
+                               output_tokens=total('output_tokens'), total_tokens=total('total_tokens'),
+                               finish_reason=result.finish_reason)
+        return output, usage
+    raise AssertionError('unreachable')
+
+
 def save_draft(db: Session, job: AIPlanJob, output: dict[str, Any]) -> AIPlanDraft:
     draft = AIPlanDraft(
         user_id=job.user_id,
@@ -361,6 +448,7 @@ def generate_ai_plan(db: Session, user_id: int, payload: AIPlanGenerateRequest) 
     context_json = context.model_dump(mode='json')
     input_json = {
         **canonical_input(payload),
+        'ai_plan_output_contract': '2.0.1',
         'plan_context': context_json,
         "ai_coach_preference": preference_json,
         "ai_runtime_settings": {
@@ -388,13 +476,8 @@ def generate_ai_plan(db: Session, user_id: int, payload: AIPlanGenerateRequest) 
     user_prompt = build_ai_plan_user_prompt(payload, preference_json, context_json)
     job_id = job.id
     try:
-        result = call_deepseek(system_prompt, user_prompt, payload.plan_weeks, runtime)
-        if result.finish_reason == "length":
-            raise BadRequestError("模型输出达到长度限制，最终正文未完整生成。")
-        if not result.content.strip():
-            raise BadRequestError("模型没有返回可用的最终正文。")
-        output = validate_ai_output(result.content, expected_plan_weeks=payload.plan_weeks)
-        validate_plan_constraints(output, payload, preference_json.get('disabled_workout_types', []))
+        output, result = generate_validated_plan(system_prompt, user_prompt, payload, runtime,
+                                                 preference_json.get('disabled_workout_types', []))
         output['risk_notes'] = list(dict.fromkeys([*(output.get('risk_notes') or []), *[issue.message for issue in context.feasibility]]))
         job.output_json = output
         job.input_tokens = result.input_tokens
@@ -407,6 +490,8 @@ def generate_ai_plan(db: Session, user_id: int, payload: AIPlanGenerateRequest) 
         return save_draft(db, job, output)
     except Exception as exc:
         db.rollback()
+        if isinstance(exc, AIPlanOutputError):
+            logger.warning('ai_plan_generation_rejected category=%s plan_weeks=%s', exc.category, payload.plan_weeks)
         job = db.get(AIPlanJob, job_id)
         job.status = AIPlanJobStatus.failed
         job.error_message = getattr(exc, 'message', 'AI provider or persistence failure')[:1000]
@@ -478,7 +563,7 @@ def _apply_draft_transaction(db: Session, draft_id: int, user_id: int, *, activa
     job = db.scalar(select(AIPlanJob).where(AIPlanJob.id == draft.job_id, AIPlanJob.user_id == user_id))
     if job and job.input_json and job.input_json.get('plan_context'):
         request = AIPlanGenerateRequest.model_validate(job.input_json)
-        if draft.start_date != request.plan_start_date or draft.end_date != request.plan_start_date + timedelta(days=request.plan_weeks*7-1) or draft.target_race_date != request.target_race_date or draft.target_result != job.output_json.get('target_result'):
+        if draft.start_date != request.plan_start_date or draft.end_date != plan_calendar(request.plan_start_date, request.plan_weeks, request.target_race_date).end or draft.target_race_date != request.target_race_date or draft.target_result != job.output_json.get('target_result'):
             raise BadRequestError('草稿目标或日期与用户已确认的约束不同，请重新生成。')
         validate_ai_output(job.output_json, expected_plan_weeks=request.plan_weeks)
         validate_plan_constraints(job.output_json, request, (job.input_json.get('ai_coach_preference') or {}).get('disabled_workout_types', []))

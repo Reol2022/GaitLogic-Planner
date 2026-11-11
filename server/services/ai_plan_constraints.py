@@ -8,13 +8,17 @@ from planner_core.utils.excel_parse import normalize_workout_main_type
 from server.common.exceptions import BadRequestError
 from server.schemas.ai_plan import AIPlanGenerateRequest, WEEKDAYS
 from server.services.ai_plan_context_service import _seconds
+from server.services.ai_plan_calendar import plan_calendar
 
 
 def validate_plan_constraints(output: dict, request: AIPlanGenerateRequest, disabled_types=()) -> None:
     def reject(message):
         raise BadRequestError('计划未通过约束检查：' + message, error_code='AI_PLAN_CONSTRAINT_VIOLATION')
     start = request.plan_start_date
-    end = start + timedelta(days=7 * request.plan_weeks - 1)
+    calendar = plan_calendar(start, request.plan_weeks, request.target_race_date)
+    if calendar.error:
+        reject(calendar.error)
+    end = calendar.end
     if not isinstance(output.get('title'), str) or not output['title'].strip() or len(output['title']) > 128:
         reject('计划标题缺失或过长。')
     risks = output.get('risk_notes')

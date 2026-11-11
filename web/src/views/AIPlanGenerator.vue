@@ -149,6 +149,8 @@
             </el-form-item>
             <el-form-item label="计划周数">
               <el-input-number v-model="form.plan_weeks" :min="1" :max="16" style="width: 100%" />
+              <div class="form-help">每周从计划开始日起连续计算7天；最后一周可提前截止到比赛日。</div>
+              <el-button v-if="form.target_race_date" link type="primary" :disabled="generating" @click="syncWeeksFromRace">按赛事匹配周数</el-button>
             </el-form-item>
           </div>
 
@@ -160,7 +162,6 @@
             <div class="date-summary-meta">
               <span v-if="raceGapText">{{ raceGapText }}</span>
               <span v-if="dateConstraintError">{{ dateConstraintError }}</span>
-              <span v-else-if="planEndDate">当前周期设置可用于生成草稿</span>
             </div>
           </div>
 
@@ -213,6 +214,7 @@
             </el-collapse-item>
           </el-collapse>
 
+          <el-alert v-if="generationError" class="generation-error" :title="generationError" type="error" :closable="false" show-icon role="alert" />
           <div class="form-actions">
             <el-button
               type="primary"
@@ -364,6 +366,7 @@ import { trackUsageEvent } from "@/api/usageEvents";
 import type { AIPlanDraft, AIPlanExportFormat, AIPlanGeneratePayload, AIPlanQuota, RaceDistance } from "@/types/models";
 import { statusLabel } from "@/utils/statusLabels";
 import {acceptedMileage,mileageSource} from '@/utils/planContext';
+import {aiPlanCalendar} from '@/utils/aiPlanCalendar';
 import type {PlanContext} from '@/types/planContext';
 
 const router = useRouter();
@@ -433,6 +436,7 @@ const quota = ref<AIPlanQuota | null>(null);
 const drafts = ref<AIPlanDraft[]>([]);
 const currentDraft = ref<AIPlanDraft | null>(null);
 const generating = ref(false);
+const generationError = ref("");
 const assessing=ref(false);
 const applying = ref(false);
 const loadingDrafts = ref(false);
@@ -463,32 +467,10 @@ const intensityStyleLabel = computed(() => {
   return labels[form.intensity_style] || form.intensity_style;
 });
 
-const planEndDate = computed(() => {
-  if (!form.plan_start_date || !form.plan_weeks) return "";
-  const start = parseLocalDate(form.plan_start_date);
-  start.setDate(start.getDate() + form.plan_weeks * 7 - 1);
-  return formatLocalDate(start);
-});
-
-const raceGapText = computed(() => {
-  if (!form.plan_start_date || !form.target_race_date) return "";
-  const start = parseLocalDate(form.plan_start_date);
-  const race = parseLocalDate(form.target_race_date);
-  const days = Math.ceil((race.getTime() - start.getTime()) / 86400000) + 1;
-  if (days <= 0) return "";
-  return `距目标赛事约 ${days} 天，建议计划周数 ${clamp(Math.ceil(days / 7), 1, 16)} 周`;
-});
-
-const dateConstraintError = computed(() => {
-  if (!form.plan_start_date || !form.target_race_date) return "";
-  const start = parseLocalDate(form.plan_start_date);
-  const race = parseLocalDate(form.target_race_date);
-  if (race < start) return "目标赛事日期不能早于计划开始日期";
-  if (planEndDate.value && parseLocalDate(planEndDate.value) > race) {
-    return "当前计划结束日已经晚于目标赛事日期，请减少计划周数或推前开始日期";
-  }
-  return "";
-});
+const calendar = computed(() => aiPlanCalendar(form.plan_start_date, form.plan_weeks, form.target_race_date));
+const planEndDate = computed(() => calendar.value.endDate);
+const raceGapText = computed(() => calendar.value.summary);
+const dateConstraintError = computed(() => calendar.value.error);
 
 const generationStatusText = computed(() => {
   return "训练基础与约束已准备，正在等待模型生成与服务端校验结果。";
@@ -506,10 +488,6 @@ function formatLocalDate(value: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
 function disableTargetRaceDate(value: Date) {
   if (!form.plan_start_date) return false;
   return value < parseLocalDate(form.plan_start_date);
@@ -522,11 +500,8 @@ function disablePlanStartDate(value: Date) {
 
 function syncWeeksFromRace() {
   if (!form.plan_start_date || !form.target_race_date) return;
-  const start = parseLocalDate(form.plan_start_date);
-  const race = parseLocalDate(form.target_race_date);
-  const days = Math.ceil((race.getTime() - start.getTime()) / 86400000) + 1;
-  if (days <= 0) return;
-  form.plan_weeks = clamp(Math.ceil(days / 7), 1, 16);
+  const recommended = calendar.value.recommendedWeeks;
+  if (recommended) form.plan_weeks = recommended;
 }
 
 function formatDateTime(value: string) {
@@ -552,6 +527,7 @@ async function loadAll() {
 
 async function generate() {
   if(generating.value || assessing.value)return;
+  generationError.value = "";
   if (dateConstraintError.value) {
     ElMessage.warning(dateConstraintError.value);
     return;
@@ -562,7 +538,7 @@ async function generate() {
     assessment.value=await assessAIPlanContext(payload);
     if(assessment.value.feasibility.some(issue=>issue.severity==='error')){ElMessage.warning('约束存在冲突，请查看生成前检查。');return;}
     if(assessment.value.feasibility.length){try{await ElMessageBox.confirm(assessment.value.feasibility.map(issue=>issue.message).join('\n'),'确认训练基础与限制',{confirmButtonText:'了解限制，生成草稿',cancelButtonText:'返回修改',type:'warning'});}catch{return;}}
-  }catch(error){ElMessage.error(getGenerateErrorMessage(error));return;}finally{assessing.value=false;}
+  }catch(error){generationError.value=getGenerateErrorMessage(error);ElMessage.error(generationError.value);return;}finally{assessing.value=false;}
   generating.value = true;
   generationStartedAt = Date.now();
   trackUsageEvent("ai_plan_generate_started");
@@ -580,7 +556,8 @@ async function generate() {
       return;
     }
     trackUsageEvent("ai_plan_generate_failed", { error_type: "request_failed" });
-    ElMessage.error(getGenerateErrorMessage(error));
+    generationError.value = getGenerateErrorMessage(error);
+    ElMessage.error(generationError.value);
   } finally {
     window.setTimeout(() => {
       generating.value = false;
@@ -892,6 +869,10 @@ onMounted(()=>{void loadAll();void loadRunnerContext();});
 }
 
 .advanced-collapse {
+  margin-bottom: 16px;
+}
+
+.generation-error {
   margin-bottom: 16px;
 }
 
