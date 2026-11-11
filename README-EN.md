@@ -20,40 +20,12 @@ GaitLogic Planner turns scattered running data from spreadsheets, watch apps, no
   <a href="README.md">简体中文</a> ·
   <a href="#-at-a-glance">At a Glance</a> ·
   <a href="#-core-features">Features</a> ·
-  <a href="#-screenshots">Screenshots</a> ·
+  <a href="#-system-introduction">System Introduction</a> ·
   <a href="#-quick-start">Quick Start</a> ·
-  <a href="#-feature-details">Details</a> ·
   <a href="#-project-boundaries">Boundaries</a>
 </p>
 
 </div>
-
----
-
-## v0.16.8 Garmin Sync Reliability and MCP Authorization
-
-Retries dispatch queued Garmin sync jobs, and the read-only MCP authorization page has a responsive layout. Install the pinned Garmin dependencies and restart the backend; production end-to-end verification remains necessary.
-
-## v0.16.3 DeepSeek Thinking and Weekly Planning Consolidation
-
-v0.16.3 consolidates Garmin recovery facts, Partial Facts / Decision Readiness, DeepSeek Thinking, multi-round Tool Calling, Weekly Review Analysis, independent Plan Design, Evidence Judge / Reflect, and Approval Checkpoints into one formal release. Weekly analysis and plan design use separate model requests, contexts, and output budgets. Plan changes still pass through Python/Pydantic materialization, deterministic validation, HITL approval, and server-side revalidation.
-
-See the [v0.16.3 release note](docs/release/v0.16.3.md). Raw Provider reasoning is optional internal diagnostic data only; it is excluded from REST, MCP, traces, metrics, evaluation reports, canonical evidence, and the frontend.
-
-### v0.16.0 Retrieval Quality and Safety Boundary
-
-Training knowledge retrieval supports Dense Exact, optional Qdrant, deterministic BM25, fixed Hybrid RRF, and an optional reranker. Strategy selection uses an independent 40-case public fictional Holdout v2 rather than presenting the repeatedly observed Legacy regression set as blind evidence. Dense Exact remains the default: it tied Rerank at 33/40 Holdout passes with lower operational complexity. Rerank is real-provider evaluated but non-default and safely falls back on failure.
-
-See the [v0.16.0 release note](docs/release/v0.16.0.md) and [Holdout report](docs/evaluation/reports/retrieval-holdout-v2.md). Retrieval supplies knowledge explanation only; it cannot change Runner State, deterministic TODAY advice, or training plans.
-
-### v0.16.1 / v0.16.2 Merged Development Records
-
-The following development snapshots were not released independently and are now included in **v0.16.3**:
-
-- **v0.16.1 Garmin Recovery Data Sync** normalizes daily sleep, resting heart rate, HRV, stress, Body Battery, and respiration facts through the existing Garmin Pipeline. Missing provider fields remain absent and become limitations; explicit manual recovery input takes precedence.
-- **v0.16.2 Partial Facts & Decision Readiness** distinguishes `PARTIAL` analysis from `BLOCKED` core facts. Missing RPE, for example, no longer invalidates an entire Coach TODAY result; the affected load rule is reported as unevaluable instead of treating missing data as normal.
-
-Neither capability changes server ownership of deterministic TODAY facts, warnings, limitations, or Evidence. See the [change history](docs/更新历史.md) for details.
 
 ---
 
@@ -66,180 +38,6 @@ Plan -> Execute -> Log -> Analyze -> Review -> Adjust -> Continue
 ```
 
 AI-generated content is only a draft for planning. It is not medical advice, rehabilitation guidance, or a professional coaching prescription. Training should still be adjusted according to recovery, injury history, weather, terrain, and real feedback.
-
-### v0.11.0 Coach Agent
-
-v0.11.0 adds a read-only Coach Agent. Eight strictly typed training tools provide facts; Runner State and deterministic rules own the decision boundary; the OpenAI-compatible Gateway provides bounded tool orchestration and explanation; and the Validator plus deterministic Fallback prevent unauthorized output and remain useful when the Provider is unavailable.
-
-```text
-training facts -> read-only tools -> deterministic rules -> bounded model explanation -> Validator -> explainable advice
-```
-
-For today's recommendation, the server owns the decision, plan status, risk, data quality, warnings, limitations, and canonical Evidence. The model only generates narrative text and selects server-issued Evidence IDs. The system does not automatically modify training plans and is not a medical diagnostic tool.
-
-### v0.10.3 Runner State
-
-v0.10.3 adds current runner state, 7/28-day training metrics, deterministic inference, Evidence and data-quality explanations, plus manual history snapshots, trends, and details. When Garmin sync produces a material training-fact change, an independent transaction can create a non-blocking state snapshot:
-
-```text
-Garmin training facts -> Material Change -> Runner State -> automatic snapshot -> history trends -> explainable feedback
-```
-
-Runner State does not provide medical diagnosis, use a large language model to calculate state, or automatically generate or modify an official training plan.
-
-### Runner State
-
-Runner State derives an explainable current state from recent training facts, data quality, and rule evidence, while preserving history snapshots and trends.
-
-![Runner State Overview](docs/assets/runner-state/runner-state1.png)
-
-![Runner State History](docs/assets/runner-state/runner-state2.png)
-
-### Training Readiness
-
-Training Readiness presents current training readiness, supporting evidence, and limitations. It is not a medical diagnosis.
-
-![Training Readiness Overview](docs/assets/training-readiness/training-readiness1.png)
-
-![Training Readiness Details](docs/assets/training-readiness/training-readiness2.png)
-
-## GaitLogic Coach Agent
-
-Coach Agent combines structured training facts, deterministic rules, and bounded model explanations in a read-only coaching interface:
-
-```text
-structured training data owns facts
--> Runner State and rules own decision boundaries
--> the LLM performs bounded tool orchestration and explanation
--> the Validator blocks unauthorized or rule-overriding output
--> deterministic Fallback remains useful when the Provider is unavailable
-```
-
-This is not a generic chat endpoint. The LLM never accesses the database directly, authenticated identity is injected by the server, Tool input and output use strict Pydantic schemas, deterministic rules own the daily Decision, and the model cannot modify an official plan.
-
-### AI Coach Agent
-
-GaitLogic Coach Agent combines structured training facts, deterministic rules, and LLM-based explanation. Runner State and the rule engine define the decision boundary, while the model handles tool orchestration and language generation.
-
-![AI Coach](docs/assets/coach-agent/coach-overview.png)
-
-![Today Recommendation](docs/assets/coach-agent/coach-today-recommendation.png)
-
-### v0.14.0 Agent Observability, Evaluation, and Reliability
-
-v0.14.0 productionizes the existing Coach, RAG, Weekly Review, and human-approval paths with safe Trace/Span instrumentation, optional OpenTelemetry export, low-cardinality runtime metrics, a unified Provider Failure Taxonomy, bounded retry with deterministic fallback, and four public fictional regression suites. Runtime observability never stores user queries, prompts, training content, raw model output, identity data, or credentials.
-
-![v0.14.0 Agent productionization architecture](docs/assets/v014-agent-productionization-architecture.svg)
-
-Reproduce the evaluation with `python scripts/evaluate_agent.py --suite all`. Coach, RAG, and Weekly Adaptive pass; Retrieval retains its baseline 17 failures, so the honest overall result is `PARTIAL`, not PASS. See the [v0.14.0 learning map](docs/learning/v0.14.0/00-v0.14.0-overview.md).
-
-### v0.13.0 Weekly Review and Adaptive Coaching Loop
-
-v0.13.0 adds deterministic Weekly Facts, a LangGraph weekly-review workflow, training-knowledge references, inspectable plan-adjustment Proposals, human approval/rejection, persistent checkpoints, plan versioning, and controlled rollback. The model explains and proposes within bounded rules; the server owns facts and validation, and only an authenticated human approval can authorize a transactional plan update.
-
-```text
-Training Plan -> Workout Logs -> Weekly Facts -> Rules -> LangGraph Review
-              -> Proposal Diff -> Human Approval -> New Plan Version -> Audit/Rollback
-```
-
-The UI is available at `/adaptive-weekly-review`. See the [public fictional evaluation](docs/weekly-review/evaluation/weekly-adaptive-eval-v1.md) and the [v0.13.0 learning map](docs/learning/v0.13.0/01-v0.13.0-architecture.md). This capability is not medical advice and does not grant a general database write tool to the LLM.
-
-### v0.12.0 Training Knowledge RAG and Trusted References
-
-Coach Agent retrieves versioned training knowledge through the read-only `retrieve_training_knowledge` tool. The model selects only request-scoped Reference IDs; the server validates and materializes the title, source, version, evidence level, and excerpt. Knowledge explains a result but never participates in or overrides the deterministic TODAY Decision.
-
-```text
-structured business tools -> runner facts
-deterministic rule engine -> decision boundary
-Training Knowledge RAG -> professional knowledge and explanations
-LLM -> bounded tool orchestration and language
-Canonical Reference -> server-materialized trusted sources
-Validator / Fallback -> policy enforcement and safe degradation
-```
-
-![Knowledge references for a general question](docs/assets/coach-agent/coach-rag-general.png)
-
-![Knowledge references for a today recommendation](docs/assets/coach-agent/coach-rag-today.png)
-
-v0.12.0 is released as an invite-only Alpha. See [Training Knowledge Reference UI v1](docs/rag/training-knowledge-reference-ui-v1.md) for presentation and security boundaries, and [v0.12.0 Release Notes](docs/releases/v0.12.0-release-notes.md) for upgrade and rollback. Private retrieval-label confirmation and human blind review remain incomplete; they do not block the public product capability and must not be described as a completed competition gate.
-
-### Agent Capabilities
-
-Eight training-fact tools and one training-knowledge retrieval tool are registered:
-
-- `get_runner_state`
-- `get_runner_state_history`
-- `get_recent_training`
-- `get_today_workout`
-- `get_current_training_cycle`
-- `get_training_rules`
-- `evaluate_today_workout`
-- `get_training_data_quality`
-- `retrieve_training_knowledge`
-
-```mermaid
-flowchart TD
-    UI[Vue Coach UI] --> API[POST /api/coach/query]
-    API --> QS[CoachAgentQueryService]
-    QS --> AGENT[GaitLogicCoachAgent]
-    AGENT --> CTX[Context Builder]
-    AGENT --> REG[Read-only Tool Registry]
-    AGENT --> LLM[OpenAI-compatible Gateway]
-    CTX --> REG
-    REG --> SERVICES[Training Services]
-    REG --> KTOOL[Training Knowledge Tool]
-    KTOOL --> RETRIEVER[Retriever]
-    RETRIEVER --> INDEX[(Versioned Vector Index)]
-    INDEX --> CORPUS[Versioned Corpus]
-    SERVICES --> RULES[Runner State and Rule Engine]
-    SERVICES --> DB[(MySQL)]
-    LLM --> VAL[Deterministic Validator]
-    RETRIEVER --> REF[Canonical Reference Materializer]
-    REF --> VAL
-    VAL -->|accepted| QS
-    VAL -->|rejected or unavailable| FALLBACK[Deterministic Fallback]
-    FALLBACK --> QS
-    QS --> UI
-```
-
-See [Coach Agent Architecture v1](docs/agent/coach-agent-architecture-v1.md) for the complete boundary description.
-
-### Evaluation
-
-Coach Agent Evaluation v1 uses 32 fixed-date, fully fictional cases to check tool recall, Decision and plan consistency, Warning and Limitation retention, Fallback behavior, and unsupported claims. It uses an offline Mock Gateway, reads no API key, accesses no network or production database, and does not use a second LLM as a judge.
-
-See the real run at [Coach Agent Evaluation v1 Results](docs/agent/evaluation/results/coach-agent-eval-v1.md). Reproduce it with:
-
-```powershell
-python scripts/evaluate_coach_agent.py
-```
-
-### Coach Quick Start
-
-```powershell
-# Backend
-python -m uvicorn server.main:app --reload
-
-# Frontend
-cd web
-npm ci
-npm run dev
-```
-
-The Coach Provider is disabled and its API key is empty in `.env.example`. In that mode `/coach` demonstrates the deterministic read-only Fallback. See [Coach Agent Demo v1](docs/agent/coach-agent-demo-v1.md).
-
-Before deploying Training Knowledge RAG, run the offline deployment checks:
-
-```powershell
-python scripts/knowledge_corpus.py validate
-python scripts/knowledge_index.py validate --index-id <configured-index-id>
-python scripts/check_coach_rag_readiness.py --require-enabled
-python scripts/smoke_coach_rag.py
-```
-
-Readiness performs no network request and prints no credential. Smoke uses immutable fictional read-only fixtures and does not retain raw Provider answers. See [v0.12.0 Alpha Onboarding](docs/alpha/gaitlogic-v0120-alpha-onboarding.md) and the [Incident Runbook](docs/alpha/gaitlogic-v0120-alpha-incident-runbook.md).
-
-Current limits: no Hybrid Retrieval, Reranker, Weekly Review Agent, write tools, long-term memory, Streaming, or multi-agent runtime. Quota is process-local, the corpus is intentionally limited, and Providers can fail transiently; deterministic advice remains available through safe degradation. This feature is not medical diagnosis. Private retrieval-label confirmation and human blind review remain incomplete.
 
 | Problem | How GaitLogic Planner Helps |
 | --- | --- |
@@ -281,57 +79,7 @@ Current limits: no Hybrid Retrieval, Reranker, Weekly Review Agent, write tools,
 Training cycles support the `draft`, `active`, `completed`, and `archived` lifecycle. Each user can have at most one `active` cycle. New cycles are drafts by default; activating a new cycle completes the previous active cycle and marks its future unfinished workouts as `superseded` while preserving completed logs, Garmin links, and review history.
 
 Garmin sync is manually triggered and processed by a worker queue. A manual sync request schedules one background run, the page polls job status, refreshes both jobs and activities, and failed or partially successful jobs can be retried. "Auto import after sync" is enabled by default: synced activities are written or merged into `WorkoutLog`, then linked to plans, calendars, and stats. When disabled, Garmin activities are stored only and can be reprocessed manually. Continuous same-day activities can become one composite session, while ambiguous cases go to review.
-v0.9.4 adds a provider-neutral Data Sync framework. Garmin is now the `garmin` provider; the new user entry is Data Sync, while `/garmin-sync` and `/api/integrations/garmin/*` remain compatible. The generic API lives under `/api/data-sync/*`, and future platforms can be added through provider adapters.
-
-v0.9.5 simplifies the daily workflow: desktop navigation is grouped into Training, Plan, Analysis, and My; the mobile bottom bar is fixed to Today / Calendar / Plan / Analysis / My. The release adds a task center, a training plan center, and data management, while Today's Workout aggregates pending actions and latest activity sync without triggering automatic page-load sync. It also adds a unified version display sourced from `web/package.json`; desktop shows it in the sidebar brand area to the right of Planner and aligned with GaitLogic, while mobile shows it lower in the header brand area.
-
-v0.10.0 starts the training knowledge model and deterministic scientific rule infrastructure: versioned knowledge items, safe YAML/JSON rule loading, a controlled rule DSL, stable conflict resolution, rule-hit explanations, evaluation snapshots, and read/evaluate APIs. The engine returns structured suggestions and review/block-auto-apply signals only; it does not modify official plans or provide medical diagnosis.
-
-v0.10.1 connects the rule engine to the real training loop: plan validation before AI draft, Excel import, or manual plan application; Today's Workout rule advice; post-workout rule review; and weekly review adjustment drafts. All adjustments require user confirmation, blocking results stop automatic application, and high-severity results require explicit confirmation.
-
-v0.10.2 adds rule governance and validation: evidence sources, applicability, threshold declarations, immutable rule versions, review, release, rollback, regression tests, impact analysis, coverage, conflict diagnostics, and aggregate runtime metrics. Historical evaluations keep their original rule version.
-
 Local development CORS is configurable through `BACKEND_CORS_ORIGINS` and `BACKEND_CORS_ORIGIN_REGEX`, with defaults for `localhost`, `127.0.0.1`, preview ports, and common LAN debug URLs.
-
----
-
-## 🖼 Screenshots
-
-### Mobile-first path
-
-<p align="center">
-  <img src="docs/images/mobile.png" alt="Mobile navigation" width="360" />
-</p>
-
-At widths `<= 768px`, the sidebar is hidden and replaced with a bottom navigation bar:
-
-```text
-Today / Calendar / Plan / Analysis / My
-```
-
-### Desktop workspace
-
-<p align="center">
-  <img src="docs/images/desktop.png" alt="Desktop navigation" width="820" />
-</p>
-
-### Training Calendar
-
-<p align="center">
-  <img src="docs/images/training-calendar.png" alt="Training calendar" width="820" />
-</p>
-
-### AI Plan Builder
-
-<p align="center">
-  <img src="docs/images/ai-plan.png" alt="AI plan builder" width="820" />
-</p>
-
-### VDOT Pace Calculator
-
-<p align="center">
-  <img src="docs/images/pace-calculator.png" alt="Pace calculator" width="820" />
-</p>
 
 ---
 
@@ -510,7 +258,232 @@ When entering secondary pages from My, a back arrow appears in the content area 
 
 ---
 
-## 📘 Feature Details
+## 📘 System Introduction
+
+This section groups product screenshots, workflows and implementation references. Version-by-version changes are recorded in the [changelog](docs/更新历史.md).
+
+### Mobile-first path
+
+<p align="center">
+  <img src="docs/images/mobile.png" alt="Mobile navigation" width="360" />
+</p>
+
+At widths `<= 768px`, the sidebar is hidden and replaced with a bottom navigation bar:
+
+```text
+Today / Calendar / Plan / Analysis / My
+```
+
+### Desktop workspace
+
+<p align="center">
+  <img src="docs/images/desktop.png" alt="Desktop navigation" width="820" />
+</p>
+
+### 🏗 Architecture
+
+GaitLogic Planner uses a separated frontend and backend architecture:
+
+- Frontend: Vue 3, TypeScript, Vite, Element Plus, ECharts;
+- Backend: FastAPI, SQLAlchemy 2.x, MySQL 8.0+;
+- Excel: openpyxl;
+- AI: OpenAI-compatible SDK;
+- Deployment: Nginx reverse proxy for frontend static files and backend API.
+
+![Architecture](docs/images/architecture.png)
+
+```text
+GaitLogic Planner
+├── web/                 # Vue 3 + Vite + Element Plus
+├── server/              # FastAPI API layer
+├── planner_core/        # SQLAlchemy models, config, enums
+├── scripts/             # initialization and helper scripts
+├── tests/               # pytest tests
+├── sql/                 # MySQL schema
+└── docs/                # docs, screenshots, changelog
+```
+
+### Coach Agent
+
+The read-only Coach Agent uses typed training tools for facts; Runner State and deterministic rules own the decision boundary; the OpenAI-compatible Gateway provides bounded tool orchestration and explanation; and the Validator plus deterministic Fallback prevent unauthorized output and remain useful when the Provider is unavailable.
+
+```text
+training facts -> read-only tools -> deterministic rules -> bounded model explanation -> Validator -> explainable advice
+```
+
+For today's recommendation, the server owns the decision, plan status, risk, data quality, warnings, limitations, and canonical Evidence. The model only generates narrative text and selects server-issued Evidence IDs. The system does not automatically modify training plans and is not a medical diagnostic tool.
+
+### Runner State Workflow
+
+Runner State provides current runner state, 7/28-day training metrics, deterministic inference, Evidence and data-quality explanations, plus manual history snapshots, trends, and details. When Garmin sync produces a material training-fact change, an independent transaction can create a non-blocking state snapshot:
+
+```text
+Garmin training facts -> Material Change -> Runner State -> automatic snapshot -> history trends -> explainable feedback
+```
+
+Runner State does not provide medical diagnosis, use a large language model to calculate state, or automatically generate or modify an official training plan.
+
+### Runner State
+
+Runner State derives an explainable current state from recent training facts, data quality, and rule evidence, while preserving history snapshots and trends.
+
+![Runner State Overview](docs/assets/runner-state/runner-state1.png)
+
+![Runner State History](docs/assets/runner-state/runner-state2.png)
+
+### Training Readiness
+
+Training Readiness presents current training readiness, supporting evidence, and limitations. It is not a medical diagnosis.
+
+![Training Readiness Overview](docs/assets/training-readiness/training-readiness1.png)
+
+![Training Readiness Details](docs/assets/training-readiness/training-readiness2.png)
+
+### Coach Architecture
+
+Coach Agent combines structured training facts, deterministic rules, and bounded model explanations in a read-only coaching interface:
+
+```text
+structured training data owns facts
+-> Runner State and rules own decision boundaries
+-> the LLM performs bounded tool orchestration and explanation
+-> the Validator blocks unauthorized or rule-overriding output
+-> deterministic Fallback remains useful when the Provider is unavailable
+```
+
+This is not a generic chat endpoint. The LLM never accesses the database directly, authenticated identity is injected by the server, Tool input and output use strict Pydantic schemas, deterministic rules own the daily Decision, and the model cannot modify an official plan.
+
+### AI Coach Agent
+
+GaitLogic Coach Agent combines structured training facts, deterministic rules, and LLM-based explanation. Runner State and the rule engine define the decision boundary, while the model handles tool orchestration and language generation.
+
+![AI Coach](docs/assets/coach-agent/coach-overview.png)
+
+![Today Recommendation](docs/assets/coach-agent/coach-today-recommendation.png)
+
+### Agent Observability, Evaluation, and Reliability
+
+The observability layer productionizes the existing Coach, RAG, Weekly Review, and human-approval paths with safe Trace/Span instrumentation, optional OpenTelemetry export, low-cardinality runtime metrics, a unified Provider Failure Taxonomy, bounded retry with deterministic fallback, and four public fictional regression suites. Runtime observability never stores user queries, prompts, training content, raw model output, identity data, or credentials.
+
+![v0.14.0 Agent productionization architecture](docs/assets/v014-agent-productionization-architecture.svg)
+
+Reproduce the evaluation with `python scripts/evaluate_agent.py --suite all`. Coach, RAG, and Weekly Adaptive pass; Retrieval retains its baseline 17 failures, so the honest overall result is `PARTIAL`, not PASS. See the [v0.14.0 learning map](docs/learning/v0.14.0/00-v0.14.0-overview.md).
+
+### Weekly Review and Adaptive Coaching Loop
+
+The weekly review workflow adds deterministic Weekly Facts, a LangGraph weekly-review workflow, training-knowledge references, inspectable plan-adjustment Proposals, human approval/rejection, persistent checkpoints, plan versioning, and controlled rollback. The model explains and proposes within bounded rules; the server owns facts and validation, and only an authenticated human approval can authorize a transactional plan update.
+
+```text
+Training Plan -> Workout Logs -> Weekly Facts -> Rules -> LangGraph Review
+              -> Proposal Diff -> Human Approval -> New Plan Version -> Audit/Rollback
+```
+
+The UI is available at `/adaptive-weekly-review`. See the [public fictional evaluation](docs/weekly-review/evaluation/weekly-adaptive-eval-v1.md) and the [v0.13.0 learning map](docs/learning/v0.13.0/01-v0.13.0-architecture.md). This capability is not medical advice and does not grant a general database write tool to the LLM.
+
+### Training Knowledge RAG and Trusted References
+
+Coach Agent retrieves versioned training knowledge through the read-only `retrieve_training_knowledge` tool. The model selects only request-scoped Reference IDs; the server validates and materializes the title, source, version, evidence level, and excerpt. Knowledge explains a result but never participates in or overrides the deterministic TODAY Decision.
+
+```text
+structured business tools -> runner facts
+deterministic rule engine -> decision boundary
+Training Knowledge RAG -> professional knowledge and explanations
+LLM -> bounded tool orchestration and language
+Canonical Reference -> server-materialized trusted sources
+Validator / Fallback -> policy enforcement and safe degradation
+```
+
+![Knowledge references for a general question](docs/assets/coach-agent/coach-rag-general.png)
+
+![Knowledge references for a today recommendation](docs/assets/coach-agent/coach-rag-today.png)
+
+UI and citation details are documented in [Training Knowledge Reference UI](docs/rag/training-knowledge-reference-ui-v1.md); release-specific status belongs in the [changelog](docs/更新历史.md).
+
+### Agent Capabilities
+
+Core training-fact and training-knowledge tools include:
+
+- `get_runner_state`
+- `get_runner_state_history`
+- `get_recent_training`
+- `get_today_workout`
+- `get_current_training_cycle`
+- `get_training_rules`
+- `evaluate_today_workout`
+- `get_training_data_quality`
+- `retrieve_training_knowledge`
+
+```mermaid
+flowchart TD
+    UI[Vue Coach UI] --> API[POST /api/coach/query]
+    API --> QS[CoachAgentQueryService]
+    QS --> AGENT[GaitLogicCoachAgent]
+    AGENT --> CTX[Context Builder]
+    AGENT --> REG[Read-only Tool Registry]
+    AGENT --> LLM[OpenAI-compatible Gateway]
+    CTX --> REG
+    REG --> SERVICES[Training Services]
+    REG --> KTOOL[Training Knowledge Tool]
+    KTOOL --> RETRIEVER[Retriever]
+    RETRIEVER --> INDEX[(Versioned Vector Index)]
+    INDEX --> CORPUS[Versioned Corpus]
+    SERVICES --> RULES[Runner State and Rule Engine]
+    SERVICES --> DB[(MySQL)]
+    LLM --> VAL[Deterministic Validator]
+    RETRIEVER --> REF[Canonical Reference Materializer]
+    REF --> VAL
+    VAL -->|accepted| QS
+    VAL -->|rejected or unavailable| FALLBACK[Deterministic Fallback]
+    FALLBACK --> QS
+    QS --> UI
+```
+
+See [Coach Agent Architecture v1](docs/agent/coach-agent-architecture-v1.md) for the complete boundary description.
+
+### Evaluation
+
+Coach Agent Evaluation v1 uses 32 fixed-date, fully fictional cases to check tool recall, Decision and plan consistency, Warning and Limitation retention, Fallback behavior, and unsupported claims. It uses an offline Mock Gateway, reads no API key, accesses no network or production database, and does not use a second LLM as a judge.
+
+See the real run at [Coach Agent Evaluation v1 Results](docs/agent/evaluation/results/coach-agent-eval-v1.md). Reproduce it with:
+
+```powershell
+python scripts/evaluate_coach_agent.py
+```
+
+### Coach Quick Start
+
+```powershell
+# Backend
+python -m uvicorn server.main:app --reload
+
+# Frontend
+cd web
+npm ci
+npm run dev
+```
+
+The Coach Provider is disabled and its API key is empty in `.env.example`. In that mode `/coach` demonstrates the deterministic read-only Fallback. See [Coach Agent Demo v1](docs/agent/coach-agent-demo-v1.md).
+
+Before deploying Training Knowledge RAG, run the offline deployment checks:
+
+```powershell
+python scripts/knowledge_corpus.py validate
+python scripts/knowledge_index.py validate --index-id <configured-index-id>
+python scripts/check_coach_rag_readiness.py --require-enabled
+python scripts/smoke_coach_rag.py
+```
+
+Readiness performs no network request and prints no credential. Smoke uses immutable fictional read-only fixtures and does not retain raw Provider answers. See [v0.12.0 Alpha Onboarding](docs/alpha/gaitlogic-v0120-alpha-onboarding.md) and the [Incident Runbook](docs/alpha/gaitlogic-v0120-alpha-incident-runbook.md).
+
+Retrieval supports Dense Exact, optional Qdrant, BM25, Hybrid RRF and an optional reranker; the active strategy depends on deployment configuration. Public tools are read-only. Formal plan changes require approval and server-side validation. Long-term memory across conversations, streaming and a multi-agent runtime are not implied by these capabilities.
+
+### MCP Read-only Interoperability
+
+GaitLogic exposes authenticated, read-only training facts and public knowledge over MCP. Six tools cover current plans, recent training, runner state, training knowledge, selected-activity details and separately authorized recovery trends. Clients cannot supply a user_id to select another runner. Activity selection, source limitations and permission checks remain server-owned.
+
+See the [MCP integration report](docs/evaluation/mcp-remote-e2e-report.md) for tested versions and deployment status.
+
+### Training Management Pages
 
 <details>
 <summary><strong>Login and Registration</strong></summary>
@@ -694,10 +667,10 @@ templates/workout-import-template.xlsx
 
 API and docs:
 
-- [Workout Import API](docs/api/workout-import-api.md)
-- [Workout Import User Guide](docs/user/workout-import-guide.md)
-- [Workout Import Architecture](docs/development/workout-import-architecture.md)
-- [Workout Import Schema](docs/data/workout-import-schema.md)
+- [Workout Import API (source)](server/api/routes/workout_imports.py)
+- [Workout Records and Import](#-system-introduction)
+- [Workout Import Implementation (source)](server/services/workout_import_service.py)
+- [Database Schema (SQL)](sql/schema.sql)
 
 </details>
 
@@ -842,31 +815,6 @@ Supported feedback types:
 
 ---
 
-## 🏗 Architecture
-
-GaitLogic Planner uses a separated frontend and backend architecture:
-
-- Frontend: Vue 3, TypeScript, Vite, Element Plus, ECharts;
-- Backend: FastAPI, SQLAlchemy 2.x, MySQL 8.0+;
-- Excel: openpyxl;
-- AI: OpenAI-compatible SDK;
-- Deployment: Nginx reverse proxy for frontend static files and backend API.
-
-![Architecture](docs/images/architecture.png)
-
-```text
-GaitLogic Planner
-├── web/                 # Vue 3 + Vite + Element Plus
-├── server/              # FastAPI API layer
-├── planner_core/        # SQLAlchemy models, config, enums
-├── scripts/             # initialization and helper scripts
-├── tests/               # pytest tests
-├── sql/                 # MySQL schema
-└── docs/                # docs, screenshots, changelog
-```
-
----
-
 ## 🧰 Tech Stack
 
 | Layer | Tech |
@@ -908,9 +856,9 @@ Database tests use MySQL only. If MySQL is not available in the current environm
 | [Deployment](docs/DEPLOYMENT.md) | Deployment and runtime notes |
 | [Database Design](md/数据库设计.md) | Database structure notes |
 | [Excel Field Mapping](md/Excel字段映射.md) | Excel import field mapping |
-| [Workout Import Guide](docs/user/workout-import-guide.md) | Backfill completed workout logs |
-| [Workout Import API](docs/api/workout-import-api.md) | Workout log import API |
-| [Workout Import Architecture](docs/development/workout-import-architecture.md) | Draft, matching, merge, and apply design |
+| [Workout Records and Import](#-system-introduction) | Backfill completed workout logs |
+| [Workout Import API (source)](server/api/routes/workout_imports.py) | Workout log import API |
+| [Workout Import Implementation (source)](server/services/workout_import_service.py) | Draft, matching, merge, and apply design |
 | [SQL Schema](sql/schema.sql) | MySQL schema |
 
 ---
@@ -964,6 +912,3 @@ See [更新历史](docs/更新历史.md) for detailed version history.
 GaitLogic Planner is still under active development and is currently closer to a personal training management and beta testing tool.
 
 If you are a runner, coach, sports tech developer, or simply interested in running software and AI-assisted training plans, feedback and contributions are welcome.
-### v0.15.0 MCP Read-only Interoperability
-
-GaitLogic provides both internal Tool Calling and MCP over stdio / Streamable HTTP. MCP exposes four read-only Tools, public training-knowledge Resources, and safe Prompt templates. Clients cannot select a `user_id`; runner data remains isolated through authenticated identity and the existing Service boundary. MCP cannot bypass Rules, Validators, or canonical knowledge-reference controls.

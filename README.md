@@ -8,12 +8,6 @@
 
 **Plan smarter. Run calmer. Review honestly.**
 
-集成候选版：Core Experience、移动端与自定义菜单、Gilo 教练对话、MCP 可信事实及独立管理控制台。验收范围见 [统一验收说明](docs/development/core-experience-and-mcp-v2-acceptance.md)，候选代码上传不等于线上已切换运行。
-
-管理控制台 MVP：[功能、迁移与启动说明](docs/development/admin-console-mvp.md)。运行 `npm run dev` 同时访问跑者端 `/` 与后台 `/admin.html#/login`；`npm run build` 同时打包两个入口，也支持 `npm run admin:build` 单独打包后台。尚未部署。
-
-AI Plan v2.0：已有训练事实、来源与用户约束进入统一 Plan Context；显式接受自动填写、生成前检查、硬约束校验及“仅保存 / 保存并启用”事务应用，见 [开发与验收报告](docs/development/ai-plan-personalization-v2.md)。
-
 <p>
   <a href="docs/更新历史.md"><img alt="Version" src="https://img.shields.io/badge/version-v0.16.8-1976d2?style=for-the-badge" /></a>
   <img alt="License" src="https://img.shields.io/badge/license-pending-lightgrey?style=for-the-badge" />
@@ -27,45 +21,15 @@ AI Plan v2.0：已有训练事实、来源与用户约束进入统一 Plan Conte
   <a href="README-EN.md">English</a> ·
   <a href="#-一屏看懂">一屏看懂</a> ·
   <a href="#-核心特性">核心特性</a> ·
-  <a href="#-界面预览">界面预览</a> ·
+  <a href="#-系统介绍">系统介绍</a> ·
   <a href="#-快速开始">快速开始</a> ·
   <a href="#-导航">导航</a> ·
   <a href="#-科学设计与训练安全">科学设计与训练安全</a> ·
-  <a href="#-功能详解">功能详解</a> ·
   <a href="#-项目边界">项目边界</a> ·
   <a href="#-开源治理">开源治理</a>
 </p>
 
 </div>
-
----
-
-## v0.16.8 Garmin 同步修复与 MCP 授权体验
-
-- 修复 Garmin 和通用数据同步重试任务只排队、不执行的问题；新任务使用既有后台执行入口。
-- 更新 MCP 授权页面的布局与移动端体验，保留只读授权和现有安全校验。
-- Garmin 连接器使用项目锁定的 `garminconnect==0.2.36`、`garth==0.5.20`；升级后需核对依赖并重启服务。完整线上同步结果以实际验收为准。
-
-## v0.16.3 DeepSeek Thinking 与智能周复盘收口
-
-v0.16.3 将 Garmin 恢复事实、Partial Facts / Decision Readiness、DeepSeek Thinking、多轮 Tool Calling、Weekly Review Analysis、独立 Plan Design、Evidence Judge / Reflect 与 Approval Checkpoint 收口为一个正式版本。周复盘分析和计划设计使用相互独立的模型请求、上下文与输出预算；计划修改仍必须经过 Python/Pydantic 物化、确定性校验、HITL 审批和服务端重新校验。
-
-详见 [v0.16.3 发布说明](docs/release/v0.16.3.md)。原始 Provider reasoning 仅作为可配置的内部诊断数据，不进入 REST、MCP、Trace、Metrics、Evaluation Report、Canonical Evidence 或前端。
-
-### v0.16.0 检索质量与安全边界
-
-训练知识检索支持 Dense Exact、可选 Qdrant、确定性 BM25、固定 Hybrid RRF 与可选 Reranker。策略通过独立的 40 条公开虚构 Holdout v2 消融评测选择，而不是将已反复使用的 Legacy 回归集当作盲测。当前默认保持 Dense Exact：它在 Holdout 上与 Rerank 同为 33/40 通过，同时拥有更低的运行复杂度；Rerank 保留为真实 Provider 已验证的非默认能力，并在故障时安全回退。
-
-详见 [v0.16.0 发布说明](docs/release/v0.16.0.md) 与 [Holdout 报告](docs/evaluation/reports/retrieval-holdout-v2.md)。检索只提供知识解释，不修改 Runner State、TODAY 确定性建议或训练计划。
-
-### v0.16.1 / v0.16.2 已合并开发记录
-
-以下两个开发快照未单独发布，现已合并进入 **v0.16.3**：
-
-- **v0.16.1 Garmin Recovery Data Sync**：在既有 Garmin Pipeline 中归一化睡眠、静息心率、HRV、压力、Body Battery 和呼吸率等日级恢复事实；字段缺失保持为空并形成 limitation，用户手动填写的恢复信息优先保留。
-- **v0.16.2 Partial Facts & Decision Readiness**：将“缺少部分指标”和“核心数据不可用”区分为 `PARTIAL` 与 `BLOCKED`。例如缺 RPE 不再让 Coach TODAY 整体失效；相关负荷规则显示为“未参与判断”，而不是把缺失数据误当作正常值。
-
-这两项都不改变 TODAY 的确定性决策所有权：训练事实、规则结论、warning、limitation 和 Evidence 继续由服务端控制。详情见 [更新历史](docs/更新历史.md)。
 
 ---
 
@@ -90,168 +54,6 @@ AI 生成内容仅作为训练计划草稿，不构成医疗建议、康复建�
 | Weekly Review 与 Proposal | 周复盘结论难以转化为可审查调整 | Proposal、HITL、版本校验、事务和回滚共同保护写入 |
 | Garmin 与 Data Sync | 外部活动导入、去重和关联链路复杂 | 统一 Pipeline、稳定运行标识、事务隔离与非阻塞快照 |
 | MCP 与可观测性 | 外部客户端接入和 Agent 故障定位困难 | MCP 默认只读；Trace/Metric 采用白名单且不记录业务正文 |
-
-### v0.11.0 Coach Agent
-
-v0.11.0 新增只读 Coach Agent：八个严格 Schema 约束的训练工具提供事实，Runner State 与确定性规则负责决策边界，OpenAI-compatible Gateway 负责受控工具编排与语言解释，Validator 和 Fallback 负责阻止越权输出并在 Provider 不可用时维持可用建议。
-
-```text
-训练事实 → 只读工具 → 确定性规则 → 受控模型解释 → Validator → 可解释建议
-```
-
-今日训练建议中的 decision、计划状态、风险、数据质量、警告、限制与 canonical Evidence 均由服务端确定；模型只生成说明文本并引用服务器分配的 Evidence ID。系统不会自动修改训练计划，也不提供医疗诊断。
-
-### v0.10.3 Runner State
-
-v0.10.3 新增跑者当前状态、7/28 天训练指标、确定性推断、Evidence 与数据质量说明，并提供手动历史快照、趋势和详情。Garmin 同步在训练事实发生有效变化后，可通过独立事务创建非阻塞状态快照：
-
-```text
-Garmin 训练事实 -> Material Change -> Runner State -> 自动快照 -> 历史趋势 -> 可解释反馈
-```
-
-Runner State 不提供医疗诊断，不调用大语言模型计算状态，也不会自动生成或修改正式训练计划。
-
-### Runner State
-
-Runner State 根据近期训练事实、数据质量和规则证据形成可解释的当前状态，并保留历史快照和趋势。
-
-![Runner State 当前状态](docs/assets/runner-state/runner-state1.png)
-
-![Runner State 历史趋势](docs/assets/runner-state/runner-state2.png)
-
-### Training Readiness
-
-Training Readiness 用于展示当前训练准备情况、关键依据和限制，不用于医疗诊断。
-
-![Training Readiness 概览](docs/assets/training-readiness/training-readiness1.png)
-
-![Training Readiness 详情](docs/assets/training-readiness/training-readiness2.png)
-
-## GaitLogic Coach Agent
-
-Coach Agent 把结构化训练事实、确定性规则和受限模型解释组合成一个只读训练建议界面：
-
-```text
-结构化训练数据负责事实
-→ Runner State 与规则引擎负责决策边界
-→ LLM 负责受限工具编排和解释
-→ Validator 阻止越权或覆盖规则的输出
-→ Fallback 保证模型不可用时仍可返回确定性建议
-```
-
-它不是普通聊天接口：LLM 不直接访问数据库，用户身份由服务端认证上下文注入，Tool 输入输出经过 Pydantic Schema 校验，今日建议的 Decision 来自确定性规则，而且模型不能修改正式计划。
-
-### AI 教练 Agent
-
-GaitLogic Coach Agent 将结构化训练事实、确定性训练规则和大语言模型解释能力组合起来。规则和 Runner State 负责结论边界，模型只负责工具编排和自然语言解释。
-
-![AI 教练页面](docs/assets/coach-agent/coach-overview.png)
-
-![今日训练建议](docs/assets/coach-agent/coach-today-recommendation.png)
-
-### v0.14.0 Agent 可观测性、评测与可靠性
-
-v0.14.0 将既有 Coach、RAG、Weekly Review 与人工批准链路工程化：安全 Trace/Span、可选 OpenTelemetry 输出、低基数运行 Metrics、统一 Provider Failure Taxonomy、有限重试与确定性 Fallback，以及四套公开虚构回归评测。运行指标不保存用户问题、Prompt、训练正文、原始模型响应、身份信息或凭据；它们只用于定位组件延迟、失败和降级趋势。
-
-![v0.14.0 Agent 工程架构](docs/assets/v014-agent-productionization-architecture.svg)
-
-评测复现命令为 `python scripts/evaluate_agent.py --suite all`。当前 Coach、RAG、Weekly Adaptive 套件通过；Retrieval 保留基线中的 17 项失败，整体为 `PARTIAL`，未伪装为 PASS。详见 [v0.14.0 学习地图](docs/learning/v0.14.0/00-v0.14.0-overview.md)。
-
-### v0.13.0 周复盘与自适应训练闭环
-
-v0.13.0 新增确定性 Weekly Facts、LangGraph 周复盘、训练知识引用、可审查的计划调整 Proposal、人工批准/拒绝、持久 Checkpoint、计划版本与受控回滚。模型只负责解释和受限候选生成；训练事实与规则由服务端确定，计划只有在当前用户明确批准并通过服务端重新校验后才会写入。
-
-```text
-训练计划 -> 训练日志 -> Weekly Facts -> Rules -> LangGraph Review
-         -> Proposal Diff -> Human Approval -> New Plan Version -> Audit/Rollback
-```
-
-前端入口为 `/adaptive-weekly-review`。公开虚构评测与复现命令见 [Weekly/Adaptive Evaluation](docs/weekly-review/evaluation/weekly-adaptive-eval-v1.md)，实现复习见 [v0.13.0 Learning Docs](docs/learning/v0.13.0/01-v0.13.0-architecture.md)。本能力不构成医疗诊断，也不会把通用数据库写权限交给 LLM。
-
-![周复盘1](docs/images/weekly-review1.png)
-
-![周复盘2](docs/images/weekly-review2.png)
-
-
-下一周训练调整
-
-![训练调整1](docs/images/weekly-review3.png)
-
-
-![训练调整2](docs/images/weekly-review4.png)
-
-![训练调整3](docs/images/weekly-review5.png)
-### v0.12.0 训练知识 RAG 与可信引用
-
-Coach Agent 通过只读 `retrieve_training_knowledge` 工具检索版本化训练知识。模型只选择本次请求内的临时 Reference ID，服务端负责校验并物化标题、来源、版本、证据等级和摘录，避免模型伪造来源。知识用于解释，不参与或覆盖 TODAY 的确定性 Decision。
-
-```text
-结构化业务工具 → 用户训练事实
-确定性规则引擎 → 训练决策边界
-训练知识 RAG → 专业知识与解释依据
-LLM → 受限工具编排与自然语言
-Canonical Reference → 服务端还原可信引用
-Validator / Fallback → 越权拦截与安全降级
-```
-
-![训练知识引用：一般问题](docs/assets/coach-agent/coach-rag-general.png)
-
-![训练知识引用：今日建议](docs/assets/coach-agent/coach-rag-today.png)
-
-v0.12.0 当前按邀请制 Alpha 发布。界面、状态和安全边界见 [Training Knowledge Reference UI v1](docs/rag/training-knowledge-reference-ui-v1.md)，升级与回滚见 [v0.12.0 Release Notes](docs/releases/v0.12.0-release-notes.md)。私有 Retrieval 标签确认和人工盲评尚未完成，不影响产品公开能力，但不得表述为竞赛总门禁已通过。
-
-### Agent 能力
-
-当前注册八个训练事实工具和一个训练知识检索工具：
-
-- `get_runner_state`
-- `get_runner_state_history`
-- `get_recent_training`
-- `get_today_workout`
-- `get_current_training_cycle`
-- `get_training_rules`
-- `evaluate_today_workout`
-- `get_training_data_quality`
-- `retrieve_training_knowledge`
-
-Agent 调用链遵循“前端请求 → 服务端身份与 Intent Policy → 只读工具/知识检索 → Provider → Canonical Materializer → Validator → 正常响应或确定性 Fallback”。业务代码不直接把数据库、Prompt 或任意工具权限交给模型。完整关系见下方[系统架构图](#-系统架构)和 [Coach Agent Architecture v1](docs/agent/coach-agent-architecture-v1.md)。
-
-### Evaluation
-
-Coach Agent Evaluation v1 使用 32 条固定日期、完全虚构的案例验证工具召回、Decision/Plan 一致性、Warning/Limitation 保留、Fallback 和越权声明。它默认使用 Mock Gateway，不读取 API Key，不访问网络或生产数据库，也不使用第二个 LLM 当裁判。
-
-真实运行结果见 [Coach Agent Evaluation v1 Results](docs/agent/evaluation/results/coach-agent-eval-v1.md)；复现命令：
-
-```powershell
-python scripts/evaluate_coach_agent.py
-```
-
-### Coach Quick Start
-
-```powershell
-# 后端
-python -m uvicorn server.main:app --reload
-
-# 前端
-cd web
-npm ci
-npm run dev
-```
-
-`.env.example` 中 Coach Provider 默认关闭且 Key 为空。此时 `/coach` 使用确定性 Fallback 展示可用的只读建议；安全 Demo 流程见 [Coach Agent Demo v1](docs/agent/coach-agent-demo-v1.md)。
-
-部署 Training Knowledge RAG 前先执行离线校验：
-
-```powershell
-python scripts/knowledge_corpus.py validate
-python scripts/knowledge_index.py validate --index-id <configured-index-id>
-python scripts/check_coach_rag_readiness.py --require-enabled
-python scripts/smoke_coach_rag.py
-```
-
-Readiness 不访问网络且不输出凭据；Smoke 使用固定虚构只读 Fixture，不保存 Provider 原始回答。Alpha 使用、隐私与故障处理见 [v0.12.0 Alpha Onboarding](docs/alpha/gaitlogic-v0120-alpha-onboarding.md) 和 [Incident Runbook](docs/alpha/gaitlogic-v0120-alpha-incident-runbook.md)。
-
-当前已经实现 Dense Exact、可选 Qdrant、BM25、Hybrid RRF 和可选 Reranker，但生产默认策略仍以独立 Holdout 结果和运行复杂度为依据，不会因为组件更多就自动启用。当前仍没有长期记忆、Streaming 或多 Agent；Coach 公共工具保持只读，周计划写入只允许经 Proposal、人工确认和服务端复核完成；Quota 暂为进程内限制。训练知识库覆盖仍有限，Provider 或索引不可用时系统会保留确定性建议并安全降级。本功能不构成医疗诊断；竞赛私有标签确认和人工盲评仍需独立完成。
 
 | 你可能正在遇到的问题 | GaitLogic Planner 的处理方式 |
 | --- | --- |
@@ -295,104 +97,8 @@ Readiness 不访问网络且不输出凭据；Smoke 使用固定虚构只读 Fix
 训练周期支持 `draft`、`active`、`completed`、`archived` 生命周期；同一用户最多只有一个 `active` 周期。新建周期默认是草稿，启用新周期会结束旧当前周期，并把旧周期未来未完成计划标记为 `superseded`，已完成日志、Garmin 关联和复盘数据会保留。
 
 Garmin 同步采用用户手动触发和后台队列处理；手动创建同步任务后会自动安排一次后台执行，页面会轮询任务状态，刷新任务会同步更新任务和活动列表，失败或部分成功任务支持重试。默认开启“同步后自动导入训练计划”，同步后的活动会写入或合并到 `WorkoutLog`，再关联计划、日历和统计；关闭该开关后仅保存 Garmin 活动，用户可手动重新处理。同日连续活动可合并为一堂复合训练，无法判断时进入待处理。
-v0.9.4 新增 Data Sync 通用框架，Garmin 已迁移为 `garmin` provider；新入口为“数据同步”，旧 `/garmin-sync` 和 `/api/integrations/garmin/*` 保持兼容。通用 API 位于 `/api/data-sync/*`，后续平台只需接入 provider adapter。
-
-v0.9.5 进一步重构为极简训练闭环：桌面导航收敛为训练、计划、分析、我的四组，移动端底栏固定为“今日 / 日历 / 计划 / 分析 / 我的”；新增待办中心、训练计划中心和数据管理入口，今日页聚合待办和同步最新活动，设备客观数据预填后只要求用户补充主观训练反馈；同时增加统一版本号展示，版本号来自 `web/package.json`，网页端显示在侧边栏品牌区 `GaitLogic` 下方、`Planner` 右侧并右对齐品牌名，移动端在顶部品牌区下沉显示。
-
-v0.10.0 starts the training knowledge model and deterministic scientific rule infrastructure. This phase adds versioned knowledge items, YAML/JSON rule loading, a safe rule DSL, deterministic evaluation, rule-hit explanations, evaluation snapshots, and read/evaluate APIs. The rule engine only returns structured suggestions or review/block-auto-apply signals; it does not modify official training plans and does not provide medical diagnosis.
-
-v0.10.1 将科学规则引擎接入真实训练闭环：AI 计划草稿、Excel 导入和手动计划应用前可运行规则校验；今日训练页显示结构化建议；训练日志保存后可生成规则复盘；周复盘可生成下周调整草稿。所有调整都需要用户确认，blocking 会阻止自动应用，high 会要求二次确认。
-
 v0.10.2 建立科学规则治理与验证体系：规则需要登记证据来源、适用范围、阈值声明和版本历史；新版本需审核、测试和发布后进入正式规则集；后台可查看测试覆盖率、回归结果、影响分析、冲突诊断和运行质量统计。历史评估保留原规则版本，回滚不会覆盖既有结论。
 本地开发 CORS 通过 `BACKEND_CORS_ORIGINS` 和 `BACKEND_CORS_ORIGIN_REGEX` 配置，默认支持 `localhost`、`127.0.0.1`、preview 端口和常见局域网调试地址。
-
----
-
-## 🖼 界面预览
-
-### 移动端默认路径
-
-<p align="center">
-  <img src="docs/images/mobile.png" alt="移动端导航" width="360" />
-</p>
-
-宽度 `<= 768px` 时隐藏侧边栏，改用底部导航：
-
-```text
-今日 / 日历 / 计划 / 分析 / 我的
-```
-
-### 桌面端工作台
-
-<p align="center">
-  <img src="docs/images/desktop.png" alt="桌面端导航" width="820" />
-</p>
-
-### 训练日历
-
-<p align="center">
-  <img src="docs/images/training-calendar.png" alt="训练日历" width="820" />
-</p>
-
-### AI 制定计划
-
-<p align="center">
-  <img src="docs/images/ai-plan.png" alt="AI 制定计划" width="820" />
-</p>
-
-### VDOT 配速计算器
-
-<p align="center">
-  <img src="docs/images/pace-calculator.png" alt="配速计算器" width="820" />
-</p>
-
-### 新版今日训练
-
-<p align="center">
-  <img src="docs/images/today-workspace.png" alt="新版今日训练工作台" width="820" />
-</p>
-
-新版今日页聚合当天训练、待处理事项和最近同步的训练活动。设备同步得到的距离、时长、配速、心率等客观数据会自动预填，用户主要补充 RPE、体感和一句复盘等主观反馈。
-
-### 待办中心
-
-<p align="center">
-  <img src="docs/images/todo-center.png" alt="训练待办中心" width="820" />
-</p>
-
-待办中心集中展示当前需要处理的训练事项，减少用户在训练计划、同步活动、训练日志和复盘页面之间反复查找。
-
-### 训练计划中心
-
-<p align="center">
-  <img src="docs/images/training-plan-center.png" alt="训练计划中心" width="820" />
-</p>
-
-训练计划中心作为计划相关功能的统一入口，用于查看当前训练周期、每日训练安排以及 AI 制定计划、Excel 导入等计划创建方式。
-
-### 数据同步
-
-<p align="center">
-  <img src="docs/images/data-sync.png" alt="多平台训练数据同步" width="820" />
-</p>
-
-数据同步页面基于统一的 Data Sync 框架管理不同运动平台。当前已经接入 Garmin，并保留后续扩展其他 provider adapter 的能力。
-
-### 数据管理
-
-<p align="center">
-  <img src="docs/images/data-management.png" alt="训练数据管理" width="820" />
-</p>
-
-数据管理页面集中提供训练数据同步、训练记录导入和相关数据处理入口，让计划管理与训练数据维护保持相对独立。
-
-### 版本号展示
-
-<p align="center">
-  <img src="docs/images/version-display.png" alt="GaitLogic Planner 版本号展示" width="820" />
-</p>
-
-系统版本号统一读取自 `web/package.json`。桌面端显示在侧边栏品牌区域，移动端显示在顶部品牌区域，便于用户反馈问题时确认当前版本。
 
 ---
 
@@ -461,37 +167,35 @@ DEEPSEEK_TIMEOUT_SECONDS=120
 
 - [一屏看懂](#-一屏看懂)
 - [核心特性](#-核心特性)
-- [界面预览](#-界面预览)
+- [系统介绍](#-系统介绍)
 - [快速开始](#-快速开始)
 - [系统架构](#-系统架构)
 - [科学设计与训练安全](#-科学设计与训练安全)
-- [功能详解](#-功能详解)
 
 - **使用与开发文档**
   - [完整文档中心](docs/README.md)
-  - [课表导入使用指南](docs/user/plan-import-guide.md)
-  - [课表导入 API](docs/api/plan-import-api.md)
-  - [课表导入架构说明](docs/development/plan-import-architecture.md)
-  - [训练记录导入使用指南](docs/user/workout-import-guide.md)
-  - [训练记录导入 API](docs/api/workout-import-api.md)
-  - [训练记录导入架构说明](docs/development/workout-import-architecture.md)
-  - [负荷与恢复使用指南](docs/user/training-readiness-guide.md)
-  - [训练负荷与恢复实现说明](docs/development/training-load-recovery-implementation.md)
+  - [课表与训练管理](#-系统介绍)
+  - [课表导入接口（源码）](server/api/routes/plan_imports.py)
+  - [课表导入实现（源码）](server/services/plan_import_service.py)
+  - [训练记录与导入说明](#-系统介绍)
+  - [训练记录导入接口（源码）](server/api/routes/workout_imports.py)
+  - [训练记录导入实现（源码）](server/services/workout_import_service.py)
+  - [训练准备度与系统介绍](#-系统介绍)
+  - [训练负荷实现（源码）](server/services/training_load_service.py)
   - [后端学习指南](md/BACKEND_LEARNING_GUIDE.md)
   - [数据库设计](md/数据库设计.md)
   - [Excel 字段映射](md/Excel字段映射.md)
-  - [周复盘 API](docs/API_WEEKLY_REVIEW.md)
+  - [周复盘工作流](docs/weekly-review/langgraph-weekly-review-v1.md)
 
 - **科学设计与训练安全**
-  - [科学文档索引](docs/science/README.md)
-  - [科学证据与产品边界](docs/science/fatigue-management-evidence.md)
-  - [训练负荷与恢复指标定义](docs/science/fatigue-indicator-definition.md)
-  - [训练状态决策规则 v1](docs/science/fatigue-decision-rules-v1.md)
+  - [训练事实与风险边界](docs/README.md#训练事实与风险边界)
+  - [训练状态产品边界](docs/training-knowledge/runner-state-product-design-v1.md)
+  - [训练状态指标与数据模型](docs/training-knowledge/runner-state-model-v1.md)
+  - [训练状态推断规则](docs/training-knowledge/runner-state-inference-v1.md)
 
 - **部署与架构**
   - [部署说明](docs/DEPLOYMENT.md)
   - [一键重新部署](docs/REDEPLOY.md)
-  - [Noomi 迁移文档索引](gaitlogic-noomi/docs/migration/README.md)
 
 - **开源与项目治理**
   - [开源与项目治理规则](OPEN_SOURCE_POLICY.md)
@@ -500,34 +204,7 @@ DEEPSEEK_TIMEOUT_SECONDS=120
   - [商标使用说明](TRADEMARK.md)
 
 - **项目进展**
-  - [开发路线](docs/开发路线.md)
-  - [版本记录](CHANGELOG.md)
   - [详细更新历史](docs/更新历史.md)
-
----
-
-## 🏗 系统架构
-
-GaitLogic Planner 采用前后端分离架构：
-
-- 前端：Vue 3、TypeScript、Vite、Element Plus、ECharts；
-- 后端：FastAPI、SQLAlchemy 2.x、MySQL 8.0+；
-- Excel：openpyxl；
-- AI：OpenAI-compatible SDK；
-- 部署：Nginx 反向代理前端静态资源和后端 API。
-
-![GaitLogic Planner 系统架构图](docs/images/architecture1.png)
-
-```text
-GaitLogic Planner
-├── web/                 # Vue 3 + Vite + Element Plus
-├── server/              # FastAPI API layer
-├── planner_core/        # SQLAlchemy models, config, enums
-├── scripts/             # 初始化与辅助脚本
-├── tests/               # pytest 测试
-├── sql/                 # MySQL schema
-└── docs/                # 文档、截图、更新历史
-```
 
 ---
 
@@ -548,15 +225,15 @@ GaitLogic Planner
 
 GaitLogic 的训练负荷与恢复管理采用外部负荷、内部负荷、恢复状态、表现变化以及疼痛与异常症状相结合的监测框架。
 
-v0.9.0 新增基础版“负荷与恢复”闭环：恢复打卡、session-RPE、最近 7 天滚动负荷、过去 28 天个人基线、四档训练状态和模板化建议。系统不输出疲劳总分、伤病概率或医疗诊断，所有计划调整仍需用户确认。
+“负荷与恢复”闭环包括恢复打卡、session-RPE、最近 7 天滚动负荷、过去 28 天个人基线、四档训练状态和模板化建议。系统不输出疲劳总分、伤病概率或医疗诊断，所有计划调整仍需用户确认。
 
 相关文档：
 
-- [负荷与恢复使用指南](docs/user/training-readiness-guide.md)
-- [训练负荷与恢复实现说明](docs/development/training-load-recovery-implementation.md)
-- [科学证据与产品边界](docs/science/fatigue-management-evidence.md)
-- [训练负荷与恢复指标定义](docs/science/fatigue-indicator-definition.md)
-- [训练状态决策规则 v1](docs/science/fatigue-decision-rules-v1.md)
+- [训练准备度与系统介绍](#-系统介绍)
+- [训练负荷实现（源码）](server/services/training_load_service.py)
+- [训练状态产品边界](docs/training-knowledge/runner-state-product-design-v1.md)
+- [训练状态指标与数据模型](docs/training-knowledge/runner-state-model-v1.md)
+- [训练状态推断规则](docs/training-knowledge/runner-state-inference-v1.md)
 
 该功能用于训练管理和趋势参考，不用于医疗诊断、伤病概率预测或过度训练综合征诊断。AI 不能未经用户确认修改正式训练计划。
 
@@ -679,7 +356,228 @@ v0.9.0 新增基础版“负荷与恢复”闭环：恢复打卡、session-RPE�
 
 ---
 
-## 📘 功能详解
+## 📘 系统介绍
+
+本节集中展示系统界面、功能流程与架构说明；逐版本变更统一记录在[更新历史](docs/更新历史.md)。
+
+### 移动端默认路径
+
+<p align="center">
+  <img src="docs/images/mobile.png" alt="移动端导航" width="360" />
+</p>
+
+宽度 `<= 768px` 时隐藏侧边栏，改用底部导航：
+
+```text
+今日 / 日历 / 计划 / 分析 / 我的
+```
+
+### 桌面端工作台
+
+<p align="center">
+  <img src="docs/images/desktop.png" alt="桌面端导航" width="820" />
+</p>
+
+### 版本号展示
+
+<p align="center">
+  <img src="docs/images/version-display.png" alt="GaitLogic Planner 版本号展示" width="820" />
+</p>
+
+系统版本号统一读取自 `web/package.json`。桌面端显示在侧边栏品牌区域，移动端显示在顶部品牌区域，便于用户反馈问题时确认当前版本。
+
+### 🏗 系统架构
+
+GaitLogic Planner 采用前后端分离架构：
+
+- 前端：Vue 3、TypeScript、Vite、Element Plus、ECharts；
+- 后端：FastAPI、SQLAlchemy 2.x、MySQL 8.0+；
+- Excel：openpyxl；
+- AI：OpenAI-compatible SDK；
+- 部署：Nginx 反向代理前端静态资源和后端 API。
+
+![GaitLogic Planner 系统架构图](docs/images/architecture1.png)
+
+```text
+GaitLogic Planner
+├── web/                 # Vue 3 + Vite + Element Plus
+├── server/              # FastAPI API layer
+├── planner_core/        # SQLAlchemy models, config, enums
+├── scripts/             # 初始化与辅助脚本
+├── tests/               # pytest 测试
+├── sql/                 # MySQL schema
+└── docs/                # 文档、截图、更新历史
+```
+
+### Coach Agent
+
+只读 Coach Agent 通过严格 Schema 约束的训练工具提供事实，Runner State 与确定性规则负责决策边界，OpenAI-compatible Gateway 负责受控工具编排与语言解释，Validator 和 Fallback 负责阻止越权输出并在 Provider 不可用时维持可用建议。
+
+```text
+训练事实 → 只读工具 → 确定性规则 → 受控模型解释 → Validator → 可解释建议
+```
+
+今日训练建议中的 decision、计划状态、风险、数据质量、警告、限制与 canonical Evidence 均由服务端确定；模型只生成说明文本并引用服务器分配的 Evidence ID。系统不会自动修改训练计划，也不提供医疗诊断。
+
+### Runner State 工作流
+
+Runner State 提供跑者当前状态、7/28 天训练指标、确定性推断、Evidence 与数据质量说明，并提供手动历史快照、趋势和详情。Garmin 同步在训练事实发生有效变化后，可通过独立事务创建非阻塞状态快照：
+
+```text
+Garmin 训练事实 -> Material Change -> Runner State -> 自动快照 -> 历史趋势 -> 可解释反馈
+```
+
+Runner State 不提供医疗诊断，不调用大语言模型计算状态，也不会自动生成或修改正式训练计划。
+
+### Runner State
+
+Runner State 根据近期训练事实、数据质量和规则证据形成可解释的当前状态，并保留历史快照和趋势。
+
+![Runner State 当前状态](docs/assets/runner-state/runner-state1.png)
+
+![Runner State 历史趋势](docs/assets/runner-state/runner-state2.png)
+
+### Training Readiness
+
+Training Readiness 用于展示当前训练准备情况、关键依据和限制，不用于医疗诊断。
+
+![Training Readiness 概览](docs/assets/training-readiness/training-readiness1.png)
+
+![Training Readiness 详情](docs/assets/training-readiness/training-readiness2.png)
+
+### Coach 架构
+
+Coach Agent 把结构化训练事实、确定性规则和受限模型解释组合成一个只读训练建议界面：
+
+```text
+结构化训练数据负责事实
+→ Runner State 与规则引擎负责决策边界
+→ LLM 负责受限工具编排和解释
+→ Validator 阻止越权或覆盖规则的输出
+→ Fallback 保证模型不可用时仍可返回确定性建议
+```
+
+它不是普通聊天接口：LLM 不直接访问数据库，用户身份由服务端认证上下文注入，Tool 输入输出经过 Pydantic Schema 校验，今日建议的 Decision 来自确定性规则，而且模型不能修改正式计划。
+
+### AI 教练 Agent
+
+GaitLogic Coach Agent 将结构化训练事实、确定性训练规则和大语言模型解释能力组合起来。规则和 Runner State 负责结论边界，模型只负责工具编排和自然语言解释。
+
+![AI 教练页面](docs/assets/coach-agent/coach-overview.png)
+
+![今日训练建议](docs/assets/coach-agent/coach-today-recommendation.png)
+
+### Agent 可观测性、评测与可靠性
+
+可观测性体系覆盖 Coach、RAG、Weekly Review 与人工批准链路，包括安全 Trace/Span、可选 OpenTelemetry 输出、低基数运行 Metrics、统一 Provider Failure Taxonomy、有限重试与确定性 Fallback，以及四套公开虚构回归评测。运行指标不保存用户问题、Prompt、训练正文、原始模型响应、身份信息或凭据；它们只用于定位组件延迟、失败和降级趋势。
+
+![v0.14.0 Agent 工程架构](docs/assets/v014-agent-productionization-architecture.svg)
+
+评测复现命令为 `python scripts/evaluate_agent.py --suite all`。当前 Coach、RAG、Weekly Adaptive 套件通过；Retrieval 保留基线中的 17 项失败，整体为 `PARTIAL`，未伪装为 PASS。详见 [v0.14.0 学习地图](docs/learning/v0.14.0/00-v0.14.0-overview.md)。
+
+### 周复盘与自适应训练闭环
+
+周复盘工作流包含确定性 Weekly Facts、LangGraph 周复盘、训练知识引用、可审查的计划调整 Proposal、人工批准/拒绝、持久 Checkpoint、计划版本与受控回滚。模型只负责解释和受限候选生成；训练事实与规则由服务端确定，计划只有在当前用户明确批准并通过服务端重新校验后才会写入。
+
+```text
+训练计划 -> 训练日志 -> Weekly Facts -> Rules -> LangGraph Review
+         -> Proposal Diff -> Human Approval -> New Plan Version -> Audit/Rollback
+```
+
+前端入口为 `/adaptive-weekly-review`。公开虚构评测与复现命令见 [Weekly/Adaptive Evaluation](docs/weekly-review/evaluation/weekly-adaptive-eval-v1.md)，实现复习见 [v0.13.0 Learning Docs](docs/learning/v0.13.0/01-v0.13.0-architecture.md)。本能力不构成医疗诊断，也不会把通用数据库写权限交给 LLM。
+
+![周复盘1](docs/images/weekly-review1.png)
+
+![周复盘2](docs/images/weekly-review2.png)
+
+
+下一周训练调整
+
+![训练调整1](docs/images/weekly-review3.png)
+
+
+![训练调整2](docs/images/weekly-review4.png)
+
+![训练调整3](docs/images/weekly-review5.png)
+### 训练知识 RAG 与可信引用
+
+Coach Agent 通过只读 `retrieve_training_knowledge` 工具检索版本化训练知识。模型只选择本次请求内的临时 Reference ID，服务端负责校验并物化标题、来源、版本、证据等级和摘录，避免模型伪造来源。知识用于解释，不参与或覆盖 TODAY 的确定性 Decision。
+
+```text
+结构化业务工具 → 用户训练事实
+确定性规则引擎 → 训练决策边界
+训练知识 RAG → 专业知识与解释依据
+LLM → 受限工具编排与自然语言
+Canonical Reference → 服务端还原可信引用
+Validator / Fallback → 越权拦截与安全降级
+```
+
+![训练知识引用：一般问题](docs/assets/coach-agent/coach-rag-general.png)
+
+![训练知识引用：今日建议](docs/assets/coach-agent/coach-rag-today.png)
+
+引用界面与安全边界见 [Training Knowledge Reference UI](docs/rag/training-knowledge-reference-ui-v1.md)，具体版本状态与升级记录见 [更新历史](docs/更新历史.md)。
+
+### Agent 能力
+
+主要训练事实与知识工具包括：
+
+- `get_runner_state`
+- `get_runner_state_history`
+- `get_recent_training`
+- `get_today_workout`
+- `get_current_training_cycle`
+- `get_training_rules`
+- `evaluate_today_workout`
+- `get_training_data_quality`
+- `retrieve_training_knowledge`
+
+Agent 调用链遵循“前端请求 → 服务端身份与 Intent Policy → 只读工具/知识检索 → Provider → Canonical Materializer → Validator → 正常响应或确定性 Fallback”。业务代码不直接把数据库、Prompt 或任意工具权限交给模型。完整关系见下方[系统架构图](#-系统架构)和 [Coach Agent Architecture v1](docs/agent/coach-agent-architecture-v1.md)。
+
+### Evaluation
+
+Coach Agent Evaluation v1 使用 32 条固定日期、完全虚构的案例验证工具召回、Decision/Plan 一致性、Warning/Limitation 保留、Fallback 和越权声明。它默认使用 Mock Gateway，不读取 API Key，不访问网络或生产数据库，也不使用第二个 LLM 当裁判。
+
+真实运行结果见 [Coach Agent Evaluation v1 Results](docs/agent/evaluation/results/coach-agent-eval-v1.md)；复现命令：
+
+```powershell
+python scripts/evaluate_coach_agent.py
+```
+
+### Coach Quick Start
+
+```powershell
+# 后端
+python -m uvicorn server.main:app --reload
+
+# 前端
+cd web
+npm ci
+npm run dev
+```
+
+`.env.example` 中 Coach Provider 默认关闭且 Key 为空。此时 `/coach` 使用确定性 Fallback 展示可用的只读建议；安全 Demo 流程见 [Coach Agent Demo v1](docs/agent/coach-agent-demo-v1.md)。
+
+部署 Training Knowledge RAG 前先执行离线校验：
+
+```powershell
+python scripts/knowledge_corpus.py validate
+python scripts/knowledge_index.py validate --index-id <configured-index-id>
+python scripts/check_coach_rag_readiness.py --require-enabled
+python scripts/smoke_coach_rag.py
+```
+
+Readiness 不访问网络且不输出凭据；Smoke 使用固定虚构只读 Fixture，不保存 Provider 原始回答。Alpha 使用、隐私与故障处理见 [v0.12.0 Alpha Onboarding](docs/alpha/gaitlogic-v0120-alpha-onboarding.md) 和 [Incident Runbook](docs/alpha/gaitlogic-v0120-alpha-incident-runbook.md)。
+
+当前已经实现 Dense Exact、可选 Qdrant、BM25、Hybrid RRF 和可选 Reranker，各环境使用的策略以实际部署配置为准，不会因为组件更多就自动启用。当前仍没有长期记忆、Streaming 或多 Agent；Coach 公共工具保持只读，周计划写入只允许经 Proposal、人工确认和服务端复核完成；Quota 暂为进程内限制。训练知识库覆盖仍有限，Provider 或索引不可用时系统会保留确定性建议并安全降级。本功能不构成医疗诊断；竞赛私有标签确认和人工盲评仍需独立完成。
+
+### MCP 只读互操作
+
+GaitLogic 通过 MCP 提供经过认证的训练事实与公开训练知识。六个工具覆盖当前计划、近期训练、跑者状态、训练知识、单次活动详情及独立授权的恢复趋势。客户端不能通过传入 user_id 选择其他跑者；活动选择、来源限制和权限校验由服务端控制。
+
+具体工具契约、已验收版本与部署状态见 [MCP 集成报告](docs/evaluation/mcp-remote-e2e-report.md)。
+
+### 训练管理页面
 
 <details open>
 <summary><strong>登录与注册</strong></summary>
@@ -713,7 +611,7 @@ v0.9.0 新增基础版“负荷与恢复”闭环：恢复打卡、session-RPE�
 <details open>
 <summary><strong>新版今日工作台与待办中心</strong></summary>
 
-v0.9.5 对今日训练页面进行了重新整理，使其成为日常训练闭环的主要入口。
+今日训练页面聚合当天课表、记录入口和待办事项，是日常训练闭环的主要入口。
 
 ![新版今日训练工作台](docs/images/today-workspace.png)
 
@@ -833,7 +731,7 @@ v0.9.5 对今日训练页面进行了重新整理，使其成为日常训练闭�
 <details open>
 <summary><strong>训练计划中心</strong></summary>
 
-训练计划中心是 v0.9.5 新增的计划聚合入口。
+训练计划中心是计划与周期的聚合入口。
 
 ![训练计划中心](docs/images/training-plan-center.png)
 
@@ -891,7 +789,7 @@ v0.9.5 对今日训练页面进行了重新整理，使其成为日常训练闭�
 <details open>
 <summary><strong>数据同步</strong></summary>
 
-v0.9.4 新增通用 Data Sync 数据同步框架，Garmin 同步已经迁移为 `garmin` provider。
+Data Sync 采用通用数据同步框架，Garmin 通过 `garmin` provider 接入。
 
 ![多平台训练数据同步](docs/images/data-sync.png)
 
@@ -946,7 +844,7 @@ v0.9.4 新增通用 Data Sync 数据同步框架，Garmin 同步已经迁移为 
 <details open>
 <summary><strong>数据管理</strong></summary>
 
-数据管理是 v0.9.5 新增的统一数据入口。
+数据管理提供统一的数据入口。
 
 ![训练数据管理](docs/images/data-management.png)
 
@@ -1243,6 +1141,3 @@ GaitLogic Planner Community 是可独立运行的开源社区版。未来可能�
 GaitLogic Planner 仍处于持续开发阶段，当前版本更偏向个人训练管理和内测使用。
 
 如果你也是跑者、教练、体育科技开发者，或者对“跑步 + 软件系统 + AI 辅助训练”感兴趣，欢迎提出建议、提交 issue 或参与改进。
-### v0.15.0 MCP 只读互操作层
-
-GaitLogic 同时提供内部 Tool Calling 与 MCP stdio / Streamable HTTP。MCP 暴露四个只读 Tool、公开训练知识 Resources 与安全 Prompt 模板；客户端不能指定 `user_id`，用户训练数据仍通过认证身份和现有 Service 边界隔离。MCP 不绕过 Rules、Validator 或 canonical knowledge reference 控制。
