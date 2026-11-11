@@ -604,11 +604,18 @@ def test_mysql_summary_lease_takeover_prevents_old_worker_overwrite(mysql_engine
 def test_mysql_long_conversations_preserve_messages_and_summary_boundary(mysql_engine, turn_count: int) -> None:
     SessionLocal = sessionmaker(bind=mysql_engine, class_=Session)
     db = SessionLocal()
+    sent_history_sizes = []
+
+    class RecordingCoach(_ImmediateCoach):
+        def query(self, *, user_id: int, payload):
+            sent_history_sizes.append(len(payload.conversation_context))
+            return super().query(user_id=user_id, payload=payload)
+
     try:
         user_id = _add_user(db)
         service = CoachConversationService(
             db,
-            coach_service_factory=_ImmediateCoach,
+            coach_service_factory=RecordingCoach,
             context_builder=ConversationContextBuilder(
                 max_messages=24, token_budget=4000, summary_token_budget=1200
             ),
@@ -625,6 +632,9 @@ def test_mysql_long_conversations_preserve_messages_and_summary_boundary(mysql_e
             )
             assert result.status == "completed"
 
+        assert len(sent_history_sizes) == turn_count
+        assert all(size <= 24 for size in sent_history_sizes)
+
         row = db.scalar(select(CoachConversation).where(CoachConversation.public_id == conversation.id))
         assert row is not None
         messages = _summary_source(db, row.id)
@@ -636,7 +646,12 @@ def test_mysql_long_conversations_preserve_messages_and_summary_boundary(mysql_e
             assert row.context_summary_status == "IDLE"
             assert row.context_summary_through_sequence > 0
             recent = [item for item in messages if item.sequence_no > row.context_summary_through_sequence]
-            assert len(recent) <= 24
+            # Summary runs before the current turn. Its newly completed user
+            # and assistant messages remain outside that summary until the next
+            # request; database retention is not the model's history window.
+            assert len(recent[:-2]) <= 24
+            assert recent[-1].sequence_no == messages[-1].sequence_no
+            assert recent[-2].role == "user" and recent[-1].role == "assistant"
             assert all(item.status == "completed" for item in recent)
     finally:
         db.close()

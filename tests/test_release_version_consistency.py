@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import tomllib
 from pathlib import Path
 
@@ -53,8 +54,12 @@ def test_release_documents_declare_current_version_and_preserve_history() -> Non
     assert "v0.16.8" in readme
     assert "v0.16.8" in readme_en
     assert "## v0.16.8" in changelog
-    assert "v0.16.3" in readme
-    assert "v0.16.3" in readme_en
+    # The product overview links to history instead of embedding release notes.
+    for document in (readme, readme_en):
+        assert "docs/更新历史.md" in document
+        assert not re.search(r"^#{2,4}\s+v\d+\.\d+", document, re.MULTILINE)
+    assert readme.index("## 📘 系统介绍") > readme.index("## 🚀 快速开始")
+    assert readme_en.index("## 📘 System Introduction") > readme_en.index("## 🚀 Quick Start")
     assert "## v0.16.3" in changelog
     assert "# GaitLogic Planner v0.16.3" in release_notes
     assert "# GaitLogic Planner v0.16.0" in historical_release_notes
