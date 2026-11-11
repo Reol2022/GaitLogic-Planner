@@ -14,7 +14,7 @@
         <h2>登录</h2>
         <div class="login-divider"></div>
 
-        <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent>
+        <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="handleLogin">
           <el-form-item label="用户名" prop="username">
             <el-input
               v-model.trim="form.username"
@@ -37,7 +37,8 @@
             <el-checkbox :model-value="true">保持登录状态</el-checkbox>
             <span>忘记密码请联系管理员</span>
           </div>
-          <el-button class="auth-submit" type="primary" :loading="loading" size="large" @click="handleLogin">
+          <el-alert v-if="loginError" class="login-error" :title="loginError" type="error" :closable="false" show-icon role="alert" />
+          <el-button class="auth-submit" type="primary" :loading="loading" size="large" native-type="submit">
             登录
           </el-button>
         </el-form>
@@ -58,7 +59,7 @@ import { onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
-import { loginUser, setStoredToken } from "@/api/auth";
+import { getLoginErrorMessage, loginUser, setStoredToken } from "@/api/auth";
 import { getSystemSettings } from "@/api/systemSettings";
 import SiteFilingFooter from "@/components/SiteFilingFooter.vue";
 import type { UserLoginPayload } from "@/types/models";
@@ -68,6 +69,7 @@ const router = useRouter();
 const route = useRoute();
 const formRef = ref<FormInstance>();
 const loading = ref(false);
+const loginError = ref("");
 const allowPublicRegistration = ref(getCachedAllowPublicRegistration());
 const form = reactive<UserLoginPayload>({
   username: "",
@@ -78,18 +80,29 @@ const rules: FormRules = {
   username: [{ required: true, message: "请输入用户名", trigger: "blur" }],
   password: [
     { required: true, message: "请输入密码", trigger: "blur" },
-    { min: 8, message: "密码至少 8 位", trigger: "blur" },
   ],
 };
 
 async function handleLogin() {
-  await formRef.value?.validate();
+  if (loading.value) return;
+  loginError.value = "";
   loading.value = true;
   try {
-    const token = await loginUser(form);
+    if (!form.username.trim() || !form.password) {
+      loginError.value = "请填写用户名和密码后再登录。";
+      return;
+    }
+    const valid = await formRef.value?.validate().catch(() => false);
+    if (!valid) {
+      loginError.value = "请填写用户名和密码后再登录。";
+      return;
+    }
+    const token = await loginUser(form, { skipErrorMessage: true });
     setStoredToken(token.access_token);
     ElMessage.success("登录成功");
     router.push(String(route.query.redirect || "/"));
+  } catch (error) {
+    loginError.value = getLoginErrorMessage(error);
   } finally {
     loading.value = false;
   }
@@ -236,6 +249,10 @@ onMounted(async () => {
   height: 42px;
   border-radius: 3px;
   font-size: 16px;
+}
+
+.login-error {
+  margin-bottom: 16px;
 }
 
 .login-panel .auth-switch {

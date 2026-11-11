@@ -16,7 +16,7 @@
 
     <el-tabs v-model="activeTab" stretch>
       <el-tab-pane label="登录" name="login">
-        <el-form ref="loginFormRef" :model="loginForm" :rules="loginRules" label-position="top" @submit.prevent>
+        <el-form ref="loginFormRef" :model="loginForm" :rules="loginRules" label-position="top" @submit.prevent="handleLogin">
           <el-form-item label="用户名" prop="username">
             <el-input v-model.trim="loginForm.username" autocomplete="username" placeholder="请输入用户名" />
           </el-form-item>
@@ -29,7 +29,8 @@
               type="password"
             />
           </el-form-item>
-          <el-button type="primary" class="auth-dialog-submit" :loading="loading" @click="handleLogin">
+          <el-alert v-if="loginError" class="auth-login-error" :title="loginError" type="error" :closable="false" show-icon role="alert" />
+          <el-button type="primary" class="auth-dialog-submit" :loading="loading" native-type="submit">
             登录
           </el-button>
         </el-form>
@@ -79,7 +80,7 @@ import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 
-import { loginUser, registerUser, setStoredToken } from "@/api/auth";
+import { getLoginErrorMessage, loginUser, registerUser, setStoredToken } from "@/api/auth";
 import { getSystemSettings } from "@/api/systemSettings";
 import type { UserLoginPayload, UserRegisterPayload } from "@/types/models";
 import { AUTH_REQUIRED_EVENT, type AuthRequiredDetail } from "@/utils/authPrompt";
@@ -87,6 +88,7 @@ import { getCachedAllowPublicRegistration } from "@/utils/systemSettingsCache";
 
 const visible = ref(false);
 const loading = ref(false);
+const loginError = ref("");
 const activeTab = ref<"login" | "register">("login");
 const redirectPath = ref("/today");
 const allowPublicRegistration = ref(getCachedAllowPublicRegistration());
@@ -107,7 +109,6 @@ const loginRules: FormRules = {
   username: [{ required: true, message: "请输入用户名", trigger: "blur" }],
   password: [
     { required: true, message: "请输入密码", trigger: "blur" },
-    { min: 8, message: "密码至少 8 位", trigger: "blur" },
   ],
 };
 
@@ -132,6 +133,7 @@ function openAuthDialog(event: Event) {
   const detail = (event as CustomEvent<AuthRequiredDetail>).detail;
   redirectPath.value = normalizeRedirect(detail?.redirect);
   activeTab.value = "login";
+  loginError.value = "";
   visible.value = true;
 }
 
@@ -150,13 +152,25 @@ function finishAuth() {
 }
 
 async function handleLogin() {
-  await loginFormRef.value?.validate();
+  if (loading.value) return;
+  loginError.value = "";
   loading.value = true;
   try {
-    const token = await loginUser(loginForm);
+    if (!loginForm.username.trim() || !loginForm.password) {
+      loginError.value = "请填写用户名和密码后再登录。";
+      return;
+    }
+    const valid = await loginFormRef.value?.validate().catch(() => false);
+    if (!valid) {
+      loginError.value = "请填写用户名和密码后再登录。";
+      return;
+    }
+    const token = await loginUser(loginForm, { skipErrorMessage: true });
     setStoredToken(token.access_token);
     ElMessage.success("登录成功");
     finishAuth();
+  } catch (error) {
+    loginError.value = getLoginErrorMessage(error);
   } finally {
     loading.value = false;
   }
@@ -209,6 +223,10 @@ onBeforeUnmount(() => {
 
 .auth-dialog-submit {
   width: 100%;
+}
+
+.auth-login-error {
+  margin-bottom: 16px;
 }
 
 .auth-dialog-note {

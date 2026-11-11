@@ -61,6 +61,15 @@ client.interceptors.response.use(
   (error: AxiosError<ErrorResponseBody>) => {
     const config = error?.config as AppRequestConfig | undefined;
     if (error?.response?.status === 401) {
+      // Rejected credentials are not an expired session. In particular, a
+      // dialog login must stay open instead of reopening itself via requestAuth.
+      const path = config?.url?.split("?")[0].replace(/\/$/, "");
+      if (path?.endsWith("/auth/login")) {
+        if (!config?.skipErrorMessage) {
+          ElMessage.error("用户名或密码错误，请重新输入。");
+        }
+        return Promise.reject(error);
+      }
       localStorage.removeItem(TOKEN_STORAGE_KEY);
       if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
         if (getCachedAuthEntryMode() === "modal") {
