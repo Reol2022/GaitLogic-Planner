@@ -1,4 +1,5 @@
 from __future__ import annotations
+from server.integrations.activity_provider.self_evaluation import effective_log_rpe
 
 from dataclasses import dataclass, field
 from datetime import date
@@ -47,7 +48,7 @@ class RunnerStateRelevantWorkoutLogProjection:
             workout_type=_normalized_enum(log.workout_type),
             actual_distance_km=_normalized_decimal(log.actual_distance_km),
             actual_duration_seconds=int(log.actual_duration_seconds) if log.actual_duration_seconds is not None else None,
-            rpe=int(log.rpe) if log.rpe is not None else None,
+            rpe=int(effective_log_rpe(log)) if effective_log_rpe(log) is not None else None,
             avg_heart_rate=int(log.avg_heart_rate) if log.avg_heart_rate is not None else None,
             max_heart_rate=int(log.max_heart_rate) if log.max_heart_rate is not None else None,
         )

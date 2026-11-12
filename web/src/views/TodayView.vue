@@ -325,7 +325,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { EditPen, Refresh } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
@@ -690,10 +690,13 @@ function statusClass(status?: WorkoutStatusNormalized | null) {
 }
 
 onMounted(async () => {
+  window.addEventListener('garmin-facts-updated', refreshSyncedFacts);
   trackUsageEvent("today_viewed");
   await loadCycles();
   await load();
 });
+function refreshSyncedFacts() { void load(); }
+onBeforeUnmount(() => window.removeEventListener('garmin-facts-updated', refreshSyncedFacts));
 </script>
 
 <style scoped>

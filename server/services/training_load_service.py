@@ -3,10 +3,10 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
-from server.integrations.activity_provider.self_evaluation import log_rpe_metadata
+from server.integrations.activity_provider.self_evaluation import log_rpe_metadata, effective_log_rpe
 from server.services.training_fact_policy import actual_training_type
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, and_, or_, exists
 from sqlalchemy.orm import Session
 
 from planner_core.database.models import (
@@ -14,6 +14,7 @@ from planner_core.database.models import (
     ExternalActivity,
     PlannedWorkout,
     WorkoutLog,
+    WorkoutLogExternalActivity,
 )
 from planner_core.enums import (
     PlannedWorkoutLifecycleStatus,
@@ -81,7 +82,7 @@ def _high_intensity_distance(log: WorkoutLog, workout_type: str) -> float:
 
 
 def _query_logs(db: Session, user_id: int, start_date: date, end_date: date) -> list[tuple[WorkoutLog, PlannedWorkout | None]]:
-    return list(
+    rows = list(
         db.execute(
             select(WorkoutLog, PlannedWorkout)
             .outerjoin(PlannedWorkout, PlannedWorkout.id == WorkoutLog.planned_workout_id)
@@ -95,6 +96,22 @@ def _query_logs(db: Session, user_id: int, start_date: date, end_date: date) -> 
             .order_by(func.coalesce(WorkoutLog.activity_date, PlannedWorkout.workout_date), PlannedWorkout.sort_order, WorkoutLog.id)
         )
     )
+    automatic = [log for log, _ in rows if (log.field_sources_json or {}).get('rpe') in {'garmin', 'garmin_sync'} and log.rpe is not None]
+    if automatic:
+        linked = exists(select(WorkoutLogExternalActivity.id).where(
+            WorkoutLogExternalActivity.user_id == user_id,
+            WorkoutLogExternalActivity.workout_log_id == WorkoutLog.id,
+            WorkoutLogExternalActivity.external_activity_id == ExternalActivity.id))
+        counts = dict(db.execute(select(WorkoutLog.id, func.count(func.distinct(ExternalActivity.id)))
+            .join(ExternalActivity, and_(ExternalActivity.user_id == user_id, or_(
+                ExternalActivity.workout_log_id == WorkoutLog.id, linked,
+                ExternalActivity.external_activity_id == WorkoutLog.external_activity_id)))
+            .where(WorkoutLog.user_id == user_id, WorkoutLog.id.in_([log.id for log in automatic]))
+            .group_by(WorkoutLog.id)).all())
+        for log in automatic:
+            # Request-local annotation only, never a mapped field or DB repair.
+            log._rpe_linked_activity_count = counts.get(log.id, 0)
+    return rows
 
 
 def _safe_source(value: str | None) -> str:
@@ -134,7 +151,8 @@ def get_recent_training_read(
         actual_date = log.activity_date or (workout.workout_date if workout else None)
         if actual_date is None:
             continue
-        workout_type = (
+        recorded_type = actual_training_type(log)
+        workout_type = recorded_type if recorded_type not in {None, 'unknown'} else (
             workout.main_type_normalized.value
             if workout is not None
             else normalize_workout_main_type(log.workout_type).value
@@ -152,7 +170,7 @@ def get_recent_training_read(
                 date=actual_date,
                 planned_date=workout.workout_date if workout else None,
                 training_type=workout_type,
-                classification_basis="TRAINING_PLAN" if workout is not None else "ACTUAL_LOG",
+                classification_basis="ACTUAL_LOG" if recorded_type not in {None, 'unknown'} else "TRAINING_PLAN" if workout is not None else "UNKNOWN",
                 association_status=(
                     "MATCHED_CROSS_DATE"
                     if workout is not None and workout.workout_date != actual_date
@@ -166,7 +184,7 @@ def get_recent_training_read(
                 duration_seconds=log.actual_duration_seconds,
                 average_pace_seconds_per_km=log.avg_pace_seconds_per_km,
                 average_heart_rate=log.avg_heart_rate,
-                rpe=log.rpe if log.rpe is not None and 0 <= log.rpe <= 10 else None,
+                rpe=effective_log_rpe(log) if effective_log_rpe(log) is not None and 0 <= effective_log_rpe(log) <= 10 else None,
                 rpe_metadata=log_rpe_metadata(log),
                 planned_training_type=str(getattr(workout.main_type_normalized, "value", workout.main_type_normalized)) if workout else None,
                 actual_training_type=actual_training_type(log),
@@ -274,7 +292,7 @@ def get_training_data_quality_read(
     coverage = {
         "distance": ratio(lambda log: log.actual_distance_km is not None),
         "duration": ratio(lambda log: log.actual_duration_seconds is not None),
-        "rpe": ratio(lambda log: log.rpe is not None and 0 <= log.rpe <= 10),
+        "rpe": ratio(lambda log: effective_log_rpe(log) is not None and 0 <= effective_log_rpe(log) <= 10),
         "heart_rate": ratio(lambda log: log.avg_heart_rate is not None),
     }
     missing = [name for name, value in coverage.items() if value < 1.0]
@@ -324,7 +342,7 @@ def build_daily_training_loads(
         workout_type = workout.main_type_normalized.value if workout else normalize_workout_main_type(log.workout_type).value
         distance = _float(log.actual_distance_km)
         duration = _duration_minutes(log.actual_duration_seconds) or 0.0
-        srpe = session_srpe_load(log.actual_duration_seconds, log.rpe, status)
+        srpe = session_srpe_load(log.actual_duration_seconds, effective_log_rpe(log), status)
         day["distance_km"] += distance
         day["duration_minutes"] += duration
         if srpe is not None:
@@ -374,7 +392,7 @@ def _completed_log_counts(log_rows: list[tuple[WorkoutLog, PlannedWorkout | None
     valid_srpe = [
         log
         for log in completed
-        if log.actual_duration_seconds is not None and log.rpe is not None
+        if log.actual_duration_seconds is not None and effective_log_rpe(log) is not None
     ]
     return len(completed), len(valid_srpe)
 
@@ -401,9 +419,9 @@ def build_training_load_summary(db: Session, user_id: int, assessment_date: date
     log_rows = _query_logs(db, user_id, baseline_start, target_date)
     completed_count, valid_srpe_count = _completed_log_counts(log_rows)
     rpe_values = [
-        float(log.rpe)
+        float(effective_log_rpe(log))
         for log, _ in log_rows
-        if log.status_normalized in COMPLETED_STATUSES and log.rpe is not None
+        if log.status_normalized in COMPLETED_STATUSES and effective_log_rpe(log) is not None
     ]
     recovery_count = int(
         db.scalar(

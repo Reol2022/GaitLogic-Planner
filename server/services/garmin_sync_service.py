@@ -211,6 +211,8 @@ def enqueue_sync_job(
     _sync_run_id: str | None = None,
 ) -> ExternalSyncJobRead:
     connection = _require_connection(db, user_id)
+    # Connection-level serialization covers manual and automatic submitters.
+    db.scalar(select(ExternalAccountConnection).where(ExternalAccountConnection.id == connection.id).with_for_update())
     if connection.status != "connected":
         raise BadRequestError("Garmin 连接需要重新认证。", error_code="REAUTHENTICATION_REQUIRED")
     existing_running = db.scalar(
@@ -461,6 +463,16 @@ def _is_sync_job_cancelled(db: Session, job_id: int) -> bool:
     if _has_local_sync_job_cancellation(job_id):
         return True
 
+    from server.services.garmin_smart_sync_service import execution_lease, lease_valid
+    lease = execution_lease.get()
+    if lease is not None:
+        try:
+            with Session(bind=db.get_bind()) as lease_db:
+                if not lease_valid(lease_db, lease):
+                    return True
+        except Exception:
+            return True  # Fail closed: an unverifiable owner cannot commit.
+
     try:
         with Session(bind=db.get_bind()) as cancellation_db:
             status = cancellation_db.scalar(
@@ -500,6 +512,27 @@ def _publish_fetched_count(db: Session, job_id: int, fetched_count: int) -> None
 
 
 def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
+    if not get_settings().garmin_smart_sync_enabled:
+        return _run_sync_job(db, job_id)
+    from server.services.garmin_smart_sync_service import acquire, release, execution_lease, LeaseHeartbeat
+    lease = acquire(db, job_id)
+    if lease is None:
+        job = db.get(ExternalSyncJob, job_id)
+        if job is None:
+            raise NotFoundError('同步任务不存在。')
+        return _outcome_from_job(job, claimed=False, warning_codes=('CONNECTION_BUSY',))
+    context_token = execution_lease.set(lease)
+    try:
+        with LeaseHeartbeat(db.get_bind(), lease):
+            return _run_sync_job(db, job_id)
+    finally:
+        execution_lease.reset(context_token)
+        db.rollback()
+        with Session(bind=db.get_bind()) as state_db:
+            release(state_db, lease, job_id)
+
+
+def _run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
     if not claim_sync_job(db, job_id):
         existing = db.get(ExternalSyncJob, job_id)
         if existing is None:
@@ -533,7 +566,7 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
             time.monotonic() - restore_started,
         )
         fetch_started = time.monotonic()
-        activities = provider.fetch_activities(
+        activities = [] if job.data_scope == 'recovery' else provider.fetch_activities(
             job.requested_start or datetime.utcnow() - timedelta(days=90),
             job.requested_end or datetime.utcnow(),
         )
@@ -551,7 +584,7 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
         _publish_fetched_count(db, job_id, fetched_count)
         activity_errors: list[str] = []
         health_warning_codes: list[str] = []
-        detail_budget = 1  # Keep routine sync fast; explicit batches handle historical refresh.
+        detail_budget = 3 if job.trigger_source != 'manual' else 1
         for provider_activity in activities:
             if _is_sync_job_cancelled(db, job_id):
                 return _cancelled_sync_outcome(db, job_id)
@@ -582,7 +615,7 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
                 elif result == "duplicate":
                     job.duplicate_count += 1
             except Exception as exc:
-                logger.exception("Failed to process Garmin activity id=%s", provider_activity.external_activity_id)
+                logger.warning("Garmin activity processing failed job_id=%s exception_type=%s", job_id, type(exc).__name__)
                 failed_count += 1
                 job.failed_count = failed_count
                 activity_errors.append(f"{provider_activity.external_activity_id}: {_safe_activity_error(exc)}")
@@ -592,22 +625,23 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
 
         # Recovery facts are calendar-day facts, not activity-day facts. They
         # must still refresh on rest days and when Garmin has no new activity.
-        health_start, health_end = _recovery_sync_range(job)
-        connection.recovery_last_attempt_at = datetime.utcnow()
-        try:
-            health_by_date = provider.fetch_recovery(health_start, health_end)
-            for health in health_by_date:
-                if health_start <= health.recovery_date <= health_end:
-                    _, recovery_changed = apply_garmin_daily_health(
-                        db, user_id=job.user_id, health=health
-                    )
-                    recovery_change_count += int(recovery_changed)
-            connection.recovery_last_successful_sync_at = datetime.utcnow()
-            connection.recovery_last_error_code = None
-        except ProviderError as exc:
-            connection.recovery_last_error_code = exc.code
-            health_warning_codes.append(f"HEALTH_{exc.code}")
-            logger.warning("Garmin daily health sync unavailable job_id=%s error_code=%s", job_id, exc.code)
+        if job.data_scope in {'all', 'recovery'}:
+            health_start, health_end = _recovery_sync_range(job)
+            if job.trigger_source != 'manual':
+                health_start = health_end - timedelta(days=1)
+            connection.recovery_last_attempt_at = datetime.utcnow()
+            try:
+                health_by_date = provider.fetch_recovery(health_start, health_end)
+                for health in health_by_date:
+                    if health_start <= health.recovery_date <= health_end:
+                        _, recovery_changed = apply_garmin_daily_health(db, user_id=job.user_id, health=health)
+                        recovery_change_count += int(recovery_changed)
+                connection.recovery_last_successful_sync_at = datetime.utcnow()
+                connection.recovery_last_error_code = None
+            except ProviderError as exc:
+                connection.recovery_last_error_code = exc.code
+                health_warning_codes.append(f"HEALTH_{exc.code}")
+                logger.warning("Garmin daily health sync unavailable job_id=%s error_code=%s", job_id, exc.code)
 
         if _is_sync_job_cancelled(db, job_id):
             return _cancelled_sync_outcome(db, job_id)
@@ -627,7 +661,7 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
         if refreshed_token:
             connection.encrypted_token_payload = encrypt_token_payload(refreshed_token)
             connection.token_key_version = get_settings().garmin_token_key_version
-        if failed_count == 0 or successful_activity_count > 0:
+        if job.data_scope != 'recovery' and (failed_count == 0 or successful_activity_count > 0):
             connection.last_successful_sync_at = datetime.utcnow()
         job.status = "succeeded" if failed_count == 0 else "partially_succeeded"
         if activity_errors:
@@ -650,9 +684,13 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
         if _is_sync_job_cancelled(db, job_id):
             return _cancelled_sync_outcome(db, job_id)
         try:
+            from server.services.garmin_smart_sync_service import execution_lease, lease_valid
+            lease = execution_lease.get()
+            if lease is not None and not lease_valid(db, lease, lock=True):
+                return _cancelled_sync_outcome(db, job_id)
             db.commit()
         except Exception:
-            logger.exception("Garmin sync final commit failed id=%s", job_id)
+            logger.warning("Garmin sync final commit failed job_id=%s", job_id)
             db.rollback()
             return _mark_job_failed(
                 db,
@@ -699,7 +737,7 @@ def run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
     except Exception:
         if _is_sync_job_cancelled(db, job_id):
             return _cancelled_sync_outcome(db, job_id)
-        logger.exception("Garmin sync job failed unexpectedly id=%s", job_id)
+        logger.warning("Garmin sync job failed unexpectedly job_id=%s", job_id)
         db.rollback()
         return _mark_job_failed(
             db,
@@ -1264,7 +1302,7 @@ def _enrich_activity_summary(provider, summary: ProviderActivity) -> ProviderAct
         # Missing optional detail metrics never erase a complete list summary.
         changes = {f.name: getattr(detail, f.name) for f in fields(detail)
             if getattr(detail, f.name) is not None and f.name not in {"raw_payload", "laps"}}
-        changes["raw_payload"] = {**summary.raw_payload, "self_evaluation": {
+        changes["raw_payload"] = {**summary.raw_payload, **detail.raw_payload, "self_evaluation": {
             key: value for key, value in detail.rpe_evidence.items() if key != "fetched_at"
         }}
         changes["laps"] = detail.laps or summary.laps
@@ -1577,10 +1615,16 @@ def _pace(speed_mps: Decimal | None) -> int | None:
 def _desensitize_payload(payload: dict[str, Any]) -> dict[str, Any]:
     blocked_fragments = ("token", "cookie", "password", "serial", "polyline", "coordinate", "longitude", "latitude", "gps")
     clean: dict[str, Any] = {}
+    def sanitize(value):
+        if isinstance(value, dict):
+            return _desensitize_payload(value)
+        if isinstance(value, list):
+            return [sanitize(item) for item in value]
+        return value
     for key, value in (payload or {}).items():
         if any(fragment in key.lower() for fragment in blocked_fragments):
             continue
-        clean[key] = value
+        clean[key] = sanitize(value)
     return clean
 
 
@@ -1663,6 +1707,10 @@ def _mark_job_failed(
     if code in {"TOKEN_DECRYPTION_FAILED", "REAUTHENTICATION_REQUIRED", "AUTHENTICATION_REQUIRED"}:
         job.connection.status = "reauthentication_required"
     try:
+        from server.services.garmin_smart_sync_service import execution_lease, lease_valid
+        lease = execution_lease.get()
+        if lease is not None and not lease_valid(db, lease, lock=True):
+            return _cancelled_sync_outcome(db, job_id)
         db.commit()
     except Exception:
         db.rollback()

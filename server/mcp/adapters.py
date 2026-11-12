@@ -8,6 +8,7 @@ from datetime import datetime
 import logging
 from uuid import uuid4
 from zoneinfo import ZoneInfo
+from functools import wraps
 
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -65,6 +66,34 @@ _ERROR_MESSAGES = {
     McpErrorCode.RETRIEVAL_TIMEOUT: "The training knowledge retrieval timed out.",
     McpErrorCode.CURSOR_STALE: "Training facts changed; restart the query from its first page.",
 }
+
+
+def with_sync_freshness(scope):
+    def decorate(method):
+        @wraps(method)
+        def call(self, *args, **kwargs):
+            read_started_at = datetime.utcnow()
+            identity = self.execution_context.identity_provider()
+            if identity is not None and ('mcp:read' not in identity.scopes or
+                (scope == 'recovery' and 'mcp:recovery:read' not in identity.scopes)):
+                # Existing method supplies the correctly typed error envelope.
+                if scope == 'recovery':
+                    return McpRecoveryTrendResult(status='FAILED', error=self._error(McpErrorCode.INSUFFICIENT_PERMISSION))
+                result_type = {'get_recent_training': McpRecentTrainingResult,
+                    'get_training_detail': McpTrainingDetailResult, 'get_runner_state': McpRunnerStateResult}[method.__name__]
+                return result_type(status='FAILED', error=self._error(McpErrorCode.INSUFFICIENT_PERMISSION))
+            result = method(self, *args, **kwargs)
+            if result.status == 'SUCCEEDED' and identity is not None:
+                from server.services.garmin_smart_sync_service import request_safely
+                freshness = request_safely(self.execution_context.session_factory, identity.user_id, trigger='mcp', scope=scope)
+                freshness.facts_read_at = read_started_at
+                if freshness.last_success_at and freshness.last_success_at > read_started_at:
+                    freshness.status = 'REFRESHED_AFTER_READ'
+                    freshness.note = 'Sync completed after this read started; repeat the query to read the updated facts.'
+                return result.model_copy(update={'freshness': freshness})
+            return result
+        return call
+    return decorate
 
 
 class McpToolAdapter:
@@ -423,6 +452,7 @@ class McpToolAdapter:
                 status="FAILED", error=self._error(McpErrorCode.INTERNAL_SAFE_ERROR)
             )
 
+    @with_sync_freshness('activities')
     def get_recent_training(self, *, days: int = 7, limit: int = 20, cursor: str | None = None, start_date=None, end_date=None) -> McpRecentTrainingResult:
         # Preserve the legacy registry-backed projection for existing bounded
         # clients. Explicit windows, pagination and longer windows use v2 facts.
@@ -478,12 +508,15 @@ class McpToolAdapter:
                 finally:
                     session.close()
 
+    @with_sync_freshness('activities')
     def get_training_detail(self, *, record_ref: str, activity_ref: str | None = None) -> McpTrainingDetailResult:
         return self._read_fact(McpTrainingDetailResult, lambda db, uid: read_training_detail(db, uid, record_ref, activity_ref))
 
+    @with_sync_freshness('recovery')
     def get_recovery_trend(self, *, days: int = 7, start_date=None, end_date=None) -> McpRecoveryTrendResult:
         return self._read_fact(McpRecoveryTrendResult, lambda db, uid: read_recovery(db, uid, days, start_date=start_date, end_date=end_date), recovery=True)
 
+    @with_sync_freshness('activities')
     def get_runner_state(self) -> McpRunnerStateResult:
         payload, error = self._invoke(
             mcp_tool_name="get_runner_state", agent_tool_name="get_runner_state", arguments={}

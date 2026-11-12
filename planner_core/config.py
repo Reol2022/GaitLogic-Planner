@@ -12,6 +12,7 @@ PROJECT_ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
+    garmin_smart_sync_enabled: bool = Field(default=False, validation_alias="GARMIN_SMART_SYNC_ENABLED")
     mysql_host: str = Field(default="127.0.0.1", validation_alias="MYSQL_HOST")
     mysql_port: int = Field(default=3306, validation_alias="MYSQL_PORT")
     mysql_user: str = Field(default="root", validation_alias="MYSQL_USER")

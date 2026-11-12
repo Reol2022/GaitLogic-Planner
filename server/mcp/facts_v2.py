@@ -18,6 +18,8 @@ from server.mcp.errors import McpErrorCode, McpSafeError
 from server.mcp.schemas import McpContractModel, McpRecentTrainingItem, McpRecentTraining, McpRecentTrainingSummary, McpTrainingFactIssue, McpDataQuality, _McpToolResult
 from server.mcp.schemas import McpVersionedData
 from server.services.auth_service import signing_key
+from server.services.training_segment_facts import normalize_segments, classify_segments
+from server.integrations.activity_provider.self_evaluation import effective_log_rpe
 from server.services.training_load_service import _query_logs, _safe_source
 from server.services.weekly_review_stats_service import COMPLETED_STATUSES, local_today
 from server.domain.review_thresholds import KEY_WORKOUT_TYPES
@@ -45,7 +47,7 @@ def training_item(log: WorkoutLog, plan: PlannedWorkout | None) -> McpRecentTrai
         completion_status=str(_value(log.status_normalized)),
         distance_km=recorded_distance(log.actual_distance_km),
         duration_seconds=log.actual_duration_seconds, average_pace_seconds_per_km=log.avg_pace_seconds_per_km,
-        average_heart_rate=log.avg_heart_rate, rpe=log.rpe if log.rpe is not None and 0 <= log.rpe <= 10 else None,
+        average_heart_rate=log.avg_heart_rate, rpe=effective_log_rpe(log) if effective_log_rpe(log) is not None and 0 <= effective_log_rpe(log) <= 10 else None,
         rpe_metadata=log_rpe_metadata(log),
         source=_safe_source(log.source_type), origin_source=origin_source(log),
     )
@@ -217,6 +219,9 @@ class McpTrainingDetail(McpVersionedData):
     segments_available: bool
     segments_complete: bool
     segments: list[McpSegment] = Field(default_factory=list, max_length=100)
+    normalized_segments: list[McpSegment] = Field(default_factory=list, max_length=100)
+    segment_validation: dict = Field(default_factory=dict)
+    activity_classification: dict = Field(default_factory=dict)
     segments_scope: Literal['STORED_LAPS_FOR_SELECTED_ACTIVITY'] = 'STORED_LAPS_FOR_SELECTED_ACTIVITY'
     segment_distance_consistent: bool | None = None
     heart_rate_quality: Literal['UNKNOWN'] = 'UNKNOWN'
@@ -273,11 +278,35 @@ def read_training_detail(db: Session, user_id: int, record_ref: str, activity_re
         segment_distance_consistent = abs(float(selected.distance_m)-sum(float(lap.distance_m) for lap in laps)) <= 20
         if not segment_distance_consistent:
             issues.append(McpTrainingFactIssue(code='LAP_ACTIVITY_DISTANCE_MISMATCH',message='Stored lap distances do not match the selected activity distance; do not treat these laps as a complete race trace.',affected_metrics=['segments','distance_km']))
-    return McpTrainingDetail(record=training_item(log, plan) if log else None,
+    normalized, validation = normalize_segments(selected, laps[:100], truncated=len(laps) > 100) if selected else ([], {})
+    classification = classify_segments(normalized, validation) if selected else {}
+    selected_detail = _activity_detail(selected) if selected else None
+    if selected_detail is not None and classification.get('primary_type') != 'UNKNOWN':
+        selected_detail = selected_detail.model_copy(update={'actual_training_type': classification['primary_type']})
+    record = training_item(log, plan) if log else None
+    if record is not None:
+        record = record.model_copy(update={'rpe': effective_log_rpe(log, linked_activity_count=count),
+            'rpe_metadata': log_rpe_metadata(log, linked_activity_count=count)})
+        if record.rpe is None and log.rpe is not None:
+            issues.append(McpTrainingFactIssue(code='ACTIVITY_RPE_NOT_SESSION_RPE',
+                message='An activity rating cannot rate a multi-activity session; enter an independent session rating.', affected_metrics=['rpe']))
+    def segment(lap):
+        return McpSegment(index=lap.lap_index, role=lap.segment_role,
+            distance_m=float(lap.distance_m) if lap.distance_m is not None else None,
+            duration_seconds=lap.duration_seconds, average_pace_seconds_per_km=lap.average_pace_seconds_per_km,
+            quality=lap.data_quality, activity_ref=f'external_activity:{selected.id}',
+            start_time=lap.start_time.isoformat() if lap.start_time else None,
+            start_offset_seconds=lap.start_offset_seconds, timer_time_seconds=lap.timer_time_seconds,
+            moving_time_seconds=lap.moving_time_seconds, average_heart_rate_bpm=lap.average_heart_rate_bpm,
+            max_heart_rate_bpm=lap.max_heart_rate_bpm, average_cadence_spm=lap.average_cadence_spm,
+            elevation_gain_m=lap.elevation_gain_m, lap_type=lap.lap_type)
+    return McpTrainingDetail(record=record,
         detail_scope='SELECTED_ACTIVITY' if selected else 'WORKOUT_LOG_SUMMARY', linked_activity_count=count,
         activities=[_activity_summary(a) for a in activities], activities_complete=count <= 20,
-        selection_required=count > 1 and selected is None, selected_activity=_activity_detail(selected) if selected else None,
+        selection_required=count > 1 and selected is None, selected_activity=selected_detail,
         fact_issues=issues, segment_distance_consistent=segment_distance_consistent,
+        normalized_segments=[segment(lap) for lap in normalized], segment_validation=validation,
+        activity_classification=classification,
         segments_available=bool(laps), segments_complete=bool(laps) and len(laps) <= 100,
         segments=[McpSegment(index=lap.lap_index, role=lap.segment_role, distance_m=float(lap.distance_m) if lap.distance_m is not None else None,
             duration_seconds=lap.duration_seconds, average_pace_seconds_per_km=lap.average_pace_seconds_per_km, quality=lap.data_quality,
@@ -288,6 +317,8 @@ def read_training_detail(db: Session, user_id: int, record_ref: str, activity_re
         limitations=['Log totals are not individual race results. Select an activity when multiple are linked.',
             'Stored laps are not necessarily kilometre splits. No GPS, raw payload, text notes or time-series are exported.',
             'segments_complete only describes returned stored laps, not upstream sync completeness or full race coverage.',
+            'Legacy segments are raw stored rows, possibly category rollups; use normalized_segments and segment_validation for structure.',
+            'Activity classification describes structure only, not physiological intensity or recovery readiness.',
             'Provider measurements are not independently verified; no causal diagnosis is inferred.'] + ([] if laps else ['No selected activity with stored laps is available.']))
 
 

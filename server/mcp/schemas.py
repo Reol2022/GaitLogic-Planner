@@ -5,10 +5,11 @@ from __future__ import annotations
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator, model_serializer
 
 from server.mcp.errors import McpErrorCode
 from server.mcp.catalog import MCP_SERVER_VERSION
+from server.schemas.smart_sync import SyncFreshness
 
 
 class McpContractModel(BaseModel):
@@ -136,6 +137,14 @@ class McpRunnerState(McpVersionedData):
 class _McpToolResult(McpContractModel):
     status: Literal["SUCCEEDED", "FAILED"]
     error: McpError | None = None
+    freshness: SyncFreshness | None = None
+
+    @model_serializer(mode='wrap')
+    def omit_unused_freshness(self, handler):
+        value = handler(self)
+        if self.freshness is None:
+            value.pop('freshness', None)
+        return value
 
     @model_validator(mode="after")
     def validate_error_state(self) -> "_McpToolResult":

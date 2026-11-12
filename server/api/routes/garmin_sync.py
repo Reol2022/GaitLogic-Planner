@@ -25,6 +25,29 @@ from server.services.feature_access_service import assert_garmin_sync_available
 
 router = APIRouter(prefix="/integrations/garmin", tags=["garmin-sync"])
 
+from server.schemas.smart_sync import SmartSyncSettings, SmartSyncRequest, SyncFreshness
+
+
+@router.get('/smart-sync', response_model=SyncFreshness)
+def smart_sync_status(db: Session = Depends(get_db), current_user: UserAccount = Depends(get_current_user)):
+    from server.services.garmin_smart_sync_service import status
+    assert_garmin_sync_available(db, current_user)
+    return status(db, current_user.id, 'all')
+
+
+@router.put('/smart-sync', response_model=SyncFreshness)
+def smart_sync_settings(payload: SmartSyncSettings, db: Session = Depends(get_db), current_user: UserAccount = Depends(get_current_user)):
+    from server.services.garmin_smart_sync_service import configure
+    assert_garmin_sync_available(db, current_user)
+    return configure(db, current_user.id, payload)
+
+
+@router.post('/smart-sync/check', response_model=SyncFreshness)
+def smart_sync_check(payload: SmartSyncRequest, db: Session = Depends(get_db), current_user: UserAccount = Depends(get_current_user)):
+    from server.services.garmin_smart_sync_service import request_sync
+    assert_garmin_sync_available(db, current_user)
+    return request_sync(db, current_user.id, trigger=payload.trigger)
+
 
 def _facade(db: Session, current_user: UserAccount) -> DataSyncFacade:
     return DataSyncFacade(db, current_user)

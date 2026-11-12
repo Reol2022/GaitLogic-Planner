@@ -24,7 +24,10 @@ def test_reconnection_rediscovers_six_tools_without_authorizing_or_querying_data
     assert [item.model_dump(mode='json') for item in first]==[item.model_dump(mode='json') for item in second]
     for tool in first:
         assert tool.description and tool.input_schema is not None and tool.output_schema is not None
-        assert tool.annotations.read_only_hint and tool.annotations.destructive_hint is False
+        cache_sync = tool.name in {'get_recent_training', 'get_training_detail', 'get_runner_state', 'get_recovery_trend'}
+        assert tool.annotations.read_only_hint is not cache_sync
+        assert tool.annotations.destructive_hint is False
+        assert tool.annotations.open_world_hint is cache_sync
         json.dumps(tool.model_dump(mode='json'))
     session.scalar.assert_not_called()
     session.execute.assert_not_called()

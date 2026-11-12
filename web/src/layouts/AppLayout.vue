@@ -55,6 +55,7 @@
           <el-button v-else size="small" type="primary" plain @click="openLoginDialog">登录</el-button>
         </div>
       </el-header>
+      <GarminSmartSyncBanner v-if="currentUser && garminSyncVisible" :key="currentUser.id" />
 
       <div v-if="tabsVisible" class="app-tabs">
         <el-tabs
@@ -122,6 +123,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import GarminSmartSyncBanner from '@/components/common/GarminSmartSyncBanner.vue';
 import { useRoute, useRouter } from "vue-router";
 import type { TabsPaneContext } from "element-plus";
 import {

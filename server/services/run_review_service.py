@@ -1,4 +1,5 @@
 from __future__ import annotations
+from server.integrations.activity_provider.self_evaluation import activity_rpe
 
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -44,7 +45,8 @@ def get_run_review(db: Session, *, user_id: int, activity_id: int) -> RunReviewR
         limitations.append("planned_workout_unavailable")
     if actual_distance is None:
         limitations.append("actual_distance_unavailable")
-    if log is None or log.rpe is None:
+    rating = activity_rpe(activity).get('value')
+    if rating is None:
         limitations.append("rpe_unavailable")
     return RunReviewRead(
         activity_id=activity.id,
@@ -64,7 +66,7 @@ def get_run_review(db: Session, *, user_id: int, activity_id: int) -> RunReviewR
             duration_seconds=activity.duration_seconds,
             average_pace_seconds_per_km=activity.average_pace_seconds_per_km,
             average_heart_rate_bpm=activity.average_heart_rate_bpm,
-            rpe=log.rpe if log else None,
+            rpe=rating,
         ),
         distance_delta_km=distance_delta,
         distance_delta_percent=distance_delta_percent,

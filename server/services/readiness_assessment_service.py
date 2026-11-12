@@ -1,4 +1,5 @@
 from __future__ import annotations
+from server.integrations.activity_provider.self_evaluation import effective_log_rpe
 
 from datetime import date, timedelta
 from typing import Any
@@ -132,7 +133,7 @@ def _performance_and_internal_signals(rows: list[tuple[WorkoutLog, PlannedWorkou
         if workout.main_type_normalized.value in KEY_WORKOUT_TYPES
         and log.status_normalized in COMPLETED_STATUSES
     ]
-    high_rpes = [log.rpe for log, _ in key_rows if log.rpe is not None and log.rpe >= thresholds.KEY_WORKOUT_RPE_HIGH]
+    high_rpes = [effective_log_rpe(log) for log, _ in key_rows if effective_log_rpe(log) is not None and effective_log_rpe(log) >= thresholds.KEY_WORKOUT_RPE_HIGH]
     if len(high_rpes) >= thresholds.HIGH_RPE_STREAK_COUNT:
         internal.append(
             _signal(

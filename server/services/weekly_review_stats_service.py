@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from statistics import mean
+from server.integrations.activity_provider.self_evaluation import effective_log_rpe
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -66,7 +67,7 @@ def _daily_item(workout: PlannedWorkout, today: date) -> dict:
         "actual_distance_km": _number(log.actual_distance_km if log else None),
         "main_type": workout.main_type_normalized.value,
         "status": effective_status.value,
-        "rpe": log.rpe if log else None,
+        "rpe": effective_log_rpe(log) if log else None,
         "pain_level": log.pain_level if log else None,
         "target_pace_text": workout.target_pace_text,
     }
@@ -145,7 +146,7 @@ def build_weekly_review_metrics(
         if item.workout_log and (item.workout_date is None or item.workout_date <= today):
             actual_by_type[key] += _number(item.workout_log.actual_distance_km)
 
-    rpes = [float(log.rpe) for log in completed if log.rpe is not None]
+    rpes = [float(effective_log_rpe(log)) for log in completed if effective_log_rpe(log) is not None]
     key_logs = [
         item.workout_log
         for item in workouts
@@ -154,7 +155,7 @@ def build_weekly_review_metrics(
         and (item.workout_date is None or item.workout_date <= today)
         and item.workout_log.status_normalized in COMPLETED_STATUSES
     ]
-    key_rpes = [float(log.rpe) for log in key_logs if log.rpe is not None]
+    key_rpes = [float(effective_log_rpe(log)) for log in key_logs if effective_log_rpe(log) is not None]
     pain_levels = [log.pain_level for log in valid_logs if log.pain_level is not None]
     sleep_values = [float(log.sleep_hours) for log in valid_logs if log.sleep_hours is not None]
     hrv_values = [float(log.hrv) for log in valid_logs if log.hrv is not None]

@@ -1,0 +1,19 @@
+# Template only. Replace all @...@ placeholders with audited local values.
+[Unit]
+Description=GaitLogic Garmin Smart Sync Worker
+After=network-online.target
+
+[Service]
+Type=simple
+User=@SERVICE_USER@
+WorkingDirectory=@APP_CURRENT@
+EnvironmentFile=@PRIVATE_ENV_FILE@
+ExecStart=@PYTHON_EXECUTABLE@ -m scripts.garmin_smart_sync_worker
+Restart=on-failure
+RestartSec=15
+KillSignal=SIGINT
+TimeoutStopSec=180
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

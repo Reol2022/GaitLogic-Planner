@@ -68,7 +68,12 @@ def apply_log_rpe(log, activities) -> None:
     manual = sources.get("rpe") in {"manual", "manual_edit", "excel_import"} or (log.rpe is not None and sources.get("rpe") not in {"garmin", "garmin_sync"})
     if not manual:
         value = evidence.get("value")
-        if type(value) is int and 1 <= value <= 10:
+        if len(activities) > 1:
+            # A previously single activity may later become one component of
+            # a session. Its effort must not remain the whole-session rating.
+            log.rpe = None
+            sources['rpe_evidence'] = evidence
+        elif type(value) is int and 1 <= value <= 10:
             log.rpe = value
             sources["rpe"] = "garmin"
             sources["rpe_evidence"] = evidence
@@ -76,14 +81,27 @@ def apply_log_rpe(log, activities) -> None:
     log.field_sources_json = sources
 
 
-def log_rpe_metadata(log) -> dict:
+def effective_log_rpe(log, *, linked_activity_count=None):
+    sources = getattr(log, 'field_sources_json', None) or {}
+    if sources.get('rpe') in {'garmin', 'garmin_sync'}:
+        count = linked_activity_count if linked_activity_count is not None else getattr(log, '_rpe_linked_activity_count', None)
+        multi = (sources.get('garmin_rpe_evidence') or {}).get('missing_reason') == 'MULTIPLE_ACTIVITIES_REQUIRE_SESSION_RATING'
+        if (count is not None and count > 1) or multi:
+            return None
+    return log.rpe
+
+
+def log_rpe_metadata(log, *, linked_activity_count=None) -> dict:
     sources = log.field_sources_json or {}
     evidence = safe_evidence(sources.get("rpe_evidence"))
     garmin = sources.get("rpe") in {"garmin", "garmin_sync"}
-    value = log.rpe if type(log.rpe) is int and 1 <= log.rpe <= 10 else None
+    effective = effective_log_rpe(log, linked_activity_count=linked_activity_count)
+    value = effective if type(effective) is int and 1 <= effective <= 10 else None
     latest = safe_evidence(sources.get("garmin_rpe_evidence"))
-    source = "GARMIN" if garmin else "IMPORT" if "import" in str(sources.get("rpe", "")) else "MANUAL" if value is not None else "UNKNOWN"
+    source = "GARMIN" if garmin else "IMPORT" if "import" in str(sources.get("rpe", "")) else "MANUAL" if sources.get('rpe') in {'manual','manual_edit'} else "UNKNOWN"
+    ambiguous = garmin and log.rpe is not None and effective is None
     return {"source": source,
+        "scope": "ACTIVITY" if garmin else "SESSION" if value is not None and source in {'MANUAL','IMPORT'} else "UNKNOWN",
         "fetched_at": evidence.get("fetched_at") if garmin else None,
-        "missing_reason": None if value is not None else latest.get("missing_reason", "NOT_RECORDED"),
+        "missing_reason": 'MULTIPLE_ACTIVITIES_REQUIRE_SESSION_RATING' if ambiguous else None if value is not None else latest.get("missing_reason", "NOT_RECORDED"),
         "latest_sync_missing_reason": latest.get("missing_reason")}

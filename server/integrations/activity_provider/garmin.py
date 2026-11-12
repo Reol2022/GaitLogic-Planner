@@ -192,12 +192,16 @@ class GarminActivityProvider(ActivityProvider):
                     break
         except Exception as exc:
             detail = str(exc).strip()
-            logger.warning("Garmin activity list fetch failed: %s", detail[:500])
+            logger.warning("Garmin activity list fetch failed exception_type=%s", type(exc).__name__)
             lowered = detail.lower()
             if "401" in lowered or "unauthorized" in lowered or "authentication" in lowered:
                 raise ProviderError("REAUTHENTICATION_REQUIRED", "Garmin 会话已失效，请重新连接。") from exc
             if "429" in lowered or "rate" in lowered:
                 raise ProviderError("RATE_LIMITED", "Garmin 请求过于频繁，请稍后再试。") from exc
+            if isinstance(exc, TimeoutError) or 'timeout' in type(exc).__name__.lower():
+                raise ProviderError('NETWORK_TIMEOUT', 'Garmin 请求超时，请稍后重试。') from exc
+            if 'connection' in type(exc).__name__.lower():
+                raise ProviderError('NETWORK_ERROR', 'Garmin 网络连接失败，请稍后重试。') from exc
             raise ProviderError("ACTIVITY_FETCH_FAILED", "Garmin 活动列表拉取失败。") from exc
         return activities
 
@@ -216,7 +220,9 @@ class GarminActivityProvider(ActivityProvider):
         activity.rpe_evidence = normalize_rpe(payload)
         activity.details_fetched = True
         try:
-            activity.laps = _laps_from_payload(_bounded_detail_call(client, client.get_activity_splits, external_activity_id))
+            splits = _bounded_detail_call(client, client.get_activity_splits, external_activity_id)
+            activity.raw_payload['garmin_splits'] = splits
+            activity.laps = _laps_from_payload(splits)
             activity.laps_fetched = True
         except Exception:
             # Summary/RPE success is independent of split availability.
@@ -349,6 +355,12 @@ def _is_cn_region(region: str | None) -> bool:
 
 def _raise_safe_provider_error(exc: Exception, *, reauth: bool = False) -> None:
     text = str(exc).lower()
+    if isinstance(exc, TimeoutError) or 'timeout' in type(exc).__name__.lower():
+        raise ProviderError('NETWORK_TIMEOUT', 'Garmin 请求超时，请稍后重试。') from exc
+    if 'connection' in type(exc).__name__.lower():
+        raise ProviderError('NETWORK_ERROR', 'Garmin 网络连接失败，请稍后重试。') from exc
+    if "429" in text or "rate" in text:
+        raise ProviderError("RATE_LIMITED", "Garmin 请求过于频繁，请稍后再试。") from exc
     if reauth:
         raise ProviderError("REAUTHENTICATION_REQUIRED", "Garmin 连接需要重新认证。") from exc
     if "429" in text or "rate" in text:
@@ -537,8 +549,11 @@ def _activity_from_payload(payload: dict[str, Any], client: Any | None = None) -
 
 def _laps_from_payload(payload: Any) -> list[ProviderLap]:
     rows = payload
+    container = None
     if isinstance(payload, dict):
-        rows = _first(payload, "lapDTOs", "laps", "splitSummaries", "activitySplits", "typedSplits") or []
+        # Category summaries and individual laps are not the same grain.
+        container = next((key for key in ('lapDTOs','laps','activitySplits','splitSummaries','typedSplits') if isinstance(payload.get(key), list) and payload[key]), None)
+        rows = payload.get(container, [])
     if not isinstance(rows, list):
         return []
     laps: list[ProviderLap] = []
@@ -551,6 +566,7 @@ def _laps_from_payload(payload: Any) -> list[ProviderLap]:
                 lap_index=_int(_first(row, "lapIndex", "splitNumber", "stepNumber")) or index,
                 external_lap_id=_text(_first(row, "lapId", "splitId")),
                 start_time=_parse_datetime(_first(row, "startTimeGMT", "startTimeLocal")),
+                start_offset_seconds=_int(_first(row, 'startOffsetSeconds')),
                 distance_m=_decimal(_first(row, "distance", "totalDistance")),
                 duration_seconds=_seconds(_first(row, "duration", "elapsedDuration")),
                 timer_time_seconds=_seconds(_first(row, "movingDuration", "duration")),
@@ -562,8 +578,8 @@ def _laps_from_payload(payload: Any) -> list[ProviderLap]:
                 elevation_gain_m=_int(_first(row, "elevationGain", "sumElevationGain")),
                 lap_type=_text(_first(row, "lapType", "splitType")),
                 workout_step_type=_text(_first(row, "workoutStepType", "stepType")),
-                segment_role="unknown",
-                classification_source="garmin_manual_lap",
+                segment_role="summary" if container in {'splitSummaries','typedSplits'} else "unknown",
+                classification_source="garmin_summary_rollup" if container in {'splitSummaries','typedSplits'} else "garmin_lap_dto" if container == 'lapDTOs' else "garmin_manual_lap",
                 classification_confidence="medium",
             )
         )

@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 import pytest
 
-from server.integrations.activity_provider.self_evaluation import normalize_rpe, apply_log_rpe, log_rpe_metadata
+from server.integrations.activity_provider.self_evaluation import normalize_rpe, apply_log_rpe, log_rpe_metadata, effective_log_rpe
 from server.integrations.activity_provider.garmin import GarminActivityProvider
 from server.integrations.activity_provider.base import ProviderActivity, ProviderError
 from server.services.garmin_sync_service import _copy_activity_metrics, _replace_laps, _enrich_activity_summary
@@ -59,6 +59,27 @@ def test_late_rating_update_idempotence_missing_values_and_multiple_activities()
     missing=SimpleNamespace(rpe=None,field_sources_json={})
     apply_log_rpe(missing,[row,row]);assert missing.rpe is None
     assert missing.field_sources_json['garmin_rpe_evidence']['missing_reason']=='MULTIPLE_ACTIVITIES_REQUIRE_SESSION_RATING'
+
+
+def test_single_activity_rating_is_withdrawn_when_session_gains_another_activity():
+    activity = SimpleNamespace(field_sources_json={'rpe_evidence': evidence(30)})
+    log = SimpleNamespace(rpe=None, field_sources_json={})
+    apply_log_rpe(log, [activity])
+    assert log.rpe == 3
+    apply_log_rpe(log, [activity, activity])
+    assert log.rpe is None
+    assert activity.field_sources_json['rpe_evidence']['value'] == 3
+    assert log_rpe_metadata(log)['missing_reason'] == 'MULTIPLE_ACTIVITIES_REQUIRE_SESSION_RATING'
+
+
+def test_stale_persisted_rating_is_withheld_readonly_but_manual_session_rating_survives():
+    stale = SimpleNamespace(rpe=3, field_sources_json={'rpe':'garmin',
+        'garmin_rpe_evidence':{'missing_reason':'MULTIPLE_ACTIVITIES_REQUIRE_SESSION_RATING'}})
+    assert effective_log_rpe(stale) is None and stale.rpe == 3
+    assert effective_log_rpe(stale, linked_activity_count=2) is None
+    assert effective_log_rpe(stale, linked_activity_count=1) is None
+    stale.field_sources_json['rpe'] = 'manual'
+    assert effective_log_rpe(stale, linked_activity_count=2) == 3
 
 
 def test_list_sync_does_not_erase_prior_rpe_or_laps():

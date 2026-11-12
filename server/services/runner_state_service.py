@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from statistics import mean
+from server.integrations.activity_provider.self_evaluation import effective_log_rpe
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, func, or_, select
@@ -92,6 +93,13 @@ def _effective_date(log: WorkoutLog, workout: PlannedWorkout | None) -> date | N
 
 
 def _effective_type(log: WorkoutLog, workout: PlannedWorkout | None) -> WorkoutMainTypeNormalized:
+    from server.services.training_fact_policy import actual_training_type
+    actual = actual_training_type(log)
+    if actual and actual != 'unknown':
+        try:
+            return WorkoutMainTypeNormalized(actual)
+        except ValueError:
+            pass
     if workout is not None:
         value = workout.main_type_normalized
         return value if isinstance(value, WorkoutMainTypeNormalized) else WorkoutMainTypeNormalized(value)
@@ -183,9 +191,10 @@ def _window_metrics(
             durations.append(duration_seconds / 60)
         if distance is not None or duration_seconds is not None:
             valid_workouts += 1
-        if log.rpe is not None:
-            if VALID_RPE_MIN <= log.rpe <= VALID_RPE_MAX:
-                rpes.append(float(log.rpe))
+        rpe = effective_log_rpe(log)
+        if rpe is not None:
+            if VALID_RPE_MIN <= rpe <= VALID_RPE_MAX:
+                rpes.append(float(rpe))
             else:
                 invalid_rpe += 1
         if log.avg_heart_rate is not None or log.max_heart_rate is not None:
@@ -372,7 +381,12 @@ def build_runner_state_snapshot(
     else:
         confidence = 0.0
 
-    limitations: set[str] = {"intensity_distance_uses_main_workout_type"}
+    limitations: set[str] = {"intensity_distance_uses_main_workout_type",
+        "load_risk_is_not_recovery_clearance"}
+    from server.services.training_fact_policy import actual_training_type
+    if any(actual_training_type(log) in {None, 'unknown'} for log, _ in rows):
+        limitations.add('actual_intensity_evidence_incomplete')
+        availability['intensity_classification'] = False
     if metrics_28d.completed_sessions == 0:
         limitations.add("no_completed_workouts_28d")
     for days, metrics in ((7, metrics_7d), (28, metrics_28d)):

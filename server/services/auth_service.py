@@ -185,7 +185,14 @@ def authenticate_user(db: Session, payload: UserLogin) -> TokenResponse:
     user.last_login_at = datetime.now()
     db.commit()
     db.refresh(user)
-    return TokenResponse(access_token=create_access_token(user))
+    response = TokenResponse(access_token=create_access_token(user))
+    # Database-only enqueue, independent transaction; no Provider network work.
+    from planner_core.config import get_settings
+    if get_settings().garmin_smart_sync_enabled:
+        from sqlalchemy.orm import sessionmaker
+        from server.services.garmin_smart_sync_service import request_safely
+        request_safely(sessionmaker(bind=db.get_bind()), user.id, trigger='login')
+    return response
 
 
 def decode_token(token: str) -> dict:

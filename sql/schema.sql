@@ -930,12 +930,37 @@ CREATE TABLE IF NOT EXISTS `external_account_connection` (
     FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `garmin_smart_sync_state` (
+  `connection_id` BIGINT NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `interval_minutes` INT NOT NULL DEFAULT 30,
+  `recovery_enabled` TINYINT(1) NOT NULL DEFAULT 0,
+  `next_check_at` DATETIME NULL,
+  `next_retry_at` DATETIME NULL,
+  `last_attempt_at` DATETIME NULL,
+  `last_compensation_at` DATETIME NULL,
+  `failure_count` INT NOT NULL DEFAULT 0,
+  `error_category` VARCHAR(32) NULL,
+  `lease_token` VARCHAR(36) NULL,
+  `lease_until` DATETIME NULL,
+  `active_job_id` INT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`connection_id`),
+  KEY `ix_garmin_smart_sync_state_user_id` (`user_id`),
+  KEY `ix_smart_sync_due` (`next_check_at`),
+  FOREIGN KEY (`connection_id`) REFERENCES `external_account_connection` (`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`user_id`) REFERENCES `user_account` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `external_sync_job` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `user_id` BIGINT NOT NULL,
   `connection_id` BIGINT NOT NULL,
   `provider` VARCHAR(32) NOT NULL DEFAULT 'garmin',
   `sync_mode` VARCHAR(32) NOT NULL,
+  `data_scope` VARCHAR(16) NOT NULL DEFAULT 'all',
+  `trigger_source` VARCHAR(16) NOT NULL DEFAULT 'manual',
   `requested_start` DATETIME NULL,
   `requested_end` DATETIME NULL,
   `status` VARCHAR(32) NOT NULL DEFAULT 'queued',

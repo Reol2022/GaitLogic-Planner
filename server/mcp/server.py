@@ -112,9 +112,9 @@ def create_mcp_server(
 
     @mcp.tool(
         name="get_recent_training",
-        description="Read training facts. For stable pagination use cursor='first' initially, then next_cursor with identical range arguments. Explicit date windows or days>28 use paged facts; legacy calls remain compatible. Summaries cover the full window, not each page.",
+        description="Read existing training facts; may enqueue background Garmin cache sync when the user enabled automatic sync. Does not change plans or manual input. Returns freshness status without waiting for Garmin. For stable pagination use cursor='first' then next_cursor with identical ranges. Summaries cover the full window.",
         structured_output=True,
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False),
+        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True),
     )
     def get_recent_training(
         days: Annotated[int, Field(ge=1, le=90)] = 7,
@@ -127,9 +127,9 @@ def create_mcp_server(
 
     @mcp.tool(
         name="get_runner_state",
-        description="Read the current deterministic Runner State for the trusted execution identity.",
+        description="Read current deterministic Runner State. May enqueue background Garmin activity cache sync if enabled; returns existing facts without waiting. Does not change plans or manual input.",
         structured_output=True,
-        annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False),
+        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True),
     )
     def get_runner_state() -> McpRunnerStateResult:
         return adapter.get_runner_state()
@@ -155,14 +155,14 @@ def create_mcp_server(
             language=language,
         )
 
-    @mcp.tool(name='get_training_detail', description='Read a workout_log or external_activity reference. A workout log may aggregate warm-up, race and cooldown; inspect activities then select activity_ref. Laps belong ONLY to the selected activity and are not necessarily kilometre splits. Never infer missing data. No GPS or raw payload.', structured_output=True,
-              annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False))
+    @mcp.tool(name='get_training_detail', description='Read a workout_log or external_activity reference. May enqueue background Garmin activity cache sync if enabled; no plan or manual-input changes. Select activity_ref for multi-activity logs. Legacy segments may be rollups; use normalized_segments with segment_validation. Activity RPE is not session RPE. No GPS or raw payload.', structured_output=True,
+              annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
     def get_training_detail(record_ref: Annotated[str, Field(pattern=r'^(workout_log|external_activity):[1-9][0-9]{0,17}$')],
         activity_ref: Annotated[str | None, Field(pattern=r'^external_activity:[1-9][0-9]{0,17}$')] = None) -> McpTrainingDetailResult:
         return adapter.get_training_detail(record_ref=record_ref, activity_ref=activity_ref)
 
-    @mcp.tool(name='get_recovery_trend', description='Read up to 28 calendar days of stored recovery facts, optionally by explicit start_date/end_date. Requires separate mcp:recovery:read consent. Missing baselines and measurement timestamps remain unavailable. No health text notes are returned.', structured_output=True,
-              annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False))
+    @mcp.tool(name='get_recovery_trend', description='Read up to 28 calendar days of stored recovery facts. Requires mcp:recovery:read consent. May enqueue background recovery cache sync only if user also enabled automatic recovery sync. Returns existing facts plus freshness; does not wait or change manual input. No health text notes.', structured_output=True,
+              annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
     def get_recovery_trend(days: Annotated[int, Field(ge=1, le=28)] = 7, start_date: date | None = None, end_date: date | None = None) -> McpRecoveryTrendResult:
         return adapter.get_recovery_trend(days=days,start_date=start_date,end_date=end_date)
 

@@ -75,6 +75,8 @@ class ExternalSyncJobRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    data_scope: str = 'all'
+    trigger_source: str = 'manual'
     sync_run_id: str
     provider: str
     sync_mode: str

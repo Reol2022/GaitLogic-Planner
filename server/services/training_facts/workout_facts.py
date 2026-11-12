@@ -1,4 +1,5 @@
 from __future__ import annotations
+from server.integrations.activity_provider.self_evaluation import effective_log_rpe
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -39,7 +40,7 @@ def build_workout_facts(db: Session, user_id: int, workout_log_id: int) -> dict:
         "duration_seconds": log.actual_duration_seconds,
         "avg_pace_seconds_per_km": log.avg_pace_seconds_per_km,
         "avg_heart_rate": log.avg_heart_rate,
-        "rpe": log.rpe,
+        "rpe": effective_log_rpe(log),
         "review_note": log.review_note,
         "pain_level": log.pain_level,
         "pain_location": log.pain_location,
@@ -61,7 +62,7 @@ def build_workout_facts(db: Session, user_id: int, workout_log_id: int) -> dict:
         facts["workout"]["distance_delta_ratio"] is not None and facts["workout"]["distance_delta_ratio"] <= -0.2
     )
     facts["workout"]["easy_rpe_high"] = bool(
-        planned_type in {"easy", "recovery", "easy_with_speed"} and log.rpe is not None and log.rpe >= 7
+        planned_type in {"easy", "recovery", "easy_with_speed"} and effective_log_rpe(log) is not None and effective_log_rpe(log) >= 7
     )
     facts["workout"]["pain_reported"] = bool(log.pain_level is not None and log.pain_level >= 1)
     facts["workout"]["alert_reported"] = bool(log.alert_message)

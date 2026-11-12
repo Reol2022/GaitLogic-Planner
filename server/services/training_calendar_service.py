@@ -1,4 +1,5 @@
 from __future__ import annotations
+from server.integrations.activity_provider.self_evaluation import effective_log_rpe
 
 import calendar
 from datetime import date
@@ -104,7 +105,7 @@ def build_day(current_date: date, workout: PlannedWorkout | None, unplanned_log:
                 actual_distance_km=unplanned_log.actual_distance_km,
                 avg_pace_seconds_per_km=unplanned_log.avg_pace_seconds_per_km,
                 avg_heart_rate=unplanned_log.avg_heart_rate,
-                rpe=unplanned_log.rpe,
+                rpe=effective_log_rpe(unplanned_log),
                 review_note=unplanned_log.review_note,
                 completion_rate=None,
                 source_type=unplanned_log.source_type,
@@ -139,7 +140,7 @@ def build_day(current_date: date, workout: PlannedWorkout | None, unplanned_log:
         actual_distance_km=actual_distance,
         avg_pace_seconds_per_km=log.avg_pace_seconds_per_km if log else None,
         avg_heart_rate=log.avg_heart_rate if log else None,
-        rpe=log.rpe if log else None,
+        rpe=effective_log_rpe(log) if log else None,
         review_note=log.review_note if log else None,
         completion_rate=completion_rate,
         source_type=log.source_type if log else None,

@@ -25,6 +25,7 @@ from planner_core.database.models import (  # noqa: F401
     DailyRecoveryCheckin,
     ExcelImportJob,
     ExternalSyncJob,
+    GarminSmartSyncState,
     FeatureAccess,
     Feedback,
     PaceProfile,

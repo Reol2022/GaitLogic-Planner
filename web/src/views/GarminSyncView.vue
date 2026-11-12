@@ -66,6 +66,7 @@
     </section>
 
     <section v-else class="panel sync-panel">
+      <GarminSmartSyncSettings />
       <div class="sync-settings">
         <span>将同步的实际活动写入训练日志（不会创建正式课表）</span>
         <el-switch
@@ -240,6 +241,7 @@ import {
 import { getRequestErrorMessage } from "@/api/request";
 import RunnerStateSnapshotSyncStatus from "@/components/runner-state/RunnerStateSnapshotSyncStatus.vue";
 import MobileRecordCard from "@/components/common/MobileRecordCard.vue";
+import GarminSmartSyncSettings from '@/components/common/GarminSmartSyncSettings.vue';
 import TrainingJourney from "@/components/common/TrainingJourney.vue";
 import { syncNextStep } from "@/utils/coreExperience";
 import type { ExternalActivityRead, ExternalSyncJobRead, GarminConnectionStatus, GarminSyncPayload } from "@/types/models";

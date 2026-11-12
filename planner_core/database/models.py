@@ -1011,6 +1011,25 @@ class ExternalAccountConnection(IdMixin, TimestampMixin, Base):
     activities: Mapped[list[ExternalActivity]] = relationship(back_populates="connection")
 
 
+class GarminSmartSyncState(TimestampMixin, Base):
+    __tablename__ = "garmin_smart_sync_state"
+    __table_args__ = (Index("ix_smart_sync_due", "next_check_at"), MYSQL_TABLE_ARGS)
+
+    connection_id: Mapped[int] = mapped_column(ForeignKey("external_account_connection.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30, server_default="30")
+    recovery_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    next_check_at: Mapped[datetime | None] = mapped_column(DateTime)
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_compensation_at: Mapped[datetime | None] = mapped_column(DateTime)
+    failure_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    error_category: Mapped[str | None] = mapped_column(String(32))
+    lease_token: Mapped[str | None] = mapped_column(String(36))
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime)
+    active_job_id: Mapped[int | None] = mapped_column(Integer)
+
+
 class ExternalSyncJob(IdMixin, TimestampMixin, Base):
     __tablename__ = "external_sync_job"
     __table_args__ = (
@@ -1025,6 +1044,8 @@ class ExternalSyncJob(IdMixin, TimestampMixin, Base):
     connection_id: Mapped[int] = mapped_column(ForeignKey("external_account_connection.id", ondelete="CASCADE"), nullable=False, index=True)
     provider: Mapped[str] = mapped_column(String(32), nullable=False, default="garmin", server_default="garmin")
     sync_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    data_scope: Mapped[str] = mapped_column(String(16), nullable=False, default="all", server_default="all")
+    trigger_source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual", server_default="manual")
     requested_start: Mapped[datetime | None] = mapped_column(DateTime)
     requested_end: Mapped[datetime | None] = mapped_column(DateTime)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued", server_default="queued")

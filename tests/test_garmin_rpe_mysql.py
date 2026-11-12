@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy import delete
 from tests.test_mcp_facts_v3_mysql import engine, sample, DAY
-from planner_core.database.models import WorkoutLogExternalActivity
+from planner_core.database.models import WorkoutLogExternalActivity, ExternalActivityLap
 from server.integrations.activity_provider.self_evaluation import normalize_rpe
 from server.services.garmin_sync_service import _recalculate_log_from_linked_activities
 from server.services.training_load_service import get_recent_training_read
@@ -64,3 +64,71 @@ def test_unknown_json_fields_and_health_free_text_never_leave_detail(sample):
     result=read_training_detail(db,users[0].id,f'external_activity:{acts[0].id}')
     assert result.selected_activity.rpe==8
     assert 'PRIVATE_SENTINEL' not in result.model_dump_json()
+
+
+def test_unmarked_legacy_activity_rating_cannot_rate_a_linked_session_readonly(sample):
+    db, users, log, activities = sample
+    log.rpe = 4
+    log.field_sources_json = {'rpe':'garmin', 'rpe_evidence':{'value':4,'source':'garmin'}}
+    log.source_type = 'garmin_sync'
+    db.commit()
+    # Historical data may predate the multiple-activity marker. The shared
+    # query counts links without changing the stored value during a read.
+    recent = get_recent_training_read(db,user_id=users[0].id,days=7,limit=20,as_of_date=DAY)
+    assert recent.items[0].rpe is None and log.rpe == 4
+    assert recent.items[0].rpe_metadata['missing_reason'] == 'MULTIPLE_ACTIVITIES_REQUIRE_SESSION_RATING'
+    detail = read_training_detail(db,users[0].id,f'workout_log:{log.id}')
+    assert detail.record.rpe is None and detail.selection_required
+    state = RunnerStateService(db).get_current(users[0],generated_at=datetime.combine(DAY,datetime.min.time(),tzinfo=timezone.utc))
+    assert state.recent_training.average_rpe_7d is None
+    assert 'load_risk_is_not_recovery_clearance' in state.data_quality.limitations
+    db.expire_all()
+    assert log.rpe == 4
+    # An explicitly supplied session rating has a different authority/scope.
+    log.field_sources_json = {'rpe':'manual'}; db.commit()
+    assert get_recent_training_read(db,user_id=users[0].id,days=7,limit=20,as_of_date=DAY).items[0].rpe == 4
+
+
+def test_mcp_detail_separates_stored_rollups_and_validated_individual_laps(sample):
+    db, users, log, activities = sample
+    activity = activities[1]
+    db.execute(delete(ExternalActivityLap).where(ExternalActivityLap.external_activity_id == activity.id))
+    activity.distance_m = 1200
+    activity.duration_seconds = activity.timer_time_seconds = 300
+    for index, start in [(1, 0), (2, 150)]:
+        db.add(ExternalActivityLap(external_activity_id=activity.id, lap_index=index,
+            distance_m=600, duration_seconds=150, timer_time_seconds=150,
+            start_offset_seconds=start, workout_step_type='ACTIVE',
+            classification_source='garmin_lap_dto'))
+    db.add(ExternalActivityLap(external_activity_id=activity.id, lap_index=3,
+        distance_m=1200, duration_seconds=300, lap_type='RWD_RUN',
+        segment_role='summary', classification_source='garmin_summary_rollup'))
+    db.commit()
+    result = read_training_detail(db, users[0].id, f'workout_log:{log.id}', f'external_activity:{activity.id}')
+    assert len(result.segments) == 3
+    assert len(result.normalized_segments) == 2
+    assert result.segment_validation['structure_complete']
+    assert result.segment_validation['excluded_summary_count'] == 1
+    assert result.activity_classification['primary_type'] == 'interval_speed'
+    assert result.selected_activity.actual_training_type == 'interval_speed'
+    assert {segment.activity_ref for segment in result.normalized_segments} == {f'external_activity:{activity.id}'}
+    assert 'PRIVATE_SENTINEL' not in result.model_dump_json()
+
+
+def test_activity_review_never_borrows_a_session_rating(sample):
+    from server.services.run_review_service import get_run_review
+    db, users, log, activities = sample
+    activity = activities[1]
+    activity.workout_log_id = log.id
+    log.rpe = 7
+    log.field_sources_json = {'rpe': 'manual'}
+    activity.field_sources_json = {'rpe_evidence': normalize_rpe({'summaryDTO': {'directWorkoutRpe': 30}})}
+    db.commit()
+    review = get_run_review(db, user_id=users[0].id, activity_id=activity.id)
+    assert review.actual.rpe == 3
+    activity.field_sources_json = {}
+    db.commit()
+    review = get_run_review(db, user_id=users[0].id, activity_id=activity.id)
+    assert review.actual.rpe is None
+    assert 'rpe_unavailable' in review.limitations
+    assert log.rpe == 7

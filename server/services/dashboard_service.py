@@ -1,4 +1,5 @@
 from collections import Counter
+from server.integrations.activity_provider.self_evaluation import effective_log_rpe
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -88,7 +89,7 @@ def get_dashboard_summary(
         workout_count=len(workouts),
         completed_count=completed_count,
         missed_count=missed_count,
-        avg_rpe=average_decimal([log.rpe for log in logs]),
+        avg_rpe=average_decimal([effective_log_rpe(log) for log in logs]),
         max_pain_level=max(pain_levels) if pain_levels else None,
         main_type_distribution=dict(distribution),
     )
@@ -126,7 +127,7 @@ def get_block_stats(db: Session, block_id: int, user_id: int) -> BlockStats:
         t2_effective_km=sum((decimal_or_zero(log.t2_effective_km) for log in logs), ZERO),
         m_effective_km=sum((decimal_or_zero(log.m_effective_km) for log in logs), ZERO),
         r_effective_km=sum((decimal_or_zero(log.r_effective_km) for log in logs), ZERO),
-        avg_rpe=average_decimal([log.rpe for log in logs]),
+        avg_rpe=average_decimal([effective_log_rpe(log) for log in logs]),
         avg_weight_kg=average_decimal([log.weight_kg for log in logs]),
         max_pain_level=max(
             [log.pain_level for log in logs if log.pain_level is not None],

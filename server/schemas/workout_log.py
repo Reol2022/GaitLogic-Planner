@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from planner_core.enums import PainScaleVersion, WorkoutStatusNormalized
 
@@ -106,6 +106,12 @@ class WorkoutLogRead(WorkoutLogBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode='after')
+    def preserve_effort_scope(self):
+        from server.integrations.activity_provider.self_evaluation import effective_log_rpe
+        self.rpe = effective_log_rpe(self)
+        return self
 
 
 class WorkoutLogGarminActivityContext(BaseModel):

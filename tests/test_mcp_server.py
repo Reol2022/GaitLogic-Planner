@@ -87,7 +87,8 @@ def test_mcp_server_lists_only_six_strict_read_only_tools() -> None:
     assert set(schemas["get_recent_training"]["properties"]) == {"days", "limit", "cursor", "start_date", "end_date"}
     assert set(schemas['get_training_detail']['properties'])=={'record_ref','activity_ref'}
     assert set(schemas['get_recovery_trend']['properties'])=={'days','start_date','end_date'}
-    assert all(tool.annotations.read_only_hint is True for tool in tools)
+    cache_sync_tools = {'get_recent_training', 'get_training_detail', 'get_runner_state', 'get_recovery_trend'}
+    assert all(tool.annotations.read_only_hint is (tool.name not in cache_sync_tools) for tool in tools)
     assert set(schemas["retrieve_training_knowledge"]["properties"]) == {
         "query", "top_k", "categories", "tags", "language"
     }
