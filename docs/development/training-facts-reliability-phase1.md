@@ -1,6 +1,6 @@
 # 训练事实可靠性：第一阶段
 
-状态：本地开发，未部署、未执行生产回填。基线：`74db603`，分支：`codex/training-facts-reliability`。
+状态：第一阶段随 `a82d94f` 发布，未执行额外批量历史回填。原始基线：`74db603`，初始开发分支：`codex/training-facts-reliability`，后续集成至 Smart Sync 发布。
 
 ## 审计结论
 
