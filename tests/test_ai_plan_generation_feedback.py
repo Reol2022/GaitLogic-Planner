@@ -102,13 +102,12 @@ def test_retry_is_bounded_and_reports_safe_failure(monkeypatch,caplog):
     assert '未扣除' in error.value.message
 
 
-@pytest.mark.parametrize('violation',['rest','target','date','total','duration','high'])
+@pytest.mark.parametrize('violation',['rest','target','date','duration','high'])
 def test_real_constraint_violations_do_not_trigger_format_retry(monkeypatch,violation):
     data=output();payload=request();calls=[]
     if violation=='rest':payload=request(fixed_rest_days=['周二'])
     elif violation=='target':data['target_result']='00:45:00'
     elif violation=='date':data['start_date']='2026-11-08'
-    elif violation=='total':data['weeks'][0]['planned_distance_km']=999
     elif violation=='duration':payload=request(daily_available_minutes={'周二':30})
     else:
         data['weeks'][0]['workouts'][0]['main_type']='T1'
@@ -118,6 +117,35 @@ def test_real_constraint_violations_do_not_trigger_format_retry(monkeypatch,viol
     with pytest.raises(service.AIPlanOutputError) as error:
         service.generate_validated_plan('s','u',payload,SimpleNamespace())
     assert len(calls)==1 and error.value.category in {'CONSTRAINT_VIOLATION','SAFETY_BOUNDARY'}
+
+
+def test_weekly_display_total_is_derived_without_model_retry_or_daily_edits(monkeypatch):
+    data = output()
+    workouts = deepcopy(data['weeks'][0]['workouts'])
+    data['weeks'][0]['planned_distance_km'] = 999
+    calls, (validated, usage) = invoke(monkeypatch, [response(data)])
+    assert len(calls) == 1 and usage.total_tokens == 300
+    assert validated['weeks'][0]['workouts'] == workouts
+    assert validated['weeks'][0]['planned_distance_km'] == sum(w['planned_distance_km'] for w in workouts)
+    validate_plan_constraints(validated, request())
+
+
+@pytest.mark.parametrize('distance', [-1, True, float('inf'), float('nan'), None])
+def test_weekly_total_derivation_never_hides_invalid_daily_distance(distance):
+    data = output()
+    data['weeks'][0]['planned_distance_km'] = 999
+    data['weeks'][0]['workouts'][0]['planned_distance_km'] = distance
+    with pytest.raises(service.AIPlanOutputError):
+        service.validate_generated_plan(json.dumps(data), request())
+
+
+def test_total_correction_does_not_bypass_a_rest_day_constraint(monkeypatch):
+    data = output()
+    data['weeks'][0]['planned_distance_km'] = 999
+    monkeypatch.setattr(service, 'call_deepseek', lambda *args: response(data))
+    with pytest.raises(service.AIPlanOutputError) as exc:
+        service.generate_validated_plan('system', 'synthetic', request(fixed_rest_days=['周二']), SimpleNamespace())
+    assert exc.value.category == 'CONSTRAINT_VIOLATION'
 
 
 @pytest.mark.parametrize('result,category',[(service.DeepSeekResult(content='{}',finish_reason='length'),'OUTPUT_TRUNCATED'),(service.DeepSeekResult(content=''),'OUTPUT_EMPTY')])

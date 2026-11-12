@@ -206,14 +206,20 @@ class AgentResponseValidator:
         final: bool,
     ) -> AgentValidationResult:
         errors: list[AgentErrorCode] = []
+        reasons: list[str] = []
+
+        def reject(code: AgentErrorCode, reason: str) -> None:
+            errors.append(code)
+            reasons.append(reason)
+
         if output.intent != context.intent:
-            errors.append(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
+            reject(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID, "INTENT_MISMATCH")
         if final and not output.answer:
-            errors.append(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
+            reject(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID, "ANSWER_MISSING")
         if output.answer is not None and len(output.answer) > self.limits.max_answer_length:
-            errors.append(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID)
+            reject(AgentErrorCode.AGENT_MODEL_OUTPUT_INVALID, "ANSWER_TOO_LONG")
         if len(output.tool_calls) > self.limits.max_tool_calls:
-            errors.append(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED)
+            reject(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED, "TOOL_COUNT_EXCEEDED")
         if (
             sum(
                 invocation.tool_name == KNOWLEDGE_TOOL_NAME
@@ -221,9 +227,9 @@ class AgentResponseValidator:
             )
             > 1
         ):
-            errors.append(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED)
+            reject(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED, "REPEATED_KNOWLEDGE_CALL")
         if final and output.tool_calls:
-            errors.append(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED)
+            reject(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED, "FINAL_HAS_TOOL_CALLS")
 
         for invocation in output.tool_calls:
             if any(
@@ -233,20 +239,20 @@ class AgentResponseValidator:
             ):
                 # A completed context tool is immutable request-local fact
                 # data, not a retryable model action.
-                errors.append(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED)
+                reject(AgentErrorCode.AGENT_CALL_LIMIT_EXCEEDED, "COMPLETED_TOOL_RECALLED")
                 continue
             tool = registry.get(invocation.tool_name)
             if tool is None:
-                errors.append(AgentErrorCode.AGENT_TOOL_NOT_FOUND)
+                reject(AgentErrorCode.AGENT_TOOL_NOT_FOUND, "UNKNOWN_TOOL")
                 continue
             definition = tool.definition
             if not definition.read_only or context.intent not in definition.allowed_intents:
-                errors.append(AgentErrorCode.AGENT_TOOL_NOT_ALLOWED)
+                reject(AgentErrorCode.AGENT_TOOL_NOT_ALLOWED, "TOOL_NOT_ALLOWED")
                 continue
             try:
                 tool.input_model.model_validate(invocation.arguments)
             except ValidationError:
-                errors.append(AgentErrorCode.AGENT_TOOL_ARGUMENTS_INVALID)
+                reject(AgentErrorCode.AGENT_TOOL_ARGUMENTS_INVALID, "TOOL_ARGUMENTS_INVALID")
 
         text = "\n".join(
             item
@@ -259,14 +265,14 @@ class AgentResponseValidator:
             if item
         ).lower()
         if any(re.search(pattern, text, re.IGNORECASE) for pattern in _MEDICAL_DIAGNOSIS_PATTERNS):
-            errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+            reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "MEDICAL_DIAGNOSIS")
         if any(re.search(pattern, text, re.IGNORECASE) for pattern in _PLAN_MUTATION_PATTERNS):
-            errors.append(AgentErrorCode.AGENT_TOOL_NOT_ALLOWED)
+            reject(AgentErrorCode.AGENT_TOOL_NOT_ALLOWED, "PLAN_MUTATION_CLAIM")
         if any(re.search(pattern, text, re.IGNORECASE) for pattern in _SENSITIVE_OUTPUT_PATTERNS):
-            errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+            reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "SENSITIVE_OUTPUT")
 
         if output.risk_level == AgentRiskLevel.HIGH and not output.warnings:
-            errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+            reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "HIGH_RISK_WARNING_MISSING")
 
         data_quality = context.data_quality or {}
         quality_value = str(
@@ -274,67 +280,67 @@ class AgentResponseValidator:
         ).upper()
         data_is_limited = bool(context.missing_reasons) or quality_value in _LOW_DATA_QUALITY_VALUES
         if data_is_limited and output.risk_level != AgentRiskLevel.UNKNOWN and not output.limitations:
-            errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+            reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "DATA_LIMITATION_MISSING")
 
         available_results = {item.tool_call_id for item in context.tool_results}
         if any(item not in available_results for item in output.used_tool_call_ids):
-            errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+            reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "UNKNOWN_TOOL_RESULT_REFERENCE")
 
         failed_results = [
             item for item in context.tool_results if item.status != AgentToolStatus.SUCCEEDED
         ]
         if failed_results:
             if not output.warnings and not output.limitations:
-                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "TOOL_FAILURE_NOTICE_MISSING")
             if any(re.search(pattern, text, re.IGNORECASE) for pattern in _FALSE_TOOL_SUCCESS_PATTERNS):
-                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "FALSE_TOOL_SUCCESS")
 
         try:
             knowledge_catalog = build_knowledge_reference_catalog(context)
         except ValueError:
             knowledge_catalog = None
-            errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+            reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "KNOWLEDGE_CATALOG_INVALID")
         if knowledge_catalog is not None:
             references = output.knowledge_reference_ids
             if any(item not in knowledge_catalog.items for item in references):
-                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "UNKNOWN_KNOWLEDGE_REFERENCE")
             knowledge_claimed = any(
                 re.search(pattern, text, re.IGNORECASE)
                 for pattern in _KNOWLEDGE_CLAIM_PATTERNS
             )
             if knowledge_claimed and not references:
-                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "KNOWLEDGE_CLAIM_WITHOUT_REFERENCE")
             if references and (
                 not knowledge_catalog.attempted
                 or knowledge_catalog.failed
                 or knowledge_catalog.empty
             ):
-                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "KNOWLEDGE_REFERENCE_UNAVAILABLE")
             if final and context.intent == AgentIntent.GENERAL_TRAINING_QUESTION:
                 if knowledge_catalog.items and not references:
-                    errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                    reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "KNOWLEDGE_REFERENCE_MISSING")
                 if (
                     (knowledge_catalog.failed or knowledge_catalog.empty)
                     and not output.limitations
                 ):
-                    errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                    reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "KNOWLEDGE_FAILURE_NOTICE_MISSING")
             if _contains_canonical_excerpt(
                 text,
                 [item.excerpt for item in knowledge_catalog.items.values()],
             ):
-                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "KNOWLEDGE_EXCERPT_COPIED")
             lowered_text = text.lower()
             if any(
                 item.source_title.lower() in lowered_text
                 for item in knowledge_catalog.items.values()
             ):
-                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "KNOWLEDGE_TITLE_COPIED")
 
         if any(
             re.search(pattern, text, re.IGNORECASE)
             for pattern in _FABRICATED_SOURCE_PATTERNS
         ):
-            errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+            reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "UNVERIFIED_EXTERNAL_CITATION")
 
         if final and context.intent == AgentIntent.EXPLAIN_RUNNER_STATE:
             allowed_numbers = _numbers(context.model_dump(mode="json"))
@@ -342,19 +348,26 @@ class AgentResponseValidator:
                 round(float(match.group(1)), 4) not in allowed_numbers
                 for match in _NUMBER_WITH_TRAINING_UNIT.finditer(text)
             ):
-                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "UNSUPPORTED_TRAINING_NUMBER")
 
         if final and context.intent == AgentIntent.GENERAL_TRAINING_QUESTION:
             if any(
                 re.search(pattern, text, re.IGNORECASE)
                 for pattern in _GENERAL_PERSONAL_FACT_PATTERNS
             ):
-                errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+                reject(AgentErrorCode.AGENT_VALIDATION_FAILED, "PERSONAL_FACT_IN_GENERAL_ANSWER")
 
-        if final and evidence_claim_violations(text, context.evidence_assessments):
-            errors.append(AgentErrorCode.AGENT_VALIDATION_FAILED)
+        if final:
+            for violation in evidence_claim_violations(text, context.evidence_assessments):
+                reject(AgentErrorCode.AGENT_VALIDATION_FAILED, violation.split(":", 1)[0])
 
         if final and context.intent == AgentIntent.TODAY_RECOMMENDATION:
-            errors.extend(self.today_validator.validate(output, context))
+            today_errors = self.today_validator.validate(output, context)
+            if today_errors:
+                reasons.append("TODAY_DECISION_MISMATCH")
+                errors.extend(today_errors)
 
-        return self._result(errors)
+        return AgentValidationResult(
+            valid=not errors, errors=list(dict.fromkeys(errors)),
+            reason_codes=list(dict.fromkeys(reasons)),
+        )

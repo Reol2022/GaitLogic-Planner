@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import pytest
 
 from server.domain.decision_readiness import DecisionReadiness
 from server.domain.evidence import (
@@ -13,7 +14,8 @@ from server.domain.evidence import (
     EvidenceSourceKind,
     EvidenceUsability,
 )
-from server.services.evidence_judge_service import EvidenceJudge
+from server.services.evidence_judge_service import EvidenceJudge, evidence_claim_violations
+from server.domain.evidence import EvidenceAssessment
 
 
 def item(
@@ -163,3 +165,27 @@ def test_irrelevant_missing_domain_does_not_affect_volume_question() -> None:
     )
     assert [value.domain for value in result.assessments] == ["training_volume"]
     assert result.decision_readiness[0].readiness == DecisionReadiness.READY
+
+
+@pytest.mark.parametrize('text', [
+    '本周跑量变化明确。恢复数据不足，暂不判断恢复状态。',
+    '无法确定恢复状态。',
+    '不能明确判断睡眠是否足够。',
+    '恢复数据不足，不能据此确定恢复很好。',
+    'Cannot definitely conclude recovery is adequate.',
+])
+def test_limited_recovery_is_not_contaminated_by_unrelated_certainty(text):
+    values = [EvidenceAssessment(domain='recovery', status=EvidenceAssessmentStatus.PARTIAL)]
+    assert evidence_claim_violations(text, values) == []
+
+
+@pytest.mark.parametrize('status', [EvidenceAssessmentStatus.MISSING, EvidenceAssessmentStatus.PARTIAL, EvidenceAssessmentStatus.CONFLICTED])
+@pytest.mark.parametrize('text', [
+    '可以确定你恢复很好。',
+    '睡眠肯定充足。',
+    '无法确定训练阶段，但恢复肯定很好。',
+    'Recovery is definitely adequate.',
+])
+def test_real_unsupported_recovery_certainty_remains_rejected(status, text):
+    values = [EvidenceAssessment(domain='recovery', status=status)]
+    assert evidence_claim_violations(text, values)

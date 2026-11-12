@@ -8,6 +8,20 @@ def test_utf8_recent_four_week_analysis_routes_to_personal_analysis() -> None:
     assert CoachTaskClassifier.classify(message) == AgentIntent.PERSONAL_TRAINING_ANALYSIS
 
 
+def test_weekly_chat_review_reads_current_calendar_week_without_required_rag():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from server.agent.required_facts_policy import resolve_required_facts_policy
+    message = '帮我复盘本周'
+    intent = CoachTaskClassifier.classify(message)
+    assert intent == AgentIntent.PERSONAL_TRAINING_ANALYSIS
+    policy = resolve_required_facts_policy(intent=intent, message=message,
+        current_time=datetime(2026, 11, 12, 11, tzinfo=ZoneInfo('Asia/Shanghai')))
+    args = dict(policy.tool_preloads)['get_recent_training']
+    assert args['start_date'] == '2026-11-09' and args['end_date'] == '2026-11-12'
+    assert policy.knowledge_retrieval == 'never'
+
+
 def test_personal_training_read_capability_question_does_not_trigger_rag_or_fact_loading() -> None:
     message = "你可以读取我近期的训练吗"
     assert CoachTaskClassifier.classify(message) == AgentIntent.COACH_CAPABILITY_QUERY

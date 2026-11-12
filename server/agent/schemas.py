@@ -263,6 +263,7 @@ class AgentResponse(AgentContractModel):
 class AgentValidationResult(AgentContractModel):
     valid: bool
     errors: list[AgentErrorCode] = Field(default_factory=list)
+    reason_codes: list[str] = Field(default_factory=list, max_length=32)
 
 
 class AgentLimits(AgentContractModel):

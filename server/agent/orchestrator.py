@@ -655,20 +655,31 @@ class GaitLogicCoachAgent:
         context: AgentContext,
         final: bool,
     ) -> AgentValidationResult:
-        handle = active_trace_handle()
-        if handle is None:
-            return self.validator.validate_model_output(
+        def validate() -> AgentValidationResult:
+            result = self.validator.validate_model_output(
                 output, context=context, registry=self.registry, final=final
             )
+            if not result.valid:
+                # Fixed rule identifiers only; never log the rejected answer,
+                # evidence values, prompt or provider reasoning.
+                logger.warning(
+                    "coach_output_validation_failed request_id=%s final=%s category=%s reasons=%s",
+                    context.request_id, final,
+                    self.validator.failure_category(output, result, context=context),
+                    ",".join(result.reason_codes) or "UNCLASSIFIED",
+                )
+            return result
+
+        handle = active_trace_handle()
+        if handle is None:
+            return validate()
         with self.tracer.span(
             handle,
             component="validator",
             operation="validate_output",
             metadata={"operation_type": "final" if final else "intermediate"},
         ) as span:
-            result = self.validator.validate_model_output(
-                output, context=context, registry=self.registry, final=final
-            )
+            result = validate()
             span.add_metadata(validator_result="VALID" if result.valid else "INVALID")
             if not result.valid:
                 span.add_metadata(

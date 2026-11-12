@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Iterable
@@ -427,14 +428,28 @@ def evidence_claim_violations(
     NLP classifier and does not invent a probabilistic confidence score.
     """
 
-    lowered = text.lower()
-    certainty = any(term in lowered for term in _CERTAINTY_TERMS)
-    if not certainty:
-        return []
+    # Certainty must belong to the same claim as the evidence domain. Searching
+    # the whole response lets a confident volume observation contaminate a
+    # separate, explicitly limited recovery statement (including limitations).
+    clauses = re.split(r'[。！？!?；;\n]|(?<=[a-z])\.(?=\s|$)', text.lower())
+    def asserts_certainty(clause: str) -> bool:
+        for term in _CERTAINTY_TERMS:
+            for match in re.finditer(re.escape(term), clause):
+                prefix = clause[:match.start()]
+                if not re.search(
+                    r'(?:无法|不能|尚不能|难以|不足以|不应|不可|不宜|并非|并不|不|未能|未)'
+                    r'(?:据此|由此|直接|就|认为|说|判断|地|地说|说明|证明|认定|判断为|为|确定|你|您的|当前)*$'
+                    r'|(?:cannot|can\x27t|not|never)\s+(?:(?:say|conclude|claim|be)\s+)*$', prefix
+                ):
+                    return True
+        return False
     violations: list[str] = []
     for assessment in assessments:
         terms = _DOMAIN_TERMS.get(assessment.domain, ())
-        if not terms or not any(term in lowered for term in terms):
+        if not terms or not any(
+            any(term in clause for term in terms) and asserts_certainty(clause)
+            for clause in clauses
+        ):
             continue
         if assessment.status == EvidenceAssessmentStatus.MISSING:
             violations.append(f"BLOCKED_DOMAIN_HALLUCINATION:{assessment.domain}")

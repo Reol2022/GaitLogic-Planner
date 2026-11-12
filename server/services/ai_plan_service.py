@@ -7,6 +7,7 @@ import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from math import isfinite
 from typing import Any
 from zoneinfo import ZoneInfo
 from planner_core.config import get_settings
@@ -322,7 +323,7 @@ def validate_ai_output(
 
 
 def validate_generated_plan(content: str, payload: AIPlanGenerateRequest, disabled_types=()) -> dict:
-    """Only fill absent request metadata; never rewrite workouts or conflicts."""
+    """Derive display totals from daily distances; never rewrite workouts."""
     try:
         data = dict(load_ai_json(content))
     except BadRequestError:
@@ -357,6 +358,22 @@ def validate_generated_plan(content: str, payload: AIPlanGenerateRequest, disabl
     risks = data.get('risk_notes')
     if not isinstance(risks, list) or not risks or len(risks) > 30 or any(not isinstance(item,str) or not item.strip() for item in risks):
         raise AIPlanOutputError('OUTPUT_SCHEMA_INVALID', '缺少有效的风险提示列表')
+    # The daily prescriptions are authoritative, not the model's arithmetic.
+    # Invalid distances must reach the existing validator unchanged. Only the
+    # redundant weekly display total is derived; no workout/constraint is repaired.
+    corrected_totals = 0
+    for week in data['weeks']:
+        distances = [workout.get('planned_distance_km') for workout in week['workouts']]
+        if distances and all(
+            not isinstance(value, bool) and isinstance(value, (int, float))
+            and isfinite(value) and 0 <= value <= 100 for value in distances
+        ):
+            total = float(sum((Decimal(str(value)) for value in distances), Decimal(0)))
+            if week.get('planned_distance_km') != total:
+                corrected_totals += 1
+            week['planned_distance_km'] = total
+    if corrected_totals:
+        logger.info('ai_plan_weekly_totals_derived corrected_weeks=%s', corrected_totals)
     try:
         validate_plan_constraints(data, payload, disabled_types)
     except BadRequestError as exc:

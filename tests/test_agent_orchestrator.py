@@ -104,6 +104,22 @@ def test_safe_direct_answer_uses_one_model_call() -> None:
     assert gateway.call_count == 1
 
 
+def test_validation_rule_is_logged_even_without_tracing_and_without_answer(caplog):
+    from datetime import datetime, timezone
+    request = make_request(AgentIntent.PERSONAL_TRAINING_ANALYSIS)
+    context = AgentContext(request_id=request.request_id, user_id=request.user_id,
+        intent=request.intent, current_time=datetime.now(timezone.utc), timezone='Asia/Shanghai')
+    agent = GaitLogicCoachAgent(gateway=MockAgentLLMGateway(direct_output()))
+    output = AgentModelOutput(intent=request.intent,
+        answer='private-output-marker，确诊为肌腱炎。', risk_level=AgentRiskLevel.UNKNOWN)
+    result = agent._validate_output(output, context=context, final=True)
+    assert not result.valid
+    assert 'coach_output_validation_failed' in caplog.text
+    assert 'MEDICAL_DIAGNOSIS' in caplog.text
+    assert 'private-output-marker' not in caplog.text
+    assert '肌腱炎' not in caplog.text
+
+
 def test_model_and_validator_progress_callbacks_follow_real_execution() -> None:
     stages: list[str] = []
     gateway = MockAgentLLMGateway(direct_output())

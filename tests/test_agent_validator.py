@@ -93,6 +93,27 @@ def test_validator_accepts_safe_direct_answer() -> None:
     assert result.valid
 
 
+def test_weekly_partial_answer_can_state_facts_without_claiming_full_recovery():
+    from server.domain.evidence import EvidenceAssessment, EvidenceAssessmentStatus
+    context = make_context(intent=AgentIntent.PERSONAL_TRAINING_ANALYSIS,
+        evidence_assessments=[EvidenceAssessment(domain='recovery', status=EvidenceAssessmentStatus.PARTIAL)])
+    output = AgentModelOutput(intent=context.intent,
+        answer='本周跑量变化明确。恢复资料有限，暂不判断完整恢复情况。',
+        risk_level=AgentRiskLevel.UNKNOWN,
+        limitations=[AgentNotice(code='RECOVERY_PARTIAL', message='睡眠数据缺失。')])
+    result = AgentResponseValidator().validate_model_output(output, context=context, registry=make_registry(), final=True)
+    assert result.valid and not result.reason_codes
+
+
+def test_unsafe_answer_has_bounded_reason_codes_without_copying_answer():
+    context = make_context(intent=AgentIntent.PERSONAL_TRAINING_ANALYSIS)
+    output = AgentModelOutput(intent=context.intent,
+        answer='private-synthetic-marker，确诊为肌腱炎。', risk_level=AgentRiskLevel.UNKNOWN)
+    result = AgentResponseValidator().validate_model_output(output, context=context, registry=make_registry(), final=True)
+    assert not result.valid and 'MEDICAL_DIAGNOSIS' in result.reason_codes
+    assert 'private-synthetic-marker' not in str(result.reason_codes)
+
+
 @pytest.mark.parametrize(
     "output",
     [
