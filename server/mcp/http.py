@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 import logging
+import json
 
 from mcp.server.transport_security import TransportSecuritySettings
 from sqlalchemy import select
@@ -64,6 +65,18 @@ def _safe_error(status_code: int, code: McpErrorCode, *, settings: Settings | No
         resource_metadata = f"{settings.mcp_public_base_url.rstrip('/')}/.well-known/oauth-protected-resource/mcp"
         headers["WWW-Authenticate"] = f'Bearer resource_metadata="{resource_metadata}"'
     return JSONResponse(status_code=status_code, content={"code": code.value}, headers=headers)
+
+
+def _recovery_scope_challenge(settings: Settings) -> JSONResponse:
+    metadata = f"{settings.mcp_public_base_url.rstrip('/')}/.well-known/oauth-protected-resource/mcp"
+    return JSONResponse(status_code=403, content={
+        "code": McpErrorCode.INSUFFICIENT_PERMISSION.value,
+        "required_scope": "mcp:recovery:read",
+        "reauthorization_required": True,
+    }, headers={"WWW-Authenticate": (
+        'Bearer error="insufficient_scope", scope="mcp:read mcp:recovery:read", '
+        f'resource_metadata="{metadata}"'
+    ), "Cache-Control": "no-store"})
 
 
 class McpHttpSecurityMiddleware:
@@ -122,6 +135,41 @@ class McpHttpSecurityMiddleware:
                 auth_span.add_metadata(auth_status="SUCCEEDED", status="SUCCEEDED")
 
             assert identity is not None
+            if (self.dependencies.settings.mcp_oauth_enabled
+                and request.method == "POST"
+                and "mcp:recovery:read" not in identity.scopes):
+                # Inspect only a bounded in-memory RPC envelope. Replay it for
+                # the SDK unchanged; never trust Mcp-Name headers or log a body.
+                chunks = []
+                size = 0
+                async for chunk in request.stream():
+                    size += len(chunk)
+                    if size > 1024 * 1024:
+                        await _safe_error(413, McpErrorCode.INVALID_ARGUMENT)(scope, receive, send)
+                        return
+                    chunks.append(chunk)
+                body = b"".join(chunks)
+                try:
+                    payload = json.loads(body)
+                except (ValueError, UnicodeError):
+                    payload = None
+                params = payload.get("params") if isinstance(payload, dict) else None
+                if (isinstance(payload, dict) and payload.get("method") == "tools/call"
+                    and isinstance(params, dict) and params.get("name") == "get_recovery_trend"):
+                    root.set_status("FAILED", error_code=McpErrorCode.INSUFFICIENT_PERMISSION.value)
+                    await _recovery_scope_challenge(self.dependencies.settings)(scope, receive, send)
+                    return
+                original_receive = receive
+                replayed = False
+
+                async def replay_receive():
+                    nonlocal replayed
+                    if not replayed:
+                        replayed = True
+                        return {"type": "http.request", "body": body, "more_body": False}
+                    return await original_receive()
+
+                receive = replay_receive
             with activate_mcp_identity(identity):
                 await self.app(scope, receive, send)
 

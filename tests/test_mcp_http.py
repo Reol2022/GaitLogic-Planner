@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
 from types import SimpleNamespace
@@ -206,6 +207,51 @@ def test_http_mcp_rejects_signed_token_without_read_scope(http_dependencies) -> 
         response = client.post("/mcp", headers=_headers(_sign_jwt_payload(payload)), json={})
     assert response.status_code == 401
     assert response.json() == {"code": "INSUFFICIENT_PERMISSION"}
+    assert fake.seen_user_ids == []
+
+
+def test_oauth_recovery_missing_scope_returns_standard_step_up_challenge(http_dependencies):
+    dependencies, users, fake, sessions = http_dependencies
+    dependencies = replace(dependencies, settings=dependencies.settings.model_copy(update={'mcp_oauth_enabled': True}))
+    with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
+        response = client.post('/mcp', headers={**_headers(_token(users[101])), 'Mcp-Name': 'get_today_plan'},
+            json={'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call', 'params': {'name': 'get_recovery_trend', 'arguments': {'days': 14}}})
+        # Ordinary requests still reach the SDK with their body intact.
+        result = _request(client, _headers(_token(users[101])), 'tools/call', {'name': 'get_today_plan', 'arguments': {}})
+    assert response.status_code == 403
+    assert response.json()['required_scope'] == 'mcp:recovery:read'
+    assert 'error="insufficient_scope"' in response.headers['www-authenticate']
+    assert 'scope="mcp:read mcp:recovery:read"' in response.headers['www-authenticate']
+    assert 'resource_metadata=' in response.headers['www-authenticate']
+    assert response.headers['x-gaitlogic-mcp-version']
+    assert result['result']['structuredContent']['status'] == 'SUCCEEDED'
+    assert fake.seen_user_ids == [101]
+
+
+def test_oauth_recovery_with_scope_reaches_real_tool_adapter(http_dependencies, monkeypatch):
+    from server.mcp import adapters
+    from server.mcp.facts_v2 import McpRecoveryTrend
+    dependencies, users, _fake, _sessions = http_dependencies
+    dependencies = replace(dependencies, settings=dependencies.settings.model_copy(update={'mcp_oauth_enabled': True}))
+    calls = []
+    def read(db, uid, days, **kwargs):
+        calls.append(uid)
+        return McpRecoveryTrend(data_status='EMPTY', as_of='2026-11-12', range_start='2026-11-12',
+            range_end='2026-11-12', daily_records=[], missing_dates=['2026-11-12'], limitations=['NO_RECORDS'])
+    monkeypatch.setattr(adapters, 'read_recovery', read)
+    token = create_mcp_access_token(users[101], grant_id='fictional-grant-101', scopes=['mcp:read', 'mcp:recovery:read'])
+    with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
+        result = _request(client, _headers(token), 'tools/call', {'name': 'get_recovery_trend', 'arguments': {'days': 1}})
+    assert result['result']['structuredContent']['status'] == 'SUCCEEDED'
+    assert calls == [101]
+
+
+def test_oauth_scope_inspection_rejects_oversized_body(http_dependencies):
+    dependencies, users, fake, _sessions = http_dependencies
+    dependencies = replace(dependencies, settings=dependencies.settings.model_copy(update={'mcp_oauth_enabled': True}))
+    with TestClient(create_mcp_http_app(dependencies=dependencies)) as client:
+        response = client.post('/mcp', headers=_headers(_token(users[101])), content=b'x' * (1024 * 1024 + 1))
+    assert response.status_code == 413
     assert fake.seen_user_ids == []
 
 

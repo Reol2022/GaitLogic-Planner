@@ -95,12 +95,27 @@ def test_two_user_oauth_token_rotation_and_revocation_on_isolated_mysql(monkeypa
             assert 'mcp:recovery:read' in decode_mcp_access_token(tokens[1])['scope'].split()
             recovery_request = {'jsonrpc':'2.0', 'id':2, 'method':'tools/call', 'params':{'name':'get_recovery_trend', 'arguments':{'days':7}, '_meta':meta}}
             outcomes = []
-            for access in tokens:
+            for index, access in enumerate(tokens):
                 response = client.post('/mcp', headers={**headers, 'Mcp-Method':'tools/call', 'Mcp-Name':'get_recovery_trend', 'Authorization':'Bearer '+access}, json=recovery_request)
-                assert response.status_code == 200
-                outcomes.append(response.json()['result']['structuredContent'])
-            assert outcomes[0]['error']['code'] == 'INSUFFICIENT_PERMISSION'
+                assert response.status_code == (403 if index == 0 else 200)
+                outcomes.append(response.json() if index == 0 else response.json()['result']['structuredContent'])
+            assert outcomes[0]['code'] == 'INSUFFICIENT_PERMISSION'
             assert outcomes[1]['status'] == 'SUCCEEDED'
+            # An older client requesting only base access can opt in on the
+            # authorization page, but only through a new explicit consent.
+            optional = {**form, 'client_id': client_ids[0], 'username': names[0],
+                'scope': 'mcp:read', 'approve_recovery': 'yes'}
+            approved = client.post('/oauth/authorize', data=optional, follow_redirects=False)
+            assert approved.status_code == 302
+            optional_code = parse_qs(urlparse(approved.headers['location']).query)['code'][0]
+            upgraded = client.post('/oauth/token', data={'grant_type': 'authorization_code', 'client_id': client_ids[0],
+                'code': optional_code, 'redirect_uri': optional['redirect_uri'], 'code_verifier': verifier, 'resource': optional['resource']})
+            assert upgraded.status_code == 200
+            assert 'mcp:recovery:read' in upgraded.json()['scope'].split()
+            assert 'mcp:recovery:read' in decode_mcp_access_token(upgraded.json()['access_token'])['scope'].split()
+            restored = client.post('/mcp', headers={**headers, 'Mcp-Method': 'tools/call', 'Mcp-Name': 'get_recovery_trend',
+                'Authorization': 'Bearer ' + upgraded.json()['access_token']}, json=recovery_request)
+            assert restored.status_code == 200 and restored.json()['result']['structuredContent']['status'] == 'SUCCEEDED'
             escalation = client.post('/oauth/token', data={'grant_type':'refresh_token', 'client_id':client_ids[0], 'refresh_token':refreshes[0], 'resource':form['resource'], 'scope':'mcp:read mcp:recovery:read'})
             assert escalation.status_code == 400 and escalation.json()['error'] == 'invalid_scope'
             request = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {"_meta": meta}}

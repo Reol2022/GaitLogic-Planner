@@ -108,6 +108,11 @@ def test_real_tcp_two_user_training_isolation_and_revoke():
                 response=client.post(base+'/mcp',headers={'Authorization':'Bearer '+token,'Accept':'application/json, text/event-stream',
                     'MCP-Protocol-Version':'2026-07-28','Mcp-Method':'tools/call','Mcp-Name':name},
                     json={'jsonrpc':'2.0','id':2,'method':'tools/call','params':{'name':name,'arguments':arguments,'_meta':meta}})
+                if name == 'get_recovery_trend':
+                    assert response.status_code == 403
+                    assert 'insufficient_scope' in response.headers['www-authenticate']
+                    assert response.json()['required_scope'] == 'mcp:recovery:read'
+                    return {'error': response.json()}
                 assert response.status_code==200
                 return response.json()['result']['structuredContent']
             own_ref=next(iter(refs[0]))

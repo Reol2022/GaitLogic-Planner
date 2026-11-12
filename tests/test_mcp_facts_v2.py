@@ -76,6 +76,18 @@ def test_scope_is_explicit_and_survives_signed_token():
     assert 'mcp:recovery:read' in new['scope'].split()
 
 
+def test_base_scope_authorization_offers_optional_unchecked_recovery_consent():
+    from server.api.routes.mcp_oauth import _consented_scopes
+    page = _login_page({'scope': 'mcp:read'}).body.decode()
+    checkbox = page.split('name="approve_recovery"', 1)[1].split('>', 1)[0]
+    assert 'required' not in checkbox and 'checked' not in checkbox
+    assert _consented_scopes({'scope': 'mcp:read', 'approve': 'yes'}) == ['mcp:read']
+    assert _consented_scopes({'scope': 'mcp:read', 'approve': 'yes', 'approve_recovery': 'yes'}) == ['mcp:read', 'mcp:recovery:read']
+    assert _consented_scopes({'scope': 'mcp:read', 'approve_recovery': 'yes'}) is None
+    assert _consented_scopes({'scope': 'mcp:read mcp:recovery:read', 'approve': 'yes'}) is None
+    assert _consented_scopes({'scope': 'mcp:read arbitrary:write', 'approve': 'yes', 'approve_recovery': 'yes'}) is None
+
+
 def test_detail_ownership_is_checked_before_lap_queries():
     db = Mock(); db.scalar.return_value = None
     with pytest.raises(McpSafeError) as exc: facts.read_training_detail(db, 101, 'workout_log:123')

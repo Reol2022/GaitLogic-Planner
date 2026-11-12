@@ -1,5 +1,14 @@
 # Remote MCP 部署记录与上线准备
 
+## 恢复数据补充授权（2026-11-12）
+
+- `mcp:read` 和 `mcp:recovery:read` 仍为独立权限，不迁移或批量扩充既有令牌。
+- 新授权页面为基础权限请求提供默认未勾选的恢复数据选项；明确请求恢复权限时仍要求单独同意。授权码记录用户实际同意的范围，Token 响应返回实际 scope。
+- OAuth 远程恢复调用缺少 scope 时返回 HTTP 403、`WWW-Authenticate: Bearer error="insufficient_scope"`、完整所需 scope 与固定资源 metadata 地址。直接工具适配器仍保留查询前权限检查，不信任客户端工具名称请求头。
+- 客户端支持补充授权时可按挑战重新发起 OAuth。不支持时，断开并重新连接 GaitLogic，在授权页勾选恢复数据选项。不通过刷新旧 Token 自动提权，不手动修改 JWT 或数据库 scope。
+- 不需要数据库迁移。更新代码并重载后端即可；需用户重新授权才能验证其真实恢复查询。健康检查、权限提示或合成数据验收不能代替用户实际同意。
+- 协议依据：[MCP Authorization / Scope Challenge Handling](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#scope-challenge-handling)、[OAuth 2.0 scope response](https://www.rfc-editor.org/rfc/rfc6749.html#section-3.3)。
+
 ## 2026-11-10 线上增量
 
 - 应用版本0.16.8，MCP版本 `0.16.8-facts-v3.2` 已通过最小补丁上线。代码改动限于server/mcp的七文件及knowledge_retrieval/index_service.py，不包含本地未部署AI课表修改。

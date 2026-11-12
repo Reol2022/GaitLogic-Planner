@@ -38,6 +38,19 @@ def _requested_scopes(params: dict[str, str]) -> list[str] | None:
     if _SCOPE not in scopes or not set(scopes) <= {_SCOPE, _RECOVERY_SCOPE}:
         return None
     return sorted(set(scopes))
+
+
+def _consented_scopes(params: dict[str, str]) -> list[str] | None:
+    """A new user-approved grant may add recovery; refresh can never do so."""
+    scopes = _requested_scopes(params)
+    if scopes is None or params.get('approve') != 'yes':
+        return None
+    if _RECOVERY_SCOPE in scopes and params.get('approve_recovery') != 'yes':
+        return None
+    if params.get('approve_recovery') == 'yes':
+        scopes = sorted({*scopes, _RECOVERY_SCOPE})
+    return scopes
+
 _CODE_TTL_MINUTES = 5
 
 
@@ -95,7 +108,14 @@ def _login_page(params: dict[str, str], message: str | None = None) -> HTMLRespo
         if key in {"client_id", "redirect_uri", "state", "scope", "code_challenge", "code_challenge_method", "resource"}
     )
     warning = f'<div class="notice" role="alert">{html.escape(message)}</div>' if message else ""
-    recovery_consent = ('<label class="consent"><input type="checkbox" name="approve_recovery" value="yes" required><span>另外授权读取恢复历史：睡眠、HRV、静息心率及主观疲劳等。仅用于本应用的只读分析。</span></label>' if _RECOVERY_SCOPE in (_requested_scopes(params) or []) else '')
+    recovery_required = _RECOVERY_SCOPE in (_requested_scopes(params) or [])
+    recovery_consent = (
+        '<label class="consent"><input type="checkbox" name="approve_recovery" value="yes"'
+        + (' required' if recovery_required else '')
+        + '><span>另外授权读取恢复历史：睡眠、HRV、静息心率及主观疲劳等。'
+        + ('本次连接请求此权限，请单独确认。' if recovery_required else '可选，默认不授权；不勾选仍可查询训练。')
+        + '仅用于本应用的只读分析，不会修改训练计划。</span></label>'
+    )
     body = f"""<!doctype html>
     <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow"><title>授权连接 · GaitLogic</title>
@@ -226,7 +246,7 @@ async def authorize_submit(request: Request):
         code = secrets.token_urlsafe(32)
         grant_id = secrets.token_urlsafe(32)
         db.add(McpOAuthGrant(grant_id=grant_id, client_id=client.client_id, user_id=user.id, resource_uri=params["resource"]))
-        db.add(McpOAuthAuthorizationCode(code_hash=_hash(code), client_id=client.client_id, user_id=user.id, redirect_uri=params["redirect_uri"], code_challenge=params["code_challenge"], resource_uri=params["resource"], grant_id=grant_id, scopes_json=_requested_scopes(params), expires_at=datetime.utcnow() + timedelta(minutes=_CODE_TTL_MINUTES)))
+        db.add(McpOAuthAuthorizationCode(code_hash=_hash(code), client_id=client.client_id, user_id=user.id, redirect_uri=params["redirect_uri"], code_challenge=params["code_challenge"], resource_uri=params["resource"], grant_id=grant_id, scopes_json=_consented_scopes(params), expires_at=datetime.utcnow() + timedelta(minutes=_CODE_TTL_MINUTES)))
     query = {"code": code}
     if params.get("state"):
         query["state"] = params["state"]
