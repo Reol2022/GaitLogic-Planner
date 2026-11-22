@@ -227,6 +227,23 @@ class GarminActivityProvider(ActivityProvider):
         except Exception:
             # Summary/RPE success is independent of split availability.
             activity.laps_fetched = False
+        # Only a bounded, existing SDK endpoint is tried; category summaries
+        # never become invented repetitions. Preserve both payloads privately.
+        has_details = any(lap.classification_source != 'garmin_summary_rollup'
+            and not str(lap.lap_type or '').startswith('RWD_') for lap in activity.laps)
+        typed_fetch = getattr(client, 'get_activity_typed_splits', None)
+        if not has_details and callable(typed_fetch):
+            try:
+                typed_payload = _bounded_detail_call(client, typed_fetch, external_activity_id)
+                if isinstance(typed_payload, (dict, list)):
+                    activity.raw_payload['garmin_typed_splits'] = typed_payload
+                    typed = _laps_from_payload(typed_payload)
+                    if any(lap.classification_source != 'garmin_summary_rollup'
+                        and not str(lap.lap_type or '').startswith('RWD_') for lap in typed):
+                        activity.laps = typed
+                    activity.laps_fetched = True
+            except Exception:
+                activity.raw_payload['typed_splits_status'] = 'UNAVAILABLE'
         return activity
 
     def fetch_activity_splits(self, external_activity_id: str) -> list[ProviderLap]:
@@ -561,6 +578,8 @@ def _laps_from_payload(payload: Any) -> list[ProviderLap]:
         if not isinstance(row, dict):
             continue
         speed = _decimal(_first(row, "averageSpeed", "avgSpeed"))
+        summary_row = container == 'splitSummaries' or (container == 'typedSplits' and not (
+            row.get('lapIndex') is not None and any(row.get(key) is not None for key in ('startOffsetSeconds','startTimeGMT','startTimeLocal'))))
         laps.append(
             ProviderLap(
                 lap_index=_int(_first(row, "lapIndex", "splitNumber", "stepNumber")) or index,
@@ -578,8 +597,8 @@ def _laps_from_payload(payload: Any) -> list[ProviderLap]:
                 elevation_gain_m=_int(_first(row, "elevationGain", "sumElevationGain")),
                 lap_type=_text(_first(row, "lapType", "splitType")),
                 workout_step_type=_text(_first(row, "workoutStepType", "stepType")),
-                segment_role="summary" if container in {'splitSummaries','typedSplits'} else "unknown",
-                classification_source="garmin_summary_rollup" if container in {'splitSummaries','typedSplits'} else "garmin_lap_dto" if container == 'lapDTOs' else "garmin_manual_lap",
+                segment_role="summary" if summary_row else "unknown",
+                classification_source="garmin_summary_rollup" if summary_row else "garmin_lap_dto" if container == 'lapDTOs' else 'garmin_typed_detail' if container == 'typedSplits' else "garmin_manual_lap",
                 classification_confidence="medium",
             )
         )

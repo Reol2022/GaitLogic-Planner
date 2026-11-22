@@ -700,7 +700,10 @@ def _parse_file(extension: str, content: bytes) -> list[NormalizedWorkoutActivit
 
 
 def _parse_xlsx(content: bytes) -> list[NormalizedWorkoutActivity]:
+    from server.security.uploads import validate_xlsx, validate_sheet_bounds
+    validate_xlsx(content)
     workbook = load_workbook(io.BytesIO(content), read_only=True, data_only=False)
+    validate_sheet_bounds(workbook, max_rows=MAX_ROWS)
     if getattr(workbook, "vba_archive", None) is not None:
         raise BadRequestError("不支持带宏 Excel 文件。")
     sheet = workbook.active

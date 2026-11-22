@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -25,6 +25,7 @@ def get_db() -> Generator[Session, None, None]:
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
+    request: Request = None,
 ) -> UserAccount:
     payload = decode_token(token)
     user_id = payload.get("sub")
@@ -33,6 +34,8 @@ def get_current_user(
     user = db.scalar(select(UserAccount).where(UserAccount.id == int(user_id)))
     if user is None or user.status != "active":
         raise UnauthorizedError("User account is not available.")
+    from server.security.admission import user_admission
+    user_admission(request, user.id)
     return user
 
 

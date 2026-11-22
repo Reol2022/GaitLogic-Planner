@@ -1,5 +1,6 @@
 """Explicit, bounded stored-activity refresh; dry-run by default, no new logs."""
 from datetime import date, datetime
+from types import SimpleNamespace
 from sqlalchemy import select, or_
 from planner_core.database.models import ExternalActivity, WorkoutLog, WorkoutLogExternalActivity
 from server.common.exceptions import BadRequestError
@@ -45,9 +46,10 @@ def refresh_details(db, *, user_id: int, start: date, end: date,
                 for f in fields(detail):
                     if getattr(detail,f.name) is None and hasattr(row,f.name):
                         setattr(detail,f.name,getattr(row,f.name))
+                previous_summary = SimpleNamespace(**{name: getattr(row, name, None) for name in ('distance_m', 'duration_seconds', 'timer_time_seconds')})
                 sync._copy_activity_metrics(row, detail)
                 row.fetched_at = datetime.utcnow()
-                sync._replace_laps(db, row, detail)
+                sync._replace_laps(db, row, detail, previous_summary=previous_summary)
                 linked = select(WorkoutLogExternalActivity.workout_log_id).where(
                     WorkoutLogExternalActivity.user_id == user_id, WorkoutLogExternalActivity.external_activity_id == row.id)
                 logs = list(db.scalars(select(WorkoutLog).where(WorkoutLog.user_id == user_id,

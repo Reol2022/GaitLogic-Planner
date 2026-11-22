@@ -13,6 +13,7 @@ from server.services.admin_console_service import read_config, fingerprint
 @pytest.mark.parametrize('method,path',[
     ('GET','/api/admin/console/overview'),('GET','/api/admin/console/users'),
     ('GET','/api/admin/console/ai'),('GET','/api/admin/console/audit'),
+    ('GET','/api/admin/system-settings'),('PUT','/api/admin/system-settings'),
     ('GET','/api/admin/console/ai/revisions'),('POST','/api/admin/console/ai/drafts'),
     ('POST','/api/admin/console/ai/revisions/1/publish'),('POST','/api/admin/console/ai/revisions/1/rollback-draft'),
     ('PATCH','/api/admin/console/users/1')])
@@ -32,6 +33,26 @@ def test_config_forbids_credentials_and_safety_switches():
         with pytest.raises(ValidationError): PlanConfig(**config,**{field:'forbidden'})
     config['temperature']=0.333
     with pytest.raises(ValidationError): PlanConfig(**config)
+
+
+def test_active_admin_can_use_existing_system_settings_contract(monkeypatch):
+    from server.services import admin_system_settings_service
+    from server.schemas.admin_system_settings import AdminSystemSettingsRead
+    app = create_app(); db = Mock()
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=101, role='admin', status='active')
+    app.dependency_overrides[get_db] = lambda: db
+    value = AdminSystemSettingsRead(id=1, auth_entry_mode='modal', allow_public_registration=False)
+    read = Mock(return_value=value); write = Mock(return_value=value)
+    monkeypatch.setattr(admin_system_settings_service, 'get_admin_system_settings', read)
+    monkeypatch.setattr(admin_system_settings_service, 'update_admin_system_settings', write)
+    with TestClient(app) as client:
+        assert client.get('/api/admin/system-settings').json()['auth_entry_mode'] == 'modal'
+        response = client.put('/api/admin/system-settings', json={'auth_entry_mode':'modal', 'allow_public_registration':False})
+        assert response.status_code == 200
+    read.assert_called_once_with(db)
+    args = write.call_args.args
+    assert args[0] is db and args[2] == 101
+    assert args[1].model_dump() == {'auth_entry_mode':'modal', 'allow_public_registration':False}
 
 
 def test_config_fingerprint_tracks_values_and_endpoint_not_secrets():

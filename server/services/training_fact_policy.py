@@ -39,8 +39,31 @@ def origin_source(log):
 
 def actual_training_type(log):
     value = log.workout_type or None
-    if log.source_type == 'garmin_sync' and (log.field_sources_json or {}).get('workout_type') not in {'manual', 'garmin_actual'}:
+    if value is not None and str(value).lower() == 'unknown':
+        return None
+    if log.source_type == 'garmin_sync' and (log.field_sources_json or {}).get('workout_type') not in {'manual', 'manual_edit', 'garmin_actual'}:
         return None
     if value == 'rest' and log.actual_distance_km is not None and log.actual_distance_km > 0:
         return None
     return value
+
+
+def classification_evidence(log):
+    value = actual_training_type(log)
+    source = (log.field_sources_json or {}).get('workout_type')
+    if not value or str(value).lower() == 'unknown':
+        return {'source': 'UNKNOWN', 'confirmation_status': 'UNCONFIRMED'}
+    if source in {'manual', 'manual_edit'}:
+        return {'source': 'USER_REPORTED_FACT', 'confirmation_status': 'USER_CONFIRMED'}
+    if source == 'garmin_actual':
+        return {'source': 'PROVIDER_RECORDED', 'confirmation_status': 'PROVIDER_DECLARED'}
+    return {'source': 'RECORDED_UNVERIFIED', 'confirmation_status': 'UNCONFIRMED'}
+
+
+def classification_coverage(logs):
+    rows = list(logs)
+    known = sum(bool(actual_training_type(log)) and str(actual_training_type(log)).lower() != 'unknown' for log in rows)
+    confirmed = sum(classification_evidence(log)['confirmation_status'] != 'UNCONFIRMED' for log in rows)
+    return {'classified_sessions': known, 'unclassified_sessions': len(rows)-known,
+        'classification_coverage': round(known/len(rows), 4) if rows else None,
+        'key_session_count_status': 'COMPLETE' if rows and confirmed == len(rows) else 'PARTIAL' if known else 'UNKNOWN'}

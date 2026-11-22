@@ -43,6 +43,17 @@ def _git_commit() -> str:
     configured = os.getenv("GAITLOGIC_GIT_COMMIT", "").strip().lower()
     if re.fullmatch(r"[0-9a-f]{7,40}", configured):
         return configured
+    # Immutable production archives have no .git directory. Use the verified
+    # release manifest so the version endpoint identifies the running artifact.
+    manifest = Path(__file__).resolve().parents[3] / 'release-manifest.json'
+    if manifest.is_file():
+        try:
+            import json
+            value = json.loads(manifest.read_text(encoding='utf-8')).get('git_commit', '')
+            if isinstance(value, str) and re.fullmatch(r'[0-9a-f]{40}', value):
+                return value
+        except (OSError, ValueError, AttributeError):
+            pass
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--short=12", "HEAD"],

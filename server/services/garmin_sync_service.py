@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import uuid4
+from types import SimpleNamespace
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, selectinload
@@ -639,6 +640,10 @@ def _run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
                 connection.recovery_last_successful_sync_at = datetime.utcnow()
                 connection.recovery_last_error_code = None
             except ProviderError as exc:
+                if job.data_scope == 'recovery':
+                    # No successful scope remains to commit. Persist a failed
+                    # receipt after rolling back any partially applied health days.
+                    raise
                 connection.recovery_last_error_code = exc.code
                 health_warning_codes.append(f"HEALTH_{exc.code}")
                 logger.warning("Garmin daily health sync unavailable job_id=%s error_code=%s", job_id, exc.code)
@@ -661,11 +666,17 @@ def _run_sync_job(db: Session, job_id: int) -> GarminSyncRunOutcome:
         if refreshed_token:
             connection.encrypted_token_payload = encrypt_token_payload(refreshed_token)
             connection.token_key_version = get_settings().garmin_token_key_version
-        if job.data_scope != 'recovery' and (failed_count == 0 or successful_activity_count > 0):
+        if job.data_scope != 'recovery' and failed_count == 0:
             connection.last_successful_sync_at = datetime.utcnow()
-        job.status = "succeeded" if failed_count == 0 else "partially_succeeded"
+            connection.last_error_code = None
+            connection.last_error_at = None
+        job.status = "succeeded" if failed_count == 0 and not health_warning_codes else "partially_succeeded"
+        if health_warning_codes:
+            job.error_code = "RECOVERY_SYNC_FAILED"
+            job.safe_error_message = "恢复数据未完整同步，训练活动的提交结果独立保留。"
         if activity_errors:
-            job.error_code = "ACTIVITY_PROCESSING_PARTIAL_FAILURE"
+            job.error_code = ("ACTIVITY_AND_RECOVERY_PARTIAL_FAILURE" if health_warning_codes
+                else "ACTIVITY_PROCESSING_PARTIAL_FAILURE")
             preview = "; ".join(activity_errors[:5])
             suffix = " ..." if len(activity_errors) > 5 else ""
             job.safe_error_message = _truncate_error_message(
@@ -790,6 +801,7 @@ def _process_provider_activity(
         )
     )
     is_duplicate = activity is not None and activity.payload_hash == payload_hash
+    previous_summary = SimpleNamespace(**{name: getattr(activity, name, None) for name in ('distance_m', 'duration_seconds', 'timer_time_seconds')}) if activity else None
     if activity is None:
         activity = _new_external_activity(job, raw, provider_activity, payload_hash, connector_version)
         db.add(activity)
@@ -798,7 +810,7 @@ def _process_provider_activity(
     else:
         _update_external_activity(activity, job, raw, provider_activity, payload_hash, connector_version)
         result = "duplicate" if is_duplicate else "updated"
-    _replace_laps(db, activity, provider_activity)
+    _replace_laps(db, activity, provider_activity, previous_summary=previous_summary)
     if job.connection.auto_import_enabled:
         _match_and_apply(
             db,
@@ -873,6 +885,10 @@ def _update_external_activity(
 
 def _copy_activity_metrics(activity: ExternalActivity, provider_activity: ProviderActivity) -> None:
     previous_sources = dict(activity.field_sources_json or {})
+    from server.services.activity_event_facts import event_evidence
+    event = event_evidence(provider_activity.raw_payload)
+    if event:
+        previous_sources['event_type_evidence'] = event
     for field in [
         "distance_m",
         "duration_seconds",
@@ -919,10 +935,16 @@ def _copy_activity_metrics(activity: ExternalActivity, provider_activity: Provid
         activity.field_sources_json = sources
 
 
-def _replace_laps(db: Session, activity: ExternalActivity, provider_activity: ProviderActivity) -> None:
+def _replace_laps(db: Session, activity: ExternalActivity, provider_activity: ProviderActivity, *, previous_summary=None) -> None:
     if not provider_activity.laps:
         # List-only sync or failed split request must not erase stored details.
         # Empty upstream results are not proof that historical laps should vanish.
+        return
+    from server.services.lap_storage_policy import prepare_replacement
+    db.scalar(select(ExternalActivity.id).where(ExternalActivity.id == activity.id).with_for_update())
+    previous = list(db.scalars(select(ExternalActivityLap).where(ExternalActivityLap.external_activity_id == activity.id)
+        .order_by(ExternalActivityLap.lap_index)))
+    if not prepare_replacement(db, activity, previous_summary or activity, previous, provider_activity, provider_activity.laps):
         return
     # Do not replace laps with ``activity.laps.clear()`` followed by appends in
     # one unit-of-work flush. SQLAlchemy may INSERT the replacement rows before
@@ -1702,8 +1724,12 @@ def _mark_job_failed(
     job.unchanged_activity_count = 0
     job.runner_state_affecting_change_count = 0
     job.finished_at = now
-    job.connection.last_error_code = code
-    job.connection.last_error_at = now
+    if job.data_scope != 'recovery':
+        job.connection.last_error_code = code
+        job.connection.last_error_at = now
+    if job.data_scope == 'recovery':
+        job.connection.recovery_last_attempt_at = now
+        job.connection.recovery_last_error_code = code
     if code in {"TOKEN_DECRYPTION_FAILED", "REAUTHENTICATION_REQUIRED", "AUTHENTICATION_REQUIRED"}:
         job.connection.status = "reauthentication_required"
     try:

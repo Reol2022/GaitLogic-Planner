@@ -23,10 +23,13 @@ README 介绍产品定位、核心能力与使用入口；本目录保存设计�
 ## Coach、MCP 与评测
 
 - [Garmin Smart Sync：架构、迁移与运行](deployment/garmin-smart-sync.md)
+- [MCP 同步一致性排查与隔离验收](evaluation/mcp-sync-consistency-20261119.md)
+- [Security Hardening v1：部署与验收](deployment/security-hardening-v1.md)
 
 - [Coach 架构](agent/coach-agent-architecture-v1.md)
 - [Coach 示例与启动](agent/coach-agent-demo-v1.md)
 - [MCP 集成与验收报告](evaluation/mcp-remote-e2e-report.md)
+- [MCP 训练事实质量 v3.4（本地验收）](evaluation/mcp-fact-quality-v34.md)
 - [知识检索 Holdout 报告](evaluation/reports/retrieval-holdout-v2.md)
 - [学习与架构资料索引](learning/README.md)
 

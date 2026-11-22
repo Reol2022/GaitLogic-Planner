@@ -175,11 +175,19 @@ def test_replacing_existing_laps_is_idempotent(mysql_factory) -> None:
         ]
 
 
-def test_replace_laps_flushes_delete_before_staging_replacements() -> None:
+def test_replace_laps_flushes_delete_before_staging_replacements(monkeypatch) -> None:
     operations: list[str] = []
     staged: list[ExternalActivityLap] = []
 
     class RecordingSession:
+        def scalar(self, _statement):
+            operations.append('lock')
+            return 42
+
+        def scalars(self, _statement):
+            operations.append('read_laps')
+            return []
+
         def execute(self, _statement):
             operations.append("delete")
 
@@ -191,6 +199,10 @@ def test_replace_laps_flushes_delete_before_staging_replacements() -> None:
             staged.extend(rows)
 
     activity = SimpleNamespace(id=42, high_intensity_distance_m=None)
+    # This unit isolates SQL ordering; replacement decisions and snapshots are
+    # exercised against actual MySQL in the fact-quality integration tests.
+    from server.services import lap_storage_policy
+    monkeypatch.setattr(lap_storage_policy, 'prepare_replacement', lambda *_: True)
     provider_activity = ProviderActivity(
         external_activity_id="duplicate-lap-indices",
         activity_name="Intervals",
@@ -205,7 +217,7 @@ def test_replace_laps_flushes_delete_before_staging_replacements() -> None:
 
     garmin_sync_service._replace_laps(RecordingSession(), activity, provider_activity)
 
-    assert operations == ["delete", "flush", "add_all"]
+    assert operations == ['lock', 'read_laps', "delete", "flush", "add_all"]
     assert [(lap.external_activity_id, lap.lap_index) for lap in staged] == [
         (42, 1),
         (42, 2),

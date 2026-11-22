@@ -26,6 +26,8 @@ from planner_core.database.models import (  # noqa: F401
     ExcelImportJob,
     ExternalSyncJob,
     GarminSmartSyncState,
+    SecurityRateBucket,
+    SecurityRequestLease,
     FeatureAccess,
     Feedback,
     PaceProfile,

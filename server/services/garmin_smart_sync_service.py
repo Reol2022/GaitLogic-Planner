@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from planner_core.config import get_settings
 from planner_core.database.models import ExternalAccountConnection, ExternalSyncJob, GarminSmartSyncState, UserAccount
-from server.schemas.smart_sync import SmartSyncSettings, SyncFreshness
+from server.schemas.smart_sync import SmartSyncSettings, SyncFreshness, SyncJobSnapshot
 
 LEASE_SECONDS = 180
 execution_lease = ContextVar('garmin_execution_lease', default=None)
@@ -23,23 +23,70 @@ def _state(db, connection):
         .with_for_update().execution_options(populate_existing=True))
 
 
-def status(db, user_id, scope='activities', *, now=None):
+def _latest_scope_job(db, connection, user_id, scope):
+    return db.scalar(select(ExternalSyncJob).where(
+        ExternalSyncJob.connection_id == connection.id, ExternalSyncJob.user_id == user_id,
+        ExternalSyncJob.provider == 'garmin',
+        ExternalSyncJob.data_scope.in_(['all', scope]) if scope != 'all' else ExternalSyncJob.data_scope.in_(['all', 'activities', 'recovery']),
+    ).order_by(ExternalSyncJob.id.desc()).limit(1))
+
+
+def _job_receipt(job):
+    if job is None:
+        return None
+    outcome = {'queued': 'QUEUED', 'running': 'RUNNING', 'failed': 'FAILED',
+        'cancelled': 'CANCELLED', 'partially_succeeded': 'PARTIAL_SUCCESS'}.get(job.status, 'UNKNOWN')
+    if job.status == 'succeeded':
+        outcome = ('SUCCEEDED_NO_ACTIVITY_CHANGES' if job.data_scope == 'activities'
+            and not job.created_count and not job.updated_count else 'SUCCEEDED')
+    return SyncJobSnapshot(job_id=job.id, scope=job.data_scope, status=job.status, outcome=outcome,
+        started_at=job.started_at, finished_at=job.finished_at,
+        requested_start=job.requested_start, requested_end=job.requested_end,
+        fetched_count=job.fetched_count or 0, created_count=job.created_count or 0,
+        updated_count=job.updated_count or 0, failed_count=job.failed_count or 0,
+        needs_review_count=job.needs_review_count or 0, committed=bool(job.is_committed),
+        error_category=error_category(job.error_code) if job.error_code else None)
+
+
+def status(db, user_id, scope='activities', *, now=None, include_stored_when_disabled=False):
+    if scope not in {'activities', 'recovery', 'all'}:
+        raise ValueError('Invalid sync scope')
     now = now or datetime.utcnow()
-    if not get_settings().garmin_smart_sync_enabled:
-        return SyncFreshness(status='DISABLED', scope=scope)
+    globally_enabled = get_settings().garmin_smart_sync_enabled
+    if not globally_enabled and not include_stored_when_disabled:
+        return SyncFreshness(status='DISABLED', sync_status='DISABLED', scope=scope)
     connection = db.scalar(select(ExternalAccountConnection).where(ExternalAccountConnection.user_id == user_id,
         ExternalAccountConnection.provider == 'garmin', ExternalAccountConnection.status != 'disconnected'))
     if connection is None:
-        return SyncFreshness(status='NOT_CONNECTED', scope=scope)
+        return SyncFreshness(status='NOT_CONNECTED', sync_status='NOT_CONNECTED', scope=scope)
     state = db.get(GarminSmartSyncState, connection.id)
-    job = db.scalar(select(ExternalSyncJob).where(ExternalSyncJob.connection_id == connection.id,
+    active = db.scalar(select(ExternalSyncJob).where(ExternalSyncJob.connection_id == connection.id,
+        ExternalSyncJob.user_id == user_id,
         ExternalSyncJob.status.in_(['queued', 'running'])).order_by(ExternalSyncJob.id).limit(1))
+    job = active if active and (active.data_scope == 'all' or active.data_scope == scope) else None
+    latest = {key: _latest_scope_job(db, connection, user_id, key) for key in ('activities', 'recovery')}
+    last_job = _latest_scope_job(db, connection, user_id, 'all') if scope == 'all' else latest[scope]
     success = {'activities': connection.last_successful_sync_at, 'recovery': connection.recovery_last_successful_sync_at}
     last = success['recovery' if scope == 'recovery' else 'activities']
     if scope == 'all':
         last = min(success.values()) if all(success.values()) else None
+    scopes = success if scope == 'all' else {scope: last}
+    # Existing MySQL DATETIME columns round to whole seconds.
+    ages = {key: 'UNKNOWN' if stamp is None else 'FRESH' if -timedelta(seconds=1) <= now-stamp < timedelta(minutes=15) else 'STALE'
+        for key, stamp in scopes.items()}
+    for key in ages:
+        candidate = latest[key]
+        scope_failed = candidate and (candidate.error_code != 'RECOVERY_SYNC_FAILED' if key == 'activities'
+            else candidate.error_code != 'ACTIVITY_PROCESSING_PARTIAL_FAILURE')
+        if scope_failed and candidate.status == 'partially_succeeded' and candidate.finished_at and (
+            success[key] is None or candidate.finished_at > success[key]):
+            # A recently committed subset is not a complete successful fetch.
+            ages[key] = 'UNKNOWN'
+    freshness = 'STALE' if 'STALE' in ages.values() else 'FRESH' if ages and all(v == 'FRESH' for v in ages.values()) else 'UNKNOWN'
     value = 'FRESH' if last and now-last < timedelta(minutes=15) else 'STALE'
-    if not connection.auto_sync_enabled:
+    if not globally_enabled:
+        value = 'DISABLED'
+    elif not connection.auto_sync_enabled:
         value = 'AUTO_SYNC_DISABLED'
     elif connection.status != 'connected':
         value = 'REAUTH_REQUIRED'
@@ -49,11 +96,17 @@ def status(db, user_id, scope='activities', *, now=None):
         value = 'BACKOFF'
     if job is not None:
         value = job.status.upper()
-    return SyncFreshness(status=value, scope=scope, last_success_at=last,
+    elif active is not None:
+        value = 'WAITING_FOR_OTHER_SCOPE'
+    return SyncFreshness(status=value, sync_status='IDLE' if value in {'FRESH','STALE'} else value,
+        data_freshness=freshness, data_freshness_by_scope=ages, scope=scope, last_success_at=last,
         last_success_by_scope=success if scope == 'all' else {scope: last},
-        last_attempt_at=state.last_attempt_at if state else None,
+        last_attempt_at=(last_job.started_at or last_job.finished_at) if last_job else None,
         next_retry_at=state.next_retry_at if state else None, error_category=state.error_category if state else None,
         job_id=job.id if job else None, trigger_source=job.trigger_source if job else None,
+        last_job=_job_receipt(last_job),
+        last_job_by_scope={key: _job_receipt(latest[key]) for key in scopes},
+        blocking_job=_job_receipt(active) if active is not None and job is None else None,
         enabled=connection.auto_sync_enabled, interval_minutes=state.interval_minutes if state else 30,
         recovery_enabled=state.recovery_enabled if state else False)
 
@@ -82,14 +135,14 @@ def request_sync(db, user_id, *, trigger, scope='all', now=None):
         raise ValueError('Invalid sync policy input')
     now = now or datetime.utcnow()
     if not get_settings().garmin_smart_sync_enabled:
-        return SyncFreshness(status='DISABLED', scope=scope)
+        return SyncFreshness(status='DISABLED', sync_status='DISABLED', scope=scope)
     # Serialize submissions, including the existing manual enqueue path.
     connection = db.scalar(select(ExternalAccountConnection).where(ExternalAccountConnection.user_id == user_id,
         ExternalAccountConnection.provider == 'garmin', ExternalAccountConnection.status != 'disconnected').with_for_update())
     user = db.get(UserAccount, user_id)
     if connection is None or user is None or user.status != 'active':
         db.rollback()
-        return SyncFreshness(status='NOT_CONNECTED', scope=scope)
+        return SyncFreshness(status='NOT_CONNECTED', sync_status='NOT_CONNECTED', scope=scope)
     from server.services.feature_access_service import assert_garmin_sync_available
     assert_garmin_sync_available(db, user)
     state = _state(db, connection)
@@ -105,27 +158,37 @@ def request_sync(db, user_id, *, trigger, scope='all', now=None):
         success = min(success, connection.recovery_last_successful_sync_at) if success and connection.recovery_last_successful_sync_at else None
     window = state.interval_minutes if trigger == 'scheduled' else 15
     fresh = success and now-success < timedelta(minutes=window)
-    recent_attempt = state.last_attempt_at and now-state.last_attempt_at < timedelta(minutes=5)
+    recent_job = _latest_scope_job(db, connection, user_id, scope)
+    attempted_at = (recent_job.started_at or recent_job.finished_at or recent_job.requested_end) if recent_job else None
+    if attempted_at is None and _latest_scope_job(db, connection, user_id, 'all') is None:
+        # Preserve conservative legacy coordination when no attributable job exists.
+        attempted_at = state.last_attempt_at
+    recent_attempt = attempted_at and -timedelta(seconds=1) <= now-attempted_at < timedelta(minutes=5)
     due = trigger != 'scheduled' or state.next_check_at is None or state.next_check_at <= now
-    if not blocked and not active and due and not recent_attempt and (not fresh or trigger == 'manual'):
+    submitted = False
+    if not blocked and not active and due and (not recent_attempt or trigger == 'manual') and (not fresh or trigger == 'manual'):
         compensate = trigger == 'scheduled' and (state.last_compensation_at is None or now-state.last_compensation_at >= timedelta(days=1))
         job = ExternalSyncJob(user_id=user_id, connection_id=connection.id, provider='garmin', sync_mode='custom_range',
             requested_start=now-timedelta(days=7 if compensate else 3), requested_end=now,
             data_scope=scope, trigger_source=trigger, status='queued', sync_run_id=str(uuid4()))
         db.add(job)
+        submitted = True
         state.last_attempt_at = now  # includes submissions, preventing refresh storms
         connection.auto_sync_last_run_at = now
         if compensate:
             state.last_compensation_at = now
-    if trigger == 'scheduled' and due:
-        state.next_check_at = now + timedelta(minutes=state.interval_minutes, seconds=connection.id % 120)
+    if trigger == 'scheduled' and due and (submitted or fresh):
+        # A fresh observation must not postpone the expiry by another full
+        # interval. An unrelated active scope must not consume this due check.
+        anchor = success if fresh and not submitted else now
+        state.next_check_at = anchor + timedelta(minutes=state.interval_minutes, seconds=connection.id % 120)
     db.commit()
     return status(db, user_id, scope, now=now)
 
 
 def request_safely(session_factory, user_id, *, trigger, scope='all'):
     if not get_settings().garmin_smart_sync_enabled:
-        return SyncFreshness(status='DISABLED', scope=scope)
+        return SyncFreshness(status='DISABLED', sync_status='DISABLED', scope=scope)
     try:
         with session_factory() as db:
             previous = int(db.scalar(text('SELECT @@session.innodb_lock_wait_timeout')))
@@ -138,7 +201,7 @@ def request_safely(session_factory, user_id, *, trigger, scope='all'):
                 db.commit()
     except Exception:
         # Failure isolation: never log credentials, raw Provider errors or facts.
-        return SyncFreshness(status='CHECK_UNAVAILABLE', scope=scope)
+        return SyncFreshness(status='CHECK_UNAVAILABLE', sync_status='CHECK_UNAVAILABLE', scope=scope)
 
 
 def acquire(db, job_id, *, now=None):

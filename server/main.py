@@ -81,6 +81,8 @@ def create_app() -> FastAPI:
         description="Backend API for training plans, logs, dashboard stats, and pace rules.",
         lifespan=lifespan,
     )
+    from server.security.middleware import SecurityMiddleware
+    app.add_middleware(SecurityMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
@@ -88,6 +90,7 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=['Retry-After'],
     )
 
     @app.middleware("http")

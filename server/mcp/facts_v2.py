@@ -13,17 +13,18 @@ from pydantic import Field, model_validator
 from sqlalchemy import select, or_, func
 from sqlalchemy.orm import Session
 
-from planner_core.database.models import DailyRecoveryCheckin, ExternalAccountConnection, ExternalActivity, ExternalActivityLap, PlannedWorkout, WorkoutLog, WorkoutLogExternalActivity
+from planner_core.database.models import DailyRecoveryCheckin, ExternalAccountConnection, ExternalActivity, ExternalActivityRaw, ExternalActivityLap, PlannedWorkout, WorkoutLog, WorkoutLogExternalActivity
 from server.mcp.errors import McpErrorCode, McpSafeError
 from server.mcp.schemas import McpContractModel, McpRecentTrainingItem, McpRecentTraining, McpRecentTrainingSummary, McpTrainingFactIssue, McpDataQuality, _McpToolResult
 from server.mcp.schemas import McpVersionedData
 from server.services.auth_service import signing_key
 from server.services.training_segment_facts import normalize_segments, classify_segments
 from server.integrations.activity_provider.self_evaluation import effective_log_rpe
-from server.services.training_load_service import _query_logs, _safe_source
+from server.services.training_load_service import _query_logs, _safe_source, count_unresolved_activities
 from server.services.weekly_review_stats_service import COMPLETED_STATUSES, local_today
 from server.domain.review_thresholds import KEY_WORKOUT_TYPES
-from server.services.training_fact_policy import origin_source, recorded_distance
+from server.services.training_fact_policy import origin_source, recorded_distance, actual_training_type, classification_evidence, classification_coverage
+from server.mcp.segment_schema import SegmentValidation, ActivityClassification, SegmentStorage
 from server.integrations.activity_provider.self_evaluation import activity_rpe, log_rpe_metadata
 
 
@@ -33,16 +34,12 @@ def _value(value):
 
 def training_item(log: WorkoutLog, plan: PlannedWorkout | None) -> McpRecentTrainingItem:
     planned = str(_value(plan.main_type_normalized)) if plan else None
-    actual = log.workout_type or None
-    if log.source_type == 'garmin_sync' and (log.field_sources_json or {}).get('workout_type') not in {'manual', 'garmin_actual'}:
-        actual = None
-    # A recorded type of rest is not a valid classification of a nonzero run.
-    if actual == 'rest' and log.actual_distance_km is not None and log.actual_distance_km > 0:
-        actual = None
+    actual = actual_training_type(log)
     return McpRecentTrainingItem(
         record_ref=f'workout_log:{log.id}', date=log.activity_date or plan.workout_date,
         training_type=actual or 'unknown', planned_training_type=planned,
         actual_training_type=actual, classification_basis='ACTUAL_LOG' if actual else 'UNKNOWN',
+        actual_type_source=classification_evidence(log)['source'], actual_type_confirmation=classification_evidence(log)['confirmation_status'],
         planned_or_unplanned='UNPLANNED' if log.is_unplanned or plan is None else 'PLANNED',
         completion_status=str(_value(log.status_normalized)),
         distance_km=recorded_distance(log.actual_distance_km),
@@ -91,10 +88,15 @@ def read_training(db: Session, user_id: int, *, days: int = 7, limit: int = 20, 
     rows.sort(key=lambda row: (row[0].activity_date or row[1].workout_date, row[0].id), reverse=True)
     items = [training_item(log, plan) for log, plan in rows]
     issues = []
+    unresolved = count_unresolved_activities(db, user_id, start, end)
+    if unresolved:
+        issues.append(McpTrainingFactIssue(code='UNRESOLVED_ACTIVITIES',
+            message='Stored activities require import or association review; completed-log totals exclude them.',
+            affected_metrics=['total_sessions', 'total_distance_km']))
     if any(log.workout_type == 'rest' and log.actual_distance_km is not None and log.actual_distance_km > 0 for log, _ in rows):
         issues.append(McpTrainingFactIssue(code='RECORDED_TYPE_DISTANCE_CONFLICT', message='A recorded rest type has positive running distance; its actual training type is withheld, not inferred.', affected_metrics=['actual_training_type', 'completed_key_sessions']))
     planned_rest = set(db.scalars(select(PlannedWorkout.workout_date).where(PlannedWorkout.user_id == user_id, PlannedWorkout.workout_date >= start, PlannedWorkout.workout_date <= end, PlannedWorkout.main_type_normalized == 'rest')).all())
-    digest = hashlib.sha256(json.dumps({'items':[item.model_dump(mode='json') for item in items], 'planned_rest':sorted(str(day) for day in planned_rest)}, sort_keys=True).encode()).hexdigest()
+    digest = hashlib.sha256(json.dumps({'items':[item.model_dump(mode='json') for item in items], 'unresolved': unresolved, 'planned_rest':sorted(str(day) for day in planned_rest)}, sort_keys=True).encode()).hexdigest()
     if previous and previous.get('snapshot') != digest: raise McpSafeError(McpErrorCode.CURSOR_STALE)
     offset = previous.get('offset', 0) if previous else 0
     if type(offset) is not int or not 0 <= offset <= len(items): raise McpSafeError(McpErrorCode.INVALID_ARGUMENT)
@@ -108,6 +110,8 @@ def read_training(db: Session, user_id: int, *, days: int = 7, limit: int = 20, 
     return McpRecentTraining(data_status='PARTIAL' if missing or not items or issues else 'AVAILABLE', as_of=end, range_start=start, range_end=end, fact_issues=issues,
         items=items[offset:next_offset], next_cursor=next_cursor, details_complete=offset == 0 and next_cursor is None,
         summary=McpRecentTrainingSummary(total_sessions=len(items), total_distance_km=round(sum(distances), 2) if distances else None,
+            unresolved_activity_count=unresolved,
+            **classification_coverage(log for log, _ in rows),
             completed_key_sessions=sum(item.actual_training_type in KEY_WORKOUT_TYPES for item in items), rest_days=len(planned_rest-actual_dates)),
         planned_rest_days=len(planned_rest), data_quality=McpDataQuality(level='PARTIAL' if missing else 'UNKNOWN', completeness=completeness, missing_fields=missing),
         missing_reasons=['Record type is not an inferred intensity classification; origin is unknown unless independently linked.', 'rest_days counts planned rest days without a recorded positive-distance run, not confirmed physiological rest.'])
@@ -217,13 +221,19 @@ class McpTrainingDetail(McpVersionedData):
     selected_activity: McpActivityDetail | None = None
     fact_issues: list[McpTrainingFactIssue] = Field(default_factory=list, max_length=20)
     segments_available: bool
-    segments_complete: bool
+    segments_complete: bool = Field(description='Legacy alias: all stored raw rows were returned; NOT validated training structure.')
+    raw_segments_complete: bool = False
+    normalized_structure_complete: bool = False
     segments: list[McpSegment] = Field(default_factory=list, max_length=100)
     normalized_segments: list[McpSegment] = Field(default_factory=list, max_length=100)
-    segment_validation: dict = Field(default_factory=dict)
-    activity_classification: dict = Field(default_factory=dict)
+    segment_validation: SegmentValidation = Field(default_factory=dict)
+    activity_classification: ActivityClassification = Field(default_factory=dict)
+    segment_storage: SegmentStorage = Field(default_factory=dict)
     segments_scope: Literal['STORED_LAPS_FOR_SELECTED_ACTIVITY'] = 'STORED_LAPS_FOR_SELECTED_ACTIVITY'
-    segment_distance_consistent: bool | None = None
+    segment_distance_consistent: bool | None = Field(default=None,
+        description='Distance coverage of normalized additive details; null when only summaries or conflicting views are available.')
+    raw_segment_distance_consistent: bool | None = Field(default=None,
+        description='Raw stored row sum comparison only; category summaries can overlap and are not additive.')
     heart_rate_quality: Literal['UNKNOWN'] = 'UNKNOWN'
     limitations: list[str] = Field(default_factory=list, max_length=10)
 
@@ -273,13 +283,31 @@ def read_training_detail(db: Session, user_id: int, record_ref: str, activity_re
     if log is not None and count and count <= 20 and log.actual_distance_km is not None and all(a.distance_m is not None for a in activities):
         if abs(float(log.actual_distance_km)-sum(float(a.distance_m) for a in activities)/1000) > 0.02:
             issues.append(McpTrainingFactIssue(code='LOG_ACTIVITY_DISTANCE_MISMATCH',message='Recorded log distance differs from linked activity distances; neither source is overwritten.',affected_metrics=['distance_km']))
-    segment_distance_consistent = None
+    raw_segment_distance_consistent = None
     if selected and selected.distance_m is not None and laps and len(laps) <= 100 and all(lap.distance_m is not None for lap in laps):
-        segment_distance_consistent = abs(float(selected.distance_m)-sum(float(lap.distance_m) for lap in laps)) <= 20
-        if not segment_distance_consistent:
-            issues.append(McpTrainingFactIssue(code='LAP_ACTIVITY_DISTANCE_MISMATCH',message='Stored lap distances do not match the selected activity distance; do not treat these laps as a complete race trace.',affected_metrics=['segments','distance_km']))
+        raw_segment_distance_consistent = abs(float(selected.distance_m)-sum(float(lap.distance_m) for lap in laps)) <= 20
     normalized, validation = normalize_segments(selected, laps[:100], truncated=len(laps) > 100) if selected else ([], {})
-    classification = classify_segments(normalized, validation) if selected else {}
+    segment_distance_consistent = validation.get('distance_consistent') if normalized else None
+    if segment_distance_consistent is False:
+        issues.append(McpTrainingFactIssue(code='LAP_ACTIVITY_DISTANCE_MISMATCH', message='Normalized detail distances do not match the selected activity distance; do not treat them as complete coverage.', affected_metrics=['normalized_segments','distance_km']))
+    if validation.get('detail_status') == 'SUMMARY_ONLY':
+        issues.append(McpTrainingFactIssue(code='LAP_DETAIL_UNAVAILABLE', message='Only overlapping category summaries are stored; individual laps are unavailable. No kilometre splits are inferred.', affected_metrics=['normalized_segments']))
+    if validation.get('detail_status') == 'CONFLICTED':
+        issues.append(McpTrainingFactIssue(code='LAP_STRUCTURE_CONFLICT', message='Overlapping or contradictory detail views cannot be combined into an additive lap trace.', affected_metrics=['normalized_segments']))
+    event = (selected.field_sources_json or {}).get('event_type_evidence', {}) if selected else {}
+    if selected and not event and selected.raw_activity_id:
+        # Historical events predate the metadata projection. Read just the
+        # whitelisted JSON field, not the private activity payload/GPS/notes.
+        key = db.scalar(select(ExternalActivityRaw.raw_payload_json['eventTypeDTO']['typeKey'].as_string()).where(
+            ExternalActivityRaw.id == selected.raw_activity_id, ExternalActivityRaw.user_id == user_id,
+            ExternalActivityRaw.provider == selected.provider, ExternalActivityRaw.external_activity_id == selected.external_activity_id))
+        from server.services.activity_event_facts import event_evidence
+        event = event_evidence({'eventTypeDTO': {'typeKey': key}})
+    classification = classify_segments(normalized, validation, event_evidence=event) if selected else {}
+    storage = (selected.field_sources_json or {}).get('lap_sync') if selected else None
+    storage = {key: value for key, value in (storage or {}).items() if key in SegmentStorage.__annotations__}
+    if storage.get('requires_review'):
+        issues.append(McpTrainingFactIssue(code='LAP_DOWNGRADE_REJECTED', message='A lower-quality lap update was preserved only as a private candidate; stored detail was retained.', affected_metrics=['segments']))
     selected_detail = _activity_detail(selected) if selected else None
     if selected_detail is not None and classification.get('primary_type') != 'UNKNOWN':
         selected_detail = selected_detail.model_copy(update={'actual_training_type': classification['primary_type']})
@@ -305,8 +333,12 @@ def read_training_detail(db: Session, user_id: int, record_ref: str, activity_re
         activities=[_activity_summary(a) for a in activities], activities_complete=count <= 20,
         selection_required=count > 1 and selected is None, selected_activity=selected_detail,
         fact_issues=issues, segment_distance_consistent=segment_distance_consistent,
+        raw_segment_distance_consistent=raw_segment_distance_consistent,
         normalized_segments=[segment(lap) for lap in normalized], segment_validation=validation,
         activity_classification=classification,
+        segment_storage=storage,
+        raw_segments_complete=bool(laps) and len(laps) <= 100,
+        normalized_structure_complete=bool(validation.get('structure_complete')),
         segments_available=bool(laps), segments_complete=bool(laps) and len(laps) <= 100,
         segments=[McpSegment(index=lap.lap_index, role=lap.segment_role, distance_m=float(lap.distance_m) if lap.distance_m is not None else None,
             duration_seconds=lap.duration_seconds, average_pace_seconds_per_km=lap.average_pace_seconds_per_km, quality=lap.data_quality,
@@ -319,6 +351,7 @@ def read_training_detail(db: Session, user_id: int, record_ref: str, activity_re
             'segments_complete only describes returned stored laps, not upstream sync completeness or full race coverage.',
             'Legacy segments are raw stored rows, possibly category rollups; use normalized_segments and segment_validation for structure.',
             'Activity classification describes structure only, not physiological intensity or recovery readiness.',
+            'A race event label is provider-recorded, not an independently verified result; unknown event type does not disprove a user-reported race.',
             'Provider measurements are not independently verified; no causal diagnosis is inferred.'] + ([] if laps else ['No selected activity with stored laps is available.']))
 
 

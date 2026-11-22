@@ -89,6 +89,7 @@ def with_sync_freshness(scope):
                 freshness.facts_read_at = read_started_at
                 if freshness.last_success_at and freshness.last_success_at > read_started_at:
                     freshness.status = 'REFRESHED_AFTER_READ'
+                    freshness.data_freshness = 'UNKNOWN'
                     freshness.note = 'Sync completed after this read started; repeat the query to read the updated facts.'
                 return result.model_copy(update={'freshness': freshness})
             return result
@@ -181,6 +182,7 @@ class McpToolAdapter:
         metrics = {key: val for key, val in value.get('metrics', {}).items() if key in allowed and (val is None or type(val) in (int, float))}
         evidence = [McpEvidence.model_validate(item) for item in value.get('evidence', []) if item.get('metric') in allowed][:15]
         return McpRunnerState(
+            sync_provenance=value.get('sync_provenance'),
             data_status=value["data_status"],
             as_of_date=value["as_of_date"],
             overall_state=value["overall_state"],

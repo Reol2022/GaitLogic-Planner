@@ -102,6 +102,9 @@ def create_access_token(user: UserAccount) -> str:
     now = datetime.now(timezone.utc)
     header = {"typ": "JWT", "alg": JWT_ALGORITHM}
     payload = {
+        "purpose": "web",
+        "iss": "gaitlogic-web",
+        "aud": "gaitlogic-web-api",
         "sub": str(user.id),
         "username": user.username,
         "iat": int(now.timestamp()),
@@ -146,16 +149,20 @@ def decode_mcp_access_token(token: str) -> dict:
     """Validate a GaitLogic MCP token without accepting the web JWT namespace."""
 
     try:
+        if len(token) > 8192:
+            raise ValueError()
         header_part, payload_part, signature_part = token.split(".", 2)
         header = json.loads(b64url_decode(header_part))
-        if header.get("typ") != "JWT" or header.get("alg") != JWT_ALGORITHM:
+        if not isinstance(header, dict) or header.get("typ") != "JWT" or header.get("alg") != JWT_ALGORITHM:
             raise McpTokenValidationError("INVALID_TOKEN")
         message = f"{header_part}.{payload_part}".encode("ascii")
         expected_signature = hmac.new(signing_key(), message, hashlib.sha256).digest()
         if not hmac.compare_digest(b64url_encode(expected_signature), signature_part):
             raise McpTokenValidationError("INVALID_TOKEN")
         payload = json.loads(b64url_decode(payload_part))
-        if int(payload.get("exp", 0)) < int(datetime.now(timezone.utc).timestamp()):
+        if not isinstance(payload, dict):
+            raise ValueError()
+        if type(payload.get('exp')) is not int or payload['exp'] <= int(datetime.now(timezone.utc).timestamp()):
             raise McpTokenValidationError("TOKEN_EXPIRED")
         settings = get_settings()
         if payload.get("iss") != f"{settings.mcp_public_base_url.rstrip('/')}/oauth":
@@ -166,7 +173,7 @@ def decode_mcp_access_token(token: str) -> dict:
             raise McpTokenValidationError("INVALID_TOKEN")
         if "mcp:read" not in str(payload.get("scope", "")).split():
             raise McpTokenValidationError("INSUFFICIENT_PERMISSION")
-        if int(payload.get("sub", 0)) <= 0:
+        if not isinstance(payload.get('sub'), str) or not payload['sub'].isascii() or not payload['sub'].isdigit() or not 0 < int(payload['sub']) < 2**63:
             raise McpTokenValidationError("INVALID_TOKEN")
         return payload
     except McpTokenValidationError:
@@ -197,14 +204,33 @@ def authenticate_user(db: Session, payload: UserLogin) -> TokenResponse:
 
 def decode_token(token: str) -> dict:
     try:
+        if len(token) > 8192:
+            raise ValueError()
         header_part, payload_part, signature_part = token.split(".", 2)
+        header = json.loads(b64url_decode(header_part))
+        if not isinstance(header, dict) or header.get('typ') != 'JWT' or header.get('alg') != JWT_ALGORITHM:
+            raise ValueError()
         message = f"{header_part}.{payload_part}".encode("ascii")
         expected_signature = hmac.new(signing_key(), message, hashlib.sha256).digest()
         if not hmac.compare_digest(b64url_encode(expected_signature), signature_part):
             raise UnauthorizedError("Invalid or expired token.")
         payload = json.loads(b64url_decode(payload_part))
-        if int(payload.get("exp", 0)) < int(datetime.now(timezone.utc).timestamp()):
+        if not isinstance(payload, dict):
+            raise ValueError()
+        if 'scope' in payload or 'grant_id' in payload:
+            raise ValueError()
+        now = int(datetime.now(timezone.utc).timestamp())
+        if type(payload.get('exp')) is not int or payload['exp'] <= now:
             raise UnauthorizedError("Invalid or expired token.")
+        if not isinstance(payload.get('sub'), str) or not payload['sub'].isascii() or not payload['sub'].isdigit() or not 0 < int(payload['sub']) < 2**63:
+            raise ValueError()
+        if (payload.get('purpose'), payload.get('iss'), payload.get('aud')) != ('web', 'gaitlogic-web', 'gaitlogic-web-api'):
+            # Optional, absolute migration deadline. Never accept an MCP-shaped
+            # token through legacy Web compatibility, even with a valid signature.
+            cutoff = get_settings().web_token_legacy_until
+            legacy = not any(key in payload for key in ('purpose', 'iss', 'aud', 'scope', 'grant_id'))
+            if not legacy or not cutoff or datetime.fromisoformat(cutoff).astimezone(timezone.utc).timestamp() <= now:
+                raise ValueError()
         return payload
-    except (ValueError, json.JSONDecodeError) as exc:
+    except (ValueError, TypeError, UnicodeError, AttributeError) as exc:
         raise UnauthorizedError("Invalid or expired token.") from exc

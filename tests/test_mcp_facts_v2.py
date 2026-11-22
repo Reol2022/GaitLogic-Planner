@@ -45,6 +45,7 @@ def test_signed_pagination_is_bound_to_user_range_and_snapshot(monkeypatch):
     monkeypatch.setattr(facts, '_query_logs', lambda *args: rows)
     monkeypatch.setattr(facts, 'local_today', lambda: date(2026, 7, 22))
     db = Mock(); db.scalars.return_value.all.return_value = []
+    db.scalar.return_value = 0  # Explicit unresolved-activity COUNT result.
     first = facts.read_training(db, 101, days=30)
     assert len(first.items) == 20 and first.summary.total_sessions == 23
     second = facts.read_training(db, 101, days=30, cursor=first.next_cursor)
@@ -112,6 +113,7 @@ def test_conflicting_recorded_rest_is_explicitly_flagged(monkeypatch):
     monkeypatch.setattr(facts, '_query_logs', lambda *args: [(record, None)])
     monkeypatch.setattr(facts, 'local_today', lambda: date(2026, 7, 22))
     db = Mock(); db.scalars.return_value.all.return_value = []
+    db.scalar.return_value = 0
     result = facts.read_training(db, 101)
     assert result.fact_issues[0].code == 'RECORDED_TYPE_DISTANCE_CONFLICT'
     assert result.items[0].actual_training_type is None

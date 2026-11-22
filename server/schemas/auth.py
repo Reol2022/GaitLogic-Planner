@@ -20,8 +20,8 @@ class UserRegister(BaseModel):
 
 
 class UserLogin(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class TokenResponse(BaseModel):

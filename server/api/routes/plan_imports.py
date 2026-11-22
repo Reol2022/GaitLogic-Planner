@@ -44,7 +44,8 @@ async def create_file_plan_import(
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user),
 ) -> PlanImportCreateResponse:
-    content = await file.read()
+    from server.security.uploads import read_upload
+    content = await read_upload(file)
     return await plan_import_service.create_file_import(
         db,
         current_user.id,

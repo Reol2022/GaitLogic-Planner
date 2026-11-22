@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 from server.integrations.activity_provider.self_evaluation import log_rpe_metadata, effective_log_rpe
-from server.services.training_fact_policy import actual_training_type
+from server.services.training_fact_policy import actual_training_type, classification_evidence, classification_coverage
 
 from sqlalchemy import func, select, and_, or_, exists
 from sqlalchemy.orm import Session
@@ -161,7 +161,7 @@ def get_recent_training_read(
         if distance is not None:
             distances.append(distance)
         is_completed_key = (
-            log.status_normalized in COMPLETED_STATUSES and workout_type in KEY_WORKOUT_TYPES
+            log.status_normalized in COMPLETED_STATUSES and recorded_type in KEY_WORKOUT_TYPES
         )
         completed_key_sessions += int(is_completed_key)
         sessions.append(
@@ -171,6 +171,7 @@ def get_recent_training_read(
                 planned_date=workout.workout_date if workout else None,
                 training_type=workout_type,
                 classification_basis="ACTUAL_LOG" if recorded_type not in {None, 'unknown'} else "TRAINING_PLAN" if workout is not None else "UNKNOWN",
+                actual_type_source=classification_evidence(log)['source'], actual_type_confirmation=classification_evidence(log)['confirmation_status'],
                 association_status=(
                     "MATCHED_CROSS_DATE"
                     if workout is not None and workout.workout_date != actual_date
@@ -224,18 +225,7 @@ def get_recent_training_read(
         and resolved_start <= workout.workout_date <= resolved_end
         and workout.main_type_normalized != WorkoutMainTypeNormalized.rest
     )
-    unresolved = int(
-        db.scalar(
-            select(func.count()).select_from(ExternalActivity).where(
-                ExternalActivity.user_id == user_id,
-                ExternalActivity.activity_date >= resolved_start,
-                ExternalActivity.activity_date <= resolved_end,
-                ExternalActivity.resolution_status.in_(["pending", "needs_review"]),
-                ExternalActivity.processing_status != "ignored",
-            )
-        )
-        or 0
-    )
+    unresolved = count_unresolved_activities(db, user_id, resolved_start, resolved_end)
     stable_keys: list[str] = []
     for log, _workout in rows:
         key = log.activity_fingerprint or log.external_activity_id
@@ -256,6 +246,7 @@ def get_recent_training_read(
         total_sessions=len(sessions),
         total_distance_km=round(sum(distances), 2) if distances else None,
         completed_key_sessions=completed_key_sessions,
+        **classification_coverage(log for log, _ in rows if log.status_normalized in COMPLETED_STATUSES),
         rest_days=rest_days,
         planned_sessions_due=planned_due,
         completed_planned_sessions=completed_planned,
@@ -264,6 +255,22 @@ def get_recent_training_read(
         unresolved_activity_count=unresolved,
         duplicate_candidate_count=max(0, duplicates),
         cross_date_association_count=cross_date,
+    )
+
+
+def count_unresolved_activities(db, user_id, start_date, end_date):
+    """Stored pending/review activities, not proof of upstream completeness."""
+    return int(
+        db.scalar(
+            select(func.count()).select_from(ExternalActivity).where(
+                ExternalActivity.user_id == user_id,
+                ExternalActivity.activity_date >= start_date,
+                ExternalActivity.activity_date <= end_date,
+                ExternalActivity.resolution_status.in_(["pending", "needs_review"]),
+                ExternalActivity.processing_status != "ignored",
+            )
+        )
+        or 0
     )
 
 

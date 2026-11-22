@@ -1,4 +1,5 @@
 /** Navigation only: server-side authorization remains the authority. */
+import { ADMIN_SYSTEM_SETTINGS_URL } from '@/admin/navigation';
 export interface SidebarItem { path:string; label:string; icon?:string; external?:boolean }
 export interface SidebarGroup { id:string; label:string; icon:string; items:SidebarItem[] }
 export const sidebarShortcuts:SidebarItem[]=[
@@ -15,7 +16,7 @@ export function sidebarGroups(admin:boolean,devices:boolean):SidebarGroup[]{
     {id:'devices',label:'设备与数据',icon:'device',items:[...(devices?[{path:'/data-sync',label:'连接与同步'},{path:'/data-sync/garmin',label:'Garmin 同步'}]:[]),{path:'/data-management',label:'数据管理'}]},
     {id:'personal',label:'个人与设置',icon:'user',items:[{path:'/my',label:'我的主页'},{path:'/ai-coach-preference',label:'教练偏好'},{path:'/feedback',label:'问题反馈'},{path:'/welcome',label:'使用引导'}]},
   ];
-  if(admin)groups.push({id:'administration',label:'管理后台',icon:'settings',items:[{path:'/admin.html#/',label:'管理控制台 ↗',external:true},{path:'/admin/users',label:'用户管理（原入口）'},{path:'/admin/ai-settings',label:'AI 设置（原入口）'},{path:'/admin/system-settings',label:'系统设置'},{path:'/admin/rule-governance',label:'科学规则治理'}]});
+  if(admin)groups.push({id:'administration',label:'管理后台',icon:'settings',items:[{path:'/admin.html#/',label:'管理控制台 ↗',external:true},{path:'/admin/users',label:'用户管理（原入口）'},{path:'/admin/ai-settings',label:'AI 设置（原入口）'},{path:ADMIN_SYSTEM_SETTINGS_URL,label:'系统设置 ↗',external:true},{path:'/admin/rule-governance',label:'科学规则治理'}]});
   return groups;
 }
 export function sidebarSelection(path:string,groups:SidebarGroup[]){

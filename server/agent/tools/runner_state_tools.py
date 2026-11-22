@@ -26,6 +26,8 @@ _INTENTS = (
 )
 
 _LIMITATION_MESSAGES_ZH = {
+    'load_risk_is_not_recovery_clearance': '训练规则风险不等于恢复充分，也不代表适合继续强度训练。',
+    'actual_intensity_evidence_incomplete': '实际训练强度分类证据不完整，不能据此认定近期没有强度训练。',
     "intensity_distance_uses_main_workout_type": "强度距离按训练主类型统计。",
     "composite_workout_intensity_segments_not_split": "复合训练暂时无法可靠拆分强度分段。",
     "high_intensity_composite_segments_use_main_workout_type": "复合训练的高强度判断使用主训练类型。",
@@ -94,6 +96,10 @@ class GetRunnerStateTool(AgentTool):
 
     def execute(self, arguments: EmptyToolInput, context: AgentContext) -> RunnerStateToolOutput:
         del arguments
+        from datetime import datetime
+        from sqlalchemy.orm import Session
+        from server.schemas.smart_sync import SyncFreshness
+        read_started_at = datetime.utcnow()
         snapshot = self.dependencies.current_runner_state(context.user_id)
         quality = snapshot.data_quality
         level = _value(quality.data_quality_level)
@@ -158,10 +164,10 @@ class GetRunnerStateTool(AgentTool):
         }
         limitations = [
             _notice("RUNNER_STATE_LIMITATION", _limitation_message(item))
-            for item in [
+            for item in dict.fromkeys([
                 *quality.limitations,
                 *(snapshot.inference_metadata.limitations if snapshot.inference_metadata else []),
-            ][:20]
+            ])
         ]
         limitations.extend(
             _notice(
@@ -170,6 +176,7 @@ class GetRunnerStateTool(AgentTool):
             )
             for item in snapshot.recovery.limitations[:10]
         )
+        limitations = list({(item.code, item.message): item for item in limitations}.values())[:20]
         if snapshot.recovery.missing_fields:
             limitations.append(
                 _notice(
@@ -181,7 +188,25 @@ class GetRunnerStateTool(AgentTool):
                     ),
                 )
             )
+        provenance = None
+        if isinstance(getattr(self.dependencies, 'db', None), Session):
+            from server.services.garmin_smart_sync_service import status
+            try:
+                with Session(bind=self.dependencies.db.get_bind()) as fresh_db:
+                    provenance = status(fresh_db, context.user_id, 'all', include_stored_when_disabled=True)
+                provenance.facts_read_at = read_started_at
+                if any(stamp and stamp > read_started_at for stamp in provenance.last_success_by_scope.values()):
+                    provenance.data_freshness = 'UNKNOWN'
+                    provenance.note = 'Sync completed after this state read started; repeat to read updated facts.'
+            except Exception:
+                provenance = SyncFreshness(status='CHECK_UNAVAILABLE', scope='all', facts_read_at=read_started_at)
+            if provenance.data_freshness != 'FRESH':
+                if data_status == TrainingDataStatus.AVAILABLE:
+                    data_status = TrainingDataStatus.PARTIAL
+                limitations.insert(0, _notice('SYNC_FACTS_INCOMPLETE',
+                    '训练或恢复同步尚未确认足够新；当前规则风险只适用于已读取的事实，不代表恢复充分。'))
         return RunnerStateToolOutput(
+            sync_provenance=provenance,
             data_status=data_status,
             as_of_date=snapshot.identity.calculation_window_end,
             overall_state=overall_state,

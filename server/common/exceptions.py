@@ -53,13 +53,18 @@ class ConflictError(AppError):
 class TooManyRequestsError(AppError):
     status_code = 429
 
+    def __init__(self, message: str, error_code=None, *, retry_after: int = 60):
+        super().__init__(message, error_code)
+        self.retry_after = max(1, retry_after)
+
 
 class ServiceUnavailableError(AppError):
     status_code = 503
 
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    return _error_response(exc.status_code, exc.error_code or exc.status_code, exc.message)
+    headers = {'Retry-After': str(exc.retry_after), 'Cache-Control': 'no-store'} if isinstance(exc, TooManyRequestsError) else None
+    return _error_response(exc.status_code, exc.error_code or exc.status_code, exc.message, headers=headers)
 
 
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
@@ -75,7 +80,7 @@ async def validation_error_handler(
         400,
         "VALIDATION_ERROR",
         "请求参数不正确，请检查填写内容。",
-        detail=exc.errors(),
+        detail=[{'loc': list(item['loc']), 'type': item['type']} for item in exc.errors()],
     )
 
 
@@ -89,7 +94,8 @@ async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSON
 
 
 async def database_error_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
-    logger.exception("Database error on %s %s", request.method, request.url.path)
+    logger.error("Database error method=%s route=%s exception_type=%s", request.method,
+        getattr(request.scope.get('route'), 'path', '<unmatched>'), type(exc).__name__)
     if isinstance(exc, OperationalError) or (
         isinstance(exc, DBAPIError) and exc.connection_invalidated
     ):
@@ -106,7 +112,8 @@ async def database_error_handler(request: Request, exc: SQLAlchemyError) -> JSON
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    logger.error("Unhandled error method=%s route=%s exception_type=%s", request.method,
+        getattr(request.scope.get('route'), 'path', '<unmatched>'), type(exc).__name__)
     return _error_response(
         500,
         "INTERNAL_SERVER_ERROR",

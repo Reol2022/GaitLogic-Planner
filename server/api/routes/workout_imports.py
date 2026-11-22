@@ -41,7 +41,8 @@ async def create_file_workout_import(
     current_user: UserAccount = Depends(get_current_user),
 ) -> WorkoutImportCreateResponse:
     assert_workout_import_available(db, current_user)
-    content = await file.read()
+    from server.security.uploads import read_upload
+    content = await read_upload(file)
     return await workout_import_service.create_file_import(
         db,
         current_user.id,

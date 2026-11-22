@@ -620,7 +620,10 @@ def _parse_file(extension: str, content: bytes) -> list[PlanImportWorkoutItem]:
 
 
 def _parse_xlsx(content: bytes) -> list[PlanImportWorkoutItem]:
+    from server.security.uploads import validate_xlsx, validate_sheet_bounds
+    validate_xlsx(content)
     workbook = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    validate_sheet_bounds(workbook, max_rows=MAX_ROWS)
     sheet = workbook.active
     headers = [str(cell.value or "").strip() for cell in sheet[1]]
     return _rows_to_items(

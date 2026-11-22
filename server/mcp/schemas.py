@@ -76,15 +76,22 @@ class McpRecentTrainingItem(McpContractModel):
     planned_training_type: str | None = Field(default=None, max_length=80)
     actual_training_type: str | None = Field(default=None, max_length=80)
     classification_basis: str | None = Field(default=None, max_length=40)
+    actual_type_source: str = 'UNKNOWN'
+    actual_type_confirmation: str = 'UNCONFIRMED'
     origin_source: str = Field(default="UNKNOWN", max_length=32)
     record_source: Literal["WORKOUT_LOG"] = "WORKOUT_LOG"
     verification_status: Literal["RECORDED_NOT_INDEPENDENTLY_VERIFIED"] = "RECORDED_NOT_INDEPENDENTLY_VERIFIED"
 
 
 class McpRecentTrainingSummary(McpContractModel):
+    unresolved_activity_count: int = Field(default=0, ge=0)
     total_sessions: int = Field(ge=0)
     total_distance_km: float | None = Field(default=None, ge=0)
-    completed_key_sessions: int = Field(ge=0)
+    completed_key_sessions: int = Field(ge=0, description='Count based on recorded actual types, not planned types. Zero is not proof of no quality workouts when classification coverage is incomplete.')
+    classified_sessions: int | None = Field(default=None, ge=0)
+    unclassified_sessions: int | None = Field(default=None, ge=0)
+    classification_coverage: float | None = Field(default=None, ge=0, le=1, description='Actual type availability across the full completed-session window; not classification accuracy or physiological confidence.')
+    key_session_count_status: Literal['COMPLETE','PARTIAL','UNKNOWN'] = 'UNKNOWN'
     rest_days: int = Field(ge=0)
     session_count_basis: Literal['COMPLETED_WORKOUT_LOGS'] = 'COMPLETED_WORKOUT_LOGS'
 
@@ -112,6 +119,7 @@ class McpRecentTraining(McpVersionedData):
 
 
 class McpRunnerState(McpVersionedData):
+    sync_provenance: SyncFreshness | None = None
     data_status: str = Field(min_length=1, max_length=32)
     as_of_date: date
     overall_state: str = Field(max_length=80)

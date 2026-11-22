@@ -4,6 +4,23 @@ CREATE DATABASE IF NOT EXISTS `gaitlogic_planner`
 
 USE `gaitlogic_planner`;
 
+-- Shared security admission state. Subjects are HMAC hashes, not raw IPs/accounts.
+CREATE TABLE IF NOT EXISTS `security_rate_bucket` (
+  `key_hash` VARCHAR(64) NOT NULL,
+  `count` INT NOT NULL DEFAULT 0,
+  `expires_at` DATETIME NOT NULL,
+  PRIMARY KEY (`key_hash`),
+  KEY `ix_security_rate_expiry` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `security_request_lease` (
+  `token` VARCHAR(64) NOT NULL,
+  `gate_hash` VARCHAR(64) NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  PRIMARY KEY (`token`),
+  KEY `ix_security_lease_gate_expiry` (`gate_hash`, `expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `user_account` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `username` VARCHAR(64) NOT NULL,

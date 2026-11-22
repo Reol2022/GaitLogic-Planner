@@ -1,6 +1,6 @@
 import secrets
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from planner_core.database.models import UserAccount
@@ -23,7 +23,10 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: UserLogin, db: Session = Depends(get_db)):
+def login(payload: UserLogin, request: Request, db: Session = Depends(get_db)):
+    from server.security.admission import login_admission
+    user = auth_service.get_user_by_username(db, payload.username)
+    login_admission(request, f'user:{user.id}' if user else f'unknown:{payload.username.casefold()}')
     return auth_service.authenticate_user(db, payload)
 
 

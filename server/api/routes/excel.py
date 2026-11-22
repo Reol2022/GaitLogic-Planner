@@ -30,7 +30,8 @@ async def upload_excel_import(
 ) -> ExcelImportResult:
     if not file.filename or not file.filename.lower().endswith(".xlsx"):
         raise BadRequestError("只支持上传 .xlsx 文件。")
-    content = await file.read()
+    from server.security.uploads import read_upload
+    content = await read_upload(file)
     if not content:
         raise BadRequestError("上传文件不能为空。")
     return import_excel_workbook(db, content, file.filename, current_user.id)

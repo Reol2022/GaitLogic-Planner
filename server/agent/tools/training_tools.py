@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from server.agent.enums import AgentIntent
 from server.agent.schemas import AgentContext, AgentNotice
@@ -53,6 +53,7 @@ class GetRecentTrainingTool(AgentTool):
         self.item_limit = item_limit
 
     def execute(self, arguments: RecentTrainingInput, context: AgentContext) -> RecentTrainingOutput:
+        read_started_at = datetime.utcnow()
         limit = min(arguments.limit, self.item_limit)
         as_of_date = arguments.end_date or context.current_time.date()
         days = arguments.days or 7
@@ -85,8 +86,32 @@ class GetRecentTrainingTool(AgentTool):
             else 0.0
         )
         details_complete, issues = check_recent_training_facts(recent, visible_limit=limit)
+        unresolved = getattr(recent, 'unresolved_activity_count', 0)
+        if unresolved:
+            from server.agent.tools.schemas import TrainingFactIssue
+            issues.append(TrainingFactIssue(code='UNRESOLVED_ACTIVITIES',
+                message='Stored activities require import or association review; completed-log totals exclude them.',
+                affected_metrics=['total_sessions', 'total_distance_km']))
+            data_status = TrainingDataStatus.PARTIAL
+        freshness = None
+        from planner_core.config import get_settings
+        from sqlalchemy.orm import Session
+        if get_settings().garmin_smart_sync_enabled and isinstance(getattr(self.dependencies, 'db', None), Session):
+            from server.services.garmin_smart_sync_service import status
+            from server.schemas.smart_sync import SyncFreshness
+            try:
+                with Session(bind=self.dependencies.db.get_bind()) as fresh_db:
+                    freshness = status(fresh_db, context.user_id, 'activities')
+                freshness.facts_read_at = read_started_at
+                if freshness.last_success_at and freshness.last_success_at > read_started_at:
+                    freshness.status = 'REFRESHED_AFTER_READ'
+                    freshness.data_freshness = 'UNKNOWN'
+                    freshness.note = 'Sync completed after this read started; repeat the query to read the updated facts.'
+            except Exception:
+                freshness = SyncFreshness(status='CHECK_UNAVAILABLE', sync_status='CHECK_UNAVAILABLE')
         return RecentTrainingOutput(
             data_status=data_status,
+            freshness=freshness,
             as_of=recent.as_of_date,
             range_start=range_start,
             range_end=range_end,
@@ -100,9 +125,14 @@ class GetRecentTrainingTool(AgentTool):
             ],
             details_complete=details_complete,
             summary=RecentTrainingSummary(
+                unresolved_activity_count=unresolved,
                 total_sessions=recent.total_sessions,
                 total_distance_km=recent.total_distance_km,
                 completed_key_sessions=recent.completed_key_sessions,
+                classified_sessions=getattr(recent, 'classified_sessions', None),
+                unclassified_sessions=getattr(recent, 'unclassified_sessions', None),
+                classification_coverage=getattr(recent, 'classification_coverage', None),
+                key_session_count_status=getattr(recent, 'key_session_count_status', 'UNKNOWN'),
                 rest_days=recent.rest_days,
                 planned_sessions_due=recent.planned_sessions_due,
                 completed_planned_sessions=recent.completed_planned_sessions,

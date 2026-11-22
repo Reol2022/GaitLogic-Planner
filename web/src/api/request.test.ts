@@ -14,10 +14,16 @@ vi.mock("axios", () => ({ default: {
 vi.mock("element-plus", () => ({ ElMessage: { error: mocks.message } }));
 vi.mock("@/utils/authPrompt", () => ({ requestAuth: mocks.requestAuth }));
 vi.mock("@/utils/systemSettingsCache", () => ({ getCachedAuthEntryMode: mocks.mode }));
-import "./request";
+import { getRequestErrorMessage } from "./request";
 
 describe("authentication response errors", () => {
   beforeEach(() => { localStorage.clear(); vi.clearAllMocks(); });
+  it('shows bounded Retry-After without automatically retrying or expiring login', async () => {
+    const error = { isAxiosError: true, response: { status: 429, data: { message: '已有请求正在处理中。' }, headers: { 'retry-after': '5' } }, config: {} };
+    expect(getRequestErrorMessage(error)).toBe('已有请求正在处理中。（约 5 秒后可重试）');
+    await expect(mocks.reject!(error)).rejects.toBe(error);
+    expect(mocks.requestAuth).not.toHaveBeenCalled();
+  });
   it.each(["/auth/login", "/api/auth/login"]) ("shows rejected credentials without expiring another session: %s", async (url) => {
     localStorage.setItem("gaitlogic_access_token", "synthetic-existing-token");
     const error = { response: { status: 401 }, config: { url } };

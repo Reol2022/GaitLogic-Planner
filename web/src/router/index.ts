@@ -217,7 +217,7 @@ const router = createRouter({
       path: "/admin/system-settings",
       name: "AdminSystemSettings",
       component: () => import("@/views/AdminSystemSettings.vue"),
-      meta: { title: "系统设置" },
+      meta: { title: "系统设置", public: true },
     },
     {
       path: "/admin/rule-governance",

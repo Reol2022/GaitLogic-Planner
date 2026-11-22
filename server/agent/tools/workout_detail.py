@@ -26,11 +26,15 @@ class GetWorkoutDetailTool(AgentTool):
     def execute(self, arguments, context):
         result = read_training_detail(self.dependencies.db, context.user_id, arguments.record_ref, arguments.activity_ref)
         if len(result.segments) > 24:
-            result = result.model_copy(update={"segments": result.segments[:24], "segments_complete": False,
+            result = result.model_copy(update={"segments": result.segments[:24], "segments_complete": False, 'raw_segments_complete':False,
                 "limitations": [*result.limitations, "Coach context includes at most 24 stored laps; remaining laps are not included."]})
         if len(result.normalized_segments) > 24:
             result = result.model_copy(update={'normalized_segments':result.normalized_segments[:24],
+                'normalized_structure_complete':False,
                 'segment_validation':{**result.segment_validation, 'structure_complete':False,
-                    'confidence':'INCOMPLETE', 'context_truncated':True},
-                'activity_classification':{'primary_type':'UNKNOWN','requires_confirmation':True}})
+                    'confidence':'INCOMPLETE', 'context_truncated':True, 'detail_status':'PARTIAL',
+                    'normalized_row_count':24},
+                'activity_classification':result.activity_classification
+                    if result.activity_classification.get('claim_type') == 'PROVIDER_RECORDED'
+                    else {'primary_type':'UNKNOWN','requires_confirmation':True}})
         return result

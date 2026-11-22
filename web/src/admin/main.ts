@@ -9,6 +9,7 @@ import Overview from './Overview.vue';
 import Users from './Users.vue';
 import AI from './AI.vue';
 import Audit from './Audit.vue';
+import System from './System.vue';
 import {verify} from './api';
 import './style.css';
 import './mobile.css';
@@ -17,6 +18,7 @@ const router=createRouter({history:createWebHashHistory(),routes:[
   {path:'/',component:Overview,meta:{title:'运行概览'}},
   {path:'/users',component:Users,meta:{title:'用户管理'}},
   {path:'/ai',component:AI,meta:{title:'AI 配置'}},
+  {path:'/system',component:System,meta:{title:'系统设置'}},
   {path:'/audit',component:Audit,meta:{title:'操作审计'}},
   {path:'/:pathMatch(.*)*',redirect:'/'},
 ]});

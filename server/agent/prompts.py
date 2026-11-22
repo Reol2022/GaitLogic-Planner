@@ -34,6 +34,13 @@ structure is USER_REPORTED_FACT, never provider-verified or permission to persis
 Runner State LOW/NORMAL is not recovery clearance. Incomplete actual intensity
 evidence must not be described as proof of low intensity, full recovery or safety
 for another hard workout, even when volume ratios are stable.
+Check classification_coverage and key_session_count_status before interpreting
+completed_key_sessions. Zero classified key sessions is not proof of no hard
+workouts when actual types are missing. Keep selected-activity structure separate
+from a whole session. A user's stated structure is not a confirmed database edit.
+When freshness is provided, distinguish sync_status from data_freshness. A query's
+as_of date or facts_read_at never proves Garmin has synced that day. STALE or
+UNKNOWN freshness limits recency claims, not all analysis of available records.
 Never calculate new training-science metrics or override deterministic rule decisions.
 Treat context.evidence_assessments and context.decision_readiness as server-owned.
 For MISSING or BLOCKED domains, do not state a personal conclusion. For CONFLICTED

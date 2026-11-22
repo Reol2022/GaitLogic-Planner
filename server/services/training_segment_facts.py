@@ -62,14 +62,29 @@ def normalize_segments(activity, laps, *, truncated=False):
         'overlapping_segments': overlap, 'structure_complete': complete,
         'confidence': 'VALIDATED_STRUCTURE' if complete else 'INCOMPLETE',
         'excluded_summary_count': summaries, 'deduplicated_count': duplicates,
-        'raw_laps_truncated': truncated, 'conflicting_duplicate': conflict}
+        'raw_laps_truncated': truncated, 'conflicting_duplicate': conflict,
+        'raw_row_count': len(laps), 'normalized_row_count': 0 if overlap or conflict else len(retained),
+        'detail_status': ('CONFLICTED' if overlap or conflict else 'COMPLETE' if complete
+            else 'PARTIAL' if retained else 'SUMMARY_ONLY' if summaries else 'UNAVAILABLE')}
     # Do not make an arbitrary winner selection among overlapping representations.
     return ([] if overlap or conflict else retained), validation
 
 
-def classify_segments(laps, validation):
+def classify_segments(laps, validation, *, event_evidence=None):
+    from server.services.activity_event_facts import EVENT_TYPES
+    event_evidence = event_evidence if isinstance(event_evidence, dict) else {}
+    event = event_evidence.get('event_type')
+    event = event if event_evidence.get('source') == 'GARMIN_EVENT_TYPE' and isinstance(event, str) and event in EVENT_TYPES else 'UNKNOWN'
     unknown = {'primary_type': 'UNKNOWN', 'components': [], 'confidence': 'INSUFFICIENT',
-        'evidence_source': 'STORED_GARMIN_LAPS', 'requires_confirmation': True}
+        'evidence_source': 'STORED_GARMIN_LAPS', 'requires_confirmation': True,
+        'scope': 'SELECTED_ACTIVITY', 'claim_type': 'UNKNOWN', 'confirmation_status': 'UNCONFIRMED',
+        'event_type': event, 'event_type_source': 'GARMIN_EVENT_TYPE' if event != 'UNKNOWN' else 'UNKNOWN'}
+    # A provider's race label does not depend on lap coverage. Conversely,
+    # distance, pace, activity names and ACTIVE auto-laps do not prove a race.
+    if event == 'race' and (event_evidence or {}).get('source') == 'GARMIN_EVENT_TYPE':
+        return {**unknown, 'primary_type': 'race', 'confidence': 'PROVIDER_LABEL',
+            'evidence_source': 'GARMIN_EVENT_TYPE', 'claim_type': 'PROVIDER_RECORDED',
+            'confirmation_status': 'NOT_INDEPENDENTLY_VERIFIED', 'requires_confirmation': False}
     if not validation['structure_complete']:
         return unknown
     work = [lap for lap in laps if str(getattr(lap, 'workout_step_type', '') or '').upper() in {'ACTIVE', 'INTERVAL_ACTIVE'}]
@@ -81,4 +96,6 @@ def classify_segments(laps, validation):
         {'type': 'work_interval', 'lap_index': lap.lap_index, 'distance_m': float(lap.distance_m),
          'duration_seconds': lap.duration_seconds} for lap in work],
         'confidence': 'STRUCTURE_ONLY', 'evidence_source': 'STORED_GARMIN_LAPS',
+        'scope': 'SELECTED_ACTIVITY', 'claim_type': 'DETERMINISTIC_DERIVATION', 'confirmation_status': 'NOT_USER_CONFIRMED',
+        'event_type': event, 'event_type_source': unknown['event_type_source'],
         'requires_confirmation': False}

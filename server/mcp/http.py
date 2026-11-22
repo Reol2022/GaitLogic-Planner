@@ -122,7 +122,8 @@ class McpHttpSecurityMiddleware:
                 operation="validate",
                 metadata={"transport": "streamable_http"},
             ) as auth_span:
-                identity, error = self._authenticate(request)
+                from starlette.concurrency import run_in_threadpool
+                identity, error = await run_in_threadpool(self._authenticate, request)
                 if error is not None:
                     auth_span.set_status("FAILED", error_code=error.value)
                     auth_span.add_metadata(
@@ -135,9 +136,18 @@ class McpHttpSecurityMiddleware:
                 auth_span.add_metadata(auth_status="SUCCEEDED", status="SUCCEEDED")
 
             assert identity is not None
-            if (self.dependencies.settings.mcp_oauth_enabled
-                and request.method == "POST"
-                and "mcp:recovery:read" not in identity.scopes):
+            if self.dependencies.settings.security_controls_enabled:
+                from server.security.admission import consume
+                from server.security.middleware import rejection
+                from server.common.exceptions import AppError
+                try:
+                    await run_in_threadpool(consume, self.dependencies.session_factory,
+                        [('mcp', f'user:{identity.user_id}')], settings=self.dependencies.settings)
+                except AppError as exc:
+                    await rejection(exc)(scope, receive, send)
+                    return
+            if (request.method == "POST" and (self.dependencies.settings.security_controls_enabled
+                or (self.dependencies.settings.mcp_oauth_enabled and "mcp:recovery:read" not in identity.scopes))):
                 # Inspect only a bounded in-memory RPC envelope. Replay it for
                 # the SDK unchanged; never trust Mcp-Name headers or log a body.
                 chunks = []
@@ -154,11 +164,21 @@ class McpHttpSecurityMiddleware:
                 except (ValueError, UnicodeError):
                     payload = None
                 params = payload.get("params") if isinstance(payload, dict) else None
-                if (isinstance(payload, dict) and payload.get("method") == "tools/call"
+                if (self.dependencies.settings.mcp_oauth_enabled and "mcp:recovery:read" not in identity.scopes
+                    and isinstance(payload, dict) and payload.get("method") == "tools/call"
                     and isinstance(params, dict) and params.get("name") == "get_recovery_trend"):
                     root.set_status("FAILED", error_code=McpErrorCode.INSUFFICIENT_PERMISSION.value)
                     await _recovery_scope_challenge(self.dependencies.settings)(scope, receive, send)
                     return
+                if (self.dependencies.settings.security_controls_enabled and isinstance(payload, dict)
+                    and payload.get('method') == 'tools/call' and isinstance(params, dict)
+                    and params.get('name') == 'retrieve_training_knowledge'):
+                    try:
+                        await run_in_threadpool(consume, self.dependencies.session_factory,
+                            [('knowledge', f'user:{identity.user_id}')], settings=self.dependencies.settings)
+                    except AppError as exc:
+                        await rejection(exc)(scope, receive, send)
+                        return
                 original_receive = receive
                 replayed = False
 

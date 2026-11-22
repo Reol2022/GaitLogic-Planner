@@ -59,4 +59,11 @@ describe('Smart Sync feedback', () => {
     const wrapper = mount(Settings); await flushPromises();
     expect(wrapper.find('section').exists()).toBe(false); wrapper.unmount();
   });
+  it('shows stale facts independently of disabled automatic sync', async () => {
+    vi.mocked(getSmartSync).mockResolvedValue({ ...value('AUTO_SYNC_DISABLED'), enabled: false, data_freshness: 'STALE' });
+    const wrapper = mount(Settings); await flushPromises();
+    expect(wrapper.text()).toContain('自动同步已关闭');
+    expect(wrapper.text()).toContain('已过期，分析最新训练前请先同步');
+    expect(saveSmartSync).not.toHaveBeenCalled(); wrapper.unmount();
+  });
 });

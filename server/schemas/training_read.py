@@ -11,6 +11,8 @@ class RecentTrainingSessionRead(BaseModel):
     planned_date: date | None = None
     training_type: str
     classification_basis: str = "ACTUAL_LOG"
+    actual_type_source: str = 'UNKNOWN'
+    actual_type_confirmation: str = 'UNCONFIRMED'
     association_status: str = "UNPLANNED"
     planned_or_unplanned: str
     completion_status: str
@@ -37,6 +39,10 @@ class RecentTrainingRead(BaseModel):
     total_sessions: int
     total_distance_km: float | None = None
     completed_key_sessions: int
+    classified_sessions: int | None = None
+    unclassified_sessions: int | None = None
+    classification_coverage: float | None = None
+    key_session_count_status: str = 'UNKNOWN'
     rest_days: int
     planned_sessions_due: int = 0
     completed_planned_sessions: int = 0

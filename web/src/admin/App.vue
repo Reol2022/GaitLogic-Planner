@@ -13,7 +13,8 @@
 <script setup lang="ts">
 import {useRoute,useRouter} from 'vue-router';
 import {adminUser,logout} from './api';
+import { adminNavigation } from './navigation';
 const route=useRoute(),router=useRouter();
-const items=[{path:'/',label:'运行概览',icon:'◈'},{path:'/users',label:'用户管理',icon:'◎'},{path:'/ai',label:'AI 配置',icon:'◇'},{path:'/audit',label:'操作审计',icon:'≡'}];
+const items=adminNavigation;
 function signOut(){logout();router.replace('/login');}
 </script>

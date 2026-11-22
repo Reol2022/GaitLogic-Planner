@@ -239,6 +239,12 @@ async def authorize_submit(request: Request):
     with SessionLocal.begin() as db:
         client = db.scalar(select(McpOAuthClient).where(McpOAuthClient.client_id == params.get("client_id")))
         user = db.scalar(select(UserAccount).where(UserAccount.username == params.get("username")))
+        from starlette.concurrency import run_in_threadpool
+        from server.security.admission import login_admission
+        if len(params.get('username', '')) > 64 or len(params.get('password', '')) > 128:
+            return _login_page(params, '用户名、密码或授权请求无效。')
+        await run_in_threadpool(login_admission, request,
+            f'user:{user.id}' if user else f"unknown:{params.get('username', '').casefold()}")
         if client is None or params.get("redirect_uri") not in (client.redirect_uris_json or []) or user is None or user.status != "active" or not verify_password(params.get("password", ""), user.password_hash):
             return _login_page(params, "用户名、密码或授权请求无效。")
         if params.get("code_challenge_method") != "S256" or not params.get("code_challenge"):

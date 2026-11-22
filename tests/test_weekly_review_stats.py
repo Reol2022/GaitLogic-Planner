@@ -41,7 +41,9 @@ from server.services import weekly_review_ai_service
 @pytest.fixture(scope="module")
 def db_session():
     settings = get_settings()
-    database = f"gaitlogic_weekly_stats_{uuid4().hex[:10]}"
+    if settings.mysql_host not in {'127.0.0.1', 'localhost'} or settings.mysql_port != 3307:
+        pytest.skip('Explicit local isolated MySQL on port 3307 required')
+    database = f"gaitlogic_test_weekly_stats_{uuid4().hex[:10]}"
     try:
         connection = pymysql.connect(
             host=settings.mysql_host,

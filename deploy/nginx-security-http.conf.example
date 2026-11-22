@@ -1,0 +1,5 @@
+# Include inside nginx's http {} ONLY, after review. No production auto-install.
+limit_req_zone $binary_remote_addr zone=gaitlogic_api:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=gaitlogic_login:10m rate=5r/m;
+limit_req_zone $binary_remote_addr zone=gaitlogic_oauth:10m rate=2r/s;
+limit_conn_zone $binary_remote_addr zone=gaitlogic_connections:10m;

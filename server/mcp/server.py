@@ -112,7 +112,7 @@ def create_mcp_server(
 
     @mcp.tool(
         name="get_recent_training",
-        description="Read existing training facts; may enqueue background Garmin cache sync when the user enabled automatic sync. Does not change plans or manual input. Returns freshness status without waiting for Garmin. For stable pagination use cursor='first' then next_cursor with identical ranges. Summaries cover the full window.",
+        description="Read existing training facts; may enqueue background Garmin cache sync if enabled. No plan/manual-input edits. Returns independent sync status and data freshness without waiting for Garmin. For stable pagination use cursor='first' then next_cursor with identical ranges. Summaries cover the full window; zero key sessions is not absence of hard training when classification coverage is incomplete.",
         structured_output=True,
         annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True),
     )
@@ -155,7 +155,7 @@ def create_mcp_server(
             language=language,
         )
 
-    @mcp.tool(name='get_training_detail', description='Read a workout_log or external_activity reference. May enqueue background Garmin activity cache sync if enabled; no plan or manual-input changes. Select activity_ref for multi-activity logs. Legacy segments may be rollups; use normalized_segments with segment_validation. Activity RPE is not session RPE. No GPS or raw payload.', structured_output=True,
+    @mcp.tool(name='get_training_detail', description='Read a workout_log or external_activity reference. May enqueue background Garmin activity cache sync if enabled; no plan or manual-input changes. Select activity_ref for multi-activity logs. Legacy segments may be rollups; use normalized_segments with segment_validation.detail_status. Race labels require explicit source, not distance or pace. Activity RPE is not session RPE. No GPS or raw payload.', structured_output=True,
               annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
     def get_training_detail(record_ref: Annotated[str, Field(pattern=r'^(workout_log|external_activity):[1-9][0-9]{0,17}$')],
         activity_ref: Annotated[str | None, Field(pattern=r'^external_activity:[1-9][0-9]{0,17}$')] = None) -> McpTrainingDetailResult:

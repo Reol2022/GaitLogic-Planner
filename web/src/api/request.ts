@@ -28,6 +28,12 @@ export function getRequestErrorMessage(error: unknown): string {
 
   const axiosError = error as AxiosError<ErrorResponseBody>;
   const serverMessage = axiosError.response?.data?.message;
+  if (axiosError.response?.status === 429) {
+    const value = Number(axiosError.response.headers?.['retry-after']);
+    const message = serverMessage || '请求过于频繁，请稍后重试。';
+    return Number.isFinite(value) && value > 0 && value <= 86400
+      ? `${message}（约 ${Math.ceil(value)} 秒后可重试）` : message;
+  }
   if (serverMessage) {
     return serverMessage;
   }

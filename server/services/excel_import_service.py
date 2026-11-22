@@ -49,8 +49,11 @@ def import_excel_workbook(
     file_name: str,
     user_id: int,
 ) -> ExcelImportResult:
+    from server.security.uploads import validate_xlsx, validate_sheet_bounds
+    validate_xlsx(content)
     try:
         workbook = load_workbook(BytesIO(content), data_only=True)
+        validate_sheet_bounds(workbook)
     except Exception:
         return _failed_template_result("文件不是有效的 xlsx。")
 

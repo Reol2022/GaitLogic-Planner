@@ -12,6 +12,40 @@ PROJECT_ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
+    security_controls_enabled: bool = Field(default=False, validation_alias='SECURITY_CONTROLS_ENABLED')
+    security_admin_allowed_ips: str = Field(default='', validation_alias='SECURITY_ADMIN_ALLOWED_IPS')
+    security_rate_limits: dict[str, int] = Field(default_factory=dict, validation_alias='SECURITY_RATE_LIMITS')
+    security_request_max_bytes: int = Field(default=10*1024*1024, ge=1024, le=50*1024*1024, validation_alias='SECURITY_REQUEST_MAX_BYTES')
+    security_lease_seconds: int = Field(default=900, ge=60, le=3600, validation_alias='SECURITY_LEASE_SECONDS')
+    web_token_legacy_until: str = Field(default='', validation_alias='WEB_TOKEN_LEGACY_UNTIL')
+
+    @field_validator('web_token_legacy_until')
+    @classmethod
+    def validate_legacy_deadline(cls, value):
+        if value:
+            from datetime import datetime
+            if datetime.fromisoformat(value).tzinfo is None:
+                raise ValueError('Legacy token deadline requires an explicit timezone')
+        return value
+
+    @field_validator('security_admin_allowed_ips')
+    @classmethod
+    def validate_security_networks(cls, value):
+        from ipaddress import ip_network
+        for network in value.split(','):
+            if network.strip():
+                ip_network(network.strip(), strict=False)
+        return value
+
+    @field_validator('security_rate_limits')
+    @classmethod
+    def validate_security_limits(cls, value):
+        allowed = {'ip', 'login_ip', 'login_account', 'login_pair', 'register', 'oauth',
+            'coach_minute', 'coach_day', 'plan_hour', 'plan_day', 'sync', 'import', 'mcp', 'knowledge',
+            'ai_concurrency', 'global_ai_concurrency'}
+        if set(value)-allowed or any(type(v) is not int or not 1 <= v <= 100000 for v in value.values()):
+            raise ValueError('Invalid security rate policy')
+        return value
     garmin_smart_sync_enabled: bool = Field(default=False, validation_alias="GARMIN_SMART_SYNC_ENABLED")
     mysql_host: str = Field(default="127.0.0.1", validation_alias="MYSQL_HOST")
     mysql_port: int = Field(default=3306, validation_alias="MYSQL_PORT")

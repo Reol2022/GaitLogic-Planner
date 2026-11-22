@@ -12,6 +12,18 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_VERSION = "0.16.8"
 
 
+def test_archive_release_commit_uses_manifest(tmp_path, monkeypatch):
+    from server.api.routes import health
+    monkeypatch.delenv('GAITLOGIC_GIT_COMMIT', raising=False)
+    monkeypatch.setattr(health, '__file__', str(tmp_path/'server/api/routes/health.py'))
+    (tmp_path/'release-manifest.json').write_text(json.dumps({'git_commit':'a'*40}), encoding='utf-8')
+    health._git_commit.cache_clear()
+    try:
+        assert health._git_commit() == 'a'*40
+    finally:
+        health._git_commit.cache_clear()
+
+
 def test_release_version_declarations_are_consistent() -> None:
     pyproject = tomllib.loads(
         (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")

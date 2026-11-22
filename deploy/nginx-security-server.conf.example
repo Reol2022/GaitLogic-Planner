@@ -1,0 +1,42 @@
+# Merge into the existing HTTPS server {}; do NOT overwrite the site file.
+# Requires nginx-security-http.conf.example at http {} scope first.
+limit_req_status 429;
+limit_conn_status 429;
+client_max_body_size 10m;
+client_body_timeout 15s;
+client_header_timeout 15s;
+error_page 429 = @gaitlogic_rate_limited;
+
+location @gaitlogic_rate_limited {
+    default_type application/json;
+    add_header Retry-After 60 always;
+    add_header Cache-Control no-store always;
+    return 429 '{"code":"RATE_LIMITED","message":"请求过于频繁，请稍后重试。"}';
+}
+
+# Merge the following into the EXISTING /api/, /mcp and /oauth/ locations:
+# limit_req zone=gaitlogic_api burst=40 nodelay;
+# limit_conn gaitlogic_connections 20;
+# proxy_pass http://127.0.0.1:8000;  # preserve /api, /mcp, /oauth path
+# proxy_set_header Host $host;
+# proxy_set_header Authorization $http_authorization;
+# proxy_set_header X-Forwarded-Proto $scheme;
+# proxy_set_header X-Real-IP $remote_addr;
+# proxy_set_header X-Forwarded-For $remote_addr; # overwrite untrusted incoming XFF
+# proxy_read_timeout 180s;
+# proxy_send_timeout 180s;
+#
+# At exact /api/auth/login and /oauth/authorize, prefer:
+# limit_req zone=gaitlogic_login burst=10 nodelay;
+# Preserve all proxy directives in those exact locations too.
+# At /oauth/token and /oauth/register, use gaitlogic_oauth instead.
+#
+# For /mcp preserve Streamable HTTP compatibility:
+# proxy_http_version 1.1;
+# proxy_set_header Connection "";
+# proxy_buffering off;
+# proxy_cache off;
+# Do not require Web login or strip Authorization from MCP/OAuth metadata.
+#
+# If behind a CDN/load balancer, configure real_ip using verified provider
+# ranges first. Never use set_real_ip_from 0.0.0.0/0 or trust arbitrary XFF.

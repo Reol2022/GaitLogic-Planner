@@ -176,6 +176,22 @@ runner_state_snapshot_receipt_status_enum = Enum(
 )
 
 
+class SecurityRateBucket(Base):
+    __tablename__ = 'security_rate_bucket'
+    __table_args__ = (Index('ix_security_rate_expiry', 'expires_at'), MYSQL_TABLE_ARGS)
+    key_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text('0'))
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class SecurityRequestLease(Base):
+    __tablename__ = 'security_request_lease'
+    __table_args__ = (Index('ix_security_lease_gate_expiry', 'gate_hash', 'expires_at'), MYSQL_TABLE_ARGS)
+    token: Mapped[str] = mapped_column(String(64), primary_key=True)
+    gate_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
 class UserAccount(IdMixin, TimestampMixin, Base):
     __tablename__ = "user_account"
     __table_args__ = (
