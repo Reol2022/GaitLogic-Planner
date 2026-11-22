@@ -29,7 +29,8 @@ README 介绍产品定位、核心能力与使用入口；本目录保存设计�
 - [Coach 架构](agent/coach-agent-architecture-v1.md)
 - [Coach 示例与启动](agent/coach-agent-demo-v1.md)
 - [MCP 集成与验收报告](evaluation/mcp-remote-e2e-report.md)
-- [MCP 训练事实质量 v3.4（本地验收）](evaluation/mcp-fact-quality-v34.md)
+- [MCP 训练事实质量 v3.4（开发及发布验收）](evaluation/mcp-fact-quality-v34.md)
+- [2026-11-22 实际发布验收](evaluation/release-20261122.md)
 - [知识检索 Holdout 报告](evaluation/reports/retrieval-holdout-v2.md)
 - [学习与架构资料索引](learning/README.md)
 
