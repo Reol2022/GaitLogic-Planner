@@ -1,0 +1,52 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">负荷与恢复</text></view><text class="subtitle">设备指标是事实参考，不直接代表恢复充分或医疗结论。</text>
+    <StatePanel :loading="loading" :error="error" @retry="load" />
+    <view v-if="data != null" class="card recovery-card"><text class="item-title">今日已保存记录 · {{ data.checkin_date }}</text><text class="body">睡眠 {{ metric(data.sleep_duration_minutes, ' 分钟') }}</text><text class="body">HRV {{ metric(data.hrv_value, ' ms') }}</text><text class="body">静息心率 {{ metric(data.resting_heart_rate_bpm, ' bpm') }}</text><text class="body">Body Battery {{ metric(data.body_battery_end) }}</text><text class="muted">来源 {{ data.source || '未确认' }} · 设备同步 {{ data.device_synced_at || '暂无' }}</text><text v-for="item in data.device_missing_fields_json || []" :key="item" class="muted">缺失：{{ item }}</text></view>
+    <view v-if="ready" class="card"><text class="item-title">今日主观反馈</text><text class="muted">本页只提交你修改的感受字段，不覆盖设备指标。1–5 为主观等级；疼痛单独使用 0–10。</text><RunnerForm class="runner-form-host" :fields="fields" :values="values" :disabled="busy" @update="updateValue" /><button class="primary" :disabled="busy" @click="prepare">预览保存</button></view>
+    <view v-if="confirm" class="notice"><text class="item-title">确认主观反馈</text><text class="body">{{ preview }}</text><button class="primary" :disabled="busy" @click="save">确认保存</button><button class="secondary" :disabled="busy" @click="confirm = false">返回</button></view>
+    <text v-if="notice" class="notice-text">{{ notice }}</text>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { valuesFor, changedPayload } from '../../domain/runner-workspace'
+import type { FormField } from '../../domain/runner-workspace'
+import { metric } from '../../utils/display'
+import RunnerForm from '../../components/common/RunnerForm.uvue'
+import StatePanel from '../../components/common/StatePanel.uvue'
+const fields: FormField[] = [
+  { key: 'sleep_quality', label: '主观睡眠质量（1 很差，5 很好）', kind: 'number', integer: true, min: 1, max: 5 },
+  { key: 'subjective_fatigue', label: '疲劳程度（1 很低，5 很高）', kind: 'number', integer: true, min: 1, max: 5 },
+  { key: 'muscle_soreness', label: '肌肉酸痛（1 很低，5 很高）', kind: 'number', integer: true, min: 1, max: 5 },
+  { key: 'stress_level', label: '主观压力（1 很低，5 很高）', kind: 'number', integer: true, min: 1, max: 5 },
+  { key: 'leg_feeling', label: '腿部感觉（1 很差，5 很好）', kind: 'number', integer: true, min: 1, max: 5 },
+  { key: 'pain_level', label: '疼痛（0 无，10 极强）', kind: 'number', integer: true, min: 0, max: 10 },
+  { key: 'pain_location', label: '不适位置' }, { key: 'notes', label: '备注' },
+]
+const data = ref<Record<string, any> | null>(null), values = ref<Record<string, string>>({}); let original: Record<string, string> = {}
+const loading = ref(false), busy = ref(false), ready = ref(false), confirm = ref(false), error = ref(''), notice = ref(''), preview = ref(''); const scope = new PageScope(() => auth.epoch())
+function updateValue(key: string, value: string): void { values.value = { ...values.value, [key]: value }; confirm.value = false }
+function prepare(): void { try { const payload = changedPayload(fields, values.value, original); if (!Object.keys(payload).length) throw new Error('没有需要保存的修改'); preview.value = fields.filter(field => field.key in payload).map(field => field.label + '：' + (values.value[field.key] || '清空')).join('\n'); confirm.value = true; error.value = '' } catch (e) { error.value = e instanceof Error ? e.message : '输入无效' } }
+async function load(): Promise<void> {
+  const version = scope.begin(); loading.value = true; ready.value = false; error.value = ''; data.value = null
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<Record<string, any> | null>('/recovery-checkins/today')); if (scope.current(version)) { data.value = result; values.value = valuesFor(fields, result || {}); original = { ...values.value }; ready.value = true } }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' }
+  finally { if (scope.current(version)) loading.value = false }
+}
+async function save(): Promise<void> {
+  if (busy.value || !confirm.value) return; const version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; await scope.wait(api.put('/recovery-checkins/today', changedPayload(fields, values.value, original))); if (scope.current(version)) { confirm.value = false; notice.value = '主观反馈已保存。'; await load() } }
+  catch (e) { if (scope.current(version)) error.value = (e instanceof Error ? e.message : '保存失败') + '。超时后先重新读取确认结果。' }
+  finally { if (scope.current(version)) busy.value = false }
+}
+function hide(): void { scope.stop(); data.value = null; values.value = {}; original = {}; confirm.value = false; ready.value = false; busy.value = false }
+onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

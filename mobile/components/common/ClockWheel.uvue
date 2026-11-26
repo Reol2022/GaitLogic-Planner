@@ -1,0 +1,22 @@
+<template>
+  <view><view class="row"><text v-if="hours" class="label">小时</text><text class="label">分钟</text><text class="label">秒</text></view>
+  <picker-view class="clock-wheel" :value="indexes" @change="change">
+    <picker-view-column v-if="hours"><view v-for="hour in hourItems" :key="hour" class="clock-item"><text>{{ hour }}</text></view></picker-view-column>
+    <picker-view-column><view v-for="minute in minuteItems" :key="minute" class="clock-item"><text>{{ minute }}</text></view></picker-view-column>
+    <picker-view-column><view v-for="second in secondItems" :key="second" class="clock-item"><text>{{ second }}</text></view></picker-view-column>
+  </picker-view></view>
+</template>
+<script setup lang="ts">
+import { computed } from 'vue'
+const props = defineProps<{ seconds: number; hours: boolean }>(); const emit = defineEmits<{ (event: 'update', seconds: number): void }>()
+const hourItems = Array.from({ length: 100 }, (_, index) => index), minuteItems = Array.from({ length: 60 }, (_, index) => index), secondItems = Array.from({ length: 60 }, (_, index) => index)
+const indexes = computed(() => props.hours ? [Math.floor(props.seconds / 3600), Math.floor(props.seconds / 60) % 60, props.seconds % 60] : [Math.floor(props.seconds / 60), props.seconds % 60])
+function change(event: { detail: { value: number[] } }): void { const values = event.detail.value; emit('update', props.hours ? values[0] * 3600 + values[1] * 60 + values[2] : values[0] * 60 + values[1]) }
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>
+<style scoped>
+.clock-wheel { height: 144px; width: 100%; }
+.clock-item { display: flex; align-items: center; justify-content: center; height: 40px; color: var(--tone-brand); font-size: 22px; }
+</style>

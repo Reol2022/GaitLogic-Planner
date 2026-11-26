@@ -1,0 +1,47 @@
+<template>
+  <view>
+    <text class="muted">距离趋势 · km · 纵轴 0—{{ maximum.toFixed(1) }}</text>
+    <scroll-view direction="horizontal" class="trend-scroll">
+      <view class="trend-canvas" :style="{ width: width + 'px' }">
+        <view class="trend-baseline" :style="{ width: width + 'px' }" />
+        <view v-for="(line, index) in lines" :key="'l' + index" class="trend-line" :style="{ left: line.x + 'px', top: line.y + 'px', width: line.length + 'px', transform: 'rotate(' + line.angle + 'deg)' }" />
+        <view v-for="(day, index) in items" :key="day.date" class="trend-column" :style="{ left: (index * 54) + 'px' }">
+          <view v-if="day.distance_km != null" class="trend-dot" :style="{ top: (y(day.distance_km) - 3) + 'px' }" />
+          <text class="trend-value">{{ day.distance_km == null ? '缺失' : day.distance_km.toFixed(1) }}</text>
+          <text class="trend-date">{{ day.date.slice(5) }}</text>
+        </view>
+      </view>
+    </scroll-view>
+    <text class="muted">仅连接连续日期且距离非缺失的相邻点；空值与日期缺口均断线，不插值。部分距离仍可能不完整。</text>
+  </view>
+</template>
+<script setup lang="ts">
+import { computed } from 'vue'
+import { dateOffset } from '../../utils/display'
+interface Day { date: string; distance_km: number | null }
+interface Line { x: number; y: number; length: number; angle: number }
+const props = defineProps<{ items: Day[] }>()
+const maximum = computed(() => Math.max(1, ...props.items.map((day: Day): number => day.distance_km ?? 0)))
+const width = computed(() => Math.max(54, props.items.length * 54))
+function y(distance: number): number { return 128 - distance / maximum.value * 100 }
+const lines = computed((): Line[] => {
+  const result: Line[] = []
+  for (let index = 1; index < props.items.length; index++) {
+    const before = props.items[index - 1]; const after = props.items[index]
+    if (before.distance_km == null || after.distance_km == null || dateOffset(before.date, 1) !== after.date) continue
+    const delta = y(after.distance_km) - y(before.distance_km)
+    result.push({ x: (index - 1) * 54 + 27, y: y(before.distance_km), length: Math.sqrt(54 * 54 + delta * delta), angle: Math.atan2(delta, 54) * 180 / Math.PI })
+  }
+  return result
+})
+</script>
+<style scoped>
+.trend-scroll { height: 184px; margin-top: 10px; margin-bottom: 10px; }
+.trend-canvas { position: relative; height: 180px; }
+.trend-baseline { position: absolute; top: 128px; left: 0; height: 1px; background-color: var(--tone-line); }
+.trend-column { position: absolute; top: 0; width: 54px; height: 180px; }
+.trend-dot { position: absolute; left: 24px; width: 6px; height: 6px; background-color: var(--tone-brand); border-radius: 3px; }
+.trend-line { position: absolute; height: 2px; background-color: #6fa9df; transform-origin: 0% 50%; }
+.trend-value { position: absolute; top: 142px; width: 54px; text-align: center; font-size: 10px; color: var(--tone-muted); }
+.trend-date { position: absolute; top: 160px; width: 54px; text-align: center; font-size: 10px; color: var(--tone-muted); }
+</style>

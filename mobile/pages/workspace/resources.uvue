@@ -1,0 +1,80 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page">
+    <view class="page-heading"><view class="heading-mark" /><text class="title">{{ definition.title }}</text></view><text class="subtitle">沿用服务器权限、计划锁定与校验规则。</text>
+    <StatePanel :loading="loading" :error="error" @retry="load" />
+    <text v-if="notice" class="notice-text">{{ notice }}</text>
+    <button v-if="!editing" class="primary" :disabled="loading || busy" @click="edit(null)">新建{{ definition.title }}</button>
+    <view v-if="editing" class="card spaced">
+      <text class="item-title">{{ selectedId == null ? '新建' : '编辑' }}{{ definition.title }}</text>
+      <RunnerForm class="runner-form-host" :fields="definition.fields" :values="values" :disabled="busy" @update="updateValue" />
+      <text class="muted spaced">{{ selectedId == null ? '新建后不会自动启用训练周期。' : '只提交本次修改的字段，不覆盖其他训练资料。' }}</text>
+      <button class="primary" :disabled="busy" @click="reviewSave">预览修改</button><button class="secondary" :disabled="busy" @click="editing = false">取消</button>
+    </view>
+    <view v-if="confirmation" class="notice spaced"><text class="item-title">确认保存</text><text class="body">{{ previewText }}</text><text class="notice-text">保存将修改正式训练数据。不会绕过服务器校验。</text><button class="primary" :disabled="busy" @click="save">{{ busy ? '正在保存…' : '确认保存' }}</button><button class="secondary" :disabled="busy" @click="confirmation = false">返回编辑</button></view>
+    <view v-for="item in items" :key="item.id" class="card spaced">
+      <text class="item-title">{{ item[definition.titleKey] }}</text><text class="body">{{ item.workout_date || item.start_date || '日期未设置' }}{{ item.end_date ? ' — ' + item.end_date : '' }}</text><text class="muted">{{ stateLabel(item.status) }}</text>
+      <button class="secondary" :disabled="busy" @click="edit(item)">编辑</button>
+      <button v-if="kind === 'cycles'" class="secondary" @click="openChild(item)">查看训练块与课表</button>
+      <button v-if="kind === 'cycles'" class="secondary" @click="platform.navigate('/pages/workspace/cycle-state?cycle_id=' + item.id)">启用、完成与归档</button>
+      <button v-if="kind === 'blocks'" class="secondary" @click="openChild(item)">查看每日计划</button>
+      <button v-if="kind === 'workouts'" class="secondary" @click="platform.navigate('/pages/workspace/log?workout_id=' + item.id)">填写训练日志</button>
+    </view>
+    <text v-if="!loading && items.length === 0 && !error" class="muted spaced">暂无记录，可新建后继续安排训练。</text>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref, computed } from 'vue'
+import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, platform, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { resourceFor, positiveId, valuesFor, formPayload, changedPayload } from '../../domain/runner-workspace'
+import RunnerForm from '../../components/common/RunnerForm.uvue'
+import StatePanel from '../../components/common/StatePanel.uvue'
+const kind = ref('cycles'); const definition = computed(() => resourceFor(kind.value)); const items = ref<Record<string, any>[]>([])
+const values = ref<Record<string, string>>({}); let original: Record<string, string> = {}; const selectedId = ref<number | null>(null)
+const loading = ref(false), busy = ref(false), editing = ref(false), confirmation = ref(false), error = ref(''), notice = ref(''), previewText = ref('')
+const scope = new PageScope(() => auth.epoch()); let cycleId: number | null = null, blockId: number | null = null
+function stateLabel(value: unknown): string { return value === 'active' ? '当前启用' : value === 'draft' ? '草稿 · 未启用' : value === 'completed' ? '已完成' : value === 'archived' ? '已归档' : '' }
+function updateValue(key: string, value: string): void { values.value = { ...values.value, [key]: value }; confirmation.value = false }
+function edit(item: Record<string, any> | null): void {
+  selectedId.value = item == null ? null : positiveId(item.id)
+  const defaults: Record<string, unknown> = { block_type: 'week', sort_order: 0, session_index: 1, main_type_normalized: 'unknown' }
+  values.value = valuesFor(definition.value.fields, item || defaults); original = { ...values.value }; editing.value = true; confirmation.value = false; error.value = ''
+}
+function reviewSave(): void {
+  try { const payload = selectedId.value == null ? formPayload(definition.value.fields, values.value) : changedPayload(definition.value.fields, values.value, original)
+    if (Object.keys(payload).length === 0) throw new Error('没有需要保存的修改')
+    previewText.value = definition.value.fields.filter(field => field.key in payload).map(field => field.label + '：' + (values.value[field.key] || '清空')).join('\n'); confirmation.value = true; error.value = ''
+  } catch (e) { error.value = e instanceof Error ? e.message : '请检查输入' }
+}
+async function save(): Promise<void> {
+  if (busy.value || !confirmation.value) return
+  const version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return
+    const payload = selectedId.value == null ? formPayload(definition.value.fields, values.value) : changedPayload(definition.value.fields, values.value, original)
+    if (selectedId.value == null && (kind.value === 'blocks' || kind.value === 'workouts')) payload.cycle_id = positiveId(cycleId)
+    if (selectedId.value == null && kind.value === 'workouts') payload.block_id = positiveId(blockId)
+    const path = definition.value.endpoint + (selectedId.value == null ? '' : '/' + selectedId.value)
+    await scope.wait(selectedId.value == null ? api.post(path, payload) : api.put(path, payload))
+    if (scope.current(version)) { confirmation.value = false; editing.value = false; notice.value = '已保存。'; await load() }
+  } catch (e) { if (scope.current(version)) { error.value = e instanceof Error ? e.message : '保存失败'; notice.value = '若请求超时，请先重新读取列表确认结果，再决定是否再次保存。' } }
+  finally { if (scope.current(version)) busy.value = false }
+}
+async function load(): Promise<void> {
+  const version = scope.begin(); loading.value = true; busy.value = false; error.value = ''; items.value = []
+  try { if (!await requireAuth() || !scope.current(version)) return
+    const params = kind.value === 'blocks' || kind.value === 'workouts' ? '?cycle_id=' + positiveId(cycleId) + (kind.value === 'workouts' ? '&block_id=' + positiveId(blockId) : '') : ''
+    const result = await scope.wait(api.get<Record<string, any>[]>(definition.value.endpoint + params)); if (scope.current(version)) items.value = result
+  } catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' }
+  finally { if (scope.current(version)) loading.value = false }
+}
+function openChild(item: Record<string, any>): void { platform.navigate('/pages/workspace/resources?kind=' + (kind.value === 'cycles' ? 'blocks&cycle_id=' + positiveId(item.id) : 'workouts&cycle_id=' + positiveId(cycleId) + '&block_id=' + positiveId(item.id))) }
+function hide(): void { scope.stop(); items.value = []; values.value = {}; original = {}; editing.value = false; confirmation.value = false; busy.value = false; loading.value = false }
+onLoad(query => { try { kind.value = resourceFor(query.kind || 'cycles').key; cycleId = query.cycle_id ? positiveId(query.cycle_id) : null; blockId = query.block_id ? positiveId(query.block_id) : null } catch { kind.value = 'cycles' } })
+onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

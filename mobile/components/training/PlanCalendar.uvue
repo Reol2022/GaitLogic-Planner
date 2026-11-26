@@ -1,0 +1,184 @@
+<template>
+  <view>
+    <view class="row calendar-toolbar">
+      <picker mode="date" fields="month" :value="month" :disabled="loading" @change="pickMonth"><view class="month-picker"><text class="calendar-month">{{ month.slice(0,4) }}年{{ Number(month.slice(5)) }}月 ▾</text></view></picker>
+      <button :class="mode === 'month' ? 'small-button is-selected' : 'small-button'" @click="mode = 'month'">月历</button>
+      <button :class="mode === 'week' ? 'small-button is-selected' : 'small-button'" @click="mode = 'week'">所选周</button>
+    </view>
+    <view v-if="summary != null" class="card summary-panel">
+      <view class="row"><text class="item-title">本月概览</text><button class="small-button summary-toggle" @click="summaryOpen = !summaryOpen">{{ summaryOpen ? '收起' : '展开' }}</button></view>
+      <view v-if="summaryOpen" class="summary-grid">
+        <view class="summary-metric"><text class="muted">计划跑量</text><text class="summary-value">{{ metric(summary.planned_distance_km, '公里') }}</text></view>
+        <view class="summary-metric"><text class="muted">已完成跑量</text><text class="summary-value">{{ metric(summary.actual_distance_km, '公里') }}</text></view>
+        <view class="summary-metric"><text class="muted">完成率</text><text class="summary-value">{{ percent(summary.completion_rate) }}</text></view>
+        <view class="summary-metric"><text class="muted">完成天数</text><text class="summary-value">{{ metric(summary.completed_days, '天') }}</text></view>
+        <view class="summary-metric"><text class="muted">未完成天数</text><text class="summary-value">{{ metric(summary.missed_days, '天') }}</text></view>
+      </view>
+    </view>
+    <view class="card calendar-panel">
+    <view class="month-swipe-zone" @touchstart="startMonthSwipe" @touchmove="monthSwipe.move" @touchend="monthSwipe.end" @touchcancel="monthSwipe.cancel">
+    <button class="month-arrow month-prev" :disabled="loading" :aria-label="mode === 'week' ? '上一周' : '上个月'" @click="tapArrow(-1)">‹</button>
+    <view class="month-body">
+    <view class="calendar-grid spaced"><text v-for="label in labels" :key="label" class="weekday">{{ label }}</text></view>
+    <view class="calendar-clip calendar-size" :style="{ height: (cells.length / 7 * 49) + 'px' }">
+    <view :class="moving ? 'calendar-grid' : 'calendar-grid calendar-motion'" :style="{ opacity: moving ? 0.7 : 1 }">
+      <view v-for="(cell, index) in cells" :key="index" class="day-cell">
+        <button v-if="cell.date.length > 0" :class="['day-button', cell.date === selected ? 'selected-day' : '', cell.date === asOf ? 'today-cell' : '']" :aria-label="cell.date" @click="tapDay(cell.date)">
+          <text class="day-number">{{ Number(cell.date.slice(8)) }}</text>
+          <view class="day-markers">
+            <view v-if="cell.label" class="day-marker plan-marker" />
+            <view v-if="cell.hasActivity" class="day-marker activity-marker" />
+          </view>
+        </button>
+      </view>
+    </view>
+    </view>
+    </view>
+    <button class="month-arrow month-next" :disabled="loading" :aria-label="mode === 'week' ? '下一周' : '下个月'" @click="tapArrow(1)">›</button>
+    </view>
+    <view class="calendar-legend">
+      <view class="legend-key"><view class="day-marker plan-marker legend-marker" /><text class="muted">有计划</text></view>
+      <view class="legend-key"><view class="day-marker activity-marker legend-marker" /><text class="muted">有活动</text></view>
+    </view>
+    </view>
+    <view class="card">
+      <text class="item-title">{{ selected }} · 当天详情</text>
+      <text v-if="selectedDays.length === 0" class="muted">暂无这一天的记录。</text>
+      <view v-for="(day, index) in selectedDays" :key="index" class="calendar-detail">
+        <view class="row"><text class="label">计划内容</text><text v-if="status(day.status_normalized)" class="badge day-symbol">{{ status(day.status_normalized) }} {{ statusText(day.status_normalized) }}</text></view>
+        <text class="body">{{ day.planned_workout_id == null ? '无训练计划' : day.planned_content || '计划内容暂无' }}</text>
+        <text v-if="day.planned_distance_km != null" class="muted">{{ planLabel(day.main_type) }} · {{ metric(day.planned_distance_km, '公里') }}</text>
+        <view class="summary-grid spaced">
+          <view class="summary-metric"><text class="muted">实际距离</text><text class="summary-value">{{ metric(day.actual_distance_km, '公里') }}</text></view>
+          <view class="summary-metric"><text class="muted">平均配速</text><text class="summary-value">{{ pace(day.avg_pace_seconds_per_km) }}</text></view>
+          <view class="summary-metric"><text class="muted">平均心率</text><text class="summary-value">{{ metric(day.avg_heart_rate, '次/分') }}</text></view>
+          <view class="summary-metric"><text class="muted">用力程度</text><text class="summary-value">{{ effort(day.rpe) }}</text></view>
+        </view>
+        <text v-if="day.review_note" class="body spaced">{{ day.review_note }}</text>
+        <button v-if="day.planned_workout_id != null" class="primary" @click="editDay(day)">编辑日志</button>
+      </view>
+    </view>
+  </view>
+</template>
+<script setup lang="ts">
+import { computed, ref, watch, onUnmounted } from 'vue'
+import { dateOffset, weekStart, metric, pace, effort } from '../../utils/display'
+import { swipeHandlers, type TouchInput } from '../../utils/swipe'
+import type { CalendarDay, CalendarSummary } from '../../types/calendar'
+interface Cell { date: string; label: string; hasActivity: boolean }
+const props = defineProps<{ month: string; days: CalendarDay[]; asOf: string; loading?: boolean; summary?: CalendarSummary }>()
+const emit = defineEmits<{ (event: 'monthChange', delta: number): void; (event: 'monthSelect', month: string): void; (event: 'editLog', id: number): void }>()
+const summaryOpen = ref(true)
+function pickMonth(event: { detail: { value: string } }): void {
+  const month = event.detail.value.slice(0, 7)
+  if (!props.loading && month !== props.month && /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    pendingDay = ''; emit('monthSelect', month)
+  }
+}
+function editDay(day: CalendarDay): void { if (day.planned_workout_id != null) emit('editLog', day.planned_workout_id) }
+function percent(value: number | string): string { return metric(Number(value) * 100, '%') }
+function status(value?: string): string {
+  if (value === 'completed_normal' || value === 'completed_high') return '✓'
+  if (value === 'completed_adjusted') return '◐'
+  if (value === 'missed' || value === 'skipped') return '×'
+  if (value === 'rest' || value === 'rest_or_cancelled') return '休'
+  return ''
+}
+function statusText(value?: string): string {
+  const symbol = status(value)
+  return symbol === '✓' ? '已完成' : symbol === '◐' ? '调整完成' : symbol === '×' ? '未完成' : symbol === '休' ? '休息' : ''
+}
+const mode = ref('month'); const selected = ref(''); const labels = ['一', '二', '三', '四', '五', '六', '日']
+const moving = ref(false)
+let timer: ReturnType<typeof setTimeout> | null = null
+let pendingDay = ''
+let ignoreTapUntil = 0
+function reveal(): void {
+  if (timer != null) clearTimeout(timer)
+  moving.value = true
+  timer = setTimeout(() => { moving.value = false; timer = null }, 30)
+}
+onUnmounted(() => { if (timer != null) clearTimeout(timer) })
+function flipMonth(delta: number): void {
+  if (props.loading) return
+  pendingDay = ''
+  if (mode.value === 'week' && selected.value) {
+    const target = dateOffset(selected.value, delta * 7)
+    if (target.startsWith(props.month)) { selected.value = target; return }
+    pendingDay = target
+  }
+  emit('monthChange', delta)
+}
+function tapArrow(delta: number): void { if (Date.now() >= ignoreTapUntil) flipMonth(delta) }
+function tapDay(day: string): void { if (!props.loading && Date.now() >= ignoreTapUntil) selected.value = day }
+const monthSwipe = swipeHandlers(delta => {
+  // Native click can still be emitted after a drag inside a control.
+  ignoreTapUntil = Date.now() + 250
+  flipMonth(delta)
+})
+function startMonthSwipe(event: TouchInput): void {
+  ignoreTapUntil = 0
+  monthSwipe.start(event)
+}
+watch(() => props.month, (month: string) => {
+  selected.value = pendingDay.startsWith(month) && pendingDay.length === 10 ? pendingDay : props.asOf.startsWith(month) ? props.asOf : month + '-01'
+  pendingDay = ''
+}, { immediate: true })
+watch(() => [props.month, mode.value, mode.value === 'week' && selected.value ? weekStart(selected.value) : ''].join('/'), reveal)
+const selectedDays = computed(() => props.days.filter((day: CalendarDay) => day.date === selected.value))
+function planLabel(value: string | null): string {
+  const labels: Record<string,string> = { easy:'轻松', easy_with_speed:'轻松＋', recovery:'恢复', long:'长跑', long_run:'长跑', tempo:'节奏', threshold:'阈值', interval:'间歇', interval_speed:'间歇', race:'比赛', mixed:'混合', rest:'休息' }
+  return labels[(value || '').toLowerCase()] || '计划'
+}
+const cells = computed((): Cell[] => {
+  if (props.month.length !== 7) return []
+  const first = props.month + '-01'; const result: Cell[] = []
+  const start = mode.value === 'week' ? weekStart(selected.value || first) : weekStart(first)
+  const next = dateOffset(props.month + '-28', 4).slice(0, 7) + '-01'
+  const count = mode.value === 'week' ? 7 : Math.ceil((Date.parse(next + 'T00:00:00Z') - Date.parse(start + 'T00:00:00Z')) / 604800000) * 7
+  for (let index = 0; index < count; index++) {
+    const date = dateOffset(start, index)
+    const plan = props.days.find((day: CalendarDay) => day.date === date)
+    const label = plan?.planned_workout_id != null ? planLabel(plan.main_type) : ''
+    const hasActivity = plan?.has_garmin_activity === true || Number(plan?.actual_distance_km ?? 0) > 0
+    result.push({ date: date.startsWith(props.month) ? date : '', label, hasActivity })
+  }
+  return result
+})
+</script>
+<style scoped>
+.card { background-color:var(--tone-surface); border-color:var(--tone-line); }
+.item-title,.body { color:var(--tone-text); }
+.muted,.label { color:var(--tone-muted); }
+.badge,.small-button { color:var(--tone-accent); background-color:var(--tone-control); }
+.is-selected { color:var(--tone-accent); background-color:var(--tone-active); }
+.calendar-toolbar { margin-bottom:12px; }
+.month-picker { padding:9px 10px; border:1px solid; border-color:var(--tone-field-line); border-radius:8px; background-color:var(--tone-surface); }
+.calendar-month { font-size:14px; font-weight:650; color:var(--tone-text); }
+.calendar-panel { padding:12px; }
+.summary-grid { display:flex; flex-direction:row; flex-wrap:wrap; justify-content:space-between; }
+.summary-metric { width:48%; box-sizing:border-box; padding:8px; margin-top:5px; border-radius:8px; background-color:var(--tone-soft); }
+.summary-value { font-size:14px; font-weight:650; color:var(--tone-metric); margin-top:3px; }
+.summary-toggle { margin-bottom:6px; }
+.month-swipe-zone { display:flex; flex-direction:row; align-items:center; margin:8px -12px 0; }
+.month-body { flex:1; min-width:0; }
+.calendar-clip { overflow:hidden; }
+.calendar-motion { transition-property: opacity; transition-duration: 180ms; transition-timing-function: ease-out; }
+.calendar-size { transition-property: height; transition-duration: 220ms; transition-timing-function: ease-out; }
+.month-arrow { width:30px; height:44px; line-height:44px; flex-shrink:0; padding:0; margin:0; border:0; border-radius:10px; color:var(--tone-accent); background-color:var(--tone-control); font-size:22px; }
+.calendar-grid { display: flex; flex-direction: row; flex-wrap: wrap; }
+.weekday { width: 14.28%; text-align: center; color: var(--tone-muted); font-size: 11px; margin-bottom: 8px; }
+.day-cell { display:flex; flex-direction:column; align-items:center; width:14.28%; height:49px; }
+.day-button { width:94%; height:45px; padding:4px 0; margin:0; border:1px solid transparent; border-radius:10px; background-color:var(--tone-surface); display:flex; flex-direction:column; align-items:center; }
+.day-markers { display:flex; flex-direction:column; align-items:center; height:14px; }
+.day-marker { width:16px; height:3px; border-radius:2px; margin:2px 0 0; }
+.plan-marker { background-color:#66b6ff; }
+.activity-marker { background-color:var(--tone-activity); }
+.calendar-legend { display:flex; flex-direction:row; justify-content:center; margin-top:8px; }
+.legend-key { display:flex; flex-direction:row; align-items:center; margin:0 8px; }
+.legend-marker { margin-right:5px; }
+.day-number { font-size:14px; font-weight:600; color:var(--tone-text); }
+.today-cell { border-color:#83a8d0; }
+.selected-day { border:2px solid #70b6f4; background-color:var(--tone-day-selected); }
+.calendar-detail { display: flex; flex-direction: column; }
+</style>

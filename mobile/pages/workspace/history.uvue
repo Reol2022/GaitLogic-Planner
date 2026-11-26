@@ -1,0 +1,63 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">历史与趋势</text></view><text class="subtitle">恢复事实、准备度评估与历史快照分别呈现；缺失不补零，历史快照不会冒充今天状态。</text>
+    <StatePanel :loading="loading" :error="error" @retry="load" />
+    <view class="row"><button class="small-button" :disabled="loading" @click="tab = 'recovery'">恢复记录</button><button class="small-button" :disabled="loading" @click="tab = 'readiness'">准备度</button><button class="small-button" :disabled="loading" @click="tab = 'snapshots'">状态快照</button></view>
+    <view v-if="tab === 'recovery'" class="spaced"><view class="card"><RunnerForm class="runner-form-host" :fields="fields" :values="values" :disabled="loading" @update="updateValue" /><button class="secondary" :disabled="loading" @click="loadRecovery">读取所选范围（最多 28 天）</button></view>
+      <text class="muted">仅显示已保存日期；未出现的日期没有记录，不代表休息或指标为 0。</text>
+      <view v-for="item in recovery" :key="item.id" class="card"><text class="item-title">{{ item.checkin_date }}</text><text class="body">HRV {{ metric(item.hrv_value, ' ms') }} · 静息心率 {{ metric(item.resting_heart_rate_bpm, ' bpm') }}</text><text class="body">睡眠 {{ metric(item.sleep_duration_minutes, ' 分钟') }} · 睡眠分 {{ metric(item.sleep_score) }}</text><text class="body">Body Battery {{ metric(item.body_battery_end) }} · 主观疲劳 {{ metric(item.subjective_fatigue) }}</text><text class="muted">来源 {{ item.source || '未确认' }} · 设备同步 {{ item.device_synced_at || '暂无' }}</text><text v-for="field in item.device_missing_fields_json || []" :key="field" class="muted">缺失 {{ field }}</text></view>
+    </view>
+    <view v-if="tab === 'readiness'" class="spaced"><text class="notice-text">最近 28 天已保存的准备度评估，仅作训练参考，不是医疗恢复结论。</text><view v-for="item in readiness" :key="item.id" class="card"><text class="item-title">{{ item.assessment_date }} · {{ readinessLabel(item.status) }}</text><text class="muted">数据质量 {{ item.data_quality }} · 计算 {{ item.generated_at }}</text><text v-for="(reason, index) in item.reasons_json || []" :key="index" class="body">{{ reasonText(reason) }}</text><text v-for="(reason, index) in item.missing_data_json || []" :key="'missing' + index" class="muted">缺口 {{ reasonText(reason) }}</text></view></view>
+    <view v-if="tab === 'snapshots'" class="spaced"><view class="row"><button v-for="range in ranges" :key="range.key" class="small-button" :disabled="loading" @click="changeRange(range.key)">{{ range.label }}</button></view>
+      <text v-if="timeline != null" class="muted spaced">{{ timeline.start_date }} — {{ timeline.end_date }} · {{ timeline.days_with_snapshots }} 天有历史快照；同日取服务端选定快照。</text>
+      <view v-for="item in timeline?.items || []" :key="item.id" class="card spaced"><text class="item-title">{{ item.snapshot_date }}</text><text class="body">近 7 天 {{ metric(item.distance_7d_km, ' km') }} · 近 28 天 {{ metric(item.distance_28d_km, ' km') }}</text><text class="muted">数据截至 {{ item.data_cutoff_date }} · 疲劳 {{ item.fatigue_state || '未知' }} · 风险信号 {{ item.risk_flag_count }} 个</text><button class="secondary" :disabled="loading" @click="readSnapshot(item.id)">查看这次历史依据</button></view>
+      <view v-if="detail != null" class="notice"><text class="item-title">历史快照 #{{ detail.id }}</text><text class="body">快照日期 {{ detail.snapshot_date }}，计算时间 {{ detail.calculated_at }}</text><text class="muted">{{ detail.snapshot_payload?.goal_context?.cycle_name || '当时未确认周期' }}</text><text v-for="(item, index) in detail.snapshot_payload?.data_quality?.limitations || []" :key="index" class="muted">{{ item }}</text></view>
+    </view>
+    <text v-if="!loading && empty" class="muted spaced">当前范围没有已保存记录。查询失败时不会显示为无数据。</text>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref, computed } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { formPayload, positiveId } from '../../domain/runner-workspace'
+import type { FormField } from '../../domain/runner-workspace'
+import { metric } from '../../utils/display'
+import StatePanel from '../../components/common/StatePanel.uvue'
+import RunnerForm from '../../components/common/RunnerForm.uvue'
+interface Timeline { start_date: string; end_date: string; days_with_snapshots: number; items: Array<Record<string, any>> }
+const ranges = [{ key: '28d', label: '28 天' }, { key: '12w', label: '12 周' }, { key: '6m', label: '6 个月' }]
+const fields: FormField[] = [{ key: 'start_date', label: '开始日期', kind: 'date', required: true }, { key: 'end_date', label: '结束日期', kind: 'date', required: true }]
+const values = ref<Record<string, string>>({}), tab = ref('recovery'), range = ref('28d'), recovery = ref<Record<string, any>[]>([]), readiness = ref<Record<string, any>[]>([]), timeline = ref<Timeline | null>(null), detail = ref<Record<string, any> | null>(null), loading = ref(false), error = ref(''); const scope = new PageScope(() => auth.epoch()); let failed = new Set<string>()
+const empty = computed(() => !error.value && (tab.value === 'recovery' ? !recovery.value.length && !failed.has('recovery') : tab.value === 'readiness' ? !readiness.value.length && !failed.has('readiness') : timeline.value != null && !timeline.value.items.length))
+function readinessLabel(value: string): string { const map: Record<string, string> = { insufficient_data: '资料不足', normal: '常规参考', watch: '需要留意', reduce_load: '建议降低负荷' }; return map[value] || '状态待确认' }
+function reasonText(value: unknown): string { if (typeof value === 'string') return value; if (value && typeof value === 'object' && 'message' in value && typeof value.message === 'string') return value.message; return '存在未展开的评估依据' }
+function updateValue(key: string, value: string): void { values.value = { ...values.value, [key]: value }; recovery.value = []; failed.add('recovery') }
+async function load(): Promise<void> { const version = scope.begin(); loading.value = true; error.value = ''; failed = new Set(); recovery.value = []; readiness.value = []; timeline.value = null
+  try { if (!await requireAuth() || !scope.current(version)) return
+    const results = await Promise.allSettled([scope.wait(api.get<Timeline>('/runner-state/snapshots/timeline?range=' + range.value)), scope.wait(api.get<{ items: Record<string, any>[] }>('/training-readiness/history?days=28'))]); if (!scope.current(version)) return
+    if (results[1].status === 'fulfilled') readiness.value = results[1].value.items; else failed.add('readiness')
+    if (results[0].status === 'fulfilled') {
+      timeline.value = results[0].value
+      try { const anchor = range.value === '28d' ? results[0].value : await scope.wait(api.get<Timeline>('/runner-state/snapshots/timeline?range=28d')); if (!scope.current(version)) return; values.value = { start_date: anchor.start_date, end_date: anchor.end_date }; const response = await scope.wait(api.get<{ items: Record<string, any>[] }>('/recovery-checkins?start_date=' + anchor.start_date + '&end_date=' + anchor.end_date)); if (scope.current(version)) recovery.value = response.items } catch { if (scope.current(version)) failed.add('recovery') }
+    } else { failed.add('snapshots'); failed.add('recovery') }
+    if (failed.size) error.value = '部分历史记录读取失败，其他已获取记录仍可查看。'
+  } catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '历史读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+async function loadRecovery(): Promise<void> { if (loading.value) return; const version = scope.begin(); loading.value = true; recovery.value = []; error.value = ''
+  try { const payload = formPayload(fields, values.value), days = (Date.parse(String(payload.end_date)) - Date.parse(String(payload.start_date))) / 86400000 + 1; if (days < 1 || days > 28) throw new Error('恢复查询请选 1–28 天，不会静默改用其他日期范围'); if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<{ items: Record<string, any>[] }>('/recovery-checkins?start_date=' + payload.start_date + '&end_date=' + payload.end_date)); if (scope.current(version)) { recovery.value = result.items; failed.delete('recovery') } }
+  catch (e) { if (scope.current(version)) { failed.add('recovery'); error.value = e instanceof Error ? e.message : '读取失败' } } finally { if (scope.current(version)) loading.value = false }
+}
+async function changeRange(value: string): Promise<void> { if (!ranges.some(item => item.key === value)) return; range.value = value; detail.value = null; await load() }
+async function readSnapshot(id: number): Promise<void> { const version = scope.begin(); loading.value = true; detail.value = null; error.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<Record<string, any>>('/runner-state/snapshots/' + positiveId(id))); if (scope.current(version)) detail.value = result }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '快照读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+function hide(): void { scope.stop(); values.value = {}; recovery.value = []; readiness.value = []; timeline.value = null; detail.value = null; error.value = ''; failed.clear() }
+onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

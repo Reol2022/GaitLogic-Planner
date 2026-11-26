@@ -1,0 +1,58 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">VDOT 与配速档案</text></view><text class="subtitle">计算不是成绩承诺。自述比赛成绩不会变成设备已验证记录。</text><StatePanel :loading="loading" :error="error" @retry="load" />
+    <view class="card"><RunnerForm class="runner-form-host" :fields="fields" :values="values" :disabled="busy" @update="updateValue" /><text class="field-label">比赛用时 · {{ clock(resultSeconds, true) }}</text><ClockWheel :seconds="resultSeconds" :hours="true" @update="changeTime" /><button class="primary" :disabled="busy" @click="calculate">计算配速参考</button></view>
+    <view v-if="calculation != null" class="card hero"><text class="item-title">VDOT {{ metric(calculation.vdot) }}</text><text v-for="zone in calculation.zones" :key="zone.zone_code" class="body">{{ zone.zone_name }} · {{ zone.target_pace_text }}</text><text v-if="calculation.age_reference" class="muted">{{ calculation.age_reference }}</text><button class="secondary" :disabled="busy" @click="saveConfirm = true">准备保存为档案</button></view>
+    <view v-if="saveConfirm" class="notice"><text class="body">确认以“{{ values.name }}”保存本次用户输入成绩与配速参考？不会自动应用配速规则。</text><button class="primary" :disabled="busy" @click="save">确认保存档案</button><button class="secondary" :disabled="busy" @click="saveConfirm = false">取消</button></view>
+    <text v-if="notice" class="notice-text">{{ notice }}</text><text class="section-title">我的配速档案</text><view v-for="item in profiles" :key="item.id" class="card" @click="select(item.id)"><text class="item-title">{{ item.name }} →</text><text class="muted">VDOT {{ metric(item.vdot) }} · {{ clock(item.race_result_seconds, true) }}</text></view>
+    <view v-if="selected != null" class="card"><text class="item-title">{{ selected.name }}</text><text v-for="zone in selected.zones" :key="zone.zone_code" class="body">{{ zone.zone_name }} · {{ zone.target_pace_text }}</text><button class="primary" :disabled="busy" @click="applyConfirm = true">准备应用到配速规则</button></view>
+    <view v-if="applyConfirm" class="notice"><text class="error-text">将以所选档案覆盖对应个人配速规则，不直接改写每日计划。请核对上述全部区间。</text><button class="primary" :disabled="busy" @click="apply">确认更新个人配速规则</button><button class="secondary" :disabled="busy" @click="applyConfirm = false">取消</button></view>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { formPayload, positiveId } from '../../domain/runner-workspace'
+import type { FormField } from '../../domain/runner-workspace'
+import { clock } from '../../domain/pace'
+import { metric } from '../../utils/display'
+import StatePanel from '../../components/common/StatePanel.uvue'
+import RunnerForm from '../../components/common/RunnerForm.uvue'
+import ClockWheel from '../../components/common/ClockWheel.uvue'
+interface Zone { zone_code: string; zone_name: string; target_pace_text: string }
+interface Profile { id: number; name: string; vdot: number; race_result_seconds: number; zones?: Zone[] }
+const fields: FormField[] = [{ key: 'name', label: '档案名称', required: true }, { key: 'race_distance', label: '比赛距离', kind: 'choice', options: ['1500m', '3000m', '5000m', '10000m', 'half_marathon', 'marathon'], labels: ['1500 米', '3000 米', '5 公里', '10 公里', '半马', '全马'], required: true }, { key: 'age', label: '年龄（选填）', kind: 'number', integer: true, min: 5, max: 120 }, { key: 'sex', label: '计算用性别（可不提供）', kind: 'choice', options: ['unknown', 'male', 'female'], labels: ['不提供', '男', '女'], required: true }]
+const values = ref<Record<string, string>>({ name: '', race_distance: 'half_marathon', sex: 'unknown' }), resultSeconds = ref(5400), calculation = ref<{ vdot: number; zones: Zone[]; age_reference?: string } | null>(null), profiles = ref<Profile[]>([]), selected = ref<Profile | null>(null)
+const loading = ref(false), busy = ref(false), error = ref(''), notice = ref(''), saveConfirm = ref(false), applyConfirm = ref(false); const scope = new PageScope(() => auth.epoch()); let frozen: Record<string, unknown> | null = null
+function updateValue(key: string, value: string): void { values.value = { ...values.value, [key]: value }; calculation.value = null; frozen = null; saveConfirm.value = false }
+function changeTime(value: number): void { resultSeconds.value = value; calculation.value = null; frozen = null; saveConfirm.value = false }
+async function load(): Promise<void> { const version = scope.begin(); loading.value = true; profiles.value = []; error.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<Profile[]>('/pace-profiles')); if (scope.current(version)) profiles.value = result }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+async function calculate(): Promise<void> { if (busy.value) return; const version = scope.begin(); busy.value = true; error.value = ''
+  try { const payload = formPayload(fields, values.value); if (resultSeconds.value <= 0) throw new Error('比赛用时必须大于 0'); payload.race_result = resultSeconds.value; if (!await requireAuth() || !scope.current(version)) return
+    const { name, ...request } = payload; const result = await scope.wait(api.post<typeof calculation.value>('/pace-calculator/calculate', request)); if (scope.current(version)) { calculation.value = result; frozen = payload } }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '计算失败' } finally { if (scope.current(version)) busy.value = false }
+}
+async function save(): Promise<void> { if (busy.value || !saveConfirm.value || frozen == null) return; const payload = frozen, version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; await scope.wait(api.post('/pace-profiles', payload)); if (scope.current(version)) { saveConfirm.value = false; notice.value = '配速档案已保存，规则尚未更新。'; await load() } }
+  catch (e) { if (scope.current(version)) error.value = (e instanceof Error ? e.message : '保存失败') + '。超时后先读取档案列表，不重复保存。' } finally { if (scope.current(version)) busy.value = false }
+}
+async function select(id: number): Promise<void> { if (busy.value) return; const version = scope.begin(); busy.value = true; selected.value = null; applyConfirm.value = false
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<Profile>('/pace-profiles/' + positiveId(id))); if (scope.current(version)) selected.value = result }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) busy.value = false }
+}
+async function apply(): Promise<void> { if (busy.value || !applyConfirm.value || selected.value == null) return; const id = selected.value.id, version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.post<{ updated_count: number }>('/pace-profiles/' + positiveId(id) + '/apply-to-pace-rules', {})); if (scope.current(version)) { applyConfirm.value = false; notice.value = '已更新 ' + result.updated_count + ' 条个人配速规则。' } }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '更新失败' } finally { if (scope.current(version)) busy.value = false }
+}
+function hide(): void { scope.stop(); values.value = { name: '', race_distance: 'half_marathon', sex: 'unknown' }; resultSeconds.value = 5400; profiles.value = []; selected.value = null; calculation.value = null; frozen = null; saveConfirm.value = false; applyConfirm.value = false; busy.value = false }
+onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

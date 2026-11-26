@@ -1,0 +1,39 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">数据同步</text></view><text class="subtitle">任务提交、执行完成与新鲜度是不同状态。不会在打开本页时触发同步。</text><StatePanel :loading="loading" :error="error" @retry="load" />
+    <view v-if="freshness != null" class="card hero"><text class="item-title">当前同步状态 · {{ freshness.status }}</text><text class="body">自动同步：{{ freshness.enabled ? '已开启' : '未开启' }}</text><text class="muted">训练成功水位 {{ freshness.last_success_by_scope?.training || '暂无' }}</text><text class="muted">恢复成功水位 {{ freshness.last_success_by_scope?.recovery || '暂无' }}</text><text class="muted">最近任务 {{ freshness.last_job?.job_id || freshness.job_id || '暂无' }} · {{ freshness.last_job?.status || '未提供' }}</text></view>
+    <button class="primary" :disabled="busy || loading" @click="confirm = true">发起增量同步</button>
+    <view v-if="confirm" class="notice spaced"><text class="body">将请求 Garmin 增量同步，可能受上游限流影响。不会自动重试。</text><button class="primary" :disabled="busy" @click="start">确认发起</button><button class="secondary" :disabled="busy" @click="confirm = false">取消</button></view>
+    <text v-if="notice" class="notice-text spaced">{{ notice }}</text><button class="secondary" :disabled="busy || loading" @click="load">读取最新任务状态</button>
+    <text class="section-title">同步任务</text><view v-for="job in jobs" :key="job.id" class="card"><text class="item-title">#{{ job.id }} · {{ jobLabel(job.status) }}</text><text class="body">新增 {{ job.created_count }} / 更新 {{ job.updated_count }} / 失败 {{ job.failed_count }}</text><text class="muted">结束时间 {{ job.finished_at || '尚未结束' }} · {{ job.is_committed ? '已提交入库' : '未确认提交入库' }}</text><text v-if="job.error_code" class="error-text">错误类别 {{ job.error_code }}</text><button v-if="job.status === 'failed'" class="secondary" :disabled="busy" @click="retryId = job.id">重试此任务</button></view>
+    <view v-if="retryId != null" class="notice"><text class="body">确认重试任务 #{{ retryId }}？不会重试仍在排队或运行的任务。</text><button class="primary" :disabled="busy" @click="retry">确认重试</button><button class="secondary" :disabled="busy" @click="retryId = null">取消</button></view>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { positiveId } from '../../domain/runner-workspace'
+import StatePanel from '../../components/common/StatePanel.uvue'
+interface Job { id: number; status: string; created_count: number; updated_count: number; failed_count: number; finished_at: string | null; error_code: string | null; is_committed: boolean }
+interface Freshness { status: string; enabled: boolean; job_id?: number | null; last_success_by_scope?: Record<string, string | null>; last_job?: { job_id: number; status: string } }
+const freshness = ref<Freshness | null>(null), jobs = ref<Job[]>([]), retryId = ref<number | null>(null), confirm = ref(false), loading = ref(false), busy = ref(false), error = ref(''), notice = ref(''); const scope = new PageScope(() => auth.epoch()); let requestKey = ''
+function jobLabel(value: string): string { const labels: Record<string, string> = { queued: '排队中', pending: '排队中', running: '执行中', succeeded: '成功', success: '成功', failed: '失败', partial: '部分成功', cancelled: '已取消' }; return labels[value.toLowerCase()] || '状态待确认（' + value + '）' }
+async function load(): Promise<void> { const version = scope.begin(); loading.value = true; error.value = ''; jobs.value = []; freshness.value = null
+  try { if (!await requireAuth() || !scope.current(version)) return; const results = await Promise.allSettled([scope.wait(api.get<Freshness>('/integrations/garmin/smart-sync')), scope.wait(api.get<Job[]>('/integrations/garmin/sync-jobs'))]); if (!scope.current(version)) return; if (results[0].status === 'fulfilled') freshness.value = results[0].value; if (results[1].status === 'fulfilled') jobs.value = results[1].value; if (results.some(result => result.status === 'rejected')) error.value = '部分同步状态读取失败，未将失败显示为成功。' }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+async function start(): Promise<void> { if (busy.value || !confirm.value) return; if (!requestKey) requestKey = 'mobile-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2) + '-sync'; await submit('/integrations/garmin/sync', true) }
+async function retry(): Promise<void> { if (retryId.value == null || busy.value || !jobs.value.some(job => job.id === retryId.value && job.status === 'failed')) return; await submit('/integrations/garmin/sync-jobs/' + positiveId(retryId.value) + '/retry', false) }
+async function submit(path: string, keyed: boolean): Promise<void> { const version = scope.begin(); busy.value = true; error.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(keyed ? api.postOnce<Job>(path, { sync_mode: 'incremental' }, requestKey) : api.post<Job>(path, {})); if (scope.current(version)) { notice.value = '任务 #' + result.id + ' 已提交，当前为' + jobLabel(result.status) + '；不代表已获取新活动。'; requestKey = ''; retryId.value = null; confirm.value = false; await load() } }
+  catch (e) { if (scope.current(version)) { confirm.value = false; retryId.value = null; error.value = (e instanceof Error ? e.message : '提交失败') + '。请先读取任务状态，避免重复提交。' } } finally { busy.value = false }
+}
+function hide(): void { scope.stop(); jobs.value = []; freshness.value = null; confirm.value = false; retryId.value = null; busy.value = false }
+onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

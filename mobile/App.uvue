@@ -1,0 +1,8 @@
+<script setup lang="ts">
+import { onLaunch } from '@dcloudio/uni-app';
+import { auth } from './services/runtime';
+onLaunch(() => { auth.restore().catch(() => { /* Pages present network failures without logging private data. */ }); });
+</script>
+<style>
+@import './styles/tokens.css';
+</style>

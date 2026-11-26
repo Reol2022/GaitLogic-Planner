@@ -1,0 +1,35 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">会话管理</text></view><text class="subtitle">归档可恢复；删除不可恢复，需单独确认。</text><view class="row"><button class="small-button" :disabled="busy" @click="changeStatus('active')">当前对话</button><button class="small-button" :disabled="busy" @click="changeStatus('archived')">已归档</button></view><StatePanel :loading="loading" :error="error" @retry="reload" />
+    <view v-for="item in items" :key="item.id" class="card spaced"><text class="item-title">{{ item.title }}</text><text class="muted">{{ item.message_count }} 条消息</text><button class="secondary" :disabled="busy" @click="prepare(item, 'rename')">重命名</button><button class="secondary" :disabled="busy" @click="prepare(item, status === 'active' ? 'archive' : 'restore')">{{ status === 'active' ? '归档' : '恢复到当前对话' }}</button><button class="quiet-action" :disabled="busy" @click="prepare(item, 'delete')">删除</button></view>
+    <button v-if="items.length < total" class="secondary" :disabled="loading || busy" @click="more">加载更多对话</button>
+    <view v-if="selected != null" class="notice"><text class="item-title">{{ action === 'delete' ? '确认删除对话' : action === 'rename' ? '修改对话名称' : action === 'archive' ? '确认归档' : '确认恢复' }}</text><text class="body">{{ selected.title }}</text><input v-if="action === 'rename'" class="input" v-model="title" :disabled="busy" :maxlength="160" /><text v-if="action === 'delete'" class="error-text">将删除该对话及消息，不能恢复。正在处理的轮次也不会被此操作保留。</text><button class="primary" :disabled="busy" @click="commit">确认{{ action === 'delete' ? '删除' : '保存' }}</button><button class="secondary" :disabled="busy" @click="selected = null">取消</button></view>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth } from '../../services/runtime'
+import type { Conversation, Page } from '../../types/contracts'
+import { PageScope } from '../../services/page-scope'
+import StatePanel from '../../components/common/StatePanel.uvue'
+const items = ref<Conversation[]>([]), status = ref('active'), selected = ref<Conversation | null>(null), title = ref(''), action = ref(''), total = ref(0), loading = ref(false), busy = ref(false), error = ref(''); let page = 1; const scope = new PageScope(() => auth.epoch())
+function prepare(item: Conversation, value: string): void { selected.value = item; title.value = item.title; action.value = value }
+function changeStatus(value: string): void { status.value = value; selected.value = null; void reload() }
+async function reload(): Promise<void> { page = 1; items.value = []; await read(1) }
+async function more(): Promise<void> { if (!busy.value && !loading.value) await read(page + 1) }
+async function read(number: number): Promise<void> { const version = scope.begin(); loading.value = true; error.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<Page<Conversation>>('/coach/conversations?page=' + number + '&page_size=20&status=' + status.value)); if (scope.current(version)) { items.value = number === 1 ? result.items : items.value.concat(result.items.filter(item => !items.value.some(existing => existing.id === item.id))); total.value = result.total; page = number } }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+async function commit(): Promise<void> { if (busy.value || selected.value == null) return; const item = selected.value, chosen = action.value; if (chosen === 'rename' && !title.value.trim()) { error.value = '名称不能为空'; return }; const version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; const path = '/coach/conversations/' + encodeURIComponent(item.id); if (chosen === 'delete') await scope.wait(api.delete(path)); else await scope.wait(api.patch(path, chosen === 'rename' ? { title: title.value.trim() } : { status: chosen === 'archive' ? 'archived' : 'active' })); if (scope.current(version)) { selected.value = null; await reload() } }
+  catch (e) { if (scope.current(version)) error.value = (e instanceof Error ? e.message : '操作失败') + '。请先重新读取状态，不自动重试。' } finally { busy.value = false }
+}
+function hide(): void { scope.stop(); items.value = []; selected.value = null; title.value = ''; busy.value = false }
+onShow(() => { void reload() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

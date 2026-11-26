@@ -1,0 +1,33 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">训练状态</text></view><text class="subtitle">规则风险低不等于恢复充分。缺失数据保留缺失，不作为训练许可。</text><StatePanel :loading="loading" :error="error" @retry="load" />
+    <view v-if="snapshot != null">
+      <view class="card hero"><text class="item-title">训练窗口 · {{ snapshot.identity.calculation_window_end }}</text><text class="body">近 7 天 {{ metric(snapshot.recent_training.distance_7d_km, ' km') }} · {{ snapshot.recent_training.sessions_7d }} 次</text><text class="body">近 28 天 {{ metric(snapshot.recent_training.distance_28d_km, ' km') }}</text><text class="muted">计算时间 {{ snapshot.identity.generated_at }} · {{ snapshot.identity.timezone }}</text></view>
+      <view class="card"><text class="item-title">强度与证据</text><text class="body">7 天质量课 {{ snapshot.intensity.quality_sessions_7d }} 次</text><text class="body">7 天高强度距离 {{ metric(snapshot.intensity.hard_distance_7d_km, ' km') }}</text><text class="body">7 天最长距离 {{ metric(snapshot.intensity.long_run_distance_7d_km, ' km') }}</text><text class="muted">数据质量 {{ snapshot.data_quality.data_quality_level }}；不能从缺少分类的记录推断没有强度训练。</text></view>
+      <view class="card recovery-card"><text class="item-title">恢复参考 · {{ snapshot.recovery.as_of_date || '暂无' }}</text><text class="body">HRV {{ metric(snapshot.recovery.hrv_value, ' ms') }} · 静息心率 {{ metric(snapshot.recovery.resting_heart_rate_bpm, ' bpm') }}</text><text class="body">睡眠 {{ metric(snapshot.recovery.sleep_duration_minutes, ' 分钟') }} · Body Battery {{ metric(snapshot.recovery.body_battery_end) }}</text><text class="muted">新鲜度 {{ snapshot.recovery.freshness }} · 来源 {{ snapshot.recovery.source || '未知' }}</text><text v-for="item in snapshot.recovery.limitations || []" :key="item" class="muted">{{ item }}</text></view>
+      <view class="card"><text class="item-title">当前目标</text><text class="body">{{ snapshot.goal_context.cycle_name || '无已确认周期' }}</text><text class="body">赛事日期 {{ snapshot.goal_context.race_date || '未设置' }} · 目标用时 {{ duration(snapshot.goal_context.target_time_seconds) }}</text><text class="muted">仅显示数据库已确认目标，不将聊天自述升级为正式目标。</text></view>
+      <view v-for="flag in snapshot.risk_flags || []" :key="flag.code" class="notice"><text class="error-text">{{ flag.message }}</text></view>
+      <view class="card"><text class="item-title">数据边界</text><text v-for="item in limitations" :key="item" class="muted">{{ item }}</text></view>
+    </view>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref, computed } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { metric, duration } from '../../utils/display'
+import StatePanel from '../../components/common/StatePanel.uvue'
+const snapshot = ref<Record<string, any> | null>(null), loading = ref(false), error = ref(''); const scope = new PageScope(() => auth.epoch())
+const limitations = computed(() => [...new Set<string>([...(snapshot.value?.data_quality.limitations || []), ...(snapshot.value?.inference_metadata?.limitations || []), ...(snapshot.value?.inference_metadata?.data_limitations || [])])])
+async function load(): Promise<void> { const version = scope.begin(); loading.value = true; error.value = ''; snapshot.value = null
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<{ snapshot: Record<string, any> }>('/runner-state/current')); if (scope.current(version)) snapshot.value = result.snapshot }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+function hide(): void { scope.stop(); snapshot.value = null }
+onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

@@ -1,0 +1,25 @@
+{
+	"name": "GaitLogic",
+	"appid": "__UNI__F185F3B",
+	"description": "GaitLogic 移动端训练助手",
+	"versionName": "0.1.0",
+	"versionCode": "100",
+	"uni-app-x": {
+		"vapor": true,
+		"styleIsolationVersion": "2",
+		"vapor-default-script-lang": "ts",
+		"vapor-render-target": "bytecode"
+	},
+	"mp-weixin": {
+		"appid": "wxfb022681ce696f6d",
+		"setting": {
+			"urlCheck": true
+		}
+	},
+	"app": {},
+	"app-android": {},
+	"app-ios": {},
+	"uniStatistics": {
+		"enable": false
+	}
+}

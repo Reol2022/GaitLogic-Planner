@@ -1,0 +1,92 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page">
+    <view class="page-heading"><view class="heading-mark" /><text class="title">训练详情</text></view>
+
+    <StatePanel :loading="loading" :error="error" :empty="!loading && data == null" empty-text="暂无训练详情。" @retry="() => load(selectedRef)" />
+    <view v-if="data != null">
+      <view v-if="data.record != null" class="card detail-overview">
+        <text class="hero-label">日志汇总 · {{ data.record.date }}</text><text class="hero-number">{{ metric(data.record.distance_km, ' 公里') }}</text>
+        <text class="hero-body">{{ duration(data.record.duration_seconds) }} · {{ pace(data.record.average_pace_seconds_per_km) }}</text>
+      </view>
+      <text class="section-title">关联设备活动</text>
+      <view v-if="data.selection_required" class="notice"><text class="notice-text">此日志关联多条活动，请选择一条查看分段；不会自动拼接。</text></view>
+      <text v-if="data.activities.length === 0" class="muted">没有关联设备活动，仅展示日志事实。</text>
+      <view v-if="data.activities.length > 0" class="card activity-list">
+        <view v-for="activity in data.activities" :key="activity.activity_ref" class="device-row">
+          <view class="row"><text class="item-title">{{ metric(activity.distance_km, ' 公里') }}</text><text class="muted">{{ activity.date }} · {{ duration(activity.duration_seconds) }}</text></view>
+          <button :disabled="loading" class="secondary" @click="load(activity.activity_ref)">{{ data.selected_activity?.activity_ref === activity.activity_ref ? '当前活动 · 重新读取' : '选择此活动' }}</button>
+        </view>
+      </view>
+      <view v-if="data.selected_activity != null" class="card">
+        <text class="item-title">选中活动 · 非日志总计</text><text class="value">{{ metric(data.selected_activity.distance_km, 'km') }}</text>
+        <text class="body">{{ duration(data.selected_activity.duration_seconds) }}</text>
+        <text class="muted spaced">来源 {{ data.selected_activity.source || '未知' }} · {{ data.selected_activity.start_time_local || data.selected_activity.date }}</text>
+        <view class="divider" />
+        <view class="row">
+          <view class="col"><text class="label">平均配速</text><text class="body">{{ pace(data.selected_activity.average_pace_seconds_per_km) }}</text></view>
+          <view class="col"><text class="label">平均 / 最大心率</text><text class="body">{{ metric(data.selected_activity.average_heart_rate_bpm) }} / {{ metric(data.selected_activity.max_heart_rate_bpm, 'bpm') }}</text></view>
+        </view>
+        <view class="row spaced">
+          <view class="col"><text class="label">平均步频</text><text class="body">{{ metric(data.selected_activity.average_cadence_spm, 'spm') }}</text></view>
+          <view class="col"><text class="label">平均功率</text><text class="body">{{ metric(data.selected_activity.average_running_power_w, 'W') }}</text></view>
+        </view>
+        <text class="body spaced">活动 RPE · {{ effort(data.selected_activity.rpe) }}</text>
+        <text class="muted">{{ data.selected_activity.rpe_evidence?.source === 'garmin' ? 'Garmin 中填写的用户自评，仅属于这条活动，不代表整堂课 RPE。' : '评分仅属于选中活动；没有明确来源时不推断整堂课用力程度。' }}</text>
+        <text class="muted spaced">暂停总时长 · {{ duration(data.selected_activity.pause_total_seconds) }}</text>
+        <text class="muted">设备数据读取时间 · {{ data.selected_activity.fetched_at || '暂无' }}，不代表最新同步已完成。</text>
+      </view>
+      <text class="section-title">已存储分段</text>
+      <view class="notice"><text class="notice-text">结构状态：{{ data.segment_validation.detail_status || 'UNAVAILABLE' }}。{{ data.segment_validation.structure_complete === true ? '后端标记结构完整。' : '结构不完整或未经完整验证，不据此推断整场训练。' }}</text></view>
+      <text v-if="data.selected_activity != null" class="muted spaced">原始存储圈：{{ data.raw_segments_complete === true ? '已全部返回' : data.raw_segments_complete === false ? '未完整返回或不可用' : '完整性未知' }}。这不代表圈之间可相加，也不代表已还原训练结构。</text>
+      <view v-if="data.normalized_segments.length === 0" class="card"><text class="muted">暂无规范化分段。不推算公里分段。</text></view>
+      <view v-for="segment in data.normalized_segments" :key="segment.index" class="card">
+        <view class="row"><text class="item-title">分段 {{ segment.index }}</text><text class="badge">{{ metric(segment.distance_m, 'm') }}</text></view>
+        <text class="body">{{ duration(segment.duration_seconds) }} · {{ pace(segment.average_pace_seconds_per_km) }}</text>
+        <text class="muted">平均心率 {{ metric(segment.average_heart_rate_bpm, 'bpm') }} · 步频 {{ metric(segment.average_cadence_spm, 'spm') }}</text>
+      </view>
+      <button v-if="data.selected_activity != null && (data.segments?.length || 0) > 0" class="secondary" @click="showRaw = !showRaw">{{ showRaw ? '收起原始圈' : '查看原始存储圈（不参与求和）' }}</button>
+      <view v-if="showRaw" class="card spaced"><text class="muted">以下保留原始圈序号和类型，不默认每圈为一公里；汇总圈可能重叠，不自动与规范化分段相加。</text><view v-for="segment in data.segments" :key="'raw' + segment.index" class="spaced"><text class="body">原始圈 {{ segment.index }} · {{ segment.lap_type || segment.role || '未知类型' }}</text><text class="muted">{{ metric(segment.distance_m, 'm') }} · {{ duration(segment.duration_seconds) }}</text></view></view>
+      <view v-if="data.limitations.length > 0" class="card"><text class="item-title">数据边界</text><text v-for="(note, index) in data.limitations" :key="index" class="muted">{{ note }}</text></view>
+    </view>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, requireAuth } from '../../services/runtime'
+import { metric, pace, duration, effort } from '../../utils/display'
+import StatePanel from '../../components/common/StatePanel.uvue'
+interface Activity { activity_ref: string; date: string; distance_km: number | null; duration_seconds: number | null }
+interface ActivityDetail extends Activity { source?: string; start_time_local?: string; average_pace_seconds_per_km?: number | null; average_heart_rate_bpm?: number | null; max_heart_rate_bpm?: number | null; average_cadence_spm?: number | null; average_running_power_w?: number | null; rpe?: number | null; rpe_evidence?: { source?: string }; pause_total_seconds?: number | null; fetched_at?: string | null }
+interface Segment { index: number; distance_m: number | null; duration_seconds: number | null; average_heart_rate_bpm?: number | null; average_pace_seconds_per_km?: number | null; average_cadence_spm?: number | null; lap_type?: string | null; role?: string }
+interface Detail { record: { date: string; distance_km: number | null; duration_seconds: number | null; average_pace_seconds_per_km: number | null } | null; activities: Activity[]; selected_activity: ActivityDetail | null; selection_required: boolean; normalized_segments: Segment[]; segments?: Segment[]; raw_segments_complete?: boolean; segment_validation: { detail_status?: string; structure_complete?: boolean }; limitations: string[] }
+const data = ref<Detail | null>(null); const error = ref(''); const loading = ref(false)
+const showRaw = ref(false)
+let recordRef = ''; let selectedRef = ''; let generation = 0; let cancel: (() => void) | null = null
+function stop(): void { generation++; cancel?.(); cancel = null; loading.value = false }
+function hide(): void { stop(); data.value = null; showRaw.value = false }
+async function load(activityRef: string = ''): Promise<void> {
+  stop(); selectedRef = activityRef; data.value = null; showRaw.value = false; const current = generation; loading.value = true
+  try {
+    if (recordRef.length === 0) { error.value = '缺少训练记录引用，请从训练列表重新打开。'; return }
+    if (!await requireAuth()) { if (current === generation) error.value = '请登录后查看训练详情。'; return }
+    if (current !== generation) return
+    const operation = api.get<Detail>('/mobile/training/detail?record_ref=' + encodeURIComponent(recordRef) + (activityRef.length > 0 ? '&activity_ref=' + encodeURIComponent(activityRef) : ''))
+    cancel = () => operation.cancel(); const result = await operation.promise
+    if (current === generation) { data.value = result; error.value = '' }
+  } catch { if (current === generation) error.value = '详情读取失败，记录可能不存在或登录已失效。请重试。' }
+  finally { if (current === generation) loading.value = false }
+}
+onLoad((options) => { recordRef = options?.['record_ref'] ?? ''; selectedRef = options?.['activity_ref'] ?? '' })
+onShow(() => { void load(selectedRef) }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>
+<style scoped>
+.detail-overview { padding:17px; }
+.activity-list { padding:3px 13px; }
+.device-row { padding:9px 0; border-bottom:1px solid transparent; border-bottom-color:var(--tone-line); }
+</style>

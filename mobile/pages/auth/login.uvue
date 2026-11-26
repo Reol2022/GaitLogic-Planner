@@ -1,0 +1,65 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page login-page">
+    <view class="brand-row"><view class="brand-mark"><view class="brand-stroke" /><view class="brand-stroke brand-stroke-long" /><view class="brand-stroke" /></view><text class="brand-name">GaitLogic</text></view>
+    <text class="title login-title">欢迎使用 GaitLogic</text>
+    <text class="subtitle">课表、活动与训练复盘</text>
+    <view class="card login-form">
+      <text class="item-title">账号登录</text>
+      <text class="field-label">用户名</text><input v-model="username" class="input username-field" :disabled="loading" placeholder="请输入用户名" :maxlength="100" />
+      <text class="field-label">密码</text><input v-model="password" class="input password-field" password :disabled="loading" placeholder="请输入密码" :maxlength="256" @confirm="submit" />
+      <text v-if="error.length > 0" class="error-text spaced">{{ error }}</text>
+      <button class="primary" :disabled="loading" :loading="loading" @click="submit">{{ loading ? '正在登录…' : '登录' }}</button>
+    </view>
+    <button class="quiet-action" :disabled="loading" @click="platform.navigate('/pages/auth/register')">注册账号</button>
+    <button class="quiet-action connection-toggle" :disabled="loading" @click="advanced = !advanced">{{ advanced ? '收起连接设置' : '连接设置' }}</button>
+    <view v-if="advanced" class="card spaced"><text class="item-title">连接设置</text><text class="muted">日常使用无需修改。切换服务地址会退出当前账号，请仅使用可信服务。</text><text class="field-label">HTTPS API 地址</text><input v-model="baseUrl" class="input" :disabled="loading" :maxlength="240" /><button :disabled="loading" class="secondary" @click="saveAddress">保存连接地址</button><text v-if="saved.length > 0" class="notice-text spaced">{{ saved }}</text></view>
+    <text class="footer login-footer">训练与健康数据仅用于你的训练管理。\nAI 建议不替代专业教练、医生或康复师。</text>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { auth, platform } from '../../services/runtime'
+import { getApiBaseUrl, setApiBaseUrl } from '../../config/environment'
+import { ApiError } from '../../services/api/client'
+const baseUrl = ref(''); const username = ref(''); const password = ref(''); const error = ref(''); const saved = ref(''); const loading = ref(false)
+const advanced = ref(false)
+let generation = 0
+function saveAddress(): boolean {
+  try {
+    const value = baseUrl.value.trim().replace(/\/+$/, '')
+    if (value.toLowerCase().includes('example.invalid')) { error.value = '请将占位地址替换为你信任的真实 HTTPS API。'; return false }
+    const previous = getApiBaseUrl()
+    setApiBaseUrl(value)
+    if (previous !== getApiBaseUrl()) auth.logout()
+    baseUrl.value = getApiBaseUrl(); saved.value = 'API 地址已保存'; error.value = ''; return true
+  } catch { error.value = 'API 地址无效：仅接受 HTTPS 地址，并以 /api 结尾。'; return false }
+}
+async function submit(): Promise<void> {
+  if (loading.value) return
+  if (!saveAddress()) return
+  if (username.value.trim().length === 0 || password.value.length === 0) { error.value = '请输入用户名和密码。'; return }
+  loading.value = true; const current = ++generation
+  try {
+    await auth.login(username.value.trim(), password.value)
+    if (current !== generation) return
+    if (auth.state.user == null) { error.value = '登录未完成，请重试。'; return }
+    password.value = ''; error.value = ''; loading.value = false; platform.tab('/pages/today/index')
+  } catch (cause: unknown) { if (current === generation) error.value = cause instanceof ApiError ? cause.message : '登录失败，请检查账号、API 地址和网络后重试。' }
+  finally { if (current === generation) { loading.value = false; password.value = '' } }
+}
+function stop(): void { generation++; if (loading.value) auth.logout(); loading.value = false; password.value = '' }
+onShow(() => { baseUrl.value = getApiBaseUrl() }); onHide(stop); onUnload(stop)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>
+<style scoped>
+.login-page { padding-top:38px; }
+.login-form { border-color:var(--tone-line); }
+.login-title { font-size: 24px; line-height: 34px; }
+.login-form { padding: 18px; }
+.login-footer { text-align: center; margin-top: 12px; }
+</style>

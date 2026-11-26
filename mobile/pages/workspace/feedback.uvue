@@ -1,0 +1,43 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">意见反馈</text></view><text class="subtitle">请勿填写密码、Token 或其他人的健康资料。</text>
+    <StatePanel :loading="loading" :error="error" @retry="load" />
+    <view class="card"><RunnerForm class="runner-form-host" :fields="fields" :values="values" :disabled="busy" @update="updateValue" /><button class="primary" :disabled="busy || loading" @click="prepare">预览反馈</button></view>
+    <view v-if="confirm" class="notice"><text class="body">{{ values.content }}</text><button class="primary" :disabled="busy" @click="save">确认提交</button><button class="secondary" :disabled="busy" @click="confirm = false">返回修改</button></view>
+    <text v-if="notice" class="notice-text">{{ notice }}</text><text class="section-title">我的反馈</text>
+    <view v-for="item in items" :key="item.id" class="card"><text class="body">{{ item.content }}</text><text class="muted">{{ item.created_at }} · {{ item.status === 'resolved' ? '已处理' : item.status === 'closed' ? '已关闭' : '处理中' }}</text></view><text v-if="!loading && !items.length && !error" class="muted">暂未提交反馈。</text>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { formPayload } from '../../domain/runner-workspace'
+import type { FormField } from '../../domain/runner-workspace'
+import StatePanel from '../../components/common/StatePanel.uvue'
+import RunnerForm from '../../components/common/RunnerForm.uvue'
+const fields: FormField[] = [{ key: 'feedback_type', label: '反馈类型', kind: 'choice', options: ['bug', 'suggestion', 'confusing', 'training_logic', 'other'], labels: ['功能故障', '改进建议', '使用困惑', '训练逻辑', '其他'], required: true }, { key: 'content', label: '问题描述', required: true }, { key: 'contact', label: '联系方式（选填）' }]
+const values = ref<Record<string, string>>({ feedback_type: 'suggestion', content: '', contact: '' }), items = ref<Array<{ id: number; content: string; created_at: string; status: string }>>([])
+const loading = ref(false), busy = ref(false), confirm = ref(false), error = ref(''), notice = ref(''); const scope = new PageScope(() => auth.epoch())
+function updateValue(key: string, value: string): void { values.value = { ...values.value, [key]: value }; confirm.value = false }
+function prepare(): void { try { formPayload(fields, values.value); confirm.value = true; error.value = '' } catch (e) { error.value = e instanceof Error ? e.message : '输入无效' } }
+async function load(): Promise<void> {
+  const version = scope.begin(); loading.value = true; error.value = ''; items.value = []
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<typeof items.value>('/feedback/my')); if (scope.current(version)) items.value = result }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' }
+  finally { if (scope.current(version)) loading.value = false }
+}
+async function save(): Promise<void> {
+  if (busy.value || !confirm.value) return; const version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; await scope.wait(api.post('/feedback', formPayload(fields, values.value))); if (scope.current(version)) { values.value = { feedback_type: 'suggestion', content: '', contact: '' }; confirm.value = false; notice.value = '反馈已提交。'; await load() } }
+  catch (e) { if (scope.current(version)) error.value = (e instanceof Error ? e.message : '提交失败') + '。超时后先查看反馈列表，避免重复提交。' }
+  finally { busy.value = false }
+}
+function hide(): void { scope.stop(); items.value = []; values.value = { feedback_type: 'suggestion', content: '', contact: '' }; confirm.value = false; busy.value = false }
+onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

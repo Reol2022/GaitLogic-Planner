@@ -1,0 +1,155 @@
+<template>
+  <scroll-view :class="themeClass" @touchstart="navSwipe.start" @touchmove="navSwipe.move" @touchend="navSwipe.end" @touchcancel="navSwipe.cancel" direction="vertical" class="screen training-screen">
+    <view class="page">
+      <view class="row training-header"><view class="col"><text class="title">训练</text><text class="muted">跑量、活动与计划</text></view><button class="small-button" @click="platform.navigate('/pages/analytics/index')">更多统计 ›</button></view>
+      <view class="switcher">
+        <button :class="viewMode === 'overview' ? 'switch active' : 'switch'" @click="viewMode = 'overview'">进度</button>
+        <button :class="viewMode === 'records' ? 'switch active' : 'switch'" @click="viewMode = 'records'">活动</button>
+        <button :class="viewMode === 'calendar' ? 'switch active' : 'switch'" @click="viewMode = 'calendar'">日历</button>
+      </view>
+      <view v-if="viewMode === 'calendar'">
+      <StatePanel :loading="calendarLoading && calendar == null" :error="calendarError" @retry="() => loadCalendar(month)" />
+      <PlanCalendar v-if="calendar != null" :month="calendar.month" :days="calendar.days" :summary="calendar.summary" :as-of="data?.as_of || ''" :loading="calendarLoading" @monthChange="changeMonth" @monthSelect="loadCalendar" @editLog="editLog" />
+      </view><view v-else>
+      <StatePanel :loading="loading" :error="error" :empty="viewMode === 'records' && data != null && data.items.length === 0" @retry="() => load(false)" />
+      <view v-if="viewMode === 'overview' && data != null" class="card mileage-panel">
+        <text class="mileage-heading">近七天跑量</text><text class="mileage-range">{{ data.range_start || '起始日期暂无' }} — {{ data.range_end || data.as_of }}</text>
+        <view class="mileage-row"><text class="hero-number mileage-number">{{ metric(data.summary.total_distance_km) }}</text><text v-if="data.summary.total_distance_km != null" class="mileage-unit">公里</text></view>
+        <view class="row mileage-footer"><text class="mileage-range">{{ metric(data.summary.total_sessions, '次训练') }}</text><button class="overview-link" @click="viewMode = 'records'">查看活动 ›</button></view>
+      </view>
+      <view v-if="viewMode === 'overview' && data != null" class="card chart-panel"><view class="row"><text class="item-title">每日跑量</text><text class="badge">近七天</text></view><StatePanel :loading="seriesLoading" :error="seriesError" :empty="series.length === 0" empty-text="暂无每日跑量数据。" @retry="() => loadSeries(data?.as_of || '')" /><SeriesBars v-if="series.length > 0" :items="series" compact /></view>
+      <view v-if="viewMode === 'overview'" class="row shortcuts">
+        <button class="shortcut" @click="viewMode = 'calendar'"><image class="shortcut-icon" src="/static/navigation/training-active.png" /><text class="shortcut-label">训练日历</text></button>
+        <button class="shortcut" @click="platform.navigate('/pages/workspace/status')"><image class="shortcut-icon" src="/static/tools/pulse.png" /><text class="shortcut-label">训练状态</text></button>
+      </view>
+      <view v-if="viewMode === 'records'">
+      <text v-if="records.length > 0" class="section-title">近七天活动</text>
+      <view v-for="(item, index) in records" :key="item.record_ref || String(index)" class="card record-card">
+        <view class="row activity-heading"><view class="activity-mark" /><view class="col"><text class="item-title activity-title">{{ kind(item.actual_training_type, '跑步记录') }}</text><text class="muted">{{ item.date }} · {{ sourceLabel(item.source) }}</text></view><text class="activity-distance">{{ metric(item.distance_km, ' 公里') }}</text></view>
+        <view class="row activity-stats">
+          <view class="col"><text class="muted">用时</text><text class="body">{{ duration(item.duration_seconds) }}</text></view>
+          <view class="col"><text class="muted">平均配速</text><text class="body">{{ pace(item.average_pace_seconds_per_km) }}</text></view>
+          <view class="col"><text class="muted">平均心率</text><text class="body">{{ metric(item.average_heart_rate, ' 次/分') }}</text></view>
+        </view>
+        <text v-if="item.planned_training_type" class="muted">计划：{{ kind(item.planned_training_type, '未分类') }}</text>
+        <button v-if="item.record_ref != null" class="secondary detail-link" @click="open(item.record_ref)">查看训练详情</button>
+        <text v-else class="muted">该记录暂无详情引用</text>
+      </view>
+      <button v-if="data != null && data.next_cursor != null" :disabled="loading" class="secondary" @click="load(true)">加载更多记录</button>
+      <text v-if="data != null && data.details_complete === false" class="muted spaced">详情尚不完整；已显示记录不能代表所有训练。</text>
+      </view>
+      </view>
+    </view>
+  </scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, requireAuth, platform } from '../../services/runtime'
+import { tabSwipe } from '../../utils/swipe'
+import { metric, pace, duration, sourceLabel, dateOffset } from '../../utils/display'
+import StatePanel from '../../components/common/StatePanel.uvue'
+import SeriesBars from '../../components/charts/SeriesBars.uvue'
+import PlanCalendar from '../../components/training/PlanCalendar.uvue'
+import type { TrainingCalendar } from '../../types/calendar'
+interface RecordItem { record_ref: string | null; date: string; distance_km: number | null; duration_seconds: number | null; average_pace_seconds_per_km: number | null; average_heart_rate: number | null; actual_training_type: string | null; planned_training_type: string | null; source: string }
+interface Training { as_of: string; range_start: string | null; range_end: string | null; items: RecordItem[]; summary: { total_distance_km: number | null; total_sessions: number }; details_complete: boolean | null; next_cursor: string | null }
+const viewMode = ref('overview')
+function kind(value: string | null, fallback: string): string {
+  const names: Record<string,string> = { easy: '轻松跑', long: '长距离', tempo: '节奏跑', threshold: '阈值跑', interval: '间歇跑', recovery: '恢复跑', race: '比赛', mixed: '混合训练', rest: '休息' }
+  return value && /[\u4e00-\u9fff]/.test(value) ? value : names[(value || '').toLowerCase()] || fallback
+}
+const data = ref<Training | null>(null)
+const records = ref<RecordItem[]>([])
+const error = ref(''); const loading = ref(false)
+const calendar = ref<TrainingCalendar | null>(null); const month = ref(''); const calendarError = ref(''); const calendarLoading = ref(false)
+let calendarCancel: (() => void) | null = null; let calendarGeneration = 0
+let generation = 0; let cancel: (() => void) | null = null
+function stop(): void { generation++; cancel?.(); cancel = null; loading.value = false }
+function hide(): void { stop(); seriesGeneration++; seriesCancel?.(); seriesCancel = null; seriesLoading.value = false; series.value = []; calendarGeneration++; calendarCancel?.(); calendarCancel = null; calendarLoading.value = false; calendar.value = null; records.value = []; data.value = null }
+interface SeriesPoint { date: string; distance_km: number | null; session_count: number; missing_distance_count: number; status: string }
+const series = ref<SeriesPoint[]>([]); const seriesLoading = ref(false); const seriesError = ref('')
+let seriesGeneration = 0; let seriesCancel: (() => void) | null = null
+async function loadSeries(end: string): Promise<void> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(end)) return
+  const current = ++seriesGeneration; seriesCancel?.(); seriesLoading.value = true; seriesError.value = ''
+  try {
+    const request = api.get<{ items: SeriesPoint[] }>('/mobile/series?start_date=' + dateOffset(end, -6) + '&end_date=' + end)
+    seriesCancel = () => request.cancel(); const result = await request.promise
+    if (current === seriesGeneration) series.value = result.items
+  } catch { if (current === seriesGeneration) { series.value = []; seriesError.value = '跑量图暂未加载，不影响下方训练记录。' } }
+  finally { if (current === seriesGeneration) { seriesLoading.value = false; seriesCancel = null } }
+}
+async function loadCalendar(value: string): Promise<void> {
+  if (calendarLoading.value || !/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) return
+  calendarGeneration++; calendarCancel?.(); const current = calendarGeneration; calendarLoading.value = true; calendarError.value = ''; month.value = value
+  try {
+    const operation = api.get<TrainingCalendar>('/training-calendar?month=' + value); calendarCancel = () => operation.cancel(); const result = await operation.promise
+    if (current === calendarGeneration) { calendar.value = result; calendarError.value = '' }
+  } catch { if (current === calendarGeneration) calendarError.value = '计划日历读取失败，不影响实际训练记录；请重试。' }
+  finally { if (current === calendarGeneration) calendarLoading.value = false }
+}
+function changeMonth(delta: number): void {
+  const displayed = calendar.value?.month ?? month.value
+  if (calendarLoading.value || displayed.length !== 7) return
+  const date = new Date(displayed + '-01T00:00:00Z'); date.setUTCMonth(date.getUTCMonth() + delta); void loadCalendar(date.toISOString().slice(0, 7))
+}
+function open(recordRef: string): void { platform.navigate('/pages/training/detail?record_ref=' + encodeURIComponent(recordRef)) }
+function editLog(id: number): void { if (Number.isSafeInteger(id) && id > 0) platform.navigate('/pages/workspace/log?workout_id=' + id) }
+async function load(more: boolean = false): Promise<void> {
+  if (loading.value) return
+  if (more && data.value?.next_cursor == null) return
+  stop(); const current = generation; loading.value = true
+  try {
+    if (!await requireAuth()) { if (current === generation) error.value = '请登录后读取训练记录。'; return }
+    if (current !== generation) return
+    const cursor = more ? data.value?.next_cursor : null
+    const operation = api.get<Training>('/mobile/training?days=7&limit=20' + (cursor != null ? '&cursor=' + encodeURIComponent(cursor) : ''))
+    cancel = () => operation.cancel()
+    const result = await operation.promise
+    if (current !== generation) return
+    if (more) {
+      const refs = records.value.map((item: RecordItem) => item.record_ref)
+      records.value = records.value.concat(result.items.filter((item: RecordItem) => item.record_ref == null || !refs.includes(item.record_ref)))
+    } else records.value = result.items
+    data.value = result; error.value = ''
+    if (!more) void loadSeries(result.as_of)
+    if (!more && calendar.value == null) void loadCalendar(result.as_of.slice(0, 7))
+  } catch { if (current === generation) error.value = '训练记录读取失败。请检查网络或登录状态，再重试；未将失败计为 0。' }
+  finally { if (current === generation) loading.value = false }
+}
+onShow(() => { void load(false) }); onHide(hide); onUnload(hide)
+const navSwipe = tabSwipe('/pages/training/index', path => {
+  // The calendar owns horizontal swipes without intercepting native tap events.
+  if (viewMode.value !== 'calendar') platform.tab(path)
+})
+const themeClass = useTheme(true)
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>
+<style scoped>
+.activity-heading { justify-content:flex-start; }
+.activity-mark { width:8px; height:8px; border-radius:4px; background-color:var(--tone-activity); margin-right:10px; }
+.activity-title { margin-bottom:1px; }
+.activity-distance { color:var(--tone-text); font-size:17px; font-weight:700; margin-left:8px; }
+.activity-stats { padding-top:9px; margin-top:9px; border-top:1px solid transparent; border-top-color:var(--tone-line); }
+.training-header { margin-bottom:2px; }
+.mileage-panel { background-color:var(--tone-surface); border-color:var(--tone-line); padding:20px; }
+.mileage-footer { border-top:1px solid transparent; border-top-color:var(--tone-line); padding-top:10px; }
+.overview-link { color:var(--tone-accent); background-color:var(--tone-control); border:0; border-radius:8px; font-size:12px; margin:0; padding:0 10px; line-height:32px; }
+.shortcut { width:48%; display:flex; flex-direction:row; align-items:center; justify-content:flex-start; background-color:var(--tone-surface); border:1px solid; border-color:var(--tone-line); border-radius:12px; margin:0; padding:12px; }
+.shortcut-icon { width:23px; height:23px; margin-right:8px; }
+.shortcut-label { color:var(--tone-text); font-size:14px; font-weight:600; }
+.mileage-heading { color:var(--tone-text); font-size:16px; font-weight:600; margin-bottom:4px; }
+.mileage-range { color:var(--tone-muted); font-size:13px; }
+.mileage-row { display:flex; flex-direction:row; align-items:center; margin:12px 0; }
+.mileage-number { color:var(--tone-text); font-size:44px; line-height:54px; margin:0; }
+.mileage-unit { color:var(--tone-muted); font-size:14px; margin-left:8px; }
+
+.switcher { display:flex; flex-direction:row; padding:4px; border-radius:12px; background-color:var(--tone-tab-track); margin:8px 0 14px; }
+.switch { flex:1; margin:0; border:0; border-radius:9px; color:var(--tone-muted); background-color:transparent; font-size:14px; line-height:38px; }
+.active { background-color:var(--tone-active); color:var(--tone-accent); font-weight:700; }
+.detail-link { align-self:flex-end; color:var(--tone-accent); background-color:transparent; line-height:36px; margin:0; }
+</style>

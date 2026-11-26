@@ -1,0 +1,43 @@
+{
+  "pages": [
+    { "path": "pages/today/index", "style": { "navigationBarTitleText": "今日训练" } },
+    { "path": "pages/training/index", "style": { "navigationBarTitleText": "训练" } },
+    { "path": "pages/coach/index", "style": { "navigationBarTitleText": "Gilo · 洛教练" } },
+    { "path": "pages/analytics/index", "style": { "navigationBarTitleText": "分析" } },
+    { "path": "pages/profile/index", "style": { "navigationBarTitleText": "我的" } },
+    { "path": "pages/auth/login", "style": { "navigationBarTitleText": "登录 GaitLogic" } },
+    { "path": "pages/training/detail", "style": { "navigationBarTitleText": "训练详情" } },
+    { "path": "pages/profile/settings", "style": { "navigationBarTitleText": "设置" } },
+    { "path": "pages/workspace/index", "style": { "navigationBarTitleText": "训练工具箱" } },
+    { "path": "pages/workspace/resources", "style": { "navigationBarTitleText": "训练计划管理" } },
+    { "path": "pages/workspace/log", "style": { "navigationBarTitleText": "训练日志" } },
+    { "path": "pages/workspace/pace", "style": { "navigationBarTitleText": "配速换算" } },
+    { "path": "pages/workspace/recovery", "style": { "navigationBarTitleText": "恢复记录" } },
+    { "path": "pages/workspace/feedback", "style": { "navigationBarTitleText": "意见反馈" } },
+    { "path": "pages/workspace/ai-plan", "style": { "navigationBarTitleText": "AI 计划草稿" } },
+    { "path": "pages/workspace/cycle-state", "style": { "navigationBarTitleText": "周期状态" } },
+    { "path": "pages/workspace/preferences", "style": { "navigationBarTitleText": "教练偏好" } },
+    { "path": "pages/workspace/sync", "style": { "navigationBarTitleText": "Garmin 同步" } },
+    { "path": "pages/workspace/weekly", "style": { "navigationBarTitleText": "每周复盘" } },
+    { "path": "pages/auth/register", "style": { "navigationBarTitleText": "注册账号" } },
+    { "path": "pages/workspace/tasks", "style": { "navigationBarTitleText": "待办中心" } },
+    { "path": "pages/workspace/status", "style": { "navigationBarTitleText": "训练状态" } },
+    { "path": "pages/workspace/pace-profile", "style": { "navigationBarTitleText": "VDOT 与配速档案" } },
+    { "path": "pages/workspace/conversations", "style": { "navigationBarTitleText": "对话管理" } },
+    { "path": "pages/workspace/imports", "style": { "navigationBarTitleText": "模板导入" } },
+    { "path": "pages/workspace/exports", "style": { "navigationBarTitleText": "下载与导出" } },
+    { "path": "pages/workspace/garmin-settings", "style": { "navigationBarTitleText": "Garmin 连接与设置" } },
+    { "path": "pages/workspace/history", "style": { "navigationBarTitleText": "历史与趋势" } }
+  ],
+  "globalStyle": { "navigationBarTextStyle": "white", "navigationBarBackgroundColor": "#111419", "backgroundColor": "#111419" },
+  "tabBar": {
+    "color": "#afbdcd", "selectedColor": "#8ac7ff", "backgroundColor": "#1b232d", "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/today/index", "text": "今日", "iconPath": "static/navigation/today.png", "selectedIconPath": "static/navigation/today-active.png" },
+      { "pagePath": "pages/training/index", "text": "训练", "iconPath": "static/navigation/training.png", "selectedIconPath": "static/navigation/training-active.png" },
+      { "pagePath": "pages/coach/index", "text": "Gilo", "iconPath": "static/navigation/coach.png", "selectedIconPath": "static/navigation/coach-active.png" },
+      { "pagePath": "pages/workspace/index", "text": "工具", "iconPath": "static/navigation/tools.png", "selectedIconPath": "static/navigation/tools-active.png" },
+      { "pagePath": "pages/profile/index", "text": "我的", "iconPath": "static/navigation/profile.png", "selectedIconPath": "static/navigation/profile-active.png" }
+    ]
+  }
+}

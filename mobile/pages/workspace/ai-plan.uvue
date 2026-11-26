@@ -1,0 +1,84 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">AI 制定计划</text></view><text class="subtitle">生成与应用分开。只有明确确认，草稿才会变成正式计划。</text>
+    <StatePanel :loading="loading" :error="error" @retry="load" />
+    <text v-if="notice" class="notice-text">{{ notice }}</text>
+    <view v-if="context != null" class="card hero"><text class="item-title">已有训练基础</text><text class="body">近四周记录平均周跑量 {{ metric(context.suggestions.recent_4w_avg_mileage_km, ' km') }}</text><text class="muted">统计截至 {{ context.as_of_date }} · {{ context.timezone }}；记录完整不等于 Garmin 同步完整。</text><text v-for="item in context.runner_facts.training?.limitations || []" :key="item" class="muted">{{ item }}</text><button class="secondary" :disabled="busy" @click="acceptSuggestions">采用自动建议跑量（替换表单对应值）</button></view>
+    <view v-if="quota != null" class="notice"><text class="notice-text">今日剩余额度 {{ quota.remaining_count }}；{{ quota.can_generate ? '当前可生成' : '当前不可生成，请留意额度或冷却时间' }}。</text></view>
+    <view class="card"><RunnerForm class="runner-form-host" :fields="planFields" :values="values" :disabled="busy" @update="updateValue" /><text class="field-label">每日可用时间（分钟，选填）</text><RunnerForm class="runner-form-host" :fields="dailyFields" :values="daily" :disabled="busy" @update="updateDaily" /><text class="body spaced">{{ endDate ? '按周数计算的结束日：' + endDate : '填写开始日期与周数后显示结束日' }}</text><text v-if="values.target_race_date && endDate > values.target_race_date" class="notice-text">结束日晚于赛事日期，请核对开始日与周数；最终可行性由服务器校验。</text><button class="primary" :disabled="busy || loading || !quota?.can_generate" @click="assess">检查并预览生成请求</button></view>
+    <view v-if="assessment != null" class="notice"><text class="item-title">生成前确认</text><text class="body">开始 {{ values.plan_start_date }} · {{ values.plan_weeks }} 周 · 每周 {{ values.available_training_days_per_week }} 天</text><text v-for="issue in assessment.feasibility" :key="issue.code" class="notice-text">{{ issue.message }}</text><text class="notice-text">将消耗模型调用，仍受额度与规则校验；不会自动应用正式计划。</text><button class="primary" :disabled="busy || !quota?.can_generate" @click="generate">{{ busy ? '正在生成草稿…' : '确认生成草稿' }}</button></view>
+    <text class="section-title">我的草稿</text><view v-for="item in drafts" :key="item.id" class="card" @click="selectDraft(item.id)"><text class="item-title">{{ item.title }} →</text><text class="muted">{{ item.start_date }} — {{ item.end_date }} · {{ item.status === 'draft' ? '待确认' : item.status === 'accepted' ? '已应用' : '已拒绝' }}</text></view>
+    <view v-if="draft != null" class="card"><text class="item-title">{{ draft.title }}</text><text class="body">{{ draft.summary }}</text><text v-for="risk in draft.risk_notes || []" :key="risk" class="error-text spaced">{{ risk }}</text><view v-for="workout in draft.workouts" :key="workout.workout_date + ':' + workout.sort_order" class="spaced"><text class="body">{{ workout.workout_date }} · {{ metric(workout.planned_distance_km, ' km') }}</text><text class="muted">{{ workout.planned_content }}</text></view>
+      <button class="secondary" :disabled="busy" @click="platform.navigate('/pages/workspace/exports?draft_id=' + draft.id)">导出这份草稿</button>
+      <view v-if="draft.status === 'draft'"><button class="secondary" :disabled="busy" @click="prepareApply(false)">保存为正式周期，暂不启用</button><button class="primary" :disabled="busy" @click="prepareApply(true)">应用并启用（需再次确认）</button></view>
+      <button v-if="draft.status === 'draft'" class="quiet-action" :disabled="busy" @click="rejectConfirm = true">拒绝这份草稿</button>
+    </view>
+    <view v-if="applyConfirm" class="notice"><text class="item-title">确认应用 {{ draft?.title }}</text><text class="body">{{ activate ? '启用新周期可能结束当前活跃周期；服务器将检查日期冲突和训练规则。' : '将创建未启用的正式周期，当前周期不切换。' }}</text><text class="error-text">请先阅读上方全部课表及风险提示。</text><button class="secondary" :disabled="busy" @click="highConfirmed = !highConfirmed">{{ highConfirmed ? '已确认阅读风险提示 ✓' : '点击确认已阅读全部风险提示' }}</button><button class="primary" :disabled="busy || !highConfirmed" @click="applyDraft">确认应用</button><button class="secondary" :disabled="busy" @click="applyConfirm = false">取消</button></view>
+    <view v-if="rejectConfirm" class="notice"><text class="item-title">确认拒绝草稿</text><text class="body">拒绝后不会将这份草稿应用到正式课表。此操作不会删除训练日志。</text><button class="primary" :disabled="busy" @click="rejectDraft">确认拒绝</button><button class="secondary" :disabled="busy" @click="rejectConfirm = false">取消</button></view>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref, computed } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth, platform } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { planFields, planPayload, planEnd } from '../../domain/plan-form'
+import { positiveId } from '../../domain/runner-workspace'
+import type { FormField } from '../../domain/runner-workspace'
+import { metric } from '../../utils/display'
+import RunnerForm from '../../components/common/RunnerForm.uvue'
+import StatePanel from '../../components/common/StatePanel.uvue'
+interface Context { as_of_date: string; timezone: string; suggestions: Record<string, number>; runner_facts: { training?: { limitations: string[] } }; feasibility: Array<{ code: string; message: string }> }
+interface Draft { id: number; title: string; start_date: string; end_date: string; status: string; summary?: string; risk_notes?: string[]; workouts?: Array<{ workout_date: string; planned_content: string; planned_distance_km: number | null; sort_order: number }> }
+const context = ref<Context | null>(null), assessment = ref<Context | null>(null), quota = ref<{ remaining_count: number; can_generate: boolean } | null>(null), drafts = ref<Draft[]>([]), draft = ref<Draft | null>(null)
+const values = ref<Record<string, string>>({ runner_level: 'intermediate', available_training_days_per_week: '4', target_distance: 'half_marathon', plan_weeks: '8', intensity_style: 'standard', can_double_run: 'false' }), daily = ref<Record<string, string>>({})
+const dailyFields: FormField[] = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map(day => ({ key: day, label: day, kind: 'number', integer: true, min: 0, max: 600 }))
+const endDate = computed(() => planEnd(values.value)), loading = ref(false), busy = ref(false), error = ref(''), notice = ref(''), applyConfirm = ref(false), activate = ref(false), highConfirmed = ref(false)
+const scope = new PageScope(() => auth.epoch()); let frozen: Record<string, unknown> | null = null
+const rejectConfirm = ref(false)
+async function rejectDraft(): Promise<void> {
+  if (busy.value || !rejectConfirm.value || draft.value?.status !== 'draft') return; const id = draft.value.id, version = scope.begin(); busy.value = true; error.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return; await scope.wait(api.post('/ai-plan/drafts/' + positiveId(id) + '/reject', {})); if (scope.current(version)) { rejectConfirm.value = false; notice.value = '草稿已拒绝，正式计划未修改。'; await load(); await selectDraft(id) } }
+  catch (e) { if (scope.current(version)) { rejectConfirm.value = false; error.value = (e instanceof Error ? e.message : '拒绝未完成') + '。请先重新读取草稿状态。' } } finally { if (scope.current(version)) busy.value = false }
+}
+function invalidate(): void { assessment.value = null; frozen = null; applyConfirm.value = false; rejectConfirm.value = false }
+function updateValue(key: string, value: string): void { values.value = { ...values.value, [key]: value }; invalidate() }
+function updateDaily(key: string, value: string): void { daily.value = { ...daily.value, [key]: value }; invalidate() }
+function acceptSuggestions(): void { if (!context.value) return; for (const key of ['current_weekly_mileage_km', 'recent_4w_avg_mileage_km']) { const value = context.value.suggestions[key]; if (value != null) values.value = { ...values.value, [key]: String(value) } } invalidate(); notice.value = '表单跑量已替换为记录推导值，可继续手动修改；不将其视作完整同步证明。' }
+async function load(): Promise<void> {
+  const version = scope.begin(); loading.value = true; busy.value = false; error.value = ''; context.value = null; quota.value = null; drafts.value = []; rejectConfirm.value = false
+  try { if (!await requireAuth() || !scope.current(version)) return
+    const results = await Promise.allSettled([scope.wait(api.get<Context>('/ai-plan/context')), scope.wait(api.get<typeof quota.value>('/ai-plan/quota')), scope.wait(api.get<Draft[]>('/ai-plan/drafts'))]); if (!scope.current(version)) return
+    if (results[0].status === 'fulfilled') context.value = results[0].value
+    if (results[1].status === 'fulfilled') quota.value = results[1].value
+    if (results[2].status === 'fulfilled') drafts.value = results[2].value
+    if (results.some(result => result.status === 'rejected')) error.value = '部分资料读取失败，可重试；未读取到额度时禁止发起生成。'
+  } catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+async function assess(): Promise<void> {
+  if (busy.value) return; const version = scope.begin(); busy.value = true; error.value = ''; invalidate()
+  try { if (!await requireAuth() || !scope.current(version)) return; const payload = planPayload(values.value, daily.value); const result = await scope.wait(api.post<Context>('/ai-plan/context/assess', payload)); if (scope.current(version)) { assessment.value = result; frozen = payload } }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '检查失败' } finally { if (scope.current(version)) busy.value = false }
+}
+async function generate(): Promise<void> {
+  if (busy.value || frozen == null || assessment.value == null || !quota.value?.can_generate) return; const payload = frozen; const version = scope.begin(); busy.value = true; error.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.post<{ draft_id: number }>('/ai-plan/generate', payload, 600000)); if (scope.current(version)) { invalidate(); notice.value = '草稿已生成，尚未应用。'; await load(); await selectDraft(result.draft_id) } }
+  catch (e) { if (scope.current(version)) { invalidate(); error.value = (e instanceof Error ? e.message : '生成未完成') + '。中断不代表服务端停止，请先刷新草稿列表，不自动重试。' } } finally { if (scope.current(version)) busy.value = false }
+}
+async function selectDraft(id: number): Promise<void> { if (busy.value) return; const version = scope.begin(); loading.value = true; draft.value = null; applyConfirm.value = false; rejectConfirm.value = false
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<Draft>('/ai-plan/drafts/' + positiveId(id))); if (scope.current(version)) draft.value = result }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+function prepareApply(enabled: boolean): void { if (draft.value?.status !== 'draft') return; activate.value = enabled; highConfirmed.value = false; applyConfirm.value = true }
+async function applyDraft(): Promise<void> {
+  if (busy.value || !applyConfirm.value || !highConfirmed.value || draft.value?.status !== 'draft') return; const id = draft.value.id; const version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.post<{ cycle_id: number; activated: boolean; cycle_status: string }>('/ai-plan/drafts/' + positiveId(id) + '/apply?confirm_high=true', { activate: activate.value })); if (scope.current(version)) { applyConfirm.value = false; notice.value = result.activated ? '已启用新周期。' : '已创建正式周期，未启用。'; platform.navigate('/pages/workspace/resources?kind=cycles') } }
+  catch (e) { if (scope.current(version)) error.value = (e instanceof Error ? e.message : '应用失败') + '。请重新读取草稿和周期状态，不因页面跳转判定成功。' } finally { if (scope.current(version)) busy.value = false }
+}
+function hide(): void { scope.stop(); rejectConfirm.value = false; context.value = null; assessment.value = null; quota.value = null; draft.value = null; drafts.value = []; frozen = null; applyConfirm.value = false; busy.value = false; values.value = { runner_level: 'intermediate', available_training_days_per_week: '4', target_distance: 'half_marathon', plan_weeks: '8', intensity_style: 'standard', can_double_run: 'false' }; daily.value = {} }
+onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

@@ -1,0 +1,55 @@
+<template>
+  <scroll-view :class="themeClass" @touchstart="navSwipe.start" @touchmove="navSwipe.move" @touchend="navSwipe.end" @touchcancel="navSwipe.cancel" direction="vertical" class="screen"><view class="page">
+    <text class="title">训练工具箱</text><text class="subtitle">计划、配速和数据管理</text>
+    <view v-for="group in groups" :key="group.title"><text class="section-title">{{ group.title }}</text><view class="tool-grid"><view v-for="entry in group.items" :key="entry.path" class="tool-tile" @click="platform.navigate(entry.path)"><view class="icon-well"><image class="tool-icon" :src="'/static/tools/' + entry.icon + '.png'" /></view><view class="tool-copy"><text class="tool-title">{{ entry.title }}</text><text class="tool-description">{{ entry.description }}</text></view><text class="tool-chevron">›</text></view></view></view>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { onShow } from '@dcloudio/uni-app'
+import { requireAuth, platform } from '../../services/runtime'
+import { tabSwipe } from '../../utils/swipe'
+const groups = [
+  { title: '计划与执行', items: [
+    { title: '训练周期', description: '周期、训练块与每日计划', icon: 'cycle', path: '/pages/workspace/resources?kind=cycles' },
+    { title: 'AI 制定计划', description: '根据训练基础生成草稿', icon: 'spark', path: '/pages/workspace/ai-plan' },
+    { title: '每周复盘', description: '回顾本周训练', icon: 'review', path: '/pages/workspace/weekly' },
+     ] },
+  { title: '配速工具', items: [
+    { title: '配速换算', description: '距离、用时、公里配速与 400 米圈速', icon: 'pace', path: '/pages/workspace/pace' },
+    { title: '配速规则', description: '设置各类训练的配速范围', icon: 'rules', path: '/pages/workspace/resources?kind=pace-rules' },
+    { title: 'VDOT 与配速档案', description: '成绩计算、档案保存与规则确认应用', icon: 'medal', path: '/pages/workspace/pace-profile' },
+     ] },
+  { title: '文件管理', items: [
+    { title: '模板导入', description: '从表格导入训练计划', icon: 'upload', path: '/pages/workspace/imports' },
+    { title: '下载与导出', description: 'Excel 模板与已有 AI 课表导出', icon: 'download', path: '/pages/workspace/exports' },
+  ] },
+  { title: '数据与状态', items: [
+    { title: '训练统计', description: '跑量、频率与近期趋势', icon: 'stats', path: '/pages/analytics/index' },
+    { title: '待办中心', description: '查看待处理事项', icon: 'tasks', path: '/pages/workspace/tasks' },
+    { title: '训练状态', description: '查看近期训练负荷', icon: 'pulse', path: '/pages/workspace/status' },
+    { title: '恢复记录', description: '记录睡眠和身体感受', icon: 'rest', path: '/pages/workspace/recovery' },
+    { title: '历史与趋势', description: '恢复、准备度与已保存状态快照', icon: 'trend', path: '/pages/workspace/history' },
+     ] },
+  { title: '设备与设置', items: [
+    { title: 'Garmin 同步', description: '更新活动和恢复数据', icon: 'sync', path: '/pages/workspace/sync' },
+    { title: 'Garmin 连接与设置', description: '账号连接、验证与同步偏好', icon: 'watch', path: '/pages/workspace/garmin-settings' },
+    { title: '教练偏好', description: '训练习惯、双跑与禁用训练类型', icon: 'prefs', path: '/pages/workspace/preferences' },
+    { title: '意见反馈', description: '提交与查看反馈', icon: 'feedback', path: '/pages/workspace/feedback' },
+  ] },
+]
+onShow(() => { void requireAuth() })
+const navSwipe = tabSwipe('/pages/workspace/index', path => platform.tab(path))
+const themeClass = useTheme(true)
+</script>
+<style>
+@import '../../styles/tokens.css';
+.tool-grid { display:flex; flex-direction:column; background-color:var(--tone-surface); border-radius:14px; padding:5px 10px; }
+.tool-tile { display:flex; flex-direction:row; align-items:center; width:100%; box-sizing:border-box; padding:11px 1px; border-bottom:1px solid transparent; border-bottom-color:var(--tone-line); }
+.icon-well { width:40px; height:40px; border-radius:12px; background-color:var(--tone-control); display:flex; align-items:center; justify-content:center; margin-right:10px; }
+.tool-icon { width:25px; height:25px; }
+.tool-title { font-size: 15px; font-weight: 600; color: var(--tone-text); line-height:22px; margin-bottom:1px; }
+.tool-description { font-size: 12px; color: var(--tone-muted); line-height: 20px; }
+.tool-copy { flex:1; min-width:0; }
+.tool-chevron { font-size:20px; color:var(--tone-muted); margin-left:7px; }
+</style>

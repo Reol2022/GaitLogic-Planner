@@ -1,0 +1,26 @@
+<template>
+  <view>
+    <view v-for="field in fields" :key="field.key">
+      <text class="field-label">{{ field.label }}{{ field.required ? ' *' : '' }}</text>
+      <picker v-if="field.kind === 'date'" mode="date" :value="values[field.key]" :disabled="disabled" @change="setValue(field.key, $event.detail.value)"><view class="input picker-field"><text class="picker-value">{{ values[field.key] || '选择日期' }}</text><text class="picker-caret">›</text></view></picker>
+      <picker v-else-if="field.kind === 'choice'" :range="field.labels || field.options || []" :disabled="disabled" @change="choose(field, $event.detail.value)"><view class="input picker-field"><text class="picker-value">{{ choiceLabel(field) }}</text><text class="picker-caret">›</text></view></picker>
+      <input v-else :id="'field-' + field.key" class="input" :value="values[field.key]" :disabled="disabled" :type="field.kind === 'number' ? 'digit' : 'text'" :maxlength="2000" @input="setValue(field.key, $event.detail.value)" />
+    </view>
+  </view>
+</template>
+<script setup lang="ts">
+import type { FormField } from '../../domain/runner-workspace'
+const props = defineProps<{ fields: FormField[]; values: Record<string, string>; disabled: boolean }>()
+const emit = defineEmits<{ (event: 'update', key: string, value: string): void }>()
+function setValue(key: string, value: string): void { emit('update', key, value) }
+function choose(field: FormField, value: string): void { const selected = field.options?.[Number(value)]; if (selected != null) setValue(field.key, selected) }
+function choiceLabel(field: FormField): string { const index = field.options?.indexOf(props.values[field.key]) ?? -1; return index < 0 ? '请选择' : field.labels?.[index] || props.values[field.key] }
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>
+<style scoped>
+.picker-field { display:flex; flex-direction:row; align-items:center; justify-content:space-between; }
+.picker-value { color:var(--tone-text); font-size:15px; }
+.picker-caret { color:var(--tone-muted); font-size:20px; }
+</style>

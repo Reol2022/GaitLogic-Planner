@@ -1,0 +1,68 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">Garmin 连接</text></view><text class="subtitle">沿用现有连接服务。账号区域由你选择，不自动跨区域重试；连接成功不代表同步完成。</text><StatePanel :loading="loading" :error="error" @retry="load" />
+    <view v-if="connection != null" class="card hero"><text class="item-title">{{ connection.connected ? '已连接' : '尚未连接' }}</text><text class="body">{{ connection.masked_account_identifier || '未提供账号摘要' }} · {{ connection.region || '区域未确认' }}</text><text class="muted">连接状态 {{ connectionStatus(connection.status) }}</text></view>
+    <view v-if="connection != null && !connection.connected && !mfaVisible" class="card">
+      <text class="field-label">Garmin 账号</text><input id="garmin-username" class="input" v-model="username" :disabled="busy" :maxlength="255" @input="action = ''" />
+      <text class="field-label">密码</text><input id="garmin-password" class="input" password v-model="password" :disabled="busy" :maxlength="255" @input="action = ''" />
+      <text class="field-label">账号区域</text><picker :disabled="busy" :range="['中国区', '全球区']" @change="setRegion($event.detail.value)"><view class="input picker-field"><text>{{ region === 'cn' ? '中国区' : '全球区' }}</text></view></picker>
+      <text class="muted spaced">密码仅通过 HTTPS 发给当前配置的 GaitLogic 后端完成连接，不保存在本地设置或日志中。</text><button class="primary" :disabled="busy" @click="prepareConnect">准备连接</button>
+    </view>
+    <view v-if="mfaVisible" class="card"><text class="item-title">完成 Garmin 验证</text><text class="body">本次连接需要验证码。离开页面后验证状态会清除，需重新连接。</text><input id="garmin-mfa" class="input" v-model="mfaCode" type="text" :maxlength="32" :disabled="busy" /><button class="primary" :disabled="busy || !mfaCode.trim()" @click="submitMfa">提交验证码</button></view>
+    <view v-if="connection?.connected" class="card"><text class="item-title">活动导入</text><button class="secondary" :disabled="busy" @click="autoImport = !autoImport; action = ''">{{ autoImport ? '自动导入：开' : '自动导入：关' }}</button><text class="muted">这里只编辑开关，点击保存并确认后才更新服务器。</text><button class="secondary" :disabled="busy" @click="action = 'import-settings'">准备保存导入设置</button>
+      <view v-if="smart != null"><text class="section-title">定时同步</text><button class="secondary" :disabled="busy" @click="enabled = !enabled; action = ''">{{ enabled ? '定时同步：开' : '定时同步：关' }}</button><button class="secondary" :disabled="busy" @click="recoveryEnabled = !recoveryEnabled; action = ''">{{ recoveryEnabled ? '包含恢复数据：是' : '包含恢复数据：否' }}</button><text class="field-label">间隔（30–1440 分钟）</text><input id="sync-interval" class="input" type="number" v-model="interval" :disabled="busy" @input="action = ''" /><button class="secondary" :disabled="busy" @click="prepareAuto">准备保存定时设置</button></view>
+      <button class="quiet-action" :disabled="busy" @click="action = 'disconnect'">断开 Garmin 连接</button>
+    </view>
+    <view v-if="action" class="notice"><text class="item-title">确认{{ action === 'connect' ? '连接' : action === 'disconnect' ? '断开连接' : '保存设置' }}</text><text class="body">{{ action === 'connect' ? '将所填账号与密码发给当前 HTTPS 后端，在所选区域连接 Garmin。' : action === 'disconnect' ? '停止使用这条设备连接。不会删除已有训练记录。' : '将修改当前账号的服务器设置。页面上的开关不代表保存已成功。' }}</text><button class="primary" :disabled="busy" @click="commit">确认操作</button><button class="secondary" :disabled="busy" @click="action = ''">取消</button></view>
+    <text v-if="notice" class="notice-text">{{ notice }}</text>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { connectionStatus } from '../../utils/display'
+import StatePanel from '../../components/common/StatePanel.uvue'
+interface Connection { connected: boolean; status: string; region: string | null; masked_account_identifier: string | null; auto_import_enabled: boolean }
+interface Smart { enabled: boolean; recovery_enabled: boolean; interval_minutes: number }
+interface AuthResult { status: string; mfa_token?: string | null }
+const connection = ref<Connection | null>(null), smart = ref<Smart | null>(null), username = ref(''), password = ref(''), region = ref('cn'), mfaCode = ref(''), mfaVisible = ref(false), enabled = ref(false), recoveryEnabled = ref(false), interval = ref('30'), autoImport = ref(false), loading = ref(false), busy = ref(false), error = ref(''), notice = ref(''), action = ref(''); let mfaToken = ''; const scope = new PageScope(() => auth.epoch())
+function setRegion(value: string): void { const index = Number(value); if (index !== 0 && index !== 1) { error.value = '请选择明确的账号区域'; return }; region.value = index === 0 ? 'cn' : 'global'; action.value = '' }
+function prepareConnect(): void { if (!username.value.trim() || !password.value) { error.value = '请填写 Garmin 账号和密码'; return }; action.value = 'connect'; error.value = '' }
+function prepareAuto(): void { const number = Number(interval.value); if (!Number.isInteger(number) || number < 30 || number > 1440) { error.value = '同步间隔须为 30–1440 分钟'; return }; action.value = 'auto-settings'; error.value = '' }
+async function load(): Promise<void> { const version = scope.begin(); loading.value = true; busy.value = false; connection.value = null; smart.value = null; error.value = ''; action.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return; const results = await Promise.allSettled([scope.wait(api.get<Connection>('/integrations/garmin/status')), scope.wait(api.get<Smart>('/integrations/garmin/smart-sync'))]); if (!scope.current(version)) return
+    if (results[0].status === 'fulfilled') { connection.value = results[0].value; autoImport.value = results[0].value.auto_import_enabled }
+    if (results[1].status === 'fulfilled') { smart.value = results[1].value; enabled.value = results[1].value.enabled; recoveryEnabled.value = results[1].value.recovery_enabled; interval.value = String(results[1].value.interval_minutes) }
+    if (results.some(result => result.status === 'rejected')) error.value = '部分连接或设置未能读取；对应操作暂不可用。'
+  } catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '连接状态读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+async function processAuth(result: AuthResult, version: number): Promise<void> {
+  if (!scope.current(version)) return;
+  if (result.status === 'mfa_required' && typeof result.mfa_token === 'string' && result.mfa_token) { mfaToken = result.mfa_token; mfaVisible.value = true; notice.value = '需要完成本次 Garmin 验证。'; return }
+  if (result.status !== 'connected') throw new Error('连接没有返回明确成功状态，请重新读取连接状态');
+  mfaToken = ''; mfaVisible.value = false; username.value = ''; notice.value = '认证已完成，正在核对服务器连接状态；尚未触发数据同步。'; await load()
+}
+async function commit(): Promise<void> { if (busy.value || !action.value || connection.value == null) return; const selected = action.value, version = scope.begin(); busy.value = true; error.value = ''; action.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return
+    if (selected === 'connect') { if (connection.value.connected || !username.value.trim() || !password.value) return; await processAuth(await scope.wait(api.post<AuthResult>('/integrations/garmin/connect', { username: username.value.trim(), password: password.value, region: region.value }, 180000)), version) }
+    else if (selected === 'disconnect') { if (!connection.value.connected) return; await scope.wait(api.post('/integrations/garmin/disconnect', {})); if (scope.current(version)) { notice.value = '已请求断开连接，正在重新读取状态。'; await load() } }
+    else if (selected === 'import-settings') { await scope.wait(api.put('/integrations/garmin/settings', { auto_import_enabled: autoImport.value })); if (scope.current(version)) { notice.value = '活动导入设置已保存。'; await load() } }
+    else if (selected === 'auto-settings' && smart.value != null) { const minutes = Number(interval.value); if (!Number.isInteger(minutes) || minutes < 30 || minutes > 1440) throw new Error('同步间隔须为 30–1440 分钟'); await scope.wait(api.put('/integrations/garmin/smart-sync', { enabled: enabled.value, recovery_enabled: recoveryEnabled.value, interval_minutes: minutes })); if (scope.current(version)) { notice.value = '定时同步设置已保存；不代表已完成一次同步。'; await load() } }
+  } catch (e) { if (scope.current(version)) error.value = (e instanceof Error ? e.message : '操作未完成') + '。请先重新核对状态，不会自动重试或切换区域。' } finally { password.value = ''; if (scope.current(version)) busy.value = false }
+}
+async function submitMfa(): Promise<void> { if (busy.value || !mfaVisible.value || !mfaToken || !mfaCode.value.trim()) return; const token = mfaToken, version = scope.begin(); busy.value = true; error.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return; await processAuth(await scope.wait(api.post<AuthResult>('/integrations/garmin/connect/mfa', { mfa_token: token, mfa_code: mfaCode.value.trim() }, 180000)), version) }
+  catch (e) { if (scope.current(version)) { error.value = (e instanceof Error ? e.message : '验证失败') + '。本次验证码不会自动重发，请重新连接。'; mfaToken = ''; mfaVisible.value = false } } finally { mfaCode.value = ''; if (scope.current(version)) busy.value = false }
+}
+function hide(): void { scope.stop(); connection.value = null; smart.value = null; username.value = ''; password.value = ''; mfaToken = ''; mfaCode.value = ''; mfaVisible.value = false; region.value = 'cn'; enabled.value = false; recoveryEnabled.value = false; autoImport.value = false; interval.value = '30'; action.value = ''; notice.value = ''; error.value = ''; busy.value = false }
+onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>
+<style scoped>
+.picker-field { display: flex; justify-content: center; }
+</style>

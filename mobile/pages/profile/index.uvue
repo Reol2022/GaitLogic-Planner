@@ -1,0 +1,65 @@
+<template>
+  <scroll-view :class="themeClass" @touchstart="navSwipe.start" @touchmove="navSwipe.move" @touchend="navSwipe.end" @touchcancel="navSwipe.cancel" direction="vertical" class="screen"><view class="page">
+    <text class="title">我的</text>
+    <StatePanel :loading="loading" :error="error" @retry="load" />
+    <view v-if="auth.state.user != null" class="card hero profile-card"><view class="profile-avatar"><text class="profile-initial">{{ (auth.state.user.nickname || auth.state.user.username).slice(0, 1) }}</text></view><view class="col"><text class="hero-title profile-name">{{ auth.state.user.nickname || auth.state.user.username }}</text><text v-if="auth.state.user.nickname" class="profile-handle">{{ auth.state.user.username }}</text></view></view>
+    <text class="section-title">我的设备</text>
+    <view v-if="garmin != null" class="card">
+      <view class="row"><text class="item-title">佳明设备</text><text class="badge">{{ garmin.connected ? '已连接' : '未连接' }}</text></view>
+      <text class="muted">{{ connectionStatus(garmin.status) }}</text>
+      <view class="device-sync"><text class="label">训练最近同步</text><text class="body">{{ garmin.last_successful_sync_at || '暂无' }}</text><text class="label spaced">恢复最近同步</text><text class="body">{{ garmin.recovery_last_successful_sync_at || '暂无' }}</text></view>
+      <text v-if="garmin.last_error_code != null" class="error-text spaced">最近同步遇到问题，可在数据同步中查看详情。</text>
+    </view>
+    <text class="section-title">设置与管理</text>
+    <view class="card account-menu">
+      <button class="account-link" @click="platform.navigate('/pages/workspace/garmin-settings')"><image class="account-icon" src="/static/tools/watch.png" /><text class="account-text">佳明连接</text><text class="account-arrow">›</text></button>
+      <button class="account-link" @click="platform.navigate('/pages/workspace/sync')"><image class="account-icon" src="/static/tools/sync.png" /><text class="account-text">数据同步</text><text class="account-arrow">›</text></button>
+      <button class="account-link" @click="platform.navigate('/pages/profile/settings')"><image class="account-icon" src="/static/tools/rules.png" /><text class="account-text">应用设置</text><text class="account-arrow">›</text></button>
+    </view>
+    <button class="secondary logout-button" @click="logout">退出当前账号</button>
+    <text class="footer">GaitLogic · v0.1</text>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth, platform } from '../../services/runtime'
+import { tabSwipe } from '../../utils/swipe'
+import { connectionStatus } from '../../utils/display'
+import StatePanel from '../../components/common/StatePanel.uvue'
+interface GarminStatus { connected: boolean; status: string; last_successful_sync_at: string | null; recovery_last_successful_sync_at: string | null; last_error_code: string | null }
+const garmin = ref<GarminStatus | null>(null); const loading = ref(false); const error = ref(''); let generation = 0; let cancel: (() => void) | null = null
+function stop(): void { generation++; cancel?.(); cancel = null; loading.value = false; garmin.value = null }
+function logout(): void { stop(); auth.logout(); platform.relaunch('/pages/auth/login') }
+async function load(): Promise<void> {
+  stop(); const current = generation; loading.value = true
+  try {
+    if (!await requireAuth()) { if (current === generation) error.value = '请登录后查看个人信息。'; return }
+    if (current !== generation) return
+    const operation = api.get<GarminStatus>('/integrations/garmin/status'); cancel = () => operation.cancel(); const result = await operation.promise
+    if (current === generation) { garmin.value = result; error.value = '' }
+  } catch { if (current === generation) error.value = '账号验证或设备状态读取失败，请检查登录状态后重试。未将失败显示为未连接。' }
+  finally { if (current === generation) loading.value = false }
+}
+onShow(() => { void load() }); onHide(stop); onUnload(stop)
+const navSwipe = tabSwipe('/pages/profile/index', path => platform.tab(path))
+const themeClass = useTheme(true)
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>
+<style scoped>
+.profile-card { flex-direction:row; align-items:center; background-color: var(--tone-surface); border-color: var(--tone-line); }
+.profile-avatar { width: 54px; height: 54px; border-radius: 27px; background-color: var(--tone-blue-soft); display: flex; align-items: center; justify-content: center; margin-right: 16px; }
+.profile-name { color:var(--tone-text); margin-bottom:0; }
+.profile-handle { color:var(--tone-muted); font-size:13px; }
+.account-menu { padding:0 14px; }
+.account-link { display:flex; flex-direction:row; align-items:center; width:100%; margin:0; padding:12px 0; border:0; border-bottom:1px solid; border-bottom-color:var(--tone-line); border-radius:0; background-color:var(--tone-surface); }
+.account-icon { width:24px; height:24px; margin-right:12px; }
+.account-text { flex:1; text-align:left; font-size:15px; color:var(--tone-text); }
+.account-arrow { color:var(--tone-muted); font-size:20px; }
+.logout-button { color:var(--tone-error); background-color:var(--tone-danger-bg); }
+.device-sync { margin-top:10px; border-top:1px solid transparent; border-top-color:var(--tone-line); padding-top:10px; }
+.profile-initial { color: var(--tone-brand); font-size: 23px; font-weight: 600; }
+</style>

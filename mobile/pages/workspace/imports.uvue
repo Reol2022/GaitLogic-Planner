@@ -1,0 +1,59 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">课表与记录导入</text></view><text class="subtitle">支持标准 .xlsx 模板，最大 2 MB。上传只创建草稿，校验和确认应用分别进行。</text><StatePanel :loading="loading" :error="error" @retry="readDraft" />
+    <view class="card"><RunnerForm class="runner-form-host" :fields="fields" :values="values" :disabled="busy" @update="updateValue" /><button class="secondary" :disabled="busy" @click="choose">选择文件</button><text v-if="file != null" class="body spaced">{{ file.name }} · {{ Math.ceil(file.size / 1024) }} KB</text><button class="primary" :disabled="busy || file == null" @click="uploadConfirm = true">准备上传草稿</button></view>
+    <view v-if="uploadConfirm" class="notice"><text class="body">确认将所选文件发送到当前 GaitLogic 后端解析？不会直接写入正式计划或训练日志。</text><button class="primary" :disabled="busy" @click="upload">确认上传</button><button class="secondary" :disabled="busy" @click="uploadConfirm = false">取消</button></view>
+    <view class="card"><text class="field-label">继续已有导入（输入草稿编号）</text><input class="input" v-model="draftNumber" type="number" :disabled="busy" /><button class="secondary" :disabled="busy" @click="readDraft">读取草稿</button></view>
+    <view v-if="draft != null" class="card"><text class="item-title">草稿 #{{ draftNumber }} · {{ draft.status }}</text><text v-if="draft.diff_summary" class="body">新增 {{ draft.diff_summary.created_count }} / 更新 {{ draft.diff_summary.updated_count }} / 删除 {{ draft.diff_summary.removed_count }} / 冲突 {{ draft.diff_summary.conflict_count }}</text><text v-else class="body">总记录 {{ draft.total_count }} / 可处理 {{ draft.ready_count }} / 冲突 {{ draft.conflict_count }} / 无效 {{ draft.invalid_count }}</text>
+      <text v-for="(issue, index) in issues" :key="index" class="error-text spaced">{{ issue.message || issue.code || '存在待处理问题' }}</text>
+      <view v-for="item in draft.items || []" :key="item.id" class="spaced"><text class="body">{{ item.planned_date || item.activity_date || '日期待确认' }} · {{ item.suggested_content || item.normalized_data_json?.title || '训练记录' }}</text><text class="muted">{{ item.operation || item.suggested_action || '待校验' }} · {{ item.suggested_distance_km ?? item.normalized_data_json?.distance_km ?? '距离缺失' }} km</text></view>
+      <button class="secondary" :disabled="busy" @click="validate">重新校验</button><button class="primary" :disabled="busy || draft.status !== 'ready'" @click="applyConfirm = true">准备应用导入</button><button class="quiet-action" :disabled="busy" @click="cancelConfirm = true">取消此导入草稿</button>
+    </view>
+    <view v-if="applyConfirm" class="notice"><text class="error-text">此操作将写入正式{{ values.kind === 'plan' ? '计划' : '训练记录' }}。请核对全部差异、警告和冲突。校验失败不允许应用。</text><button class="primary" :disabled="busy" @click="apply">确认已审阅风险并应用</button><button class="secondary" :disabled="busy" @click="applyConfirm = false">返回</button></view>
+    <view v-if="cancelConfirm" class="notice"><text class="body">确认取消此草稿？不会删除已完成的训练。</text><button class="primary" :disabled="busy" @click="cancelDraft">确认取消</button><button class="secondary" :disabled="busy" @click="cancelConfirm = false">返回</button></view><text v-if="notice" class="notice-text">{{ notice }}</text>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref, computed } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, files, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { positiveId, formPayload } from '../../domain/runner-workspace'
+import type { FormField } from '../../domain/runner-workspace'
+import { validateFile } from '../../services/files'
+import type { SelectedFile } from '../../services/files'
+import { turnId } from '../../utils/id'
+import StatePanel from '../../components/common/StatePanel.uvue'
+import RunnerForm from '../../components/common/RunnerForm.uvue'
+const fields: FormField[] = [{ key: 'kind', label: '导入类型', kind: 'choice', options: ['plan', 'workout'], labels: ['训练计划草稿', '已完成训练记录'], required: true }, { key: 'effective_date', label: '计划导入生效日期（计划必填）', kind: 'date' }]
+const values = ref<Record<string, string>>({ kind: 'plan', effective_date: '' }), file = ref<SelectedFile | null>(null), draft = ref<Record<string, any> | null>(null), draftNumber = ref(''), loading = ref(false), busy = ref(false), uploadConfirm = ref(false), applyConfirm = ref(false), cancelConfirm = ref(false), error = ref(''), notice = ref(''); const scope = new PageScope(() => auth.epoch()); let requestKey = ''
+const issues = computed<Record<string, any>[]>(() => [...(draft.value?.conflicts || []), ...(draft.value?.warnings || []), ...(draft.value?.warnings_json || [])]);
+function updateValue(key: string, value: string): void { values.value = { ...values.value, [key]: value }; draft.value = null; draftNumber.value = ''; file.value = null; uploadConfirm.value = false; applyConfirm.value = false; requestKey = '' }
+function path(): string { return (values.value.kind === 'plan' ? '/plan-imports/' : '/workout-imports/') + positiveId(draftNumber.value) }
+function choose(): void { if (busy.value) return; const version = scope.begin(); error.value = ''; uploadConfirm.value = false
+  uni.chooseFile({ count: 1, type: 'all', extension: ['.xlsx'], success(result) { if (!scope.current(version)) return; try { const item = result.tempFiles[0]; validateFile(item); file.value = { name: item.name, path: item.path, size: item.size }; requestKey = turnId() } catch (e) { error.value = e instanceof Error ? e.message : '文件无效'; file.value = null } }, fail(result) { if (scope.current(version) && result.errCode !== 1101001) error.value = '文件选择失败，请检查系统文件权限' } })
+}
+async function upload(): Promise<void> { if (busy.value || !uploadConfirm.value || file.value == null) return; const selected = file.value, version = scope.begin(); busy.value = true; error.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return; const form = formPayload(fields, values.value); const metadata: Record<string, string> = { client_request_id: requestKey, timezone: 'Asia/Shanghai' }; const kind = form.kind === 'plan' ? 'plan' : 'workout'
+    if (kind === 'plan') { if (!form.effective_date) throw new Error('计划导入请先选择生效日期'); metadata.effective_date = String(form.effective_date); metadata.anchor_strategy = 'explicit_date'; metadata.merge_strategy = 'fill_empty_only' } else metadata.merge_strategy = 'create_missing_only'
+    const result = await scope.wait(files.send<{ import_id?: number; batch_id?: number }>(kind, selected, metadata, requestKey)); if (scope.current(version)) { draftNumber.value = String(positiveId(result.import_id ?? result.batch_id)); uploadConfirm.value = false; file.value = null; notice.value = '草稿已创建，正式数据尚未写入。'; await readDraft() } }
+  catch (e) { if (scope.current(version)) { uploadConfirm.value = false; error.value = (e instanceof Error ? e.message : '上传失败') + '。请求中断不代表服务器未解析；不要反复上传。' } } finally { if (scope.current(version)) busy.value = false }
+}
+async function readDraft(): Promise<void> { const version = scope.begin(); loading.value = true; busy.value = false; draft.value = null; error.value = ''; applyConfirm.value = false
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<Record<string, any>>(path())); if (scope.current(version)) draft.value = result }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+async function act(action: string): Promise<void> { if (busy.value || draft.value == null) return; const version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; await scope.wait(api.post(path() + '/' + action, {})); if (scope.current(version)) { applyConfirm.value = false; cancelConfirm.value = false; notice.value = '操作已提交，请以重新读取的草稿状态为准。'; await readDraft() } }
+  catch (e) { if (scope.current(version)) error.value = (e instanceof Error ? e.message : '操作失败') + '。请重新读取状态，不自动重试。' } finally { if (scope.current(version)) busy.value = false }
+}
+async function validate(): Promise<void> { await act('validate') }
+async function apply(): Promise<void> { if (applyConfirm.value && draft.value?.status === 'ready') await act(values.value.kind === 'plan' ? 'apply?confirm_high=true' : 'apply') }
+async function cancelDraft(): Promise<void> { if (cancelConfirm.value) await act('cancel') }
+function hide(): void { scope.stop(); draft.value = null; file.value = null; draftNumber.value = ''; values.value = { kind: 'plan', effective_date: '' }; uploadConfirm.value = false; applyConfirm.value = false; cancelConfirm.value = false; busy.value = false; requestKey = '' }
+onShow(() => { void requireAuth() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

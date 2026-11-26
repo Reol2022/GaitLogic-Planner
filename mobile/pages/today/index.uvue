@@ -1,0 +1,178 @@
+<template>
+  <scroll-view :class="themeClass" @touchstart="navSwipe.start" @touchmove="navSwipe.move" @touchend="navSwipe.end" @touchcancel="navSwipe.cancel" direction="vertical" class="screen today-screen">
+    <view class="page today-page">
+      <text v-if="today" class="today-date">{{ todayLabel(today) }}</text>
+      <text class="title today-title">今日</text>
+      <StatePanel :loading="loading.anchor" :error="errors.anchor" @retry="load" />
+
+      <view class="section-heading today-section"><text class="section-title section-title-inline">今天跑了什么</text><text v-if="actual?.summary.total_distance_km != null" class="daily-total">共 {{ metric(actual.summary.total_distance_km, ' 公里') }}</text></view>
+      <StatePanel :loading="loading.actual" :error="errors.actual" :empty="actual != null && actual.items.length === 0" empty-text="今天还没有已记录的训练。" @retry="load" />
+      <view v-if="actual != null && actual.items.length > 0" class="card today-activities">
+        <view v-for="(record, index) in actual.items" :key="record.record_ref || String(index)" class="actual-item">
+          <TodayBreakdown v-if="record.record_ref != null && breakdowns[record.record_ref] != null && hasTodayParts(breakdowns[record.record_ref])" :detail="breakdowns[record.record_ref]" :day="today" />
+          <view v-else class="row simple-run">
+            <view class="run-mark" /><view class="col"><text class="run-name">{{ trainingLabel(record.actual_training_type, '跑步记录') }}</text><text class="muted">{{ duration(record.duration_seconds) }} · {{ pace(record.average_pace_seconds_per_km) }}</text></view>
+            <text class="run-distance">{{ metric(record.distance_km, ' 公里') }}</text>
+          </view>
+          <text v-if="record.record_ref != null && detailLoading[record.record_ref]" class="muted">正在读取活动明细…</text>
+          <button v-if="record.record_ref != null && !breakdowns[record.record_ref] && !detailLoading[record.record_ref]" class="today-action" @click="loadBreakdown(record.record_ref, generation)">{{ detailErrors[record.record_ref] ? '重试读取明细' : '展开活动明细' }}</button>
+          <button v-if="record.record_ref != null" class="today-action" @click="platform.navigate('/pages/training/detail?record_ref=' + encodeURIComponent(record.record_ref))">查看详情 ›</button>
+        </view>
+      </view>
+      <text v-if="(actual?.summary.unresolved_activity_count ?? 0) > 0" class="notice-text spaced">另有 {{ actual?.summary.unresolved_activity_count }} 条活动尚未归并，不计入今日跑量。</text>
+      <text v-if="actual?.next_cursor != null || actual?.details_complete === false" class="muted">部分记录未显示，今日跑量按服务器汇总计算。</text>
+
+      <view class="section-heading today-section"><text class="section-title section-title-inline">训练安排</text></view>
+      <StatePanel :loading="loading.plan" :error="errors.plan" :empty="plans != null && plans.length === 0" empty-text="今天没有安排课表。" @retry="load" />
+      <view v-for="(plan, index) in plans" :key="index" class="card today-plan">
+        <view class="row plan-heading"><image class="plan-icon" src="/static/navigation/training-active.png" /><text class="run-name plan-name">{{ trainingLabel(plan.main_type_normalized, '今日训练计划') }}</text><text v-if="plan.planned_distance_km != null" class="muted">{{ metric(plan.planned_distance_km, ' 公里') }}</text></view>
+        <text v-if="plan.planned_content" class="muted">{{ plan.planned_content }}</text>
+        <text v-if="plan.target_pace_text" class="muted">目标配速 {{ plan.target_pace_text }}</text>
+      </view>
+
+      <view class="section-heading today-section"><text class="section-title section-title-inline">恢复一览</text></view>
+      <StatePanel :loading="loading.state" :error="errors.state" @retry="load" />
+      <view v-if="snapshot != null" class="card recovery-preview">
+        <view class="col"><text class="label">{{ snapshot.recovery.as_of_date === today ? '昨晚睡眠' : '最近睡眠' }}</text><text class="recovery-value">{{ sleepLabel(snapshot.recovery.sleep_duration_minutes) }}</text></view>
+        <view class="col recovery-second"><text class="label">静息心率</text><text class="recovery-value">{{ metric(snapshot.recovery.resting_heart_rate_bpm, ' 次/分') }}</text></view>
+      </view>
+
+      <text v-if="garmin?.last_error_code != null || errors.garmin" class="error-text spaced">设备同步状态异常，展开下方可查看详情。</text>
+      <button class="today-more" :aria-expanded="showMore" @click="showMore = !showMore">{{ showMore ? '收起更多数据' : '查看本周训练与设备状态' }} {{ showMore ? '⌃' : '⌄' }}</button>
+      <view v-if="showMore">
+        <text class="section-title">本周训练</text>
+        <StatePanel :loading="loading.week" :error="errors.week" @retry="load" />
+        <view v-if="weekly != null" class="card"><text class="label">{{ monday }} — {{ today }}</text><text class="recovery-value">{{ metric(weekly.summary.total_distance_km, ' 公里') }}</text><text class="muted">{{ metric(weekly.summary.total_sessions, '次训练记录') }}</text></view>
+        <StatePanel :loading="loading.series" :error="errors.series" @retry="load" />
+        <view v-if="series != null && series.items.length > 0" class="card"><text class="item-title">近七天跑量</text><SeriesBars :items="series.items" compact /><text v-if="series.unresolved_activity_count > 0" class="muted">尚有 {{ series.unresolved_activity_count }} 条活动未归并。</text></view>
+        <view v-if="snapshot != null" class="card"><text class="item-title">恢复数据说明</text><text class="muted">数据日期 {{ snapshot.recovery.as_of_date || '暂无' }}</text><text v-for="(note, index) in snapshot.recovery.limitations" :key="'r' + index" class="muted">{{ note }}</text><text v-for="(note, index) in snapshot.data_quality.limitations" :key="'q' + index" class="muted">{{ note }}</text><text class="notice-text spaced">恢复数据仅供参考，不代表可以进行高强度训练。</text></view>
+        <StatePanel :loading="loading.garmin" :error="errors.garmin" @retry="load" />
+        <view v-if="garmin != null" class="card"><view class="row"><text class="item-title">佳明设备</text><text class="badge">{{ connectionStatus(garmin.status) }}</text></view><text class="muted">训练最近同步：{{ garmin.last_successful_sync_at || '暂无' }}</text><text class="muted">恢复最近同步：{{ garmin.recovery_last_successful_sync_at || '暂无' }}</text></view>
+        <button class="secondary" @click="platform.tab('/pages/training/index')">查看训练记录</button>
+      </view>
+    </view>
+  </scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref, reactive } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, requireAuth, platform } from '../../services/runtime'
+import { tabSwipe } from '../../utils/swipe'
+import { ApiError } from '../../services/api/client'
+import { metric, duration, dateOffset, weekStart, connectionStatus, pace } from '../../utils/display'
+import type { TodayDetail } from '../../utils/today-breakdown'
+import TodayBreakdown from '../../components/training/TodayBreakdown.uvue'
+import StatePanel from '../../components/common/StatePanel.uvue'
+import SeriesBars from '../../components/charts/SeriesBars.uvue'
+interface Plan { planned_content: string | null; main_type_normalized: string | null; planned_distance_km: number | null; target_pace_text: string | null; workout_date: string }
+interface Snapshot { recovery: { as_of_date: string | null; freshness: string; sleep_duration_minutes: number | null; resting_heart_rate_bpm: number | null; limitations: string[] }; inferred_state: { fatigue_state: string }; data_quality: { data_quality_level: string; limitations: string[] } }
+const plans = ref<Plan[] | null>(null)
+const snapshot = ref<Snapshot | null>(null)
+interface Training { as_of: string; items: { record_ref: string | null; actual_training_type?: string | null; distance_km: number | null; duration_seconds: number | null; average_pace_seconds_per_km?: number | null }[]; summary: { total_distance_km: number | null; total_sessions: number; unresolved_activity_count?: number }; details_complete: boolean | null; next_cursor: string | null }
+interface Series { range_start: string; range_end: string; items: { date: string; distance_km: number | null; session_count: number; missing_distance_count: number }[]; unresolved_activity_count: number }
+interface Garmin { connected: boolean; status: string; last_successful_sync_at: string | null; recovery_last_successful_sync_at: string | null; last_error_code: string | null }
+type ModuleKey = 'anchor' | 'plan' | 'actual' | 'week' | 'series' | 'state' | 'garmin'
+const errors = reactive({ anchor: '', plan: '', actual: '', week: '', series: '', state: '', garmin: '' })
+const loading = reactive({ anchor: false, plan: false, actual: false, week: false, series: false, state: false, garmin: false })
+const actual = ref<Training | null>(null); const weekly = ref<Training | null>(null); const series = ref<Series | null>(null); const garmin = ref<Garmin | null>(null)
+const today = ref('')
+const monday = ref('')
+const showMore = ref(false)
+function hasTodayParts(detail: TodayDetail): boolean {
+  return detail.activities.some(item => item.date === today.value)
+}
+function todayLabel(day: string): string {
+  const words = ['日', '一', '二', '三', '四', '五', '六']
+  return Number(day.slice(5, 7)) + '月' + Number(day.slice(8, 10)) + '日 · 星期' + words[new Date(day + 'T00:00:00Z').getUTCDay()]
+}
+function sleepLabel(value: number | null): string {
+  if (value == null) return '暂无'
+  const minutes = Math.round(value)
+  return Math.floor(minutes / 60) + ' 小时 ' + (minutes % 60) + ' 分'
+}
+function trainingLabel(value: string | null | undefined, fallback: string): string {
+  const labels: Record<string, string> = { easy:'轻松跑', easy_with_speed:'轻松跑与加速', tempo:'节奏跑', threshold:'阈值跑', interval:'间歇跑', interval_speed:'间歇跑', long:'长距离', long_run:'长距离', recovery:'恢复跑', race:'比赛', mixed:'混合训练', rest:'休息' }
+  return labels[(value || '').toLowerCase()] || (value && /[\u4e00-\u9fff]/.test(value) ? value : fallback)
+}
+const breakdowns = ref<Record<string, TodayDetail>>({})
+const detailLoading = ref<Record<string, boolean>>({})
+const detailErrors = ref<Record<string, boolean>>({})
+let generation = 0
+let cancellations: (() => void)[] = []
+const keys: ModuleKey[] = ['anchor', 'plan', 'actual', 'week', 'series', 'state', 'garmin']
+function stop(): void {
+  generation++; cancellations.forEach((cancel) => cancel()); cancellations = []; keys.forEach((key: ModuleKey) => { loading[key] = false })
+  plans.value = null; snapshot.value = null; actual.value = null; weekly.value = null; series.value = null; garmin.value = null
+  breakdowns.value = {}; detailLoading.value = {}; detailErrors.value = {}
+}
+async function loadBreakdown(ref: string, current: number): Promise<void> {
+  if (current !== generation || detailLoading.value[ref] || breakdowns.value[ref]) return
+  detailLoading.value[ref] = true
+  try {
+    const operation = api.get<TodayDetail>('/mobile/training/detail?record_ref=' + encodeURIComponent(ref))
+    cancellations.push(() => operation.cancel())
+    const detail = await operation.promise
+    if (current === generation) { breakdowns.value[ref] = detail; detailErrors.value[ref] = false }
+  } catch { if (current === generation) detailErrors.value[ref] = true }
+  finally { if (current === generation) detailLoading.value[ref] = false }
+}
+async function read<T>(key: ModuleKey, path: string, apply: (value: T) => void, current: number): Promise<void> {
+  loading[key] = true
+  try {
+    const operation = api.get<T>(path); cancellations.push(() => operation.cancel()); const value = await operation.promise
+    if (current === generation) { apply(value); errors[key] = '' }
+  } catch (cause: unknown) { if (current === generation) errors[key] = cause instanceof ApiError ? cause.message : '此模块读取失败，请检查网络或登录状态后重试；失败不代表 0 或无记录。' }
+  finally { if (current === generation) loading[key] = false }
+}
+async function load(): Promise<void> {
+  stop(); today.value = ''; monday.value = ''; const current = generation; loading.anchor = true
+  try {
+    if (!await requireAuth()) { if (current === generation) errors.anchor = '请登录后查看今日训练。'; return }
+    if (current !== generation) return
+    await read<Training>('anchor', '/mobile/training?days=7&limit=20', (value) => { today.value = value.as_of; monday.value = weekStart(value.as_of) }, current)
+    if (current !== generation || today.value.length === 0) return
+    const range = '?start_date=' + today.value + '&end_date=' + today.value
+    await Promise.all([
+      read<Plan[]>('plan', '/planned-workouts' + range, (value) => { plans.value = value }, current),
+      read<Training>('actual', '/mobile/training' + range + '&limit=20', (value) => {
+        actual.value = value
+        for (const record of value.items.slice(0, 3)) if (record.record_ref != null) void loadBreakdown(record.record_ref, current)
+      }, current),
+      read<Training>('week', '/mobile/training?start_date=' + monday.value + '&end_date=' + today.value + '&limit=20', (value) => { weekly.value = value }, current),
+      read<Series>('series', '/mobile/series?start_date=' + dateOffset(today.value, -6) + '&end_date=' + today.value, (value) => { series.value = value }, current),
+      read<{ snapshot: Snapshot }>('state', '/runner-state/current', (value) => { snapshot.value = value.snapshot }, current),
+      read<Garmin>('garmin', '/integrations/garmin/status', (value) => { garmin.value = value }, current)
+    ])
+  } catch { if (current === generation) errors.anchor = '登录验证或服务端日期读取失败，请重新登录后重试。' }
+  finally { if (current === generation) loading.anchor = false }
+}
+onShow(() => { void load() }); onHide(stop); onUnload(stop)
+const navSwipe = tabSwipe('/pages/today/index', path => platform.tab(path))
+const themeClass = useTheme(true)
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>
+<style scoped>
+.today-screen { background-color:var(--tone-canvas); }
+.today-page { padding-top:20px; }
+.today-date { color:var(--tone-muted); font-size:13px; margin-bottom:4px; }
+.today-title { font-size:30px; line-height:38px; margin-bottom:5px; }
+.today-section { margin-top:15px; margin-bottom:8px; }
+.daily-total { color:var(--tone-accent); font-size:13px; margin-left:8px; }
+.today-activities { padding:3px 13px; }
+.actual-item { padding:6px 0; }
+.simple-run { padding:8px 0; }
+.run-mark { width:8px; height:8px; border-radius:4px; background-color:var(--tone-activity); margin-right:10px; }
+.run-name,.run-distance { color:var(--tone-text); font-size:15px; font-weight:650; }
+.today-action { align-self:flex-end; margin:0; padding:0 2px; line-height:34px; font-size:12px; color:var(--tone-accent); background-color:transparent; border:0; }
+.today-plan { padding:13px; }
+.plan-heading { justify-content:flex-start; margin-bottom:4px; }
+.plan-icon { width:21px; height:21px; margin-right:9px; }
+.plan-name { flex:1; }
+.recovery-preview { flex-direction:row; padding:13px; }
+.recovery-second { margin-left:12px; }
+.recovery-value { color:var(--tone-text); font-size:16px; font-weight:650; }
+.today-more { color:var(--tone-accent); background-color:transparent; border:0; font-size:13px; line-height:44px; margin:2px 0 0; padding:0; }
+</style>

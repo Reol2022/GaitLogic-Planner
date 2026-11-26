@@ -1,0 +1,53 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page">
+    <text class="title">训练统计</text>
+    <text class="subtitle">按日期查看跑量变化。</text>
+    <view class="row range-control"><button :disabled="loading" :class="days === 7 ? 'small-button is-selected' : 'small-button'" @click="changeRange(7)">最近 7 天</button><button :disabled="loading" :class="days === 28 ? 'small-button is-selected' : 'small-button'" @click="changeRange(28)">最近 28 天</button><text class="muted range-note">{{ days }} 天</text></view>
+    <text class="muted spaced">{{ start }} — {{ end }}</text>
+    <StatePanel :loading="loading" :error="error" :empty="data != null && data.items.length === 0" empty-text="所选范围暂无序列数据。" @retry="load" />
+    <view v-if="data != null && data.items.length > 0" class="card spaced"><view class="row"><text class="item-title">每日训练距离</text><text class="accent-label">距离</text></view><SeriesBars :items="data.items" /></view>
+    <view v-if="data != null && data.items.length > 0" class="card trend-card"><view class="row"><text class="item-title">距离趋势</text><text class="muted">已记录数据</text></view><SeriesTrend :items="data.items" /></view>
+    <view v-if="data != null" class="card"><text class="item-title">数据说明</text><text class="body">柱高与折线点仅表示后端提供的每日距离。部分日志缺失距离时，已有距离不代表完整总量。</text><text class="muted spaced">尚未归并活动 {{ data.unresolved_activity_count }} 条</text><text v-for="(gap, index) in data.gaps" :key="'g' + index" class="muted">数据缺口 · {{ gap }}</text><text v-for="(note, index) in data.limitations" :key="index" class="muted spaced">{{ note }}</text></view>
+    <view class="notice spaced"><text class="notice-text">本页不计算急慢性负荷、准备度或伤病风险，也不会用无记录日补齐为休息日。</text></view>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, requireAuth } from '../../services/runtime'
+import { dateOffset } from '../../utils/display'
+import StatePanel from '../../components/common/StatePanel.uvue'
+import SeriesBars from '../../components/charts/SeriesBars.uvue'
+import SeriesTrend from '../../components/charts/SeriesTrend.uvue'
+interface Series { as_of: string; range_start: string; range_end: string; items: { date: string; distance_km: number | null; session_count: number; missing_distance_count: number; status: string }[]; gaps: string[]; unresolved_activity_count: number; limitations?: string[] }
+const data = ref<Series | null>(null); const days = ref(7); const start = ref(''); const end = ref(''); const loading = ref(false); const error = ref('')
+let generation = 0; let cancel: (() => void) | null = null
+function stop(): void { generation++; cancel?.(); cancel = null; loading.value = false; data.value = null }
+function changeRange(value: number): void { days.value = value; void load() }
+async function load(): Promise<void> {
+  stop(); const current = generation; loading.value = true
+  start.value = ''; end.value = ''
+  try {
+    if (!await requireAuth()) { if (current === generation) error.value = '请登录后查看统计。'; return }
+    if (current !== generation) return
+    const anchor = api.get<{ as_of: string }>('/mobile/training?days=7&limit=20'); cancel = () => anchor.cancel(); const window = await anchor.promise
+    if (current !== generation) return
+    end.value = window.as_of; start.value = dateOffset(end.value, 1 - days.value)
+    const operation = api.get<Series>('/mobile/series?start_date=' + start.value + '&end_date=' + end.value); cancel = () => operation.cancel()
+    const result = await operation.promise
+    if (current === generation) { data.value = result; start.value = result.range_start; end.value = result.range_end; error.value = '' }
+  } catch { if (current === generation) error.value = '序列数据读取失败。未用 0 或示例数据替代，请重试。' }
+  finally { if (current === generation) loading.value = false }
+}
+onShow(() => { void load() }); onHide(stop); onUnload(stop)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>
+<style scoped>
+.range-control { padding: 6px; border-radius: 12px; background-color: var(--tone-tab-track); }
+.range-note { margin-right: 10px; }
+.trend-card { background-color: var(--tone-surface); border-color: var(--tone-line); }
+</style>

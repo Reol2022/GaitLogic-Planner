@@ -1,0 +1,31 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page">
+    <view class="page-heading"><view class="heading-mark" /><text class="title">配速计算器</text></view><text class="subtitle">本地计算，无需上传数据。不代表成绩预测或训练处方。</text>
+    <view class="wrap"><button v-for="preset in distancePresets" :key="preset.label" class="small-button spaced" @click="distance = String(preset.km)">{{ preset.label }}</button></view>
+    <text class="field-label">计算什么？</text><picker :range="modeLabels" @change="setMode($event.detail.value)"><view class="input picker-field"><text>{{ modeLabels[modeIndex] }}</text></view></picker>
+    <text v-if="mode !== 'distance'" class="field-label">距离（km）</text><input v-if="mode !== 'distance'" class="input" type="digit" v-model="distance" />
+    <view v-if="mode === 'pace' || mode === 'distance'" class="card spaced"><text class="item-title">总时间 · {{ clock(total, true) }}</text><ClockWheel :seconds="total" :hours="true" @update="total = $event" /></view>
+    <view v-if="mode === 'time' || mode === 'distance'" class="card spaced"><text class="item-title">每公里 · {{ clock(pace) }}</text><ClockWheel :seconds="pace" :hours="false" @update="pace = $event" /></view>
+    <view v-if="mode === 'lap'" class="card spaced"><text class="item-title">400 米 · {{ clock(lap) }}</text><ClockWheel :seconds="lap" :hours="false" @update="lap = $event" /></view>
+    <view v-if="result != null" class="card hero spaced"><text class="hero-label">换算结果</text><text class="hero-number">{{ clock(result.pace) }} /km</text><text class="body">距离 {{ result.km.toFixed(4) }} km</text><text class="body">总用时 {{ clock(result.time, true) }}</text><text class="body">400 米圈速 {{ clock(result.lap) }}</text></view>
+    <text v-else class="error-text spaced">请输入正数距离与非零时间。</text>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref, computed } from 'vue'
+import ClockWheel from '../../components/common/ClockWheel.uvue'
+import { convert, clock, distancePresets } from '../../domain/pace'
+import type { PaceTarget } from '../../domain/pace'
+const modes: PaceTarget[] = ['pace', 'time', 'distance', 'lap'], modeLabels = ['距离 + 总时间 → 配速', '距离 + 配速 → 总时间', '总时间 + 配速 → 距离', '距离 + 400 米圈速 → 配速与总时间']
+const modeIndex = ref(0), mode = computed(() => modes[modeIndex.value]); const distance = ref('21.0975'), total = ref(5400), pace = ref(300), lap = ref(120)
+const result = computed(() => convert(mode.value, Number(distance.value), total.value, pace.value, lap.value))
+function setMode(value: string): void { const index = Number(value); if (index >= 0 && index < modes.length) modeIndex.value = index }
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>
+<style scoped>
+.picker-field { display: flex; justify-content: center; }
+</style>

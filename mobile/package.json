@@ -1,0 +1,13 @@
+{
+  "name": "gaitlogic-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HBuilderX 5.34 uni-app x Vapor mobile foundation; native builds require HBuilderX",
+  "scripts": {
+    "typecheck": "node tools/check.cjs",
+    "test": "node tools/test.cjs",
+    "test:components": "node ../web/node_modules/vitest/vitest.mjs run --config vitest.config.mts --root .",
+    "verify": "npm run typecheck && npm test"
+  },
+  "devDependencies": { "typescript": "5.9.3", "@vue/compiler-sfc": "3.5.35" }
+}

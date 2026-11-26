@@ -1,0 +1,36 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">下载与导出</text></view><text class="subtitle">文件只从当前登录的 GaitLogic 后端下载。离开本页会清理本页下载的临时文件。</text>
+    <text v-if="error" class="error-text">{{ error }}</text><text v-if="notice" class="notice-text">{{ notice }}</text>
+    <view class="card"><RunnerForm class="runner-form-host" :fields="fields" :values="values" :disabled="busy" @update="updateValue" /><button class="primary" :disabled="busy" @click="download">{{ busy ? '正在下载…' : '下载文件' }}</button></view>
+    <view v-if="document != null" class="card hero"><text class="item-title">{{ document.name }}</text><text class="body">文件已下载到应用临时区，尚未证明已保存到系统下载目录。</text><button class="secondary" :disabled="busy" @click="open">打开文件 / 系统保存菜单</button><text class="muted spaced">设备支持的文档格式不同。Excel 通常适合课表预览；CSV、JSON 等格式可能需要设备上的其他应用。H5 打开能力尚待适配。</text></view>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref, shallowRef } from 'vue'
+import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { auth, downloads, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { formPayload, positiveId } from '../../domain/runner-workspace'
+import type { FormField } from '../../domain/runner-workspace'
+import type { DownloadedDocument, ExportFormat } from '../../services/downloads'
+import RunnerForm from '../../components/common/RunnerForm.uvue'
+const fields: FormField[] = [{ key: 'kind', label: '文件类型', kind: 'choice', options: ['plan-template', 'workout-template', 'ai-draft'], labels: ['计划导入模板', '训练记录导入模板', 'AI 计划草稿'], required: true }, { key: 'id', label: '草稿编号（导出 AI 草稿时必填）', kind: 'number', integer: true, min: 1 }, { key: 'format', label: '草稿导出格式', kind: 'choice', options: ['xlsx', 'csv', 'markdown', 'json', 'ics', 'garmin_csv', 'coros_csv', 'device_csv'], labels: ['Excel', 'CSV', 'Markdown', 'JSON', '日历 ICS', 'Garmin CSV', 'COROS CSV', '设备通用 CSV'], required: true }]
+const values = ref<Record<string, string>>({ kind: 'plan-template', id: '', format: 'xlsx' }), document = shallowRef<DownloadedDocument | null>(null), busy = ref(false), error = ref(''), notice = ref(''); const scope = new PageScope(() => auth.epoch())
+let externalViewer = false
+function updateValue(key: string, value: string): void { if (!busy.value) { values.value = { ...values.value, [key]: value }; document.value = null; downloads.releaseAll(); error.value = ''; notice.value = '' } }
+async function download(): Promise<void> { if (busy.value) return; const version = scope.begin(); busy.value = true; error.value = ''; notice.value = ''; document.value = null; downloads.releaseAll()
+  try { if (!await requireAuth() || !scope.current(version)) return; const payload = formPayload(fields, values.value); const kind = String(payload.kind) as 'plan-template' | 'workout-template' | 'ai-draft'; const result = await scope.wait(downloads.read(kind, kind === 'ai-draft' ? positiveId(payload.id) : undefined, String(payload.format) as ExportFormat)); if (scope.current(version)) document.value = result; else downloads.releaseAll() }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '文件下载失败' } finally { if (scope.current(version)) busy.value = false }
+}
+async function open(): Promise<void> { if (document.value == null || busy.value) return; const version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; externalViewer = true; await downloads.open(document.value); if (scope.current(version)) notice.value = '已请求系统打开；是否已另存请以系统菜单结果为准。' }
+  catch (e) { externalViewer = false; downloads.releaseAll(); document.value = null; if (scope.current(version)) error.value = e instanceof Error ? e.message : '当前设备无法打开文件' } finally { if (scope.current(version)) busy.value = false }
+}
+function hide(): void { scope.stop(); if (!externalViewer) downloads.releaseAll(); document.value = null; values.value = { kind: 'plan-template', id: '', format: 'xlsx' }; busy.value = false; error.value = ''; notice.value = '' }
+onLoad(query => { if (query.draft_id) { try { values.value = { kind: 'ai-draft', id: String(positiveId(query.draft_id)), format: 'xlsx' } } catch { error.value = '草稿编号无效' } } }); onShow(() => { if (externalViewer) { downloads.releaseAll(); externalViewer = false; document.value = null } void requireAuth() }); onHide(hide); onUnload(() => { externalViewer = false; hide() })
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

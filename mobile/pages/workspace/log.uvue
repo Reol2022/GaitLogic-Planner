@@ -1,0 +1,48 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">训练日志</text></view><text class="subtitle">已有设备数据不会因为填写主观感受被覆盖。</text>
+    <StatePanel :loading="loading" :error="error" @retry="load" />
+    <view v-if="ready" class="card"><text class="item-title">{{ linkedCount > 0 ? '已关联 ' + linkedCount + ' 条设备活动' : '手动训练日志' }}</text><text class="muted">{{ linkedCount > 0 ? '本页只编辑状态、整堂课自评与笔记；设备距离和活动 RPE 保持原值。' : '没有设备关联时可填写实际距离和用时。' }}</text>
+      <RunnerForm class="runner-form-host" :fields="fields" :values="values" :disabled="busy" @update="updateValue" />
+      <button class="primary" :disabled="busy" @click="prepare">预览保存</button>
+    </view>
+    <view v-if="confirm" class="notice"><text class="item-title">确认训练日志</text><text class="body">{{ preview }}</text><button class="primary" :disabled="busy" @click="save">确认保存</button><button class="secondary" :disabled="busy" @click="confirm = false">返回</button></view>
+    <text v-if="notice" class="notice-text">{{ notice }}</text>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref, computed } from 'vue'
+import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { positiveId, valuesFor, changedPayload } from '../../domain/runner-workspace'
+import type { FormField } from '../../domain/runner-workspace'
+import StatePanel from '../../components/common/StatePanel.uvue'
+import RunnerForm from '../../components/common/RunnerForm.uvue'
+const subjective: FormField[] = [{ key: 'status_normalized', label: '完成状态', kind: 'choice', options: ['not_started', 'completed_normal', 'completed_adjusted', 'missed', 'rest', 'skipped'], labels: ['未开始', '正常完成', '调整后完成', '未完成', '休息', '跳过'], required: true }, { key: 'rpe', label: '整堂训练 RPE（1–10；留空不代表 0）', kind: 'number', integer: true, min: 1, max: 10 }, { key: 'review_note', label: '训练笔记' }, { key: 'leg_feeling', label: '腿部感受' }, { key: 'pain_level', label: '疼痛程度（0–10）', kind: 'number', integer: true, min: 0, max: 10 }, { key: 'pain_location', label: '不适位置' }]
+const objective: FormField[] = [{ key: 'actual_distance_km', label: '实际距离（km）', kind: 'number', min: 0 }, { key: 'actual_duration_seconds', label: '实际用时（秒）', kind: 'number', integer: true, min: 0 }, { key: 'avg_heart_rate', label: '平均心率', kind: 'number', integer: true, min: 20, max: 250 }]
+const linkedCount = ref(0), fields = computed(() => linkedCount.value > 0 ? subjective : [...objective, ...subjective]); const values = ref<Record<string, string>>({}); let original: Record<string, string> = {}; let id = 0
+const loading = ref(false), busy = ref(false), ready = ref(false), confirm = ref(false), error = ref(''), notice = ref(''), preview = ref(''); const scope = new PageScope(() => auth.epoch())
+function updateValue(key: string, value: string): void { values.value = { ...values.value, [key]: value }; confirm.value = false }
+function prepare(): void { try { const payload = changedPayload(fields.value, values.value, original); if (!Object.keys(payload).length) throw new Error('没有需要保存的修改'); preview.value = fields.value.filter(field => field.key in payload).map(field => field.label + '：' + (values.value[field.key] || '清空')).join('\n'); confirm.value = true; error.value = '' } catch (e) { error.value = e instanceof Error ? e.message : '输入无效' } }
+async function load(): Promise<void> {
+  const version = scope.begin(); loading.value = true; ready.value = false; error.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return
+    const result = await scope.wait(api.get<{ existing_workout_log: Record<string, unknown> | null; linked_garmin_activities: unknown[] }>('/planned-workouts/' + positiveId(id) + '/completion-context'))
+    if (scope.current(version)) { linkedCount.value = result.linked_garmin_activities.length; values.value = valuesFor(fields.value, result.existing_workout_log || { status_normalized: 'not_started' }); original = { ...values.value }; ready.value = true }
+  } catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' }
+  finally { if (scope.current(version)) loading.value = false }
+}
+async function save(): Promise<void> {
+  if (busy.value || !confirm.value) return; const version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; await scope.wait(api.put('/workout-logs/' + positiveId(id), changedPayload(fields.value, values.value, original))); if (scope.current(version)) { confirm.value = false; notice.value = '训练日志已保存。'; await load() } }
+  catch (e) { if (scope.current(version)) error.value = (e instanceof Error ? e.message : '保存失败') + '。超时后先重新读取，避免重复提交。' }
+  finally { busy.value = false }
+}
+function hide(): void { scope.stop(); values.value = {}; original = {}; ready.value = false; confirm.value = false; busy.value = false }
+onLoad(query => { try { id = positiveId(query.workout_id) } catch { id = 0 } }); onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

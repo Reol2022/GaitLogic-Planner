@@ -1,0 +1,39 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page">
+    <view class="page-heading"><view class="heading-mark" /><text class="title">应用设置</text></view>
+    <view class="card"><view class="row"><view class="col"><text class="item-title">深色模式</text><text class="muted">外观设置仅保存在本机。</text></view><switch :checked="darkTheme" aria-label="深色模式" color="#1976d2" @change="changeTheme" /></view><text v-if="themeError" class="error-text spaced">{{ themeError }}</text></view>
+    <view class="card"><text class="item-title">API 服务地址</text><text class="field-label">HTTPS URL · 以 /api 结尾</text><input v-model="baseUrl" class="input" placeholder="https://your-host/api" :maxlength="240" />
+      <text class="muted spaced">保存前请确认服务来源。地址变更会退出账号，并清空导航栈返回登录页。</text>
+      <text v-if="error.length > 0" class="error-text spaced">{{ error }}</text><text v-if="notice.length > 0" class="notice-text spaced">{{ notice }}</text>
+      <button class="primary" @click="save">保存 API 地址</button><button class="secondary" @click="platform.copy(getApiBaseUrl())">复制当前已保存地址</button>
+    </view>
+    <view class="card"><text class="item-title">关于 Mobile v0.1</text><text class="body">原生页面预览版 · uni-app x 5.34 Vapor</text><text class="muted spaced">训练详情、统计和设备状态均为只读。AI 回答仅辅助理解与课表草稿，不会在本页自动应用为正式计划。</text></view>
+    <button class="secondary" @click="back">{{ auth.state.user != null ? '返回我的' : '返回登录' }}</button>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { darkTheme, setDarkTheme, useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { auth, platform } from '../../services/runtime'
+import { getApiBaseUrl, setApiBaseUrl } from '../../config/environment'
+const baseUrl = ref(''); const error = ref(''); const notice = ref('')
+const themeError = ref('')
+function changeTheme(event: { detail: { value: boolean } }): void {
+  themeError.value = setDarkTheme(event.detail.value) ? '' : '暂时无法保存外观设置，请重试。'
+}
+function save(): void {
+  try {
+    const previous = getApiBaseUrl(); const next = baseUrl.value.trim().replace(/\/+$/, '')
+    if (next.toLowerCase().includes('example.invalid')) { error.value = '请填写真实、可信的 API 地址，不保存占位地址。'; return }
+    setApiBaseUrl(next); error.value = ''; notice.value = '地址已保存'
+    if (previous !== getApiBaseUrl()) { auth.logout(); platform.relaunch('/pages/auth/login') }
+  } catch { error.value = '地址无效。只接受 HTTPS 地址，且必须以 /api 结尾。'; notice.value = '' }
+}
+function back(): void { if (auth.state.user != null) platform.tab('/pages/profile/index'); else platform.relaunch('/pages/auth/login') }
+onShow(() => { baseUrl.value = getApiBaseUrl() })
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

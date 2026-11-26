@@ -1,0 +1,19 @@
+<template>
+  <view v-if="loading || error.length > 0 || empty" :class="dark ? 'state-panel state-dark' : 'state-panel'">
+    <text v-if="loading" :class="dark ? 'state-copy state-dark-copy' : 'state-copy'">正在加载…</text>
+    <text v-if="error.length > 0" :class="dark ? 'error-text state-dark-error' : 'error-text'">{{ error }}</text>
+    <text v-if="!loading && error.length === 0 && empty" :class="dark ? 'state-copy state-dark-copy' : 'state-copy'">{{ emptyText }}</text>
+    <button v-if="!loading && error.length > 0" class="secondary" @click="$emit('retry')">重新加载</button>
+  </view>
+</template>
+<script setup lang="ts">
+withDefaults(defineProps<{ loading: boolean; error: string; empty?: boolean; emptyText?: string; dark?: boolean }>(), { empty: false, emptyText: '尚无记录。无记录不代表已确认休息。' })
+defineEmits<{ (event: 'retry'): void }>()
+</script>
+<style scoped>
+.state-panel { padding:14px 16px; margin:8px 0 14px; background-color:var(--tone-control); border-radius:12px; }
+.state-copy { color:var(--tone-muted); font-size:14px; line-height:22px; }
+.state-dark { background-color:var(--tone-control); }
+.state-dark-copy { color:var(--tone-muted); }
+.state-dark-error { color:var(--tone-error); }
+</style>

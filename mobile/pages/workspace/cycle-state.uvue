@@ -1,0 +1,48 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">周期状态</text></view><text class="subtitle">启用新周期可能结束当前周期；已完成日志由既有服务保护。</text>
+    <StatePanel :loading="loading" :error="error" @retry="load" />
+    <view v-if="cycle != null" class="card"><text class="item-title">{{ cycle.name }}</text><text class="body">当前服务端状态：{{ cycle.status }}</text><RunnerForm class="runner-form-host" :fields="fields" :values="values" :disabled="busy" @update="updateValue" />
+      <button v-if="cycle.status === 'draft'" class="primary" :disabled="busy" @click="prepare('activate')">预览启用影响</button>
+      <button v-if="cycle.status === 'active'" class="secondary" :disabled="busy" @click="prepare('complete')">完成当前周期</button>
+      <button v-if="cycle.status !== 'active' && cycle.status !== 'archived'" class="secondary" :disabled="busy" @click="prepare('archive')">归档周期</button>
+    </view>
+    <view v-if="action" class="notice"><text class="item-title">{{ action === 'activate' ? '确认启用' : action === 'complete' ? '确认完成' : '确认归档' }}</text><text v-if="preview != null" class="body">当前周期：{{ preview.current_cycle_name || '无' }}\n新周期：{{ preview.new_cycle_name }}\n受影响的未来未完成计划：{{ preview.future_uncompleted_plan_count }} 项\n生效日期：{{ preview.effective_start_date }}</text><text class="error-text">此操作将修改正式周期状态，请核对后确认。</text><button class="primary" :disabled="busy" @click="commit">确认操作</button><button class="secondary" :disabled="busy" @click="action = ''">取消</button></view>
+    <text v-if="notice" class="notice-text">{{ notice }}</text>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { positiveId, formPayload } from '../../domain/runner-workspace'
+import type { FormField } from '../../domain/runner-workspace'
+import StatePanel from '../../components/common/StatePanel.uvue'
+import RunnerForm from '../../components/common/RunnerForm.uvue'
+const fields: FormField[] = [{ key: 'date', label: '生效日期 / 实际结束日', kind: 'date', required: true }]
+const values = ref<Record<string, string>>({ date: '' }), cycle = ref<{ id: number; name: string; status: string } | null>(null), preview = ref<Record<string, any> | null>(null)
+const loading = ref(false), busy = ref(false), action = ref(''), error = ref(''), notice = ref(''); const scope = new PageScope(() => auth.epoch()); let id = 0; let frozenDate = ''
+function updateValue(key: string, value: string): void { values.value = { ...values.value, [key]: value }; action.value = ''; preview.value = null }
+async function load(): Promise<void> { const version = scope.begin(); loading.value = true; cycle.value = null; action.value = ''; error.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<Array<{ id: number; name: string; status: string }>>('/training-cycles')); if (scope.current(version)) { cycle.value = result.find(item => item.id === positiveId(id)) || null; if (!cycle.value) error.value = '周期不存在或无权访问' } }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+async function prepare(value: string): Promise<void> { if (busy.value || !cycle.value) return; const version = scope.begin(); busy.value = true; action.value = ''; preview.value = null
+  try { if (!await requireAuth() || !scope.current(version)) return; const date = value === 'archive' ? '' : String(formPayload(fields, values.value).date); frozenDate = date
+    if (value === 'activate') { const result = await scope.wait(api.get<Record<string, any>>('/training-cycles/' + positiveId(id) + '/activation-preview?effective_start_date=' + encodeURIComponent(date))); if (scope.current(version)) preview.value = result }
+    if (scope.current(version)) action.value = value
+  } catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '预览失败' } finally { if (scope.current(version)) busy.value = false }
+}
+async function commit(): Promise<void> { if (busy.value || !['activate', 'complete', 'archive'].includes(action.value)) return; const selected = action.value, version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; const body = selected === 'activate' ? { effective_start_date: frozenDate, complete_current_cycle: true } : selected === 'complete' ? { actual_end_date: frozenDate } : {}
+    await scope.wait(api.post('/training-cycles/' + positiveId(id) + '/' + selected, body)); if (scope.current(version)) { notice.value = '状态已由服务器更新。'; await load() } }
+  catch (e) { if (scope.current(version)) error.value = (e instanceof Error ? e.message : '操作失败') + '。请重新读取服务器状态后再决定是否重试。' } finally { if (scope.current(version)) busy.value = false }
+}
+function hide(): void { scope.stop(); cycle.value = null; preview.value = null; values.value = { date: '' }; action.value = ''; busy.value = false }
+onLoad(query => { try { id = positiveId(query.cycle_id) } catch { id = 0 } }); onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

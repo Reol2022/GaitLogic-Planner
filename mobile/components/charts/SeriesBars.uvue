@@ -1,0 +1,51 @@
+<template>
+  <view>
+    <text v-if="!compact" class="muted">每日距离 · km · 纵轴 0—{{ maxDistance.toFixed(1) }}</text>
+    <text v-else :class="dark ? 'bar-unit chart-dark-label' : 'bar-unit'">单位：公里</text>
+    <scroll-view direction="horizontal" @touchstart.stop="holdChartGesture" :class="compact ? 'chart-scroll compact-chart' : 'chart-scroll'">
+      <view :class="compact ? 'bars compact-bars' : 'bars'">
+        <view v-for="(day, index) in items" :key="day.date" :class="compact ? 'bar-column compact-column' : 'bar-column'">
+          <text :class="dark ? 'bar-value chart-dark-label' : 'bar-value'">{{ day.distance_km == null ? '缺失' : day.distance_km.toFixed(1) }}</text>
+          <view :class="dark ? 'bar-track chart-dark-track' : 'bar-track'">
+            <view v-if="day.distance_km != null" class="bar-fill" :style="{ height: barHeight(day.distance_km) + 'px' }" />
+            <view v-else class="bar-missing" />
+          </view>
+          <text :class="dark ? 'bar-date chart-dark-label' : 'bar-date'">{{ day.date.slice(5) }}</text>
+          <text v-if="!compact" class="bar-status">{{ sessions(index) }}</text>
+        </view>
+      </view>
+    </scroll-view>
+    <text v-if="!compact" class="muted">缺失不按 0 绘制；无记录不是休息证明。仅展示已存储日志。</text>
+  </view>
+</template>
+<script setup lang="ts">
+import { computed } from 'vue'
+interface SeriesDay { date: string; distance_km: number | null; session_count?: number; recorded_sessions?: number; missing_distance_count?: number }
+const props = defineProps<{ items: SeriesDay[]; compact?: boolean; dark?: boolean }>()
+function holdChartGesture(): void {}
+const maxDistance = computed(() => Math.max(1, ...props.items.map((day: SeriesDay): number => day.distance_km ?? 0)))
+function barHeight(value: number): number { return Math.max(0, value / maxDistance.value * 112) }
+function sessions(index: number): string {
+  const day = props.items[index]
+  const count = day.session_count ?? day.recorded_sessions
+  if (count == null) return '次数未知'
+  return (day.missing_distance_count ?? 0) > 0 ? count + '次 · 有缺失' : count + '次记录'
+}
+</script>
+<style scoped>
+.chart-scroll { height: 194px; margin-top: 14px; margin-bottom: 12px; }
+.bars { display: flex; flex-direction: row; align-items: flex-end; }
+.compact-bars { width:100%; }
+.compact-chart { height:160px; }
+.compact-column { flex:1; width:0; }
+.bar-unit { color:var(--tone-muted); font-size:12px; }
+.bar-column { display: flex; flex-direction: column; width: 56px; flex-shrink: 0; align-items: center; }
+.bar-value { font-size: 11px; color: var(--tone-muted); height: 19px; }
+.bar-track { display: flex; flex-direction: column; height: 112px; width: 24px; justify-content: flex-end; background-color: var(--tone-blue-soft); border-radius: 5px; }
+.bar-fill { width: 24px; background-color: var(--tone-brand); border-radius: 5px; }
+.bar-missing { height: 3px; width: 24px; background-color: var(--tone-muted); margin-bottom: 53px; }
+.bar-date { font-size: 10px; color: var(--tone-muted); margin-top: 8px; }
+.bar-status { font-size: 8px; color: var(--tone-muted); margin-top: 4px; }
+.chart-dark-label { color:var(--tone-muted); }
+.chart-dark-track { background-color:var(--tone-blue-soft); }
+</style>

@@ -1,0 +1,42 @@
+<template>
+  <view class="breakdown">
+    <view v-for="(activity, index) in activities" :key="activity.activity_ref" class="breakdown-row activity-line">
+      <view class="activity-icon"><view class="activity-dot" /></view>
+      <view class="col">
+        <text class="part-title">{{ activityLabel(detail, activity.activity_ref, index) }}</text>
+        <text class="part-caption">{{ activityTime(activity.start_time_local) || duration(activity.duration_seconds) }} · {{ pace(activity.average_pace_seconds_per_km) }}</text>
+      </view>
+      <text class="part-value">{{ metric(activity.distance_km, ' 公里') }}</text>
+    </view>
+    <text v-if="detail.activities_complete === false" class="part-caption">这里只显示部分关联活动。</text>
+    <text v-if="detail.activities.length > activities.length" class="part-caption">跨日关联活动不在今日明细展示。</text>
+    <text v-if="segments.length > 0" class="breakdown-title">活动内分段</text>
+    <view v-for="segment in segments" :key="segment.index" class="breakdown-row segment-row">
+      <view class="row"><text class="part-title">{{ roleLabel(segment.role) || '分段 ' + segment.index }}</text><text class="part-value">{{ segment.distance_m == null ? '暂无' : metric(segment.distance_m / 1000, ' 公里') }}</text></view>
+      <text class="part-caption">用时 {{ duration(segment.duration_seconds) }} · 均配 {{ pace(segment.average_pace_seconds_per_km) }}</text>
+    </view>
+    <text v-if="segments.length > 0 && (detail.normalized_structure_complete !== true || (detail.normalized_segments?.length ?? 0) > segments.length)" class="part-caption">这里只显示部分分段，可进入详情查看更多。</text>
+    <text v-if="activities.length <= 1 && segments.length === 0" class="part-caption">暂无可用分段，不拆算热身和主课。</text>
+  </view>
+</template>
+<script setup lang="ts">
+import { computed } from 'vue'
+import { duration, metric, pace } from '../../utils/display'
+import { activityLabel, activityTime, roleLabel } from '../../utils/today-breakdown'
+import type { ActivityPart, TodayDetail } from '../../utils/today-breakdown'
+const props = defineProps<{ detail: TodayDetail; day: string }>()
+const activities = computed(() => props.detail.activities.filter((item: ActivityPart) => item.date === props.day))
+const segments = computed(() => props.detail.selected_activity?.date === props.day ? (props.detail.normalized_segments ?? []).slice(0, 12) : [])
+</script>
+<style scoped>
+.breakdown { padding:0; }
+.breakdown-title { color:var(--tone-text); font-size:13px; font-weight:700; margin:4px 0; }
+.breakdown-row { padding:10px 0; border-bottom:1px solid transparent; border-bottom-color:var(--tone-line); }
+.activity-line { display:flex; flex-direction:row; align-items:center; }
+.activity-icon { width:21px; margin-right:7px; display:flex; align-items:center; justify-content:center; }
+.activity-dot { width:8px; height:8px; border-radius:4px; background-color:var(--tone-activity); }
+.segment-row { padding-left:7px; }
+.part-title { color:var(--tone-text); font-size:14px; }
+.part-value { color:var(--tone-text); font-size:14px; font-weight:650; margin-left:8px; }
+.part-caption { color:var(--tone-muted); font-size:12px; line-height:20px; }
+</style>

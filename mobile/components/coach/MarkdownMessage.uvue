@@ -1,0 +1,19 @@
+<template>
+  <view>
+    <view v-for="(block, index) in blocks" :key="index" :class="block.kind === 'code' ? 'code-block' : 'message-block'">
+      <text :class="block.kind === 'heading' ? 'message-heading' : 'message-text'" selectable>{{ block.text }}</text>
+    </view>
+  </view>
+</template>
+<script setup lang="ts">
+import { computed } from 'vue'
+import { markdownBlocks } from '../../utils/markdown'
+const props = defineProps<{ content: string }>()
+const blocks = computed(() => markdownBlocks(props.content))
+</script>
+<style scoped>
+.message-block { margin-bottom: 10px; }
+.code-block { background-color: var(--tone-soft); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.message-text { color: var(--tone-text); font-size: 15px; line-height: 27px; }
+.message-heading { color: var(--tone-text); font-size: 18px; font-weight: 600; line-height: 28px; }
+</style>

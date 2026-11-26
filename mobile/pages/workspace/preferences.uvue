@@ -1,0 +1,43 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">AI 教练偏好</text></view><text class="subtitle">偏好用于辅助生成草稿，不会直接调整正式课表。</text><StatePanel :loading="loading" :error="error" @retry="load" />
+    <view v-if="ready" class="card"><RunnerForm class="runner-form-host" :fields="fields" :values="values" :disabled="busy" @update="updateValue" /><button class="primary" :disabled="busy" @click="prepare">预览偏好修改</button></view>
+    <view v-if="confirm" class="notice"><text class="body">{{ preview }}</text><button class="primary" :disabled="busy" @click="save">确认保存偏好</button><button class="secondary" :disabled="busy" @click="confirm = false">返回</button></view><text v-if="notice" class="notice-text">{{ notice }}</text>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { valuesFor, formPayload } from '../../domain/runner-workspace'
+import type { FormField } from '../../domain/runner-workspace'
+import StatePanel from '../../components/common/StatePanel.uvue'
+import RunnerForm from '../../components/common/RunnerForm.uvue'
+const fields: FormField[] = [
+  { key: 'preferred_training_systems', label: '偏好训练体系（逗号分隔）' },
+  { key: 'intensity_conservatism', label: '强度偏好', kind: 'choice', options: ['conservative', 'standard', 'aggressive', 'custom'], labels: ['保守', '标准', '积极', '自定义'], required: true },
+  { key: 'double_run_policy', label: '双跑偏好', kind: 'choice', options: ['never', 'cautious', 'allowed'], labels: ['不双跑', '谨慎安排', '允许'], required: true },
+  { key: 'disabled_workout_types', label: '禁用训练类型（逗号分隔）' },
+  { key: 'key_workout_habit', label: '质量课习惯' }, { key: 'rest_day_strategy', label: '休息日策略' },
+  { key: 'long_run_strategy', label: '长距离策略' }, { key: 'injury_risk_policy', label: '伤病风险偏好' }, { key: 'additional_notes', label: '补充说明' },
+]
+const values = ref<Record<string, string>>({}), loading = ref(false), busy = ref(false), ready = ref(false), confirm = ref(false), error = ref(''), notice = ref(''), preview = ref(''); const scope = new PageScope(() => auth.epoch())
+function updateValue(key: string, value: string): void { values.value = { ...values.value, [key]: value }; confirm.value = false }
+function payload(): Record<string, unknown> { const result = formPayload(fields, values.value); for (const key of ['preferred_training_systems', 'disabled_workout_types']) result[key] = (values.value[key] || '').split(/[,，]/).map(item => item.trim()).filter(Boolean); return result }
+function prepare(): void { try { payload(); preview.value = fields.map(field => field.label + '：' + (values.value[field.key] || '未填写')).join('\n'); confirm.value = true; error.value = '' } catch (e) { error.value = e instanceof Error ? e.message : '输入无效' } }
+async function load(): Promise<void> { const version = scope.begin(); loading.value = true; ready.value = false; error.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<Record<string, unknown>>('/ai-coach-preference')); if (scope.current(version)) { values.value = valuesFor(fields, result); for (const key of ['preferred_training_systems', 'disabled_workout_types']) if (Array.isArray(result[key])) values.value[key] = (result[key] as string[]).join(','); ready.value = true } }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+async function save(): Promise<void> { if (busy.value || !confirm.value || !ready.value) return; const version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; await scope.wait(api.put('/ai-coach-preference', payload())); if (scope.current(version)) { confirm.value = false; notice.value = '偏好已保存，正式课表未变更。'; await load() } }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '保存失败' } finally { if (scope.current(version)) busy.value = false }
+}
+function hide(): void { scope.stop(); values.value = {}; confirm.value = false; ready.value = false; busy.value = false }
+onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>

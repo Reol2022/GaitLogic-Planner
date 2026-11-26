@@ -1,0 +1,56 @@
+<template>
+  <scroll-view :class="themeClass" direction="vertical" class="screen"><view class="page"><view class="page-heading"><view class="heading-mark" /><text class="title">智能周复盘</text></view><text class="subtitle">读取周事实不会生成课表。模型分析和正式计划调整分别确认。</text><StatePanel :loading="loading" :error="error" @retry="load" />
+    <view class="card"><RunnerForm class="runner-form-host" :fields="fields" :values="values" :disabled="busy" @update="updateValue" /><button class="secondary" :disabled="busy" @click="readFacts">读取这周事实</button><button class="primary" :disabled="busy || facts == null" @click="generateConfirm = true">准备生成周复盘</button></view>
+    <view v-if="facts != null" class="card hero"><text class="item-title">{{ facts.period.week_start }} — {{ facts.period.week_end }}</text><text class="body">实际跑量 {{ metric(facts.completed.actual_distance_km, ' km') }} · 计划 {{ metric(facts.planned.planned_distance_km, ' km') }}</text><text class="body">实际训练 {{ facts.completed.completed_running_session_count }} 次 · 数据质量 {{ facts.data_quality.level }}</text><text v-for="item in facts.classification.warnings || []" :key="item" class="error-text">{{ item }}</text><text v-for="item in facts.classification.limitations || []" :key="item" class="muted">{{ item }}</text></view>
+    <view v-if="generateConfirm" class="notice"><text class="body">确认调用模型生成本周复盘？可能产生模型费用；即使返回调整建议，也不会自动应用正式计划。</text><button class="primary" :disabled="busy" @click="generate">确认生成复盘</button><button class="secondary" :disabled="busy" @click="generateConfirm = false">取消</button></view>
+    <text v-if="notice" class="notice-text">{{ notice }}</text>
+    <view v-if="review != null" class="card"><text class="item-title">本周分析</text><text class="body">{{ review.overview }}</text><text class="body spaced">{{ review.completion_summary }}</text><text class="body spaced">{{ review.key_session_summary }}</text><text class="body spaced">{{ review.deviation_summary }}</text><text class="body spaced">{{ review.fatigue_and_risk }}</text><text v-for="item in review.next_week_focus || []" :key="item" class="body spaced">{{ item }}</text><text v-for="item in review.warnings || []" :key="item" class="error-text spaced">{{ item }}</text><text v-for="item in review.limitations || []" :key="item" class="muted spaced">{{ item }}</text><text v-if="review.fallback_used" class="notice-text">本次使用降级解释，不代表模型完整分析成功。</text></view>
+    <view v-if="proposal != null" class="card"><text class="item-title">调整草稿 #{{ proposal.id }} · {{ proposal.status }}</text><view v-for="change in proposal.proposal.changes || []" :key="change.plan_id" class="spaced"><text class="body">{{ change.date }} · {{ change.reason }}</text><text class="muted">原计划：{{ change.before.content }} · {{ metric(change.before.distance_km, ' km') }}</text><text class="body">建议：{{ change.after.content }} · {{ metric(change.after.distance_km, ' km') }}</text></view><text v-for="item in proposal.proposal.warnings || []" :key="item" class="error-text">{{ item }}</text><text v-for="item in proposal.proposal.limitations || []" :key="item" class="muted">{{ item }}</text><button v-if="proposal.status === 'pending_approval'" class="primary" :disabled="busy" @click="approvalConfirm = true">准备确认调整</button></view>
+    <view v-if="approvalConfirm" class="notice"><text class="error-text">确认后将修改正式课表。服务端会重新核验权限、规则和版本冲突。</text><button class="primary" :disabled="busy" @click="approve">确认应用上述调整</button><button class="secondary" :disabled="busy" @click="approvalConfirm = false">取消</button></view>
+    <text class="section-title">历史复盘</text><view v-for="item in reports" :key="item.id" class="card" @click="readReport(item.id)"><text class="item-title">{{ item.week_start_date }} — {{ item.week_end_date }}</text><text class="muted">{{ item.summary || '查看已保存的复盘' }}</text></view>
+    <view v-if="savedReport != null" class="card"><text class="item-title">历史复盘</text><text class="body">{{ savedReport.summary }}</text><text class="body spaced">{{ savedReport.next_week_strategy }}</text><text v-for="item in savedReport.risk_notes_json || []" :key="item" class="error-text">{{ item }}</text></view>
+  </view></scroll-view>
+</template>
+<script setup lang="ts">
+import { useTheme } from '../../services/theme'
+import { ref } from 'vue'
+import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { api, auth, requireAuth } from '../../services/runtime'
+import { PageScope } from '../../services/page-scope'
+import { positiveId, formPayload } from '../../domain/runner-workspace'
+import type { FormField } from '../../domain/runner-workspace'
+import { metric, dateOffset } from '../../utils/display'
+import RunnerForm from '../../components/common/RunnerForm.uvue'
+import StatePanel from '../../components/common/StatePanel.uvue'
+const fields: FormField[] = [{ key: 'week_start', label: '周开始日期', kind: 'date', required: true }, { key: 'week_end', label: '周结束日期', kind: 'date', required: true }]
+const values = ref<Record<string, string>>({}), facts = ref<Record<string, any> | null>(null), review = ref<Record<string, any> | null>(null), proposal = ref<Record<string, any> | null>(null), reports = ref<Record<string, any>[]>([]), savedReport = ref<Record<string, any> | null>(null)
+const loading = ref(false), busy = ref(false), generateConfirm = ref(false), approvalConfirm = ref(false), error = ref(''), notice = ref(''); const scope = new PageScope(() => auth.epoch()); let frozen: Record<string, unknown> | null = null
+function updateValue(key: string, value: string): void { values.value = { ...values.value, [key]: value }; facts.value = null; frozen = null; generateConfirm.value = false; approvalConfirm.value = false; proposal.value = null; review.value = null }
+async function load(): Promise<void> { const version = scope.begin(); loading.value = true; reports.value = []; error.value = ''
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<{ items: Record<string, any>[] }>('/weekly-reviews?page=1&page_size=50')); if (scope.current(version)) reports.value = result.items }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) loading.value = false }
+}
+async function readFacts(): Promise<void> { if (busy.value) return; const version = scope.begin(); busy.value = true; error.value = ''; facts.value = null; frozen = null
+  try { const payload = formPayload(fields, values.value); if (dateOffset(String(payload.week_start), 6) !== payload.week_end) throw new Error('请选择连续 7 天，结束日期应为开始日期后第 6 天'); if (!await requireAuth() || !scope.current(version)) return
+    const result = await scope.wait(api.get<Record<string, any>>('/weekly-reviews/facts?week_start=' + payload.week_start + '&week_end=' + payload.week_end + '&timezone=Asia%2FShanghai')); if (scope.current(version)) { facts.value = result; frozen = { ...payload, timezone: 'Asia/Shanghai' } } }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) busy.value = false }
+}
+async function generate(): Promise<void> { if (busy.value || !generateConfirm.value || frozen == null) return; const payload = frozen, version = scope.begin(); busy.value = true; generateConfirm.value = false; review.value = null; proposal.value = null
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.post<Record<string, any>>('/weekly-reviews/graph', payload, 900000)); if (scope.current(version)) { review.value = result; if (result.proposal_record_id) { const detail = await scope.wait(api.get<Record<string, any>>('/adaptive-plan/proposals/' + positiveId(result.proposal_record_id))); if (scope.current(version)) proposal.value = detail } } }
+  catch (e) { if (scope.current(version)) error.value = (e instanceof Error ? e.message : '生成失败') + '。服务端可能仍在处理，请先查看历史，不自动重复生成。' } finally { if (scope.current(version)) busy.value = false }
+}
+async function readReport(id: number): Promise<void> { if (busy.value) return; const version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.get<{ report: Record<string, any> }>('/weekly-reviews/' + positiveId(id))); if (scope.current(version)) savedReport.value = result.report }
+  catch (e) { if (scope.current(version)) error.value = e instanceof Error ? e.message : '读取失败' } finally { if (scope.current(version)) busy.value = false }
+}
+async function approve(): Promise<void> { if (busy.value || !approvalConfirm.value || proposal.value?.status !== 'pending_approval') return; const id = proposal.value.id, version = scope.begin(); busy.value = true
+  try { if (!await requireAuth() || !scope.current(version)) return; const result = await scope.wait(api.post<{ status: string }>('/adaptive-plan/proposals/' + positiveId(id) + '/approve', {})); if (scope.current(version)) { approvalConfirm.value = false; const detail = await scope.wait(api.get<Record<string, any>>('/adaptive-plan/proposals/' + positiveId(id))); if (scope.current(version)) { proposal.value = detail; notice.value = '服务器返回状态：' + result.status + '。请以重新读取的草稿状态为准。' } } }
+  catch (e) { if (scope.current(version)) error.value = (e instanceof Error ? e.message : '应用失败') + '。请重新读取正式课表，不自动重试。' } finally { if (scope.current(version)) busy.value = false }
+}
+function hide(): void { scope.stop(); values.value = {}; facts.value = null; review.value = null; proposal.value = null; reports.value = []; savedReport.value = null; frozen = null; generateConfirm.value = false; approvalConfirm.value = false; busy.value = false }
+onShow(() => { void load() }); onHide(hide); onUnload(hide)
+const themeClass = useTheme()
+</script>
+<style>
+@import '../../styles/tokens.css';
+</style>
